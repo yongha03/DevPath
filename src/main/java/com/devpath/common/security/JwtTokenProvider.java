@@ -79,7 +79,7 @@ public class JwtTokenProvider {
 
         return Jwts.builder()
                 .subject(String.valueOf(userId))
-                .id(UUID.randomUUID().toString())
+                .claim("userId", userId)
                 .claim("role", role)
                 .claim("tokenType", tokenType)
                 .issuedAt(now)
@@ -92,12 +92,11 @@ public class JwtTokenProvider {
         try {
             Claims claims = Jwts.parser().verifyWith(secretKey).build().parseSignedClaims(token).getPayload();
 
-            Long userId = parseUserId(claims);
-            String jti = claims.getId();
+            Number userIdNumber = claims.get("userId", Number.class);
             String role = claims.get("role", String.class);
             String tokenType = claims.get("tokenType", String.class);
 
-            if (userId == null || jti == null || role == null || tokenType == null) {
+            if (userIdNumber == null || role == null || tokenType == null) {
                 throw new JwtAuthenticationException(ErrorCode.JWT_INVALID);
             }
 
@@ -105,33 +104,19 @@ public class JwtTokenProvider {
                 throw new JwtAuthenticationException(ErrorCode.JWT_TYPE_MISMATCH);
             }
 
-            return new TokenClaims(userId, jti, role, tokenType);
+            Long userId = userIdNumber.longValue();
+            return new TokenClaims(userId, role, tokenType);
         } catch (ExpiredJwtException e) {
             throw new JwtAuthenticationException(ErrorCode.JWT_EXPIRED);
         } catch (io.jsonwebtoken.security.SecurityException | MalformedJwtException e) {
             throw new JwtAuthenticationException(ErrorCode.JWT_INVALID);
         } catch (UnsupportedJwtException e) {
             throw new JwtAuthenticationException(ErrorCode.JWT_UNSUPPORTED);
-        } catch (NumberFormatException e) {
-            throw new JwtAuthenticationException(ErrorCode.JWT_INVALID);
         } catch (IllegalArgumentException e) {
             throw new JwtAuthenticationException(ErrorCode.JWT_EMPTY);
         }
     }
 
-    private Long parseUserId(Claims claims) {
-        String subject = claims.getSubject();
-        if (subject != null) {
-            return Long.parseLong(subject);
-        }
-
-        Number userIdClaim = claims.get("userId", Number.class);
-        if (userIdClaim != null) {
-            return userIdClaim.longValue();
-        }
-        return null;
-    }
-
-    public record TokenClaims(Long userId, String jti, String role, String tokenType) {
+    public record TokenClaims(Long userId, String role, String tokenType) {
     }
 }

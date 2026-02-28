@@ -43,12 +43,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
 
         String accessToken = jwtTokenProvider.createAccessToken(userId, DEFAULT_ROLE);
         String refreshToken = jwtTokenProvider.createRefreshToken(userId, DEFAULT_ROLE);
-        JwtTokenProvider.TokenClaims refreshClaims = jwtTokenProvider.parseRefreshToken(refreshToken);
-        tokenRedisService.saveRefreshTokenJti(
-                userId,
-                refreshClaims.jti(),
-                jwtTokenProvider.getRefreshTokenExpiration()
-        );
+        tokenRedisService.saveRefreshToken(userId, refreshToken, jwtTokenProvider.getRefreshTokenExpiration());
 
         String targetUrl = UriComponentsBuilder.fromUriString(oauth2RedirectUrl)
                 .queryParam("accessToken", accessToken)
@@ -57,7 +52,7 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
                 .build()
                 .toUriString();
 
-        log.info("OAuth2 로그인 성공 후 리다이렉트합니다. userId={}, target={}", userId, targetUrl);
+        log.info("OAuth2 success redirect. userId={}, target={}", userId, targetUrl);
         getRedirectStrategy().sendRedirect(request, response, targetUrl);
     }
 
@@ -65,6 +60,6 @@ public class OAuth2SuccessHandler extends SimpleUrlAuthenticationSuccessHandler 
         if (userIdValue instanceof Number number) {
             return number.longValue();
         }
-        throw new ServletException("OAuth2 userId 속성이 누락되었습니다.");
+        throw new ServletException("OAuth2 userId attribute is missing");
     }
 }
