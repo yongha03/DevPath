@@ -33,11 +33,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             String token = resolveToken(request);
 
             if (token != null) {
-                JwtTokenProvider.TokenClaims claims = jwtTokenProvider.parseAccessToken(token);
-                if (tokenRedisService.isAccessJtiBlacklisted(claims.jti())) {
+                if (tokenRedisService.isBlacklisted(token)) {
                     throw new JwtAuthenticationException(ErrorCode.JWT_BLACKLISTED);
                 }
 
+                JwtTokenProvider.TokenClaims claims = jwtTokenProvider.parseAccessToken(token);
                 UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                         claims.userId(),
                         null,
