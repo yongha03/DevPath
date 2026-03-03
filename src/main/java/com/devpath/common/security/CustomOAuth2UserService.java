@@ -25,6 +25,7 @@ import java.util.Map;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+// OAuth2(GitHub) 사용자 정보를 조회해 서비스 사용자로 매핑
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     private static final String GITHUB_EMAILS_API = "https://api.github.com/user/emails";
@@ -32,6 +33,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
     private final UserRepository userRepository;
     private final RestTemplate restTemplate = new RestTemplate();
 
+    // OAuth2 사용자 정보를 로드하고 회원 조회/생성 후 인증 속성 구성
     @Override
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
         OAuth2User oAuth2User = super.loadUser(userRequest);
@@ -74,6 +76,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         return new DefaultOAuth2User(oAuth2User.getAuthorities(), modifiedAttributes, userNameAttributeName);
     }
 
+    // GitHub 이메일 API에서 primary + verified 이메일 우선 조회
     private String fetchGithubEmail(String accessToken) {
         try {
             HttpHeaders headers = new HttpHeaders();
@@ -97,7 +100,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                     .filter(e -> Boolean.TRUE.equals(e.get("primary")) && Boolean.TRUE.equals(e.get("verified")))
                     .map(e -> (String) e.get("email"))
                     .findFirst()
-                    .orElseGet(() -> (String) emails.get(0).get("email"));
+                    .orElseGet(() -> (String) emails.getFirst().get("email"));
         } catch (Exception e) {
             log.warn("GitHub 이메일 API 조회에 실패했습니다.", e);
             return null;

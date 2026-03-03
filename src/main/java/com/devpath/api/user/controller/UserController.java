@@ -22,7 +22,7 @@ public class UserController {
     @Operation(summary = "프로필 및 기술 스택 초기 설정", description = "소셜 로그인 직후 온보딩 과정에서 프로필과 보유 기술 태그를 등록합니다.")
     @PostMapping("/profile/setup")
     public ResponseEntity<ApiResponse<Void>> setupProfile(
-            // 🔥 필터에서 넘겨준 토큰 안의 유저 ID를 안전하게 주입받음
+            // 필터에서 넘겨준 토큰 안의 유저 ID를 안전하게 주입받음
             @AuthenticationPrincipal Long userId,
             @Valid @RequestBody UserProfileSetupRequest request
     ) {

@@ -4,6 +4,7 @@ import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
 @Getter
+// 서비스 전반에서 공통으로 사용하는 에러 코드
 public enum ErrorCode {
     INVALID_INPUT(HttpStatus.BAD_REQUEST, "잘못된 요청 입력입니다."),
     INVALID_AUTH_HEADER(HttpStatus.BAD_REQUEST, "인증 헤더 형식이 올바르지 않습니다."),
@@ -29,6 +30,7 @@ public enum ErrorCode {
     private final HttpStatus status;
     private final String message;
 
+    // HTTP 상태 코드와 기본 메시지를 함께 보관
     ErrorCode(HttpStatus status, String message) {
         this.status = status;
         this.message = message;

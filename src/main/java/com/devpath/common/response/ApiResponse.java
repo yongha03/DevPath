@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+// API 공통 응답 포맷
 public class ApiResponse<T> {
     private boolean success;
     private String code;
@@ -19,15 +20,14 @@ public class ApiResponse<T> {
         this.data = data;
     }
 
+    // 성공 응답 생성
     public static <T> ApiResponse<T> success(String message, T data) {
         return new ApiResponse<>(true, null, message, data);
     }
 
+    // 에러 코드와 메시지를 포함한 실패 응답 생성
     public static <T> ApiResponse<T> error(String code, String message) {
         return new ApiResponse<>(false, code, message, null);
     }
 
-    public static <T> ApiResponse<T> error(String message) {
-        return new ApiResponse<>(false, null, message, null);
-    }
 }
