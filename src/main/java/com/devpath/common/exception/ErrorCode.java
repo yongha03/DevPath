@@ -27,6 +27,7 @@ public enum ErrorCode {
 
     ROADMAP_NOT_FOUND(HttpStatus.NOT_FOUND, "로드맵을 찾을 수 없습니다."),
     CUSTOM_ROADMAP_NOT_FOUND(HttpStatus.NOT_FOUND, "내 로드맵을 찾을 수 없습니다."),
+    ROADMAP_NODE_NOT_FOUND(HttpStatus.NOT_FOUND, "로드맵 노드를 찾을 수 없습니다."),
 
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다.");
 

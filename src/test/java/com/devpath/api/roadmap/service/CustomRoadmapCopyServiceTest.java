@@ -1,6 +1,5 @@
 package com.devpath.api.roadmap.service;
 
-import com.devpath.domain.roadmap.port.InMemoryOfficialRoadmapReader;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
