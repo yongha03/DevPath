@@ -38,13 +38,11 @@ INSERT INTO tags (name, category, is_official) VALUES ('Node.js', 'Backend', TRU
 INSERT INTO tags (name, category, is_official) VALUES ('TypeScript', 'Frontend', TRUE) ON CONFLICT (name) DO NOTHING;
 INSERT INTO tags (name, category, is_official) VALUES ('Tailwind CSS', 'Frontend', TRUE) ON CONFLICT (name) DO NOTHING;
 
-INSERT INTO roadmaps (author_id, creator_id, title, description, is_public, is_official, is_deleted, created_at)
+INSERT INTO roadmaps (creator_id, title, description, is_official, is_deleted, created_at)
 SELECT
-    u.user_id,
     u.user_id,
     'Backend Master Roadmap',
     'Official DevPath roadmap covering Java, Spring Boot, JPA, and security.',
-    TRUE,
     TRUE,
     FALSE,
     CURRENT_TIMESTAMP
@@ -56,14 +54,12 @@ WHERE u.email = 'admin@devpath.com'
       WHERE title = 'Backend Master Roadmap'
   );
 
-INSERT INTO roadmap_nodes (roadmap_id, title, description, content, node_type, order_index, sort_order)
+INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order)
 SELECT
     r.roadmap_id,
     'Java Basics',
     'Learn variables, control flow, loops, and object-oriented basics.',
-    'Learn variables, control flow, loops, and object-oriented basics.',
     'CONCEPT',
-    1,
     1
 FROM roadmaps r
 WHERE r.title = 'Backend Master Roadmap'
@@ -73,14 +69,12 @@ WHERE r.title = 'Backend Master Roadmap'
       WHERE title = 'Java Basics'
   );
 
-INSERT INTO roadmap_nodes (roadmap_id, title, description, content, node_type, order_index, sort_order)
+INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order)
 SELECT
     r.roadmap_id,
     'Spring Boot Basics',
     'Understand DI, IoC, and the core annotations used in Spring Boot.',
-    'Understand DI, IoC, and the core annotations used in Spring Boot.',
     'CONCEPT',
-    2,
     2
 FROM roadmaps r
 WHERE r.title = 'Backend Master Roadmap'
@@ -90,14 +84,12 @@ WHERE r.title = 'Backend Master Roadmap'
       WHERE title = 'Spring Boot Basics'
   );
 
-INSERT INTO roadmap_nodes (roadmap_id, title, description, content, node_type, order_index, sort_order)
+INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order)
 SELECT
     r.roadmap_id,
     'Spring Data JPA',
     'Learn ORM, entity mapping, and repository-based persistence.',
-    'Learn ORM, entity mapping, and repository-based persistence.',
     'CONCEPT',
-    3,
     3
 FROM roadmaps r
 WHERE r.title = 'Backend Master Roadmap'
@@ -107,14 +99,12 @@ WHERE r.title = 'Backend Master Roadmap'
       WHERE title = 'Spring Data JPA'
   );
 
-INSERT INTO roadmap_nodes (roadmap_id, title, description, content, node_type, order_index, sort_order)
+INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order)
 SELECT
     r.roadmap_id,
     'Security and JWT',
     'Build authentication and authorization flows with Spring Security and JWT.',
-    'Build authentication and authorization flows with Spring Security and JWT.',
     'CONCEPT',
-    4,
     4
 FROM roadmaps r
 WHERE r.title = 'Backend Master Roadmap'
@@ -158,4 +148,28 @@ WHERE n1.title = 'Spring Data JPA'
       FROM prerequisites p
       WHERE p.node_id = n2.node_id
         AND p.pre_node_id = n1.node_id
+  );
+
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT n.node_id, t.tag_id
+FROM roadmap_nodes n, tags t
+WHERE n.title = 'Java Basics'
+  AND t.name = 'Java'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM node_required_tags req
+      WHERE req.node_id = n.node_id
+        AND req.tag_id = t.tag_id
+  );
+
+INSERT INTO user_tech_stacks (user_id, tag_id)
+SELECT u.user_id, t.tag_id
+FROM users u, tags t
+WHERE u.email = 'test@devpath.com'
+  AND t.name = 'Java'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM user_tech_stacks uts
+      WHERE uts.user_id = u.user_id
+        AND uts.tag_id = t.tag_id
   );
