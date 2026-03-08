@@ -13,7 +13,18 @@ import lombok.NoArgsConstructor;
  * - 학습자가 해당 노드를 스킵하려면 이 테이블에 정의된 모든 태그를 보유해야 함
  */
 @Entity
-@Table(name = "node_required_tags")
+@Table(
+        name = "node_required_tags",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_node_required_tags_node_tag",
+                        columnNames = {"node_id", "tag_id"}
+                )
+        },
+        indexes = {
+                @Index(name = "idx_node_required_tags_node_id", columnList = "node_id")
+        }
+)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class NodeRequiredTag {

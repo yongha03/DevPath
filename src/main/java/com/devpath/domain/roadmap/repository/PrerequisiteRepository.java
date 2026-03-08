@@ -8,4 +8,6 @@ import java.util.List;
 
 public interface PrerequisiteRepository extends JpaRepository<Prerequisite, Long> {
     List<Prerequisite> findAllByNode(RoadmapNode node);
+
+    List<Prerequisite> findAllByNodeRoadmapRoadmapId(Long roadmapId);
 }

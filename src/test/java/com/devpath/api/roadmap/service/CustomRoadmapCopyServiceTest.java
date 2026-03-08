@@ -1,8 +1,11 @@
 package com.devpath.api.roadmap.service;
 
+import com.devpath.common.exception.CustomException;
+import com.devpath.common.exception.ErrorCode;
 import com.devpath.domain.roadmap.entity.CustomNodePrerequisite;
 import com.devpath.domain.roadmap.entity.CustomRoadmap;
 import com.devpath.domain.roadmap.entity.CustomRoadmapNode;
+import com.devpath.domain.roadmap.entity.NodeStatus;
 import com.devpath.domain.roadmap.entity.Roadmap;
 import com.devpath.domain.roadmap.entity.RoadmapNode;
 import com.devpath.domain.roadmap.port.OfficialRoadmapReader;
@@ -29,8 +32,11 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -74,13 +80,13 @@ class CustomRoadmapCopyServiceTest {
                 nodeRequiredTagRepository
         );
 
-        when(customRoadmapRepository.save(any(CustomRoadmap.class))).thenAnswer(invocation -> {
+        lenient().when(customRoadmapRepository.save(any(CustomRoadmap.class))).thenAnswer(invocation -> {
             CustomRoadmap customRoadmap = invocation.getArgument(0);
             ReflectionTestUtils.setField(customRoadmap, "id", 99L);
             return customRoadmap;
         });
-        when(customRoadmapNodeRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
-        when(customNodePrerequisiteRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
+        lenient().when(customRoadmapNodeRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
+        lenient().when(customNodePrerequisiteRepository.saveAll(anyList())).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Test
@@ -102,12 +108,17 @@ class CustomRoadmapCopyServiceTest {
         );
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(roadmapRepository.findById(roadmapId)).thenReturn(Optional.of(roadmap));
+        when(roadmapRepository.findByRoadmapIdAndIsOfficialTrueAndIsDeletedFalse(roadmapId))
+                .thenReturn(Optional.of(roadmap));
+        when(customRoadmapRepository.existsByUserIdAndOriginalRoadmapRoadmapId(userId, roadmapId)).thenReturn(false);
         when(officialRoadmapReader.loadSnapshot(roadmapId)).thenReturn(snapshot);
         when(roadmapNodeRepository.findAllById(anyList())).thenReturn(List.of(javaNode, dockerNode));
         when(userTechStackRepository.findTagNamesByUserId(userId)).thenReturn(List.of("Java", "Spring"));
-        when(nodeRequiredTagRepository.findTagNamesByNodeId(100L)).thenReturn(List.of("Java", "Spring"));
-        when(nodeRequiredTagRepository.findTagNamesByNodeId(200L)).thenReturn(List.of("Docker"));
+        when(nodeRequiredTagRepository.findTagNamesByNodeIds(List.of(100L, 200L))).thenReturn(List.of(
+                projection(100L, "Java"),
+                projection(100L, "Spring"),
+                projection(200L, "Docker")
+        ));
 
         Long copiedRoadmapId = service.copyToCustomRoadmap(userId, roadmapId);
 
@@ -119,19 +130,15 @@ class CustomRoadmapCopyServiceTest {
 
         assertThat(savedNodes).hasSize(2);
         assertThat(savedNodes.get(0).getOriginalNode().getNodeId()).isEqualTo(200L);
-        assertThat(savedNodes.get(0).getStatus()).isEqualTo(CustomRoadmapNode.NodeStatus.NOT_STARTED);
+        assertThat(savedNodes.get(0).getStatus()).isEqualTo(NodeStatus.NOT_STARTED);
         assertThat(savedNodes.get(0).getCompletedAt()).isNull();
         assertThat(savedNodes.get(1).getOriginalNode().getNodeId()).isEqualTo(100L);
-        assertThat(savedNodes.get(1).getStatus()).isEqualTo(CustomRoadmapNode.NodeStatus.COMPLETED);
+        assertThat(savedNodes.get(1).getStatus()).isEqualTo(NodeStatus.COMPLETED);
         assertThat(savedNodes.get(1).getCompletedAt()).isNotNull();
 
         ArgumentCaptor<List<CustomNodePrerequisite>> prerequisiteCaptor = ArgumentCaptor.forClass(List.class);
         verify(customNodePrerequisiteRepository).saveAll(prerequisiteCaptor.capture());
         assertThat(prerequisiteCaptor.getValue()).hasSize(1);
-
-        verify(userTechStackRepository).findTagNamesByUserId(userId);
-        verify(nodeRequiredTagRepository).findTagNamesByNodeId(100L);
-        verify(nodeRequiredTagRepository).findTagNamesByNodeId(200L);
     }
 
     @Test
@@ -149,11 +156,15 @@ class CustomRoadmapCopyServiceTest {
         );
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(roadmapRepository.findById(roadmapId)).thenReturn(Optional.of(roadmap));
+        when(roadmapRepository.findByRoadmapIdAndIsOfficialTrueAndIsDeletedFalse(roadmapId))
+                .thenReturn(Optional.of(roadmap));
+        when(customRoadmapRepository.existsByUserIdAndOriginalRoadmapRoadmapId(userId, roadmapId)).thenReturn(false);
         when(officialRoadmapReader.loadSnapshot(roadmapId)).thenReturn(snapshot);
         when(roadmapNodeRepository.findAllById(anyList())).thenReturn(List.of(springNode));
         when(userTechStackRepository.findTagNamesByUserId(userId)).thenReturn(List.of("Java"));
-        when(nodeRequiredTagRepository.findTagNamesByNodeId(300L)).thenReturn(List.of("Spring"));
+        when(nodeRequiredTagRepository.findTagNamesByNodeIds(List.of(300L))).thenReturn(List.of(
+                projection(300L, "Spring")
+        ));
 
         service.copyToCustomRoadmap(userId, roadmapId);
 
@@ -161,7 +172,7 @@ class CustomRoadmapCopyServiceTest {
         verify(customRoadmapNodeRepository).saveAll(nodeCaptor.capture());
         CustomRoadmapNode savedNode = nodeCaptor.getValue().getFirst();
 
-        assertThat(savedNode.getStatus()).isEqualTo(CustomRoadmapNode.NodeStatus.NOT_STARTED);
+        assertThat(savedNode.getStatus()).isEqualTo(NodeStatus.NOT_STARTED);
         assertThat(savedNode.getCompletedAt()).isNull();
     }
 
@@ -180,11 +191,13 @@ class CustomRoadmapCopyServiceTest {
         );
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(roadmapRepository.findById(roadmapId)).thenReturn(Optional.of(roadmap));
+        when(roadmapRepository.findByRoadmapIdAndIsOfficialTrueAndIsDeletedFalse(roadmapId))
+                .thenReturn(Optional.of(roadmap));
+        when(customRoadmapRepository.existsByUserIdAndOriginalRoadmapRoadmapId(userId, roadmapId)).thenReturn(false);
         when(officialRoadmapReader.loadSnapshot(roadmapId)).thenReturn(snapshot);
         when(roadmapNodeRepository.findAllById(anyList())).thenReturn(List.of(introNode));
         when(userTechStackRepository.findTagNamesByUserId(userId)).thenReturn(List.of("Java", "Spring"));
-        when(nodeRequiredTagRepository.findTagNamesByNodeId(400L)).thenReturn(List.of());
+        when(nodeRequiredTagRepository.findTagNamesByNodeIds(List.of(400L))).thenReturn(List.of());
 
         service.copyToCustomRoadmap(userId, roadmapId);
 
@@ -192,8 +205,27 @@ class CustomRoadmapCopyServiceTest {
         verify(customRoadmapNodeRepository).saveAll(nodeCaptor.capture());
         CustomRoadmapNode savedNode = nodeCaptor.getValue().getFirst();
 
-        assertThat(savedNode.getStatus()).isEqualTo(CustomRoadmapNode.NodeStatus.NOT_STARTED);
+        assertThat(savedNode.getStatus()).isEqualTo(NodeStatus.NOT_STARTED);
         assertThat(savedNode.getCompletedAt()).isNull();
+    }
+
+    @Test
+    void copyToCustomRoadmap_rejectsDuplicateCopyForSameUserAndRoadmap() {
+        Long userId = 1L;
+        Long roadmapId = 10L;
+
+        when(userRepository.findById(userId)).thenReturn(Optional.of(createUser()));
+        when(roadmapRepository.findByRoadmapIdAndIsOfficialTrueAndIsDeletedFalse(roadmapId))
+                .thenReturn(Optional.of(createRoadmap(roadmapId, "Backend")));
+        when(customRoadmapRepository.existsByUserIdAndOriginalRoadmapRoadmapId(userId, roadmapId)).thenReturn(true);
+
+        assertThatThrownBy(() -> service.copyToCustomRoadmap(userId, roadmapId))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.CUSTOM_ROADMAP_ALREADY_EXISTS);
+
+        verify(customRoadmapRepository, never()).save(any(CustomRoadmap.class));
+        verify(customRoadmapNodeRepository, never()).saveAll(anyList());
     }
 
     private User createUser() {
@@ -223,5 +255,19 @@ class CustomRoadmapCopyServiceTest {
                 .nodeType("STEP")
                 .sortOrder(1)
                 .build();
+    }
+
+    private NodeRequiredTagRepository.NodeRequiredTagNameProjection projection(Long nodeId, String tagName) {
+        return new NodeRequiredTagRepository.NodeRequiredTagNameProjection() {
+            @Override
+            public Long getNodeId() {
+                return nodeId;
+            }
+
+            @Override
+            public String getTagName() {
+                return tagName;
+            }
+        };
     }
 }

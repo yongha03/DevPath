@@ -12,7 +12,19 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "custom_roadmaps")
+@Table(
+        name = "custom_roadmaps",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_custom_roadmap_user_original",
+                        columnNames = {"user_id", "original_roadmap_id"}
+                )
+        },
+        indexes = {
+                @Index(name = "idx_custom_roadmaps_user_id", columnList = "user_id"),
+                @Index(name = "idx_custom_roadmaps_original_roadmap_id", columnList = "original_roadmap_id")
+        }
+)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class CustomRoadmap {
