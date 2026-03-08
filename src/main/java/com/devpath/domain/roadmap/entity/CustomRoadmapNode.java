@@ -9,7 +9,12 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "custom_roadmap_nodes")
+@Table(
+        name = "custom_roadmap_nodes",
+        indexes = {
+                @Index(name = "idx_custom_roadmap_nodes_custom_roadmap_id", columnList = "custom_roadmap_id")
+        }
+)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class CustomRoadmapNode {
@@ -62,12 +67,5 @@ public class CustomRoadmapNode {
     // 노드 완료 (스킵 포함) - completeLearning()과 동일한 동작
     public void complete() {
         completeLearning();
-    }
-
-    // 노드 상태 Enum
-    public enum NodeStatus {
-        NOT_STARTED,    // 시작 전
-        IN_PROGRESS,    // 진행 중
-        COMPLETED       // 완료 (CLEARED)
     }
 }

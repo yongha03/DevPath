@@ -7,7 +7,12 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "custom_node_prerequisites")
+@Table(
+        name = "custom_node_prerequisites",
+        indexes = {
+                @Index(name = "idx_custom_node_prerequisites_custom_roadmap_id", columnList = "custom_roadmap_id")
+        }
+)
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class CustomNodePrerequisite {

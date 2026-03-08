@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 
 public interface NodeRequiredTagRepository extends JpaRepository<NodeRequiredTag, Long> {
@@ -30,7 +31,21 @@ public interface NodeRequiredTagRepository extends JpaRepository<NodeRequiredTag
             "WHERE nrt.node.id = :nodeId")
     List<String> findTagNamesByNodeId(@Param("nodeId") Long nodeId);
 
+    @Query("""
+            SELECT nrt.node.nodeId AS nodeId, t.name AS tagName
+            FROM NodeRequiredTag nrt
+            JOIN nrt.tag t
+            WHERE nrt.node.nodeId IN :nodeIds
+            """)
+    List<NodeRequiredTagNameProjection> findTagNamesByNodeIds(@Param("nodeIds") Collection<Long> nodeIds);
+
     @Modifying
     @Query("DELETE FROM NodeRequiredTag nrt WHERE nrt.tag.tagId = :tagId")
     void deleteAllByTagId(@Param("tagId") Long tagId);
+
+    interface NodeRequiredTagNameProjection {
+        Long getNodeId();
+
+        String getTagName();
+    }
 }

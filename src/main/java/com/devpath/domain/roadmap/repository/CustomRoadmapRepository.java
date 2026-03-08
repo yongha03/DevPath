@@ -8,4 +8,8 @@ import java.util.List;
 
 public interface CustomRoadmapRepository extends JpaRepository<CustomRoadmap, Long> {
     List<CustomRoadmap> findAllByUserOrderByCreatedAtDesc(User user);
+
+    boolean existsByUserIdAndOriginalRoadmapRoadmapId(Long userId, Long roadmapId);
+
+    long countByUserIdAndOriginalRoadmapRoadmapId(Long userId, Long roadmapId);
 }

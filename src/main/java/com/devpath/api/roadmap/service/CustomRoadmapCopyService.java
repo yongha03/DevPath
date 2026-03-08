@@ -23,7 +23,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -32,45 +36,41 @@ import java.util.stream.Collectors;
 public class CustomRoadmapCopyService {
 
     private final UserRepository userRepository;
-
     private final RoadmapRepository roadmapRepository;
     private final RoadmapNodeRepository roadmapNodeRepository;
-
     private final CustomRoadmapRepository customRoadmapRepository;
     private final CustomRoadmapNodeRepository customRoadmapNodeRepository;
     private final CustomNodePrerequisiteRepository customNodePrerequisiteRepository;
-
     private final OfficialRoadmapReader officialRoadmapReader;
     private final TagValidationService tagValidationService;
     private final UserTechStackRepository userTechStackRepository;
     private final NodeRequiredTagRepository nodeRequiredTagRepository;
 
-    /**
-     * B-3: 공식 로드맵을 유저 전용 커스텀 로드맵으로 딥카피(노드 + 선행조건)하여 DB에 저장한다.
-     * - A가 오피셜 데이터(data.sql)를 올린 뒤에야 end-to-end로 성공한다.
-     */
     @Transactional
     public Long copyToCustomRoadmap(Long userId, Long roadmapId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
-        Roadmap roadmap = roadmapRepository.findById(roadmapId)
+        Roadmap roadmap = roadmapRepository.findByRoadmapIdAndIsOfficialTrueAndIsDeletedFalse(roadmapId)
                 .orElseThrow(() -> new CustomException(ErrorCode.ROADMAP_NOT_FOUND));
+
+        if (customRoadmapRepository.existsByUserIdAndOriginalRoadmapRoadmapId(userId, roadmapId)) {
+            throw new CustomException(ErrorCode.CUSTOM_ROADMAP_ALREADY_EXISTS);
+        }
 
         OfficialRoadmapSnapshot snapshot = officialRoadmapReader.loadSnapshot(roadmapId);
         if (snapshot == null) {
             throw new CustomException(ErrorCode.ROADMAP_NOT_FOUND);
         }
 
-        // 1) CustomRoadmap 생성/저장
-        CustomRoadmap customRoadmap = CustomRoadmap.builder()
-                .user(user)
-                .originalRoadmap(roadmap)
-                .title(roadmap.getTitle())
-                .build();
-        customRoadmapRepository.save(customRoadmap);
+        CustomRoadmap customRoadmap = customRoadmapRepository.save(
+                CustomRoadmap.builder()
+                        .user(user)
+                        .originalRoadmap(roadmap)
+                        .title(roadmap.getTitle())
+                        .build()
+        );
 
-        // 2) 원본 RoadmapNode를 DB에서 실제 로딩 (FK 필요)
         List<Long> originalNodeIds = snapshot.nodes().stream()
                 .map(OfficialRoadmapSnapshot.NodeItem::nodeId)
                 .distinct()
@@ -85,56 +85,81 @@ public class CustomRoadmapCopyService {
                 .collect(Collectors.toMap(RoadmapNode::getNodeId, Function.identity()));
 
         List<String> userTags = userTechStackRepository.findTagNamesByUserId(userId);
+        Map<Long, List<String>> requiredTagsByNodeId = groupRequiredTagsByNodeId(originalNodeIds);
 
-        // 3) CustomRoadmapNode bulk insert
         List<CustomRoadmapNode> customNodesToSave = snapshot.nodes().stream()
-                .sorted(Comparator.comparing(OfficialRoadmapSnapshot.NodeItem::orderIndex,
-                        Comparator.nullsLast(Integer::compareTo)))
-                .map(n -> {
-                    RoadmapNode originalNode = originalNodeMap.get(n.nodeId());
-                    CustomRoadmapNode customNode = CustomRoadmapNode.builder()
-                            .customRoadmap(customRoadmap)
-                            .originalNode(originalNode)
-                            .build();
-
-                    List<String> requiredTags = nodeRequiredTagRepository.findTagNamesByNodeId(originalNode.getNodeId());
-                    if (requiredTags != null && !requiredTags.isEmpty()
-                            && tagValidationService.validateTags(requiredTags, userTags)) {
-                        customNode.complete();
-                    }
-
-                    return customNode;
-                })
+                .sorted(Comparator.comparing(
+                        OfficialRoadmapSnapshot.NodeItem::orderIndex,
+                        Comparator.nullsLast(Integer::compareTo)
+                ))
+                .map(nodeItem -> buildCustomNode(customRoadmap, originalNodeMap, requiredTagsByNodeId, userTags, nodeItem))
                 .toList();
 
         List<CustomRoadmapNode> savedCustomNodes = customRoadmapNodeRepository.saveAll(customNodesToSave);
+        Map<Long, CustomRoadmapNode> customNodeByOriginalId = savedCustomNodes.stream()
+                .collect(Collectors.toMap(node -> node.getOriginalNode().getNodeId(), Function.identity()));
 
-        // 4) Map<originalNodeId, savedCustomNode> 만들기
-        Map<Long, CustomRoadmapNode> customNodeByOriginalId = new HashMap<>();
-        for (CustomRoadmapNode cn : savedCustomNodes) {
-            customNodeByOriginalId.put(cn.getOriginalNode().getNodeId(), cn);
-        }
-
-        // 5) 선행조건(edge)을 커스텀으로 변환하여 저장
-        List<CustomNodePrerequisite> prereqsToSave = snapshot.prerequisiteEdges().stream()
-                .map(e -> {
-                    CustomRoadmapNode node = customNodeByOriginalId.get(e.nodeId());
-                    CustomRoadmapNode prerequisite = customNodeByOriginalId.get(e.prerequisiteNodeId());
-
-                    if (node == null || prerequisite == null) {
-                        throw new CustomException(ErrorCode.ROADMAP_NODE_NOT_FOUND);
-                    }
-
-                    return CustomNodePrerequisite.builder()
-                            .customRoadmap(customRoadmap)
-                            .customNode(node)
-                            .prerequisiteCustomNode(prerequisite)
-                            .build();
-                })
+        List<CustomNodePrerequisite> prerequisitesToSave = snapshot.prerequisiteEdges().stream()
+                .map(edge -> buildPrerequisite(customRoadmap, customNodeByOriginalId, edge))
                 .toList();
 
-        customNodePrerequisiteRepository.saveAll(prereqsToSave);
-
+        customNodePrerequisiteRepository.saveAll(prerequisitesToSave);
         return customRoadmap.getId();
+    }
+
+    private Map<Long, List<String>> groupRequiredTagsByNodeId(List<Long> nodeIds) {
+        Map<Long, List<String>> requiredTagsByNodeId = new HashMap<>();
+        for (Long nodeId : nodeIds) {
+            requiredTagsByNodeId.put(nodeId, new ArrayList<>());
+        }
+
+        for (NodeRequiredTagRepository.NodeRequiredTagNameProjection projection :
+                nodeRequiredTagRepository.findTagNamesByNodeIds(nodeIds)) {
+            requiredTagsByNodeId
+                    .computeIfAbsent(projection.getNodeId(), ignored -> new ArrayList<>())
+                    .add(projection.getTagName());
+        }
+
+        return requiredTagsByNodeId;
+    }
+
+    private CustomRoadmapNode buildCustomNode(
+            CustomRoadmap customRoadmap,
+            Map<Long, RoadmapNode> originalNodeMap,
+            Map<Long, List<String>> requiredTagsByNodeId,
+            List<String> userTags,
+            OfficialRoadmapSnapshot.NodeItem nodeItem
+    ) {
+        RoadmapNode originalNode = originalNodeMap.get(nodeItem.nodeId());
+        CustomRoadmapNode customNode = CustomRoadmapNode.builder()
+                .customRoadmap(customRoadmap)
+                .originalNode(originalNode)
+                .build();
+
+        List<String> requiredTags = requiredTagsByNodeId.getOrDefault(originalNode.getNodeId(), List.of());
+        if (!requiredTags.isEmpty() && tagValidationService.validateTags(requiredTags, userTags)) {
+            customNode.complete();
+        }
+
+        return customNode;
+    }
+
+    private CustomNodePrerequisite buildPrerequisite(
+            CustomRoadmap customRoadmap,
+            Map<Long, CustomRoadmapNode> customNodeByOriginalId,
+            OfficialRoadmapSnapshot.PrerequisiteEdge edge
+    ) {
+        CustomRoadmapNode node = customNodeByOriginalId.get(edge.nodeId());
+        CustomRoadmapNode prerequisite = customNodeByOriginalId.get(edge.prerequisiteNodeId());
+
+        if (node == null || prerequisite == null) {
+            throw new CustomException(ErrorCode.ROADMAP_NODE_NOT_FOUND);
+        }
+
+        return CustomNodePrerequisite.builder()
+                .customRoadmap(customRoadmap)
+                .customNode(node)
+                .prerequisiteCustomNode(prerequisite)
+                .build();
     }
 }

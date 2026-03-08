@@ -3,7 +3,7 @@ package com.devpath.api.roadmap.service;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
 import com.devpath.domain.roadmap.entity.CustomRoadmapNode;
-import com.devpath.domain.roadmap.entity.CustomRoadmapNode.NodeStatus;
+import com.devpath.domain.roadmap.entity.NodeStatus;
 import com.devpath.domain.roadmap.repository.CustomRoadmapNodeRepository;
 import com.devpath.domain.roadmap.repository.NodeRequiredTagRepository;
 import com.devpath.domain.roadmap.service.TagValidationService;
@@ -18,7 +18,7 @@ import java.util.Set;
 /**
  * 노드 스킵 서비스
  * - 유저가 보유한 태그와 노드의 필수 태그를 비교하여 스킵 가능 여부 판단
- * - 조건 충족 시 노드 상태를 CLEARED로 변경
+ * - 조건 충족 시 노드 상태를 COMPLETED로 변경
  */
 @Service
 @RequiredArgsConstructor
@@ -45,7 +45,7 @@ public class NodeSkipService {
 
         // 2. 이미 클리어한 노드인지 확인
         if (customNode.getStatus() == NodeStatus.COMPLETED) {
-            throw new CustomException(ErrorCode.NODE_ALREADY_CLEARED);
+            throw new CustomException(ErrorCode.NODE_ALREADY_COMPLETED);
         }
 
         // 3. 원본 노드의 필수 태그 조회
@@ -65,7 +65,7 @@ public class NodeSkipService {
                     "부족한 태그: " + String.join(", ", missingTags));
         }
 
-        // 6. 노드 상태를 CLEARED로 변경
+        // 6. 노드 상태를 COMPLETED로 변경
         customNode.complete();
 
         return Set.of(); // 성공 시 빈 Set 반환
