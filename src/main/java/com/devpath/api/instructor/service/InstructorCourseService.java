@@ -2,15 +2,18 @@ package com.devpath.api.instructor.service;
 
 import com.devpath.api.instructor.dto.InstructorCourseDto;
 import com.devpath.api.instructor.dto.InstructorLessonDto;
+import com.devpath.api.instructor.dto.InstructorMaterialDto;
 import com.devpath.api.instructor.dto.InstructorSectionDto;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
 import com.devpath.domain.course.entity.Course;
 import com.devpath.domain.course.entity.CourseDifficultyLevel;
 import com.devpath.domain.course.entity.CourseMaterial;
+import com.devpath.domain.course.entity.CourseObjective;
 import com.devpath.domain.course.entity.CourseSection;
 import com.devpath.domain.course.entity.CourseStatus;
 import com.devpath.domain.course.entity.CourseTagMap;
+import com.devpath.domain.course.entity.CourseTargetAudience;
 import com.devpath.domain.course.entity.Lesson;
 import com.devpath.domain.course.entity.LessonType;
 import com.devpath.domain.course.repository.CourseMaterialRepository;
@@ -23,6 +26,7 @@ import com.devpath.domain.course.repository.LessonRepository;
 import com.devpath.domain.user.entity.Tag;
 import com.devpath.domain.user.repository.TagRepository;
 import com.devpath.domain.user.repository.UserRepository;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -34,7 +38,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-// 강사용 강의 CRUD와 상태 변경 비즈니스 로직을 처리한다.
+// 강사용 강의/커리큘럼 관리 비즈니스 로직을 처리한다.
 @Service
 @RequiredArgsConstructor
 public class InstructorCourseService {
@@ -50,7 +54,7 @@ public class InstructorCourseService {
   private final CourseTargetAudienceRepository courseTargetAudienceRepository;
   private final CourseTagMapRepository courseTagMapRepository;
 
-  // 현재 로그인한 강사 기준으로 강의를 생성한다.
+  // 강사가 새 강의를 생성한다.
   @Transactional
   public Long createCourse(Long instructorId, InstructorCourseDto.CreateCourseRequest request) {
     validateAuthenticatedUser(instructorId);
@@ -72,18 +76,16 @@ public class InstructorCourseService {
 
     Course savedCourse = courseRepository.save(course);
     replaceCourseTags(savedCourse, request.getTagIds());
-
     return savedCourse.getCourseId();
   }
 
-  // 현재 로그인한 강사가 자신의 강의 기본 정보를 수정한다.
+  // 강사가 자신의 강의 기본 정보를 수정한다.
   @Transactional
   public void updateCourse(
       Long instructorId, Long courseId, InstructorCourseDto.UpdateCourseRequest request) {
     validateAuthenticatedUser(instructorId);
 
     Course course = getOwnedCourse(instructorId, courseId);
-
     course.updateBasicInfo(
         request.getTitle(),
         request.getSubtitle(),
@@ -96,7 +98,7 @@ public class InstructorCourseService {
         request.getHasCertificate());
   }
 
-  // 현재 로그인한 강사가 자신의 강의 상태를 변경한다.
+  // 강사가 자신의 강의 상태를 변경한다.
   @Transactional
   public void updateCourseStatus(
       Long instructorId, Long courseId, InstructorCourseDto.UpdateStatusRequest request) {
@@ -106,7 +108,7 @@ public class InstructorCourseService {
     course.changeStatus(toCourseStatus(request.getStatus()));
   }
 
-  // 현재 로그인한 강사가 자신의 강의를 삭제한다.
+  // 강사가 자신의 강의를 삭제한다.
   @Transactional
   public void deleteCourse(Long instructorId, Long courseId) {
     validateAuthenticatedUser(instructorId);
@@ -266,6 +268,108 @@ public class InstructorCourseService {
     }
   }
 
+  // 강의의 선수지식, 직무 연관성, 태그를 전체 교체한다.
+  @Transactional
+  public void updateCourseMetadata(
+      Long instructorId, Long courseId, InstructorCourseDto.UpdateMetadataRequest request) {
+    validateAuthenticatedUser(instructorId);
+
+    Course course = getOwnedCourse(instructorId, courseId);
+    course.replacePrerequisites(request.getPrerequisites());
+    course.replaceJobRelevance(request.getJobRelevance());
+    replaceCourseTags(course, request.getTagIds());
+  }
+
+  // 강의 목표를 bulk replace 방식으로 저장한다.
+  @Transactional
+  public void replaceObjectives(
+      Long instructorId, Long courseId, InstructorCourseDto.ReplaceObjectivesRequest request) {
+    validateAuthenticatedUser(instructorId);
+
+    Course course = getOwnedCourse(instructorId, courseId);
+    courseObjectiveRepository.deleteAllByCourseCourseId(courseId);
+
+    List<CourseObjective> objectives = new ArrayList<>();
+    for (int i = 0; i < request.getObjectives().size(); i++) {
+      objectives.add(
+          CourseObjective.builder()
+              .course(course)
+              .objectiveText(request.getObjectives().get(i))
+              .displayOrder(i)
+              .build());
+    }
+
+    courseObjectiveRepository.saveAll(objectives);
+  }
+
+  // 강의 수강 대상을 bulk replace 방식으로 저장한다.
+  @Transactional
+  public void replaceTargetAudiences(
+      Long instructorId,
+      Long courseId,
+      InstructorCourseDto.ReplaceTargetAudiencesRequest request) {
+    validateAuthenticatedUser(instructorId);
+
+    Course course = getOwnedCourse(instructorId, courseId);
+    courseTargetAudienceRepository.deleteAllByCourseCourseId(courseId);
+
+    List<CourseTargetAudience> targetAudiences = new ArrayList<>();
+    for (int i = 0; i < request.getTargetAudiences().size(); i++) {
+      targetAudiences.add(
+          CourseTargetAudience.builder()
+              .course(course)
+              .audienceDescription(request.getTargetAudiences().get(i))
+              .displayOrder(i)
+              .build());
+    }
+
+    courseTargetAudienceRepository.saveAll(targetAudiences);
+  }
+
+  // 레슨 첨부 자료 메타데이터를 저장한다.
+  @Transactional
+  public Long createMaterial(
+      Long instructorId, Long lessonId, InstructorMaterialDto.CreateMaterialRequest request) {
+    validateAuthenticatedUser(instructorId);
+
+    Lesson lesson = getOwnedLesson(instructorId, lessonId);
+
+    // 현재 엔티티에는 fileSize 컬럼이 없어 저장하지 않는다.
+    CourseMaterial material =
+        CourseMaterial.builder()
+            .lesson(lesson)
+            .materialType(request.getMaterialType())
+            .materialUrl(request.getMaterialUrl())
+            .assetKey(request.getAssetKey())
+            .originalFileName(request.getOriginalFileName())
+            .displayOrder(request.getDisplayOrder())
+            .build();
+
+    CourseMaterial savedMaterial = courseMaterialRepository.save(material);
+    return savedMaterial.getMaterialId();
+  }
+
+  // 강의 썸네일 메타데이터를 저장한다.
+  @Transactional
+  public void uploadThumbnail(
+      Long instructorId, Long courseId, InstructorCourseDto.UploadThumbnailRequest request) {
+    validateAuthenticatedUser(instructorId);
+
+    Course course = getOwnedCourse(instructorId, courseId);
+    course.updateThumbnail(request.getThumbnailUrl());
+  }
+
+  // 강의 트레일러 메타데이터를 저장한다.
+  @Transactional
+  public void uploadTrailer(
+      Long instructorId, Long courseId, InstructorCourseDto.UploadTrailerRequest request) {
+    validateAuthenticatedUser(instructorId);
+
+    Course course = getOwnedCourse(instructorId, courseId);
+    course.updateTrailer(
+        request.getTrailerUrl(), request.getVideoAssetKey(), request.getDurationSeconds());
+  }
+
   // 현재 로그인한 사용자 존재 여부를 검증한다.
   private void validateAuthenticatedUser(Long instructorId) {
     if (instructorId == null) {
@@ -323,7 +427,8 @@ public class InstructorCourseService {
       throw new CustomException(ErrorCode.RESOURCE_NOT_FOUND);
     }
 
-    Set<Long> actualLessonIds = lessons.stream().map(Lesson::getLessonId).collect(Collectors.toSet());
+    Set<Long> actualLessonIds =
+        lessons.stream().map(Lesson::getLessonId).collect(Collectors.toSet());
 
     Set<Long> requestedLessonIds =
         request.getLessonOrders().stream()
