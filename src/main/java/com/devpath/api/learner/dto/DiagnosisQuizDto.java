@@ -1,13 +1,12 @@
 package com.devpath.api.learner.dto;
 
+import com.devpath.domain.roadmap.entity.DiagnosisQuiz;
+import com.devpath.domain.roadmap.entity.DiagnosisResult;
 import com.devpath.domain.roadmap.entity.QuizDifficulty;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
-import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.Map;
 
 public class DiagnosisQuizDto {
@@ -16,8 +15,7 @@ public class DiagnosisQuizDto {
      * 진단 퀴즈 생성 요청
      */
     @Getter
-    @NoArgsConstructor
-    @AllArgsConstructor
+    @Builder
     public static class CreateQuizRequest {
         private Long roadmapId;
         private QuizDifficulty difficulty;
@@ -35,16 +33,26 @@ public class DiagnosisQuizDto {
         private Integer questionCount;
         private QuizDifficulty difficulty;
         private LocalDateTime createdAt;
+
+        public static QuizResponse from(DiagnosisQuiz quiz) {
+            return QuizResponse.builder()
+                    .quizId(quiz.getQuizId())
+                    .roadmapId(quiz.getRoadmap().getRoadmapId())
+                    .roadmapTitle(quiz.getRoadmap().getTitle())
+                    .questionCount(quiz.getQuestionCount())
+                    .difficulty(quiz.getDifficulty())
+                    .createdAt(quiz.getCreatedAt())
+                    .build();
+        }
     }
 
     /**
-     * 퀴즈 답안 제출 요청
+     * 진단 퀴즈 제출 요청
      */
     @Getter
-    @NoArgsConstructor
-    @AllArgsConstructor
+    @Builder
     public static class SubmitAnswerRequest {
-        private Map<Integer, String> answers; // 문항 번호 -> 답안
+        private Map<Integer, String> answers; // 문제 번호 -> 답변
     }
 
     /**
@@ -55,39 +63,28 @@ public class DiagnosisQuizDto {
     public static class QuizResultResponse {
         private Long resultId;
         private Long quizId;
-        private Integer score;
-        private Integer maxScore;
-        private Double scorePercentage;
-        private List<String> weakAreas;
-        private List<Long> recommendedNodeIds;
-        private LocalDateTime createdAt;
-    }
-
-    /**
-     * 진단 결과 상세 응답
-     */
-    @Getter
-    @Builder
-    public static class QuizResultDetailResponse {
-        private Long resultId;
         private Long roadmapId;
         private String roadmapTitle;
         private Integer score;
         private Integer maxScore;
         private Double scorePercentage;
-        private List<String> weakAreas;
-        private List<RecommendedNodeInfo> recommendedNodes;
+        private String weakAreas; // 쉼표로 구분된 태그
+        private String recommendedNodes; // 쉼표로 구분된 노드 ID
         private LocalDateTime createdAt;
-    }
 
-    /**
-     * 추천 노드 정보
-     */
-    @Getter
-    @Builder
-    public static class RecommendedNodeInfo {
-        private Long nodeId;
-        private String nodeTitle;
-        private String reason;
+        public static QuizResultResponse from(DiagnosisResult result) {
+            return QuizResultResponse.builder()
+                    .resultId(result.getResultId())
+                    .quizId(result.getQuiz().getQuizId())
+                    .roadmapId(result.getRoadmap().getRoadmapId())
+                    .roadmapTitle(result.getRoadmap().getTitle())
+                    .score(result.getScore())
+                    .maxScore(result.getMaxScore())
+                    .scorePercentage(result.getScorePercentage())
+                    .weakAreas(result.getWeakAreas())
+                    .recommendedNodes(result.getRecommendedNodes())
+                    .createdAt(result.getCreatedAt())
+                    .build();
+        }
     }
 }
