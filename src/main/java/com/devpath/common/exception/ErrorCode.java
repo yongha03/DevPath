@@ -51,6 +51,11 @@ public enum ErrorCode {
   QUIZ_ALREADY_TAKEN(HttpStatus.CONFLICT, "이미 해당 로드맵의 진단 퀴즈를 수행했습니다."),
   QUIZ_ALREADY_SUBMITTED(HttpStatus.BAD_REQUEST, "이미 제출된 퀴즈입니다."),
 
+  // 추천 관련
+  RECOMMENDATION_NOT_FOUND(HttpStatus.NOT_FOUND, "추천 정보를 찾을 수 없습니다."),
+  RECOMMENDATION_ALREADY_PROCESSED(HttpStatus.BAD_REQUEST, "이미 처리된 추천입니다."),
+  RECOMMENDATION_EXPIRED(HttpStatus.BAD_REQUEST, "만료된 추천입니다."),
+
   INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다.");
 
   private final HttpStatus status;
