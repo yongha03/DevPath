@@ -1,17 +1,7 @@
 package com.devpath.domain.course.entity;
 
-import jakarta.persistence.CollectionTable;
-import jakarta.persistence.Column;
-import jakarta.persistence.ElementCollection;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.PrePersist;
-import jakarta.persistence.Table;
+import com.devpath.domain.user.entity.User;
+import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -34,8 +24,12 @@ public class Course {
   @Column(name = "course_id")
   private Long courseId;
 
-  @Column(name = "instructor_id", nullable = false)
+  @Column(name = "instructor_id", nullable = false, insertable = false, updatable = false)
   private Long instructorId;
+
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "instructor_id", nullable = false)
+  private User instructor;
 
   @Column(nullable = false)
   private String title;
