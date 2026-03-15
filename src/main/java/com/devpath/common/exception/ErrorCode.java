@@ -26,6 +26,7 @@ public enum ErrorCode {
   REFRESH_TOKEN_REUSED(HttpStatus.UNAUTHORIZED, "리프레시 토큰 재사용이 감지되어 세션이 폐기되었습니다."),
   RESOURCE_NOT_FOUND(HttpStatus.NOT_FOUND, "해당 리소스를 찾을 수 없습니다."),
   DUPLICATE_RESOURCE(HttpStatus.CONFLICT, "이미 존재하는 리소스입니다."),
+    COURSE_NOT_FOUND(HttpStatus.NOT_FOUND, "강의를 찾을 수 없습니다."),
   INVALID_COURSE_STATUS(HttpStatus.BAD_REQUEST, "유효하지 않은 강의 상태입니다."),
   INVALID_COURSE_DIFFICULTY_LEVEL(HttpStatus.BAD_REQUEST, "유효하지 않은 강의 난이도입니다."),
 
