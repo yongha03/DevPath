@@ -1,69 +1,169 @@
 package com.devpath.api.admin.service;
 
-import com.devpath.api.admin.dto.TagGovernanceRequests.*;
+import com.devpath.api.admin.dto.TagGovernanceRequests.CreateTag;
+import com.devpath.api.admin.dto.TagGovernanceRequests.MergeTags;
+import com.devpath.api.admin.dto.TagGovernanceRequests.UpdateTag;
 import com.devpath.api.admin.dto.TagResponse;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
+import com.devpath.domain.course.entity.CourseTagMap;
+import com.devpath.domain.course.repository.CourseTagMapRepository;
+import com.devpath.domain.roadmap.entity.NodeRequiredTag;
+import com.devpath.domain.roadmap.repository.NodeRequiredTagRepository;
 import com.devpath.domain.user.entity.Tag;
+import com.devpath.domain.user.entity.UserTechStack;
 import com.devpath.domain.user.repository.TagRepository;
+import com.devpath.domain.user.repository.UserTechStackRepository;
+import java.util.Comparator;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class AdminTagGovernanceService {
 
-    private final TagRepository tagRepository;
+  private final TagRepository tagRepository;
+  private final CourseTagMapRepository courseTagMapRepository;
+  private final UserTechStackRepository userTechStackRepository;
+  private final NodeRequiredTagRepository nodeRequiredTagRepository;
 
-    // 1. 표준 태그 등록
-    public void createTag(CreateTag request) {
-        // 실제 스키마에 맞게 객체 생성
-        Tag newTag = Tag.builder()
-                .name(request.getName())
-                .category(request.getCategory())
-                .build();
+  public void createTag(CreateTag request) {
+    String name = normalizeRequiredValue(request == null ? null : request.getName());
+    String category = normalizeOptionalValue(request == null ? null : request.getCategory());
 
-        tagRepository.save(newTag);
+    tagRepository
+        .findByName(name)
+        .ifPresent(existingTag -> {
+          throw new CustomException(ErrorCode.ALREADY_EXISTS);
+        });
+
+    tagRepository.save(Tag.builder().name(name).category(category).isOfficial(true).build());
+  }
+
+  public void updateTag(Long tagId, UpdateTag request) {
+    Tag tag =
+        tagRepository
+            .findById(tagId)
+            .orElseThrow(() -> new CustomException(ErrorCode.TAG_NOT_FOUND));
+
+    String name = normalizeRequiredValue(request == null ? null : request.getName());
+    String category = normalizeOptionalValue(request == null ? null : request.getCategory());
+
+    tagRepository
+        .findByName(name)
+        .filter(existingTag -> !existingTag.getTagId().equals(tagId))
+        .ifPresent(existingTag -> {
+          throw new CustomException(ErrorCode.ALREADY_EXISTS);
+        });
+
+    tag.updateTagInfo(name, category);
+  }
+
+  @Transactional(readOnly = true)
+  public List<TagResponse> getAllTags() {
+    return tagRepository.findAll().stream()
+        .sorted(Comparator.comparing(Tag::getName))
+        .map(TagResponse::from)
+        .toList();
+  }
+
+  public void mergeTags(MergeTags request) {
+    Long sourceTagId = request == null ? null : request.getSourceTagId();
+    Long targetTagId = request == null ? null : request.getTargetTagId();
+
+    if (sourceTagId == null || targetTagId == null || sourceTagId.equals(targetTagId)) {
+      throw new CustomException(ErrorCode.INVALID_INPUT);
     }
 
-    // 2. 표준 태그 수정
-    public void updateTag(Long tagId, UpdateTag request) {
-        Tag tag = tagRepository.findById(tagId)
-                .orElseThrow(() -> new CustomException(ErrorCode.TAG_NOT_FOUND));
+    Tag sourceTag =
+        tagRepository
+            .findById(sourceTagId)
+            .orElseThrow(() -> new CustomException(ErrorCode.TAG_NOT_FOUND));
+    Tag targetTag =
+        tagRepository
+            .findById(targetTagId)
+            .orElseThrow(() -> new CustomException(ErrorCode.TAG_NOT_FOUND));
 
-        // 엔티티에 만들어둔 비즈니스 메서드 사용 (기존에 정의된 메서드 활용)
-        tag.updateTagInfo(request.getName(), request.getCategory());
+    moveCourseTagMappings(sourceTag, targetTag);
+    moveUserTechStacks(sourceTag, targetTag);
+    moveNodeRequiredTags(sourceTag, targetTag);
+
+    tagRepository.delete(sourceTag);
+  }
+
+  @Transactional(readOnly = true)
+  public String getTagGuide() {
+    return "1. 모든 태그는 소문자 kebab-case를 권장합니다.\n"
+        + "2. 중복 의미 태그는 관리자 병합 기능으로 정리합니다.\n"
+        + "3. category는 backend, frontend, infra처럼 일관된 분류를 사용합니다.";
+  }
+
+  private void moveCourseTagMappings(Tag sourceTag, Tag targetTag) {
+    List<CourseTagMap> sourceMappings = courseTagMapRepository.findAllByTagTagId(sourceTag.getTagId());
+
+    for (CourseTagMap sourceMapping : sourceMappings) {
+      Long courseId = sourceMapping.getCourse().getCourseId();
+
+      if (!courseTagMapRepository.existsByCourseCourseIdAndTagTagId(courseId, targetTag.getTagId())) {
+        courseTagMapRepository.save(
+            CourseTagMap.builder()
+                .course(sourceMapping.getCourse())
+                .tag(targetTag)
+                .proficiencyLevel(sourceMapping.getProficiencyLevel())
+                .build());
+      }
     }
 
-    // 3. 전체 태그 조회
-    @Transactional(readOnly = true)
-    public List<TagResponse> getAllTags() {
-        return tagRepository.findAll().stream()
-                .map(TagResponse::from)
-                .collect(Collectors.toList());
+    courseTagMapRepository.deleteAll(sourceMappings);
+  }
+
+  private void moveUserTechStacks(Tag sourceTag, Tag targetTag) {
+    List<UserTechStack> sourceTechStacks = userTechStackRepository.findAllByTagTagId(sourceTag.getTagId());
+
+    for (UserTechStack sourceTechStack : sourceTechStacks) {
+      Long userId = sourceTechStack.getUser().getId();
+
+      if (!userTechStackRepository.existsByUser_IdAndTag_TagId(userId, targetTag.getTagId())) {
+        userTechStackRepository.save(
+            UserTechStack.builder().user(sourceTechStack.getUser()).tag(targetTag).build());
+      }
     }
 
-    // 4. 태그 병합 (중복 제거)
-    public void mergeTags(MergeTags request) {
-        Tag sourceTag = tagRepository.findById(request.getSourceTagId())
-                .orElseThrow(() -> new CustomException(ErrorCode.TAG_NOT_FOUND));
-        Tag targetTag = tagRepository.findById(request.getTargetTagId())
-                .orElseThrow(() -> new CustomException(ErrorCode.TAG_NOT_FOUND));
+    userTechStackRepository.deleteAll(sourceTechStacks);
+  }
 
-        // TODO: 향후 CourseTagMap 등 연관 데이터 치환 로직 구현
-        tagRepository.delete(sourceTag);
+  private void moveNodeRequiredTags(Tag sourceTag, Tag targetTag) {
+    List<NodeRequiredTag> sourceRequiredTags =
+        nodeRequiredTagRepository.findAllByTagTagId(sourceTag.getTagId());
+
+    for (NodeRequiredTag sourceRequiredTag : sourceRequiredTags) {
+      Long nodeId = sourceRequiredTag.getNode().getNodeId();
+
+      if (!nodeRequiredTagRepository.existsByNodeNodeIdAndTagTagId(nodeId, targetTag.getTagId())) {
+        nodeRequiredTagRepository.save(
+            NodeRequiredTag.builder().node(sourceRequiredTag.getNode()).tag(targetTag).build());
+      }
     }
 
-    // 5. 표준 용어 가이드 조회
-    @Transactional(readOnly = true)
-    public String getTagGuide() {
-        return "1. 모든 태그는 소문자로 작성합니다.\n" +
-                "2. 띄어쓰기는 하이픈(-)으로 대체합니다. (예: Spring Boot -> spring-boot)\n" +
-                "3. 약어보다는 풀네임 사용을 권장합니다.";
+    nodeRequiredTagRepository.deleteAll(sourceRequiredTags);
+  }
+
+  private String normalizeRequiredValue(String value) {
+    if (value == null || value.isBlank()) {
+      throw new CustomException(ErrorCode.INVALID_INPUT);
     }
+
+    return value.trim();
+  }
+
+  private String normalizeOptionalValue(String value) {
+    if (value == null || value.isBlank()) {
+      return null;
+    }
+
+    return value.trim();
+  }
 }

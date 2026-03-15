@@ -19,5 +19,9 @@ public interface CourseTagMapRepository extends JpaRepository<CourseTagMap, Long
             """)
   List<String> findTagNamesByCourseId(@Param("courseId") Long courseId);
 
+  List<CourseTagMap> findAllByTagTagId(Long tagId);
+
+  boolean existsByCourseCourseIdAndTagTagId(Long courseId, Long tagId);
+
   void deleteAllByCourseCourseId(Long courseId);
 }

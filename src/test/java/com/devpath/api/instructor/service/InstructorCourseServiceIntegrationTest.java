@@ -13,10 +13,12 @@ import com.devpath.api.instructor.dto.InstructorNodeCoverageDto;
 import com.devpath.api.instructor.dto.InstructorSectionDto;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
+import com.devpath.domain.course.entity.Course;
 import com.devpath.domain.roadmap.entity.NodeRequiredTag;
 import com.devpath.domain.roadmap.entity.Roadmap;
 import com.devpath.domain.roadmap.entity.RoadmapNode;
 import com.devpath.domain.roadmap.service.TagValidationService;
+import com.devpath.domain.course.entity.CourseNodeMapping;
 import com.devpath.domain.course.repository.CourseAnnouncementRepository;
 import com.devpath.domain.course.repository.CourseMaterialRepository;
 import com.devpath.domain.course.repository.CourseRepository;
@@ -270,6 +272,29 @@ class InstructorCourseServiceIntegrationTest {
     Long announcementId =
         instructorAnnouncementService.createAnnouncement(
             instructorId, courseId, createNormalAnnouncementRequest());
+
+    Course course = courseRepository.findById(courseId).orElseThrow();
+    User instructor = userRepository.findById(instructorId).orElseThrow();
+    Roadmap roadmap =
+        entityManager.merge(
+            Roadmap.builder()
+                .title("Deletion validation roadmap")
+                .description("Ensures course-node mappings are cleaned up with the course.")
+                .creator(instructor)
+                .isOfficial(true)
+                .isPublic(true)
+                .isDeleted(false)
+                .build());
+    RoadmapNode mappedNode =
+        entityManager.merge(
+            RoadmapNode.builder()
+                .roadmap(roadmap)
+                .title("Mapped node")
+                .content("Mapped node content")
+                .nodeType("CONCEPT")
+                .sortOrder(1)
+                .build());
+    entityManager.persist(CourseNodeMapping.builder().course(course).node(mappedNode).build());
     flushAndClear();
 
     instructorCourseService.deleteCourse(instructorId, courseId);
@@ -282,6 +307,7 @@ class InstructorCourseServiceIntegrationTest {
     assertThat(courseMaterialRepository.findAllByLessonLessonIdOrderByDisplayOrderAsc(lessonId1))
         .isEmpty();
     assertThat(courseTagMapRepository.findAllByCourseCourseId(courseId)).isEmpty();
+    assertThat(countRowsByCourseId("course_node_mappings", courseId)).isZero();
     assertThat(countRowsByCourseId("course_prerequisites", courseId)).isZero();
     assertThat(countRowsByCourseId("course_job_relevance", courseId)).isZero();
   }

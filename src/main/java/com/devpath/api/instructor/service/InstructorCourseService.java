@@ -19,6 +19,7 @@ import com.devpath.domain.course.entity.LessonPrerequisite;
 import com.devpath.domain.course.entity.LessonType;
 import com.devpath.domain.course.repository.CourseAnnouncementRepository;
 import com.devpath.domain.course.repository.CourseMaterialRepository;
+import com.devpath.domain.course.repository.CourseNodeMappingRepository;
 import com.devpath.domain.course.repository.CourseObjectiveRepository;
 import com.devpath.domain.course.repository.CourseRepository;
 import com.devpath.domain.course.repository.CourseSectionRepository;
@@ -56,6 +57,7 @@ public class InstructorCourseService {
   private final LessonRepository lessonRepository;
   private final LessonPrerequisiteRepository lessonPrerequisiteRepository;
   private final CourseAnnouncementRepository courseAnnouncementRepository;
+  private final CourseNodeMappingRepository courseNodeMappingRepository;
   private final CourseMaterialRepository courseMaterialRepository;
   private final CourseObjectiveRepository courseObjectiveRepository;
   private final CourseTargetAudienceRepository courseTargetAudienceRepository;
@@ -531,6 +533,7 @@ public class InstructorCourseService {
 
     deleteLessonPrerequisiteLinks(lessonIds);
 
+    courseNodeMappingRepository.deleteAllByCourseCourseId(courseId);
     courseAnnouncementRepository.deleteAllByCourseCourseId(courseId);
     courseMaterialRepository.deleteAllByLessonSectionCourseCourseId(courseId);
     lessonRepository.deleteAllBySectionCourseCourseId(courseId);
