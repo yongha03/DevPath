@@ -1,0 +1,99 @@
+package com.devpath;
+
+import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+import static org.hamcrest.Matchers.notNullValue;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.AuthorityUtils;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.web.servlet.MockMvc;
+
+@SpringBootTest(
+    properties = {
+      "spring.sql.init.mode=always",
+      "spring.jpa.defer-datasource-initialization=true"
+    })
+@AutoConfigureMockMvc
+@ActiveProfiles("test")
+class SwaggerSmokeIntegrationTest {
+
+  @Autowired private MockMvc mockMvc;
+  @Autowired private JdbcTemplate jdbcTemplate;
+
+  private Long instructorId;
+  private Long courseId;
+
+  @BeforeEach
+  void setUp() {
+    instructorId =
+        jdbcTemplate.queryForObject(
+            "select user_id from users where email = ?", Long.class, "instructor@devpath.com");
+    courseId =
+        jdbcTemplate.queryForObject(
+            "select course_id from courses where title = ?", Long.class, "Spring Boot Intro");
+  }
+
+  @Test
+  void openApiSpecIncludesRecentCourseEndpoints() throws Exception {
+    mockMvc
+        .perform(get("/v3/api-docs"))
+        .andExpect(status().isOk())
+        .andExpect(
+            jsonPath("$.paths['/api/instructor/courses/{courseId}/announcements']").exists())
+        .andExpect(
+            jsonPath("$.paths['/api/instructor/courses/{courseId}/node-classifications']").exists())
+        .andExpect(
+            jsonPath("$.paths['/api/instructor/courses/{courseId}/node-coverages']").exists())
+        .andExpect(jsonPath("$.paths['/api/courses/{courseId}/news']").exists());
+  }
+
+  @Test
+  void seededCourseApisRespondWithSampleData() throws Exception {
+    mockMvc
+        .perform(
+            get("/api/instructor/courses/{courseId}/announcements", courseId)
+                .with(authentication(instructorAuthentication())))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.length()").value(greaterThanOrEqualTo(2)));
+
+    mockMvc
+        .perform(
+            get("/api/instructor/courses/{courseId}/node-classifications", courseId)
+                .with(authentication(instructorAuthentication())))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.totalMatchedNodes").value(greaterThanOrEqualTo(2)))
+        .andExpect(jsonPath("$.data.matchedNodes.length()").value(greaterThanOrEqualTo(2)));
+
+    mockMvc
+        .perform(
+            get("/api/instructor/courses/{courseId}/node-coverages", courseId)
+                .with(authentication(instructorAuthentication())))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.totalNodes").value(greaterThanOrEqualTo(4)))
+        .andExpect(jsonPath("$.data.nodeCoverages[0].coveragePercent").value(notNullValue()));
+
+    mockMvc
+        .perform(get("/api/courses/{courseId}/news", courseId))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.length()").value(greaterThanOrEqualTo(2)));
+  }
+
+  private UsernamePasswordAuthenticationToken instructorAuthentication() {
+    return new UsernamePasswordAuthenticationToken(
+        instructorId, null, AuthorityUtils.createAuthorityList("ROLE_INSTRUCTOR"));
+  }
+}

@@ -38,6 +38,7 @@ public interface NodeRequiredTagRepository extends JpaRepository<NodeRequiredTag
             FROM NodeRequiredTag nrt
             JOIN nrt.tag t
             WHERE nrt.node.nodeId IN :nodeIds
+            ORDER BY nrt.node.nodeId ASC, nrt.id ASC
             """)
   List<NodeRequiredTagNameProjection> findTagNamesByNodeIds(
       @Param("nodeIds") Collection<Long> nodeIds);
@@ -46,6 +47,7 @@ public interface NodeRequiredTagRepository extends JpaRepository<NodeRequiredTag
   @Query("DELETE FROM NodeRequiredTag nrt WHERE nrt.tag.tagId = :tagId")
   void deleteAllByTagId(@Param("tagId") Long tagId);
 
+  // 노드 ID와 태그명을 함께 받는 projection 이다.
   interface NodeRequiredTagNameProjection {
     Long getNodeId();
 
