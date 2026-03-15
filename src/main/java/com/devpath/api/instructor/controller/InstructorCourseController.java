@@ -6,12 +6,14 @@ import com.devpath.api.instructor.dto.InstructorCourseDto;
 import com.devpath.api.instructor.dto.InstructorLessonDto;
 import com.devpath.api.instructor.dto.InstructorMaterialDto;
 import com.devpath.api.instructor.dto.InstructorNodeClassificationDto;
+import com.devpath.api.instructor.dto.InstructorNodeCoverageDto;
 import com.devpath.api.instructor.dto.InstructorSectionDto;
 import com.devpath.api.instructor.service.InstructorAnnouncementQueryService;
 import com.devpath.api.instructor.service.InstructorAnnouncementService;
 import com.devpath.api.instructor.service.InstructorCourseQueryService;
 import com.devpath.api.instructor.service.InstructorCourseService;
 import com.devpath.api.instructor.service.InstructorNodeClassificationQueryService;
+import com.devpath.api.instructor.service.InstructorNodeCoverageQueryService;
 import com.devpath.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -42,6 +44,7 @@ public class InstructorCourseController {
   private final InstructorCourseService instructorCourseService;
   private final InstructorCourseQueryService instructorCourseQueryService;
   private final InstructorNodeClassificationQueryService instructorNodeClassificationQueryService;
+  private final InstructorNodeCoverageQueryService instructorNodeCoverageQueryService;
 
   // 강의 생성 API다.
   @Operation(summary = "강의 생성")
@@ -337,5 +340,17 @@ public class InstructorCourseController {
         instructorNodeClassificationQueryService.getAutoClassifications(userId, courseId);
 
     return ApiResponse.success("강의 자동 노드 분류 결과를 조회했습니다.", response);
+  }
+
+  // 강의 태그 기반 노드 커버리지 결과를 조회한다.
+  @Operation(summary = "강의 노드 태그 커버리지 조회")
+  @GetMapping("/courses/{courseId}/node-coverages")
+  public ApiResponse<InstructorNodeCoverageDto.NodeCoverageResponse> getCourseNodeCoverages(
+      @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
+      @PathVariable Long courseId) {
+    InstructorNodeCoverageDto.NodeCoverageResponse response =
+        instructorNodeCoverageQueryService.getNodeCoverages(userId, courseId);
+
+    return ApiResponse.success("강의 노드 태그 커버리지를 조회했습니다.", response);
   }
 }

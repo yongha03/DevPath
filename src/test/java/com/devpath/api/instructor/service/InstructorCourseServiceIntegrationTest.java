@@ -9,6 +9,7 @@ import com.devpath.api.instructor.dto.InstructorCourseDto;
 import com.devpath.api.instructor.dto.InstructorLessonDto;
 import com.devpath.api.instructor.dto.InstructorMaterialDto;
 import com.devpath.api.instructor.dto.InstructorNodeClassificationDto;
+import com.devpath.api.instructor.dto.InstructorNodeCoverageDto;
 import com.devpath.api.instructor.dto.InstructorSectionDto;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
@@ -58,6 +59,7 @@ import org.springframework.test.util.ReflectionTestUtils;
   InstructorAnnouncementService.class,
   InstructorAnnouncementQueryService.class,
   InstructorNodeClassificationQueryService.class,
+  InstructorNodeCoverageQueryService.class,
   TagValidationService.class
 })
 class InstructorCourseServiceIntegrationTest {
@@ -68,6 +70,7 @@ class InstructorCourseServiceIntegrationTest {
   @Autowired private InstructorAnnouncementQueryService instructorAnnouncementQueryService;
   @Autowired
   private InstructorNodeClassificationQueryService instructorNodeClassificationQueryService;
+  @Autowired private InstructorNodeCoverageQueryService instructorNodeCoverageQueryService;
 
   @Autowired private UserRepository userRepository;
   @Autowired private UserProfileRepository userProfileRepository;
@@ -683,6 +686,141 @@ class InstructorCourseServiceIntegrationTest {
         .containsExactly("Spring Boot", "Spring Security", "JWT");
     assertThat(response.getMatchedNodes().get(1).getRequiredTags())
         .containsExactly("JWT", "Spring Security");
+  }
+
+  @Test
+  @DisplayName("강의 노드 태그 커버리지는 후보 노드 전체를 비교용으로 반환한다")
+  void getNodeCoveragesReturnsCoverageForAllCandidateNodes() {
+    Long courseId =
+        instructorCourseService.createCourse(instructorId, createNodeClassificationCourseRequest());
+
+    User instructor = userRepository.findById(instructorId).orElseThrow();
+
+    Roadmap publicRoadmap =
+        Roadmap.builder()
+            .title("Backend Spring Roadmap")
+            .description("Coverage test roadmap")
+            .creator(instructor)
+            .isOfficial(true)
+            .isPublic(true)
+            .isDeleted(false)
+            .build();
+    entityManager.persist(publicRoadmap);
+
+    Roadmap privateRoadmap =
+        Roadmap.builder()
+            .title("Private Roadmap")
+            .description("Should not be included")
+            .creator(instructor)
+            .isOfficial(true)
+            .isPublic(false)
+            .isDeleted(false)
+            .build();
+    entityManager.persist(privateRoadmap);
+
+    RoadmapNode fullMatchNode =
+        RoadmapNode.builder()
+            .roadmap(publicRoadmap)
+            .title("Spring Security")
+            .content("Fully matched node")
+            .nodeType("CONCEPT")
+            .sortOrder(4)
+            .build();
+    entityManager.persist(fullMatchNode);
+
+    RoadmapNode partialMatchNode =
+        RoadmapNode.builder()
+            .roadmap(publicRoadmap)
+            .title("JPA Practice")
+            .content("Partially matched node")
+            .nodeType("PRACTICE")
+            .sortOrder(5)
+            .build();
+    entityManager.persist(partialMatchNode);
+
+    RoadmapNode noMatchNode =
+        RoadmapNode.builder()
+            .roadmap(publicRoadmap)
+            .title("Java Advanced")
+            .content("No matched tags")
+            .nodeType("CONCEPT")
+            .sortOrder(6)
+            .build();
+    entityManager.persist(noMatchNode);
+
+    RoadmapNode noRequiredTagNode =
+        RoadmapNode.builder()
+            .roadmap(publicRoadmap)
+            .title("No Required Tags")
+            .content("Should be excluded")
+            .nodeType("CONCEPT")
+            .sortOrder(7)
+            .build();
+    entityManager.persist(noRequiredTagNode);
+
+    RoadmapNode privateRoadmapNode =
+        RoadmapNode.builder()
+            .roadmap(privateRoadmap)
+            .title("Private Node")
+            .content("Should be excluded")
+            .nodeType("CONCEPT")
+            .sortOrder(1)
+            .build();
+    entityManager.persist(privateRoadmapNode);
+
+    Tag springBootTag = tagRepository.findById(springBootTagId).orElseThrow();
+    Tag springSecurityTag = tagRepository.findById(springSecurityTagId).orElseThrow();
+    Tag jwtTag = tagRepository.findById(jwtTagId).orElseThrow();
+    Tag javaTag = tagRepository.findById(javaTagId).orElseThrow();
+    Tag jpaTag = tagRepository.findById(jpaTagId).orElseThrow();
+
+    entityManager.persist(NodeRequiredTag.builder().node(fullMatchNode).tag(springBootTag).build());
+    entityManager.persist(
+        NodeRequiredTag.builder().node(fullMatchNode).tag(springSecurityTag).build());
+    entityManager.persist(NodeRequiredTag.builder().node(fullMatchNode).tag(jwtTag).build());
+
+    entityManager.persist(
+        NodeRequiredTag.builder().node(partialMatchNode).tag(springSecurityTag).build());
+    entityManager.persist(NodeRequiredTag.builder().node(partialMatchNode).tag(jpaTag).build());
+
+    entityManager.persist(NodeRequiredTag.builder().node(noMatchNode).tag(javaTag).build());
+    entityManager.persist(NodeRequiredTag.builder().node(noMatchNode).tag(jpaTag).build());
+
+    entityManager.persist(NodeRequiredTag.builder().node(privateRoadmapNode).tag(jwtTag).build());
+    entityManager.persist(
+        NodeRequiredTag.builder().node(privateRoadmapNode).tag(springSecurityTag).build());
+
+    flushAndClear();
+
+    InstructorNodeCoverageDto.NodeCoverageResponse response =
+        instructorNodeCoverageQueryService.getNodeCoverages(instructorId, courseId);
+
+    assertThat(response.getCourseId()).isEqualTo(courseId);
+    assertThat(response.getCourseTags())
+        .containsExactly("JWT", "Spring Boot", "Spring Security");
+    assertThat(response.getTotalNodes()).isEqualTo(3);
+    assertThat(response.getNodeCoverages()).hasSize(3);
+    assertThat(response.getNodeCoverages())
+        .extracting(InstructorNodeCoverageDto.NodeCoverageItem::getNodeTitle)
+        .containsExactly("Spring Security", "JPA Practice", "Java Advanced");
+
+    assertThat(response.getNodeCoverages().get(0).getCoveragePercent())
+        .isEqualByComparingTo("100.0");
+    assertThat(response.getNodeCoverages().get(0).getMatchedTags())
+        .containsExactly("Spring Boot", "Spring Security", "JWT");
+    assertThat(response.getNodeCoverages().get(0).getMissingTags()).isEmpty();
+
+    assertThat(response.getNodeCoverages().get(1).getCoveragePercent())
+        .isEqualByComparingTo("50.0");
+    assertThat(response.getNodeCoverages().get(1).getMatchedTags())
+        .containsExactly("Spring Security");
+    assertThat(response.getNodeCoverages().get(1).getMissingTags()).containsExactly("JPA");
+
+    assertThat(response.getNodeCoverages().get(2).getCoveragePercent())
+        .isEqualByComparingTo("0.0");
+    assertThat(response.getNodeCoverages().get(2).getMatchedTags()).isEmpty();
+    assertThat(response.getNodeCoverages().get(2).getMissingTags())
+        .containsExactly("Java", "JPA");
   }
 
   private InstructorCourseDto.CreateCourseRequest createCourseRequest() {
