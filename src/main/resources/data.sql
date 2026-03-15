@@ -25,7 +25,7 @@ WHERE NOT EXISTS (
 INSERT INTO users (email, password, name, role_name, is_active, created_at, updated_at)
 SELECT
     'learner@devpath.com',
-    '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HCGKKG.u.A3L.T.M/Tq1m',
+    '$2a$10$RcdWJBwl.kuttYmqm/BN..6aZKeLNlq9DiNFHbZgZxfTzzNDD33o2',
     'Learner Kim',
     'ROLE_LEARNER',
     TRUE,
@@ -40,7 +40,7 @@ WHERE NOT EXISTS (
 INSERT INTO users (email, password, name, role_name, is_active, created_at, updated_at)
 SELECT
     'instructor@devpath.com',
-    '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HCGKKG.u.A3L.T.M/Tq1m',
+    '$2a$10$RcdWJBwl.kuttYmqm/BN..6aZKeLNlq9DiNFHbZgZxfTzzNDD33o2',
     'Instructor Hong',
     'ROLE_INSTRUCTOR',
     TRUE,
@@ -55,7 +55,7 @@ WHERE NOT EXISTS (
 INSERT INTO users (email, password, name, role_name, is_active, created_at, updated_at)
 SELECT
     'admin@devpath.com',
-    '$2a$10$dXJ3SW6G7P50lGmMkkmwe.20cQQubK3.HCGKKG.u.A3L.T.M/Tq1m',
+    '$2a$10$RcdWJBwl.kuttYmqm/BN..6aZKeLNlq9DiNFHbZgZxfTzzNDD33o2',
     'Admin Park',
     'ROLE_ADMIN',
     TRUE,
@@ -67,12 +67,16 @@ WHERE NOT EXISTS (
     WHERE email = 'admin@devpath.com'
 );
 
+UPDATE users
+SET password = '$2a$10$RcdWJBwl.kuttYmqm/BN..6aZKeLNlq9DiNFHbZgZxfTzzNDD33o2'
+WHERE email IN ('learner@devpath.com', 'instructor@devpath.com', 'admin@devpath.com');
+
 INSERT INTO user_profiles (user_id, profile_image, channel_name, bio, phone, github_url, blog_url, created_at, updated_at)
 SELECT
     u.user_id,
     '/images/profiles/instructor-hong.png',
     'Hong Backend Lab',
-    'Spring Boot와 실무 백엔드 설계를 중심으로 강의하는 강사입니다.',
+    'Spring Boot? ?ㅻТ 諛깆뿏???ㅺ퀎瑜?以묒떖?쇰줈 媛뺤쓽?섎뒗 媛뺤궗?낅땲??',
     '010-0000-0001',
     'https://github.com/instructor-hong',
     'https://blog.devpath.com/hong',
@@ -91,7 +95,7 @@ SELECT
     u.user_id,
     '/images/profiles/admin-park.png',
     'DevPath Admin',
-    '콘텐츠 검수와 태그 거버넌스를 담당합니다.',
+    '肄섑뀗痢?寃?섏? ?쒓렇 嫄곕쾭?뚯뒪瑜??대떦?⑸땲??',
     '010-0000-0002',
     'https://github.com/admin-park',
     'https://blog.devpath.com/admin',
@@ -471,39 +475,48 @@ WHERE u.email = 'instructor@devpath.com'
         AND uts.tag_id = t.tag_id
   );
 
+
 INSERT INTO courses (
     instructor_id,
     title,
     subtitle,
     description,
     thumbnail_url,
-    trailer_url,
+    intro_video_url,
+    video_asset_key,
+    duration_seconds,
     price,
-    discount_price,
-    difficulty,
+    original_price,
+    currency,
+    difficulty_level,
+    language,
+    has_certificate,
     status,
-    created_at,
-    updated_at
+    published_at
 )
 SELECT
     u.user_id,
-    'Spring Boot 입문',
-    '실무형 API 서버를 만드는 가장 빠른 경로',
-    'Spring Boot, JPA, Security를 묶어서 배우는 백엔드 입문 강의입니다.',
+    'Spring Boot Intro',
+    'Fast path to practical API development',
+    'Backend starter course covering Spring Boot, JPA, and security basics.',
     '/images/courses/spring-boot.png',
     '/videos/trailers/spring-boot.mp4',
+    'assets/courses/trailers/spring-boot.mp4',
+    95,
     99000,
-    69000,
+    129000,
+    'KRW',
     'BEGINNER',
+    'ko',
+    TRUE,
     'PUBLISHED',
-    NOW(),
     NOW()
 FROM users u
 WHERE u.email = 'instructor@devpath.com'
   AND NOT EXISTS (
       SELECT 1
       FROM courses
-      WHERE title = 'Spring Boot 입문'
+      WHERE title = 'Spring Boot Intro'
   );
 
 INSERT INTO courses (
@@ -512,210 +525,305 @@ INSERT INTO courses (
     subtitle,
     description,
     thumbnail_url,
-    trailer_url,
+    intro_video_url,
+    video_asset_key,
+    duration_seconds,
     price,
-    discount_price,
-    difficulty,
+    original_price,
+    currency,
+    difficulty_level,
+    language,
+    has_certificate,
     status,
-    created_at,
-    updated_at
+    published_at
 )
 SELECT
     u.user_id,
-    'JPA 실전 설계',
-    '엔티티 설계부터 성능 최적화까지',
-    '실무에서 바로 쓰는 JPA 설계 원칙과 조회 성능 최적화를 다룹니다.',
+    'JPA Practical Design',
+    'Entity design to query optimization',
+    'Practical JPA patterns and performance optimization techniques.',
     '/images/courses/jpa.png',
     '/videos/trailers/jpa.mp4',
+    'assets/courses/trailers/jpa.mp4',
+    110,
     129000,
-    89000,
+    99000,
+    'KRW',
     'INTERMEDIATE',
+    'ko',
+    TRUE,
     'DRAFT',
-    NOW(),
-    NOW()
+    NULL
 FROM users u
 WHERE u.email = 'instructor@devpath.com'
   AND NOT EXISTS (
       SELECT 1
       FROM courses
-      WHERE title = 'JPA 실전 설계'
+      WHERE title = 'JPA Practical Design'
   );
 
-INSERT INTO course_prerequisites (course_id, content)
-SELECT c.course_id, 'Java 기초 문법'
+INSERT INTO course_prerequisites (course_id, prerequisite)
+SELECT c.course_id, 'Java syntax basics'
 FROM courses c
-WHERE c.title = 'Spring Boot 입문'
+WHERE c.title = 'Spring Boot Intro'
   AND NOT EXISTS (
       SELECT 1
       FROM course_prerequisites cp
       WHERE cp.course_id = c.course_id
-        AND cp.content = 'Java 기초 문법'
+        AND cp.prerequisite = 'Java syntax basics'
   );
 
-INSERT INTO course_prerequisites (course_id, content)
-SELECT c.course_id, 'HTTP 기본 이해'
+INSERT INTO course_prerequisites (course_id, prerequisite)
+SELECT c.course_id, 'HTTP fundamentals'
 FROM courses c
-WHERE c.title = 'Spring Boot 입문'
+WHERE c.title = 'Spring Boot Intro'
   AND NOT EXISTS (
       SELECT 1
       FROM course_prerequisites cp
       WHERE cp.course_id = c.course_id
-        AND cp.content = 'HTTP 기본 이해'
+        AND cp.prerequisite = 'HTTP fundamentals'
   );
 
-INSERT INTO course_job_relevance (course_id, content)
-SELECT c.course_id, '백엔드 개발자'
+INSERT INTO course_job_relevance (course_id, job_relevance)
+SELECT c.course_id, 'Backend developer'
 FROM courses c
-WHERE c.title = 'Spring Boot 입문'
+WHERE c.title = 'Spring Boot Intro'
   AND NOT EXISTS (
       SELECT 1
       FROM course_job_relevance cj
       WHERE cj.course_id = c.course_id
-        AND cj.content = '백엔드 개발자'
+        AND cj.job_relevance = 'Backend developer'
   );
 
-INSERT INTO course_job_relevance (course_id, content)
-SELECT c.course_id, '서버 엔지니어'
+INSERT INTO course_job_relevance (course_id, job_relevance)
+SELECT c.course_id, 'Server engineer'
 FROM courses c
-WHERE c.title = 'Spring Boot 입문'
+WHERE c.title = 'Spring Boot Intro'
   AND NOT EXISTS (
       SELECT 1
       FROM course_job_relevance cj
       WHERE cj.course_id = c.course_id
-        AND cj.content = '서버 엔지니어'
+        AND cj.job_relevance = 'Server engineer'
   );
 
-INSERT INTO course_objectives (course_id, content, sort_order)
-SELECT c.course_id, 'Spring Boot 애플리케이션을 직접 구성할 수 있다.', 1
+INSERT INTO course_objectives (course_id, objective_text, display_order)
+SELECT c.course_id, 'Build a Spring Boot application from scratch.', 0
 FROM courses c
-WHERE c.title = 'Spring Boot 입문'
+WHERE c.title = 'Spring Boot Intro'
   AND NOT EXISTS (
       SELECT 1
       FROM course_objectives co
       WHERE co.course_id = c.course_id
-        AND co.sort_order = 1
+        AND co.display_order = 0
   );
 
-INSERT INTO course_objectives (course_id, content, sort_order)
-SELECT c.course_id, 'JPA 기반 CRUD API를 구현할 수 있다.', 2
+INSERT INTO course_objectives (course_id, objective_text, display_order)
+SELECT c.course_id, 'Implement CRUD APIs with JPA.', 1
 FROM courses c
-WHERE c.title = 'Spring Boot 입문'
+WHERE c.title = 'Spring Boot Intro'
   AND NOT EXISTS (
       SELECT 1
       FROM course_objectives co
       WHERE co.course_id = c.course_id
-        AND co.sort_order = 2
+        AND co.display_order = 1
   );
 
-INSERT INTO course_target_audiences (course_id, content, sort_order)
-SELECT c.course_id, '백엔드 취업 준비생', 1
+INSERT INTO course_target_audiences (course_id, audience_description, display_order)
+SELECT c.course_id, 'Backend job seekers', 0
 FROM courses c
-WHERE c.title = 'Spring Boot 입문'
+WHERE c.title = 'Spring Boot Intro'
   AND NOT EXISTS (
       SELECT 1
       FROM course_target_audiences cta
       WHERE cta.course_id = c.course_id
-        AND cta.sort_order = 1
+        AND cta.display_order = 0
   );
 
-INSERT INTO course_target_audiences (course_id, content, sort_order)
-SELECT c.course_id, 'Spring 프로젝트를 처음 맡는 주니어 개발자', 2
+INSERT INTO course_target_audiences (course_id, audience_description, display_order)
+SELECT c.course_id, 'Developers new to Spring projects', 1
 FROM courses c
-WHERE c.title = 'Spring Boot 입문'
+WHERE c.title = 'Spring Boot Intro'
   AND NOT EXISTS (
       SELECT 1
       FROM course_target_audiences cta
       WHERE cta.course_id = c.course_id
-        AND cta.sort_order = 2
+        AND cta.display_order = 1
   );
 
-INSERT INTO course_sections (course_id, title, section_order)
-SELECT c.course_id, 'Spring Core', 1
+INSERT INTO course_sections (course_id, title, description, sort_order, is_published)
+SELECT c.course_id, 'Spring Core', 'DI, IoC, bean lifecycle basics', 1, TRUE
 FROM courses c
-WHERE c.title = 'Spring Boot 입문'
+WHERE c.title = 'Spring Boot Intro'
   AND NOT EXISTS (
       SELECT 1
       FROM course_sections cs
       WHERE cs.course_id = c.course_id
-        AND cs.section_order = 1
+        AND cs.sort_order = 1
   );
 
-INSERT INTO course_sections (course_id, title, section_order)
-SELECT c.course_id, 'JPA Basic Mapping', 2
+INSERT INTO course_sections (course_id, title, description, sort_order, is_published)
+SELECT c.course_id, 'JPA Basic Mapping', 'Entity relationships and mapping strategy', 2, TRUE
 FROM courses c
-WHERE c.title = 'Spring Boot 입문'
+WHERE c.title = 'Spring Boot Intro'
   AND NOT EXISTS (
       SELECT 1
       FROM course_sections cs
       WHERE cs.course_id = c.course_id
-        AND cs.section_order = 2
+        AND cs.sort_order = 2
   );
 
-INSERT INTO lessons (section_id, title, lesson_type, lesson_order, previewable, duration_seconds, video_asset_key, created_at)
-SELECT cs.section_id, 'DI와 IoC 이해하기', 'VIDEO', 1, TRUE, 780, 'asset-spring-boot-001', NOW()
+INSERT INTO lessons (
+    section_id,
+    title,
+    description,
+    lesson_type,
+    video_url,
+    video_asset_key,
+    video_provider,
+    thumbnail_url,
+    duration_seconds,
+    is_preview,
+    is_published,
+    sort_order
+)
+SELECT
+    cs.section_id,
+    'Understanding DI and IoC',
+    'Understand dependency injection and inversion of control.',
+    'VIDEO',
+    'https://cdn.devpath.com/lessons/spring-core-1.mp4',
+    'asset-spring-boot-001',
+    'r2',
+    'https://cdn.devpath.com/lessons/thumbnails/spring-core-1.png',
+    780,
+    TRUE,
+    TRUE,
+    1
 FROM course_sections cs
 JOIN courses c ON c.course_id = cs.course_id
-WHERE c.title = 'Spring Boot 입문'
-  AND cs.section_order = 1
+WHERE c.title = 'Spring Boot Intro'
+  AND cs.sort_order = 1
   AND NOT EXISTS (
       SELECT 1
       FROM lessons l
       WHERE l.section_id = cs.section_id
-        AND l.lesson_order = 1
+        AND l.sort_order = 1
   );
 
-INSERT INTO lessons (section_id, title, lesson_type, lesson_order, previewable, duration_seconds, video_asset_key, created_at)
-SELECT cs.section_id, 'Bean 등록과 생명주기', 'VIDEO', 2, FALSE, 920, 'asset-spring-boot-002', NOW()
+INSERT INTO lessons (
+    section_id,
+    title,
+    description,
+    lesson_type,
+    video_url,
+    video_asset_key,
+    video_provider,
+    thumbnail_url,
+    duration_seconds,
+    is_preview,
+    is_published,
+    sort_order
+)
+SELECT
+    cs.section_id,
+    'Bean registration and lifecycle',
+    'Learn bean creation and lifecycle callbacks.',
+    'VIDEO',
+    'https://cdn.devpath.com/lessons/spring-core-2.mp4',
+    'asset-spring-boot-002',
+    'r2',
+    'https://cdn.devpath.com/lessons/thumbnails/spring-core-2.png',
+    920,
+    FALSE,
+    TRUE,
+    2
 FROM course_sections cs
 JOIN courses c ON c.course_id = cs.course_id
-WHERE c.title = 'Spring Boot 입문'
-  AND cs.section_order = 1
+WHERE c.title = 'Spring Boot Intro'
+  AND cs.sort_order = 1
   AND NOT EXISTS (
       SELECT 1
       FROM lessons l
       WHERE l.section_id = cs.section_id
-        AND l.lesson_order = 2
+        AND l.sort_order = 2
   );
 
-INSERT INTO lessons (section_id, title, lesson_type, lesson_order, previewable, duration_seconds, video_asset_key, created_at)
-SELECT cs.section_id, '엔티티 연관관계 매핑', 'VIDEO', 1, FALSE, 1100, 'asset-jpa-001', NOW()
+INSERT INTO lessons (
+    section_id,
+    title,
+    description,
+    lesson_type,
+    video_url,
+    video_asset_key,
+    video_provider,
+    thumbnail_url,
+    duration_seconds,
+    is_preview,
+    is_published,
+    sort_order
+)
+SELECT
+    cs.section_id,
+    'Entity relationships and mapping',
+    'Map one-to-one, one-to-many, and many-to-many relationships.',
+    'VIDEO',
+    'https://cdn.devpath.com/lessons/jpa-1.mp4',
+    'asset-jpa-001',
+    'r2',
+    'https://cdn.devpath.com/lessons/thumbnails/jpa-1.png',
+    1100,
+    FALSE,
+    TRUE,
+    1
 FROM course_sections cs
 JOIN courses c ON c.course_id = cs.course_id
-WHERE c.title = 'Spring Boot 입문'
-  AND cs.section_order = 2
+WHERE c.title = 'Spring Boot Intro'
+  AND cs.sort_order = 2
   AND NOT EXISTS (
       SELECT 1
       FROM lessons l
       WHERE l.section_id = cs.section_id
-        AND l.lesson_order = 1
+        AND l.sort_order = 1
   );
 
-INSERT INTO course_materials (lesson_id, material_type, title, material_url, original_file_name, created_at)
-SELECT l.lesson_id, 'SLIDE', 'Spring Core 슬라이드', '/materials/spring-core.pdf', 'spring-core.pdf', NOW()
+INSERT INTO course_materials (lesson_id, material_type, material_url, asset_key, original_file_name, sort_order)
+SELECT
+    l.lesson_id,
+    'SLIDE',
+    '/materials/spring-core.pdf',
+    'materials/spring-core.pdf',
+    'spring-core.pdf',
+    0
 FROM lessons l
-WHERE l.title = 'DI와 IoC 이해하기'
+WHERE l.title = 'Understanding DI and IoC'
   AND NOT EXISTS (
       SELECT 1
       FROM course_materials cm
       WHERE cm.lesson_id = l.lesson_id
-        AND cm.title = 'Spring Core 슬라이드'
+        AND cm.original_file_name = 'spring-core.pdf'
   );
 
-INSERT INTO course_materials (lesson_id, material_type, title, material_url, original_file_name, created_at)
-SELECT l.lesson_id, 'CODE', 'JPA 샘플 코드', '/materials/jpa-sample.zip', 'jpa-sample.zip', NOW()
+INSERT INTO course_materials (lesson_id, material_type, material_url, asset_key, original_file_name, sort_order)
+SELECT
+    l.lesson_id,
+    'CODE',
+    '/materials/jpa-sample.zip',
+    'materials/jpa-sample.zip',
+    'jpa-sample.zip',
+    0
 FROM lessons l
-WHERE l.title = '엔티티 연관관계 매핑'
+WHERE l.title = 'Entity relationships and mapping'
   AND NOT EXISTS (
       SELECT 1
       FROM course_materials cm
       WHERE cm.lesson_id = l.lesson_id
-        AND cm.title = 'JPA 샘플 코드'
+        AND cm.original_file_name = 'jpa-sample.zip'
   );
 
-INSERT INTO course_tag_maps (course_id, tag_id)
-SELECT c.course_id, t.tag_id
+INSERT INTO course_tag_maps (course_id, tag_id, proficiency_level)
+SELECT c.course_id, t.tag_id, 3
 FROM courses c, tags t
-WHERE c.title = 'Spring Boot 입문'
+WHERE c.title = 'Spring Boot Intro'
   AND t.name = 'Spring Boot'
   AND NOT EXISTS (
       SELECT 1
@@ -724,10 +832,10 @@ WHERE c.title = 'Spring Boot 입문'
         AND ctm.tag_id = t.tag_id
   );
 
-INSERT INTO course_tag_maps (course_id, tag_id)
-SELECT c.course_id, t.tag_id
+INSERT INTO course_tag_maps (course_id, tag_id, proficiency_level)
+SELECT c.course_id, t.tag_id, 3
 FROM courses c, tags t
-WHERE c.title = 'Spring Boot 입문'
+WHERE c.title = 'Spring Boot Intro'
   AND t.name = 'Java'
   AND NOT EXISTS (
       SELECT 1
@@ -736,10 +844,10 @@ WHERE c.title = 'Spring Boot 입문'
         AND ctm.tag_id = t.tag_id
   );
 
-INSERT INTO course_tag_maps (course_id, tag_id)
-SELECT c.course_id, t.tag_id
+INSERT INTO course_tag_maps (course_id, tag_id, proficiency_level)
+SELECT c.course_id, t.tag_id, 3
 FROM courses c, tags t
-WHERE c.title = 'JPA 실전 설계'
+WHERE c.title = 'JPA Practical Design'
   AND t.name = 'JPA'
   AND NOT EXISTS (
       SELECT 1
