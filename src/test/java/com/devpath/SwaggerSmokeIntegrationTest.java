@@ -2,6 +2,7 @@ package com.devpath;
 
 import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasItem;
+import static org.hamcrest.Matchers.hasItems;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -73,6 +74,43 @@ class SwaggerSmokeIntegrationTest {
         .andExpect(
             jsonPath("$.tags[?(@.name=='학습자 - 스킬 체크')].description")
                 .value(hasItem("학습자의 보유 스킬 관리 및 로드맵 추천 API")));
+  }
+
+  @Test
+  void swaggerUiConfigExposesGroupedApiDocs() throws Exception {
+    mockMvc
+        .perform(get("/v3/api-docs/swagger-config"))
+        .andExpect(status().isOk())
+        .andExpect(
+            jsonPath("$.urls[*].name")
+                .value(hasItems("학습자", "강사", "관리자")));
+  }
+
+  @Test
+  void groupedOpenApiSpecsSplitEndpointsByAudience() throws Exception {
+    mockMvc
+        .perform(get("/v3/api-docs/learner"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.paths['/api/courses']").exists())
+        .andExpect(jsonPath("$.paths['/api/me/skills/check']").exists())
+        .andExpect(jsonPath("$.paths['/api/instructor/courses/{courseId}']").doesNotExist())
+        .andExpect(jsonPath("$.paths['/api/admin/tags']").doesNotExist());
+
+    mockMvc
+        .perform(get("/v3/api-docs/instructor"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.paths['/api/instructor/courses/{courseId}']").exists())
+        .andExpect(jsonPath("$.paths['/api/instructors/{instructorId}/profile']").exists())
+        .andExpect(jsonPath("$.paths['/api/me/skills/check']").doesNotExist())
+        .andExpect(jsonPath("$.paths['/api/admin/tags']").doesNotExist());
+
+    mockMvc
+        .perform(get("/v3/api-docs/admin"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.paths['/api/admin/tags']").exists())
+        .andExpect(jsonPath("$.paths['/api/admin/courses/pending']").exists())
+        .andExpect(jsonPath("$.paths['/api/courses']").doesNotExist())
+        .andExpect(jsonPath("$.paths['/api/instructor/courses/{courseId}']").doesNotExist());
   }
 
   @Test
