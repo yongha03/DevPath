@@ -101,6 +101,16 @@ class SwaggerSmokeIntegrationTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.paths['/api/instructor/courses/{courseId}']").exists())
         .andExpect(jsonPath("$.paths['/api/instructors/{instructorId}/profile']").exists())
+        .andExpect(
+            jsonPath("$.tags[*].name")
+                .value(
+                    hasItems(
+                        "강사 공개 채널 API",
+                        "강의 기본 관리 API",
+                        "강의 커리큘럼 구성 API",
+                        "강의 메타데이터/자료 관리 API",
+                        "강의 공지/새소식 API",
+                        "태그 기반 노드 분류 API")))
         .andExpect(jsonPath("$.paths['/api/me/skills/check']").doesNotExist())
         .andExpect(jsonPath("$.paths['/api/admin/tags']").doesNotExist());
 
