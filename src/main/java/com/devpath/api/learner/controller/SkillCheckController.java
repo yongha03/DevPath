@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/me")
 @RequiredArgsConstructor
-@Tag(name = "?숈뒿??- ?ㅽ궗 泥댄겕", description = "?숈뒿?먯쓽 蹂댁쑀 ?ㅽ궗 愿由?諛?濡쒕뱶留?異붿쿇 API")
+@Tag(name = "학습자 - 스킬 체크", description = "학습자의 보유 스킬 관리 및 로드맵 추천 API")
 public class SkillCheckController {
 
     private final SkillCheckService skillCheckService;
@@ -33,8 +33,8 @@ public class SkillCheckController {
 
     @PostMapping("/skills/check")
     @Operation(
-            summary = "蹂댁쑀 ?ㅽ궗 ?깅줉",
-            description = "?ъ슜?먭? 蹂댁쑀???ㅽ궗???쇨큵 ?깅줉?⑸땲?? ?대? ?깅줉???ㅽ궗? 以묐났 ?깅줉?섏? ?딆뒿?덈떎."
+            summary = "보유 스킬 등록",
+            description = "사용자의 보유 스킬을 한 번에 등록합니다. 이미 등록된 스킬은 중복 등록하지 않습니다."
     )
     public ResponseEntity<ApiResponse<SkillCheckDto.RegisterSkillsResponse>> registerSkills(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
@@ -58,12 +58,12 @@ public class SkillCheckController {
 
     @GetMapping("/roadmaps/{roadmapId}/skill-suggestions")
     @Operation(
-            summary = "濡쒕뱶留?異붿쿇 ?ㅽ궗 議고쉶",
-            description = "?뱀젙 濡쒕뱶留듭쓣 ?꾨즺?섍린 ?꾪빐 ?꾩슂???ㅽ궗 以??ъ슜?먭? ?꾩쭅 蹂댁쑀?섏? ?딆? ?ㅽ궗??異붿쿇?⑸땲??"
+            summary = "로드맵 추천 스킬 조회",
+            description = "특정 로드맵을 학습하기 위해 필요한 스킬 중 사용자가 아직 보유하지 않은 스킬을 추천합니다."
     )
     public ResponseEntity<ApiResponse<SkillCheckDto.SuggestedSkillsResponse>> getSuggestedSkills(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
-            @Parameter(description = "濡쒕뱶留?ID") @PathVariable Long roadmapId
+            @Parameter(description = "로드맵 ID") @PathVariable Long roadmapId
     ) {
         Roadmap roadmap = roadmapRepository.findById(roadmapId)
                 .orElseThrow(() -> new CustomException(ErrorCode.ROADMAP_NOT_FOUND));
@@ -90,12 +90,12 @@ public class SkillCheckController {
 
     @GetMapping("/roadmaps/{roadmapId}/lock-status")
     @Operation(
-            summary = "濡쒕뱶留??몃뱶 ?좉툑 ?곹깭 議고쉶",
-            description = "濡쒕뱶留듭쓽 紐⑤뱺 ?몃뱶??????좉툑/?닿툑 ?곹깭瑜?議고쉶?⑸땲??"
+            summary = "로드맵 노드 잠금 상태 조회",
+            description = "로드맵의 모든 노드에 대한 잠금/해금 상태를 조회합니다."
     )
     public ResponseEntity<ApiResponse<SkillCheckDto.RoadmapLockStatusResponse>> getRoadmapLockStatus(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
-            @Parameter(description = "濡쒕뱶留?ID") @PathVariable Long roadmapId
+            @Parameter(description = "로드맵 ID") @PathVariable Long roadmapId
     ) {
         return ResponseEntity.ok(ApiResponse.ok(skillCheckService.getRoadmapLockStatus(userId, roadmapId)));
     }

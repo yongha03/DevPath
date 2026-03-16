@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/me")
 @RequiredArgsConstructor
-@Tag(name = "?숈뒿??- ?몃뱶 異붿쿇", description = "AI 湲곕컲 濡쒕뱶留??몃뱶 異붿쿇 愿由?API")
+@Tag(name = "학습자 - 노드 추천", description = "AI 기반 로드맵 노드 추천 관리 API")
 public class NodeRecommendationController {
 
     private final NodeRecommendationService nodeRecommendationService;
@@ -36,12 +36,12 @@ public class NodeRecommendationController {
 
     @PostMapping("/roadmaps/{roadmapId}/recommendations/init")
     @Operation(
-            summary = "AI 異붿쿇 ?몃뱶 ?앹꽦",
-            description = "吏꾨떒 ?댁쫰 寃곌낵瑜?諛뷀깢?쇰줈 AI媛 異붿쿇?섎뒗 蹂닿컯/?ы솕 ?몃뱶瑜??앹꽦?⑸땲?? 湲곗〈 PENDING ?곹깭 異붿쿇? 留뚮즺 泥섎━?⑸땲??"
+            summary = "AI 추천 노드 생성",
+            description = "진단 퀴즈 결과를 바탕으로 AI가 추천하는 보강/심화 노드를 생성합니다. 기존 PENDING 상태 추천은 만료 처리합니다."
     )
     public ResponseEntity<ApiResponse<NodeRecommendationDto.GenerateRecommendationsResponse>> generateRecommendations(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
-            @Parameter(description = "濡쒕뱶留?ID") @PathVariable Long roadmapId
+            @Parameter(description = "로드맵 ID") @PathVariable Long roadmapId
     ) {
         List<NodeRecommendation> recommendations =
                 nodeRecommendationService.generateRecommendations(userId, roadmapId);
@@ -54,13 +54,13 @@ public class NodeRecommendationController {
 
     @GetMapping("/roadmaps/{roadmapId}/recommendations")
     @Operation(
-            summary = "濡쒕뱶留?異붿쿇 紐⑸줉 議고쉶",
-            description = "?뱀젙 濡쒕뱶留듭쓽 紐⑤뱺 異붿쿇 ?몃뱶瑜?議고쉶?⑸땲?? PENDING ?곹깭??異붿쿇留??꾪꽣留곹븯嫄곕굹 ?꾩껜 異붿쿇??議고쉶?????덉뒿?덈떎."
+            summary = "로드맵 추천 목록 조회",
+            description = "특정 로드맵의 추천 노드 목록을 조회합니다. pendingOnly=true면 PENDING 상태 추천만 반환합니다."
     )
     public ResponseEntity<ApiResponse<NodeRecommendationDto.RoadmapRecommendationsResponse>> getRecommendations(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
-            @Parameter(description = "濡쒕뱶留?ID") @PathVariable Long roadmapId,
-            @Parameter(description = "PENDING ?곹깭留?議고쉶 ?щ?") @RequestParam(defaultValue = "true") Boolean pendingOnly
+            @Parameter(description = "로드맵 ID") @PathVariable Long roadmapId,
+            @Parameter(description = "PENDING 상태만 조회 여부") @RequestParam(defaultValue = "true") Boolean pendingOnly
     ) {
         Roadmap roadmap = roadmapRepository.findById(roadmapId)
                 .orElseThrow(() -> new CustomException(ErrorCode.ROADMAP_NOT_FOUND));
@@ -99,19 +99,19 @@ public class NodeRecommendationController {
 
     @PatchMapping("/recommendations/{recommendationId}/accept")
     @Operation(
-            summary = "異붿쿇 ?섎씫",
-            description = "AI媛 異붿쿇???몃뱶瑜??섎씫?⑸땲?? ?섎씫 ???대떦 ?몃뱶媛 ?ъ슜?먯쓽 而ㅼ뒪? 濡쒕뱶留듭뿉 異붽??⑸땲??"
+            summary = "추천 수락",
+            description = "AI가 추천한 노드를 수락합니다. 수락 시 해당 노드가 사용자의 커스텀 로드맵에 추가됩니다."
     )
     public ResponseEntity<ApiResponse<NodeRecommendationDto.ProcessRecommendationResponse>> acceptRecommendation(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
-            @Parameter(description = "異붿쿇 ID") @PathVariable Long recommendationId
+            @Parameter(description = "추천 ID") @PathVariable Long recommendationId
     ) {
         NodeRecommendation recommendation = nodeRecommendationService.acceptRecommendation(userId, recommendationId);
 
         NodeRecommendationDto.ProcessRecommendationResponse response =
                 NodeRecommendationDto.ProcessRecommendationResponse.from(
                         recommendation,
-                        "異붿쿇 ?몃뱶媛 濡쒕뱶留듭뿉 異붽??섏뿀?듬땲??"
+                        "추천 노드가 로드맵에 추가되었습니다."
                 );
 
         return ResponseEntity.ok(ApiResponse.ok(response));
@@ -119,19 +119,19 @@ public class NodeRecommendationController {
 
     @PatchMapping("/recommendations/{recommendationId}/reject")
     @Operation(
-            summary = "異붿쿇 嫄곗젅",
-            description = "AI媛 異붿쿇???몃뱶瑜?嫄곗젅?⑸땲?? 嫄곗젅??異붿쿇? 濡쒕뱶留듭뿉 異붽??섏? ?딆뒿?덈떎."
+            summary = "추천 거절",
+            description = "AI가 추천한 노드를 거절합니다. 거절된 추천은 로드맵에 추가되지 않습니다."
     )
     public ResponseEntity<ApiResponse<NodeRecommendationDto.ProcessRecommendationResponse>> rejectRecommendation(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
-            @Parameter(description = "異붿쿇 ID") @PathVariable Long recommendationId
+            @Parameter(description = "추천 ID") @PathVariable Long recommendationId
     ) {
         NodeRecommendation recommendation = nodeRecommendationService.rejectRecommendation(userId, recommendationId);
 
         NodeRecommendationDto.ProcessRecommendationResponse response =
                 NodeRecommendationDto.ProcessRecommendationResponse.from(
                         recommendation,
-                        "異붿쿇??嫄곗젅?덉뒿?덈떎."
+                        "추천을 거절했습니다."
                 );
 
         return ResponseEntity.ok(ApiResponse.ok(response));
@@ -139,19 +139,19 @@ public class NodeRecommendationController {
 
     @PatchMapping("/recommendations/{recommendationId}/expire")
     @Operation(
-            summary = "異붿쿇 留뚮즺 泥섎━",
-            description = "異붿쿇???섎룞?쇰줈 留뚮즺 泥섎━?⑸땲??"
+            summary = "추천 만료 처리",
+            description = "추천을 수동으로 만료 처리합니다."
     )
     public ResponseEntity<ApiResponse<NodeRecommendationDto.ProcessRecommendationResponse>> expireRecommendation(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
-            @Parameter(description = "異붿쿇 ID") @PathVariable Long recommendationId
+            @Parameter(description = "추천 ID") @PathVariable Long recommendationId
     ) {
         NodeRecommendation recommendation = nodeRecommendationService.expireRecommendation(userId, recommendationId);
 
         NodeRecommendationDto.ProcessRecommendationResponse response =
                 NodeRecommendationDto.ProcessRecommendationResponse.from(
                         recommendation,
-                        "異붿쿇??留뚮즺?섏뿀?듬땲??"
+                        "추천을 만료 처리했습니다."
                 );
 
         return ResponseEntity.ok(ApiResponse.ok(response));
