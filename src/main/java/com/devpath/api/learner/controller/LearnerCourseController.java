@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Learner - Course", description = "?숈뒿??媛뺤쓽 議고쉶 API")
+@Tag(name = "Learner - Course", description = "학습자 강의 조회 API")
 @RestController
 @RequestMapping("/api/courses")
 @RequiredArgsConstructor
@@ -24,7 +24,7 @@ public class LearnerCourseController {
 
     private final LearnerCourseService learnerCourseService;
 
-    @Operation(summary = "媛뺤쓽 紐⑸줉 議고쉶", description = "?꾩껜 媛뺤쓽 紐⑸줉??議고쉶?⑸땲??")
+    @Operation(summary = "강의 목록 조회", description = "전체 강의 목록을 조회합니다.")
     @GetMapping
     public ResponseEntity<ApiResponse<List<CourseListItemResponse>>> getCourseList(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId
@@ -32,7 +32,7 @@ public class LearnerCourseController {
         return ResponseEntity.ok(ApiResponse.ok(learnerCourseService.getCourseList(userId)));
     }
 
-    @Operation(summary = "媛뺤쓽 ?곸꽭 議고쉶", description = "媛뺤쓽 ID濡??곸꽭 ?뺣낫瑜?議고쉶?⑸땲??")
+    @Operation(summary = "강의 상세 조회", description = "강의 ID로 상세 정보를 조회합니다.")
     @GetMapping("/{courseId}")
     public ResponseEntity<ApiResponse<CourseDetailResponse>> getCourseDetail(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
