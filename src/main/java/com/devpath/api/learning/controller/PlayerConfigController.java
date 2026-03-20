@@ -1,0 +1,41 @@
+package com.devpath.api.learning.controller;
+
+import com.devpath.api.learning.dto.PlayerConfigRequest;
+import com.devpath.api.learning.dto.PlayerConfigResponse;
+import com.devpath.api.learning.service.PlayerConfigService;
+import com.devpath.common.response.ApiResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+
+@Tag(name = "강의 학습 - 플레이어 설정", description = "PIP 모드 및 재생 속도 설정 조회/저장 API")
+@RestController
+@RequestMapping("/api/learning/player")
+@RequiredArgsConstructor
+public class PlayerConfigController {
+
+    private final PlayerConfigService playerConfigService;
+
+    @Operation(summary = "플레이어 설정 조회", description = "저장된 재생 속도(defaultPlaybackRate) 등 플레이어 설정을 조회합니다.")
+    @GetMapping("/{lessonId}/config")
+    public ResponseEntity<ApiResponse<PlayerConfigResponse>> getPlayerConfig(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable Long lessonId
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(playerConfigService.getPlayerConfig(userId, lessonId)));
+    }
+
+    @Operation(summary = "재생 속도 저장", description = "학습자가 설정한 재생 속도를 저장합니다. (0.5 ~ 2.0)")
+    @PutMapping("/{lessonId}/config")
+    public ResponseEntity<ApiResponse<PlayerConfigResponse>> updatePlaybackRate(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable Long lessonId,
+            @Valid @RequestBody PlayerConfigRequest.UpdatePlaybackRate request
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(playerConfigService.updatePlaybackRate(userId, lessonId, request)));
+    }
+}
