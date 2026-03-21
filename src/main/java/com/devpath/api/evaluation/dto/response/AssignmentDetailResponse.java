@@ -14,52 +14,53 @@ import lombok.NoArgsConstructor;
 @Schema(description = "강사용 과제 상세 응답 DTO")
 public class AssignmentDetailResponse {
 
-  // 과제 ID다.
+  // Evaluation Swagger 문서화 기준에 맞춘 과제 상세 응답 DTO다.
+  @Schema(description = "과제 ID", example = "20")
   private Long assignmentId;
 
-  // 연결된 로드맵 노드 ID다.
+  @Schema(description = "연결된 로드맵 노드 ID", example = "1")
   private Long roadmapNodeId;
 
-  // 과제 제목이다.
+  @Schema(description = "과제 제목", example = "JWT 로그인 API 구현")
   private String title;
 
-  // 과제 설명이다.
+  @Schema(description = "과제 설명", example = "Spring Security와 JWT를 사용한 로그인 API를 구현하세요.")
   private String description;
 
-  // 제출 유형이다.
+  @Schema(description = "허용 제출 유형", example = "MULTIPLE")
   private SubmissionType submissionType;
 
-  // 마감 일시다.
+  @Schema(description = "과제 마감 일시", example = "2026-03-27T23:59:59")
   private LocalDateTime dueAt;
 
-  // 허용 파일 형식이다.
+  @Schema(description = "허용 파일 형식 목록", example = "zip,pdf,md")
   private String allowedFileFormats;
 
-  // README 필수 여부다.
+  @Schema(description = "README 필수 여부", example = "true")
   private Boolean readmeRequired;
 
-  // 테스트 필수 여부다.
+  @Schema(description = "테스트 필수 여부", example = "true")
   private Boolean testRequired;
 
-  // 린트 필수 여부다.
+  @Schema(description = "린트 필수 여부", example = "true")
   private Boolean lintRequired;
 
-  // 제출 규칙 설명이다.
+  @Schema(description = "제출 규칙 설명", example = "README에 실행 방법과 검증 결과를 반드시 포함하세요.")
   private String submissionRuleDescription;
 
-  // 총점이다.
+  @Schema(description = "과제 총점", example = "100")
   private Integer totalScore;
 
-  // 공개 여부다.
+  @Schema(description = "과제 공개 여부", example = "false")
   private Boolean isPublished;
 
-  // 활성 여부다.
+  @Schema(description = "과제 활성 여부", example = "true")
   private Boolean isActive;
 
-  // 지각 제출 허용 여부다.
+  @Schema(description = "지각 제출 허용 여부", example = "false")
   private Boolean allowLateSubmission;
 
-  // 생성 시각이다.
+  @Schema(description = "과제 생성 시각", example = "2026-03-20T11:30:00")
   private LocalDateTime createdAt;
 
   @Builder
@@ -98,7 +99,6 @@ public class AssignmentDetailResponse {
     this.createdAt = createdAt;
   }
 
-  // Assignment 엔티티를 응답 DTO로 변환한다.
   public static AssignmentDetailResponse from(Assignment assignment) {
     return AssignmentDetailResponse.builder()
         .assignmentId(assignment.getId())

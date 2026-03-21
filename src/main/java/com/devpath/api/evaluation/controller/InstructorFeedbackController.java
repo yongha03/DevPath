@@ -17,26 +17,26 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Instructor - Feedback", description = "강사용 제출물 피드백 API")
+@Tag(name = "Instructor - Feedback", description = "강사용 제출물 피드백 작성 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/evaluation/instructor/submissions")
 public class InstructorFeedbackController {
 
-    private final FeedbackService feedbackService;
+  // Evaluation Swagger 문서화 기준에 맞춘 강사용 피드백 컨트롤러다.
+  private final FeedbackService feedbackService;
 
-    @Operation(summary = "개별/공통 피드백 작성", description = "채점 완료된 제출물에 대해 INDIVIDUAL 또는 COMMON 피드백을 저장합니다.")
-    @PostMapping("/{submissionId}/feedback")
-    public ResponseEntity<ApiResponse<FeedbackResponse>> createFeedback(
-            @Parameter(description = "강사 ID", example = "3")
-            @RequestParam Long userId,
-            @Parameter(description = "제출 ID", example = "1")
-            @PathVariable Long submissionId,
-            @Valid @RequestBody CreateFeedbackRequest request
-    ) {
-        return ResponseEntity.ok(ApiResponse.success(
-                "피드백이 저장되었습니다.",
-                feedbackService.createFeedback(userId, submissionId, request)
-        ));
-    }
+  @Operation(
+      summary = "피드백 작성",
+      description =
+          "채점 완료된 제출물에 대해 개별 피드백 또는 공통 피드백을 작성합니다. JWT 적용 전까지 Swagger 테스트용으로 userId를 요청 파라미터로 받습니다. 응답 데이터는 ApiResponse.data에 감싸져 반환됩니다.")
+  @PostMapping("/{submissionId}/feedback")
+  public ResponseEntity<ApiResponse<FeedbackResponse>> createFeedback(
+      @Parameter(description = "강사 ID", example = "3") @RequestParam Long userId,
+      @Parameter(description = "제출 ID", example = "1") @PathVariable Long submissionId,
+      @Valid @RequestBody CreateFeedbackRequest request) {
+    return ResponseEntity.ok(
+        ApiResponse.success(
+            "피드백이 저장되었습니다.", feedbackService.createFeedback(userId, submissionId, request)));
+  }
 }

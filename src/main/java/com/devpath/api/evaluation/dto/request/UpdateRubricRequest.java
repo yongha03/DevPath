@@ -14,25 +14,24 @@ import lombok.NoArgsConstructor;
 @Schema(description = "강사용 루브릭 수정 요청 DTO")
 public class UpdateRubricRequest {
 
-  // 수정할 루브릭 항목 이름이다.
+  // Evaluation Swagger 문서화 기준에 맞춘 루브릭 수정 요청 DTO다.
   @NotBlank
-  @Schema(description = "루브릭 기준명", example = "JWT 필터 구현")
+  @Schema(description = "수정할 루브릭 기준명", example = "JWT 필터 구현")
   private String criteriaName;
 
-  // 수정할 루브릭 설명이다.
-  @Schema(description = "루브릭 기준 설명", example = "OncePerRequestFilter를 상속해 JWT 검증을 수행했는가")
+  @Schema(
+      description = "수정할 루브릭 기준 설명",
+      example = "OncePerRequestFilter를 이용해 JWT 검증을 올바르게 수행했는지 평가합니다.")
   private String criteriaDescription;
 
-  // 수정할 최대 배점이다.
   @NotNull
   @Min(0)
-  @Schema(description = "최대 배점", example = "40")
+  @Schema(description = "수정할 최대 점수", example = "40")
   private Integer maxPoints;
 
-  // 수정할 표시 순서다.
   @NotNull
   @Min(0)
-  @Schema(description = "루브릭 표시 순서", example = "1")
+  @Schema(description = "수정할 루브릭 노출 순서", example = "1")
   private Integer displayOrder;
 
   @Builder

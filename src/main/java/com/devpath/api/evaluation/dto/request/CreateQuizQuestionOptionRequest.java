@@ -13,16 +13,14 @@ import lombok.NoArgsConstructor;
 @Schema(description = "강사용 퀴즈 선택지 생성 요청 DTO")
 public class CreateQuizQuestionOptionRequest {
 
-  // 사용자에게 보여줄 선택지 문구다.
+  // Evaluation Swagger 문서화 기준에 맞춘 퀴즈 선택지 생성 요청 DTO다.
   @NotBlank
-  @Schema(description = "선택지 내용", example = "JWT는 서버 세션을 저장한다.")
+  @Schema(description = "선택지 내용", example = "서버 세션 없이 인증 상태를 유지할 수 있다.")
   private String optionText;
 
-  // 이 선택지가 정답인지 여부이며 초기 생성 시 false로 두고 이후 정답/해설 API에서 바꿔도 된다.
-  @Schema(description = "정답 여부", example = "false")
+  @Schema(description = "해당 선택지를 정답으로 표시할지 여부", example = "false")
   private Boolean isCorrect;
 
-  // 선택지 노출 순서다.
   @Min(0)
   @Schema(description = "선택지 노출 순서", example = "1")
   private Integer displayOrder;

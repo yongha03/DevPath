@@ -22,52 +22,50 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Learner - Assignment", description = "학습자 과제 precheck 및 제출 API")
+@Tag(name = "Learner - Assignment", description = "학습자용 과제 precheck, 제출, 제출 이력 조회 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/evaluation/learner/assignments")
 public class LearnerAssignmentController {
 
-    private final AssignmentPrecheckService assignmentPrecheckService;
-    private final AssignmentSubmissionService assignmentSubmissionService;
+  // Evaluation Swagger 문서화 기준에 맞춘 학습자 과제 컨트롤러다.
+  private final AssignmentPrecheckService assignmentPrecheckService;
+  private final AssignmentSubmissionService assignmentSubmissionService;
 
-    @Operation(summary = "과제 precheck", description = "README, 테스트, 린트, 파일 형식 기준으로 제출 전 자동 검증을 수행합니다.")
-    @PostMapping("/{assignmentId}/precheck")
-    public ResponseEntity<ApiResponse<AssignmentPrecheckResponse>> precheck(
-            @Parameter(description = "학습자 ID", example = "1")
-            @RequestParam Long userId,
-            @Parameter(description = "과제 ID", example = "10")
-            @PathVariable Long assignmentId,
-            @Valid @RequestBody AssignmentPrecheckRequest request
-    ) {
-        return ResponseEntity.ok(ApiResponse.ok(
-                assignmentPrecheckService.precheck(userId, assignmentId, request)
-        ));
-    }
+  @Operation(
+      summary = "과제 precheck",
+      description =
+          "학습자가 제출 전 README, 테스트, 린트, 파일 형식 조건 충족 여부를 미리 검증합니다. JWT 적용 전까지 Swagger 테스트용으로 userId를 요청 파라미터로 받습니다. 응답 데이터는 ApiResponse.data에 감싸져 반환됩니다.")
+  @PostMapping("/{assignmentId}/precheck")
+  public ResponseEntity<ApiResponse<AssignmentPrecheckResponse>> precheck(
+      @Parameter(description = "학습자 ID", example = "1") @RequestParam Long userId,
+      @Parameter(description = "과제 ID", example = "10") @PathVariable Long assignmentId,
+      @Valid @RequestBody AssignmentPrecheckRequest request) {
+    return ResponseEntity.ok(ApiResponse.ok(assignmentPrecheckService.precheck(userId, assignmentId, request)));
+  }
 
-    @Operation(summary = "과제 제출", description = "학습자가 precheck를 통과한 조건으로 과제를 실제 제출합니다.")
-    @PostMapping("/{assignmentId}/submissions")
-    public ResponseEntity<ApiResponse<SubmissionResponse>> createSubmission(
-            @Parameter(description = "학습자 ID", example = "1")
-            @RequestParam Long userId,
-            @Parameter(description = "과제 ID", example = "10")
-            @PathVariable Long assignmentId,
-            @Valid @RequestBody CreateSubmissionRequest request
-    ) {
-        return ResponseEntity.ok(ApiResponse.success(
-                "과제가 제출되었습니다.",
-                assignmentSubmissionService.createSubmission(userId, assignmentId, request)
-        ));
-    }
+  @Operation(
+      summary = "과제 제출",
+      description =
+          "학습자가 precheck 기준을 바탕으로 과제를 실제 제출합니다. JWT 적용 전까지 Swagger 테스트용으로 userId를 요청 파라미터로 받습니다. 응답 데이터는 ApiResponse.data에 감싸져 반환됩니다.")
+  @PostMapping("/{assignmentId}/submissions")
+  public ResponseEntity<ApiResponse<SubmissionResponse>> createSubmission(
+      @Parameter(description = "학습자 ID", example = "1") @RequestParam Long userId,
+      @Parameter(description = "과제 ID", example = "10") @PathVariable Long assignmentId,
+      @Valid @RequestBody CreateSubmissionRequest request) {
+    return ResponseEntity.ok(
+        ApiResponse.success(
+            "과제가 제출되었습니다.",
+            assignmentSubmissionService.createSubmission(userId, assignmentId, request)));
+  }
 
-    @Operation(summary = "제출 이력 조회", description = "학습자가 자신의 과제 제출 이력을 최신순으로 조회합니다.")
-    @GetMapping("/submissions/history")
-    public ResponseEntity<ApiResponse<SubmissionHistoryResponse>> getSubmissionHistory(
-            @Parameter(description = "학습자 ID", example = "1")
-            @RequestParam Long userId
-    ) {
-        return ResponseEntity.ok(ApiResponse.ok(
-                assignmentSubmissionService.getSubmissionHistory(userId)
-        ));
-    }
+  @Operation(
+      summary = "제출 이력 조회",
+      description =
+          "학습자가 자신의 과제 제출 이력을 최신순으로 조회합니다. JWT 적용 전까지 Swagger 테스트용으로 userId를 요청 파라미터로 받습니다. 응답 데이터는 ApiResponse.data에 감싸져 반환됩니다.")
+  @GetMapping("/submissions/history")
+  public ResponseEntity<ApiResponse<SubmissionHistoryResponse>> getSubmissionHistory(
+      @Parameter(description = "학습자 ID", example = "1") @RequestParam Long userId) {
+    return ResponseEntity.ok(ApiResponse.ok(assignmentSubmissionService.getSubmissionHistory(userId)));
+  }
 }

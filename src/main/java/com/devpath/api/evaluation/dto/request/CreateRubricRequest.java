@@ -14,25 +14,24 @@ import lombok.NoArgsConstructor;
 @Schema(description = "강사용 루브릭 생성 요청 DTO")
 public class CreateRubricRequest {
 
-  // 루브릭 항목 이름이다.
+  // Evaluation Swagger 문서화 기준에 맞춘 루브릭 생성 요청 DTO다.
   @NotBlank
   @Schema(description = "루브릭 기준명", example = "JWT 필터 구현")
   private String criteriaName;
 
-  // 루브릭 상세 설명이다.
-  @Schema(description = "루브릭 기준 설명", example = "OncePerRequestFilter를 사용해 Access Token을 검증했는가")
+  @Schema(
+      description = "루브릭 기준 설명",
+      example = "OncePerRequestFilter를 사용해 Access Token을 검증했는지 평가합니다.")
   private String criteriaDescription;
 
-  // 이 기준의 최대 배점이다.
   @NotNull
   @Min(0)
-  @Schema(description = "최대 배점", example = "30")
+  @Schema(description = "해당 기준의 최대 점수", example = "30")
   private Integer maxPoints;
 
-  // 루브릭 표시 순서다.
   @NotNull
   @Min(0)
-  @Schema(description = "루브릭 표시 순서", example = "1")
+  @Schema(description = "루브릭 노출 순서", example = "1")
   private Integer displayOrder;
 
   @Builder

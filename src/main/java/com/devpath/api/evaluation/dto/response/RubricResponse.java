@@ -13,25 +13,28 @@ import lombok.NoArgsConstructor;
 @Schema(description = "강사용 루브릭 응답 DTO")
 public class RubricResponse {
 
-  // 루브릭 ID다.
+  // Evaluation Swagger 문서화 기준에 맞춘 루브릭 응답 DTO다.
+  @Schema(description = "루브릭 ID", example = "301")
   private Long rubricId;
 
-  // 연결된 과제 ID다.
+  @Schema(description = "연결된 과제 ID", example = "20")
   private Long assignmentId;
 
-  // 기준명이다.
+  @Schema(description = "루브릭 기준명", example = "JWT 필터 구현")
   private String criteriaName;
 
-  // 기준 설명이다.
+  @Schema(
+      description = "루브릭 기준 설명",
+      example = "OncePerRequestFilter를 사용해 Access Token을 검증했는지 평가합니다.")
   private String criteriaDescription;
 
-  // 최대 배점이다.
+  @Schema(description = "최대 점수", example = "30")
   private Integer maxPoints;
 
-  // 표시 순서다.
+  @Schema(description = "루브릭 노출 순서", example = "1")
   private Integer displayOrder;
 
-  // 생성 시각이다.
+  @Schema(description = "루브릭 생성 시각", example = "2026-03-20T12:10:00")
   private LocalDateTime createdAt;
 
   @Builder
@@ -52,7 +55,6 @@ public class RubricResponse {
     this.createdAt = createdAt;
   }
 
-  // Rubric 엔티티를 응답 DTO로 변환한다.
   public static RubricResponse from(Rubric rubric) {
     return RubricResponse.builder()
         .rubricId(rubric.getId())

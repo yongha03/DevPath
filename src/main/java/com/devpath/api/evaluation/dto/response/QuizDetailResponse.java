@@ -18,40 +18,41 @@ import lombok.NoArgsConstructor;
 @Schema(description = "강사용 퀴즈 상세 응답 DTO")
 public class QuizDetailResponse {
 
-  // 퀴즈 ID다.
+  // Evaluation Swagger 문서화 기준에 맞춘 퀴즈 상세 응답 DTO다.
+  @Schema(description = "퀴즈 ID", example = "10")
   private Long quizId;
 
-  // 연결된 로드맵 노드 ID다.
+  @Schema(description = "연결된 로드맵 노드 ID", example = "1")
   private Long roadmapNodeId;
 
-  // 퀴즈 제목이다.
+  @Schema(description = "퀴즈 제목", example = "Spring Security 기초 퀴즈")
   private String title;
 
-  // 퀴즈 설명이다.
+  @Schema(description = "퀴즈 설명", example = "인증과 인가 핵심 개념을 확인하는 퀴즈입니다.")
   private String description;
 
-  // 퀴즈 생성 유형이다.
+  @Schema(description = "퀴즈 생성 방식", example = "MANUAL")
   private QuizType quizType;
 
-  // 퀴즈 총점이다.
+  @Schema(description = "퀴즈 총점", example = "100")
   private Integer totalScore;
 
-  // 퀴즈 공개 여부다.
+  @Schema(description = "퀴즈 공개 여부", example = "false")
   private Boolean isPublished;
 
-  // 퀴즈 활성 여부다.
+  @Schema(description = "퀴즈 활성 여부", example = "true")
   private Boolean isActive;
 
-  // 정답 공개 여부다.
+  @Schema(description = "응시 후 정답 공개 여부", example = "true")
   private Boolean exposeAnswer;
 
-  // 해설 공개 여부다.
+  @Schema(description = "응시 후 해설 공개 여부", example = "true")
   private Boolean exposeExplanation;
 
-  // 퀴즈 생성 시각이다.
+  @Schema(description = "퀴즈 생성 시각", example = "2026-03-20T11:00:00")
   private LocalDateTime createdAt;
 
-  // 문항 목록이다.
+  @Schema(description = "퀴즈에 포함된 문항 목록")
   private List<QuestionInfo> questions;
 
   @Builder
@@ -82,7 +83,6 @@ public class QuizDetailResponse {
     this.questions = questions;
   }
 
-  // Quiz 엔티티를 응답 DTO로 변환한다.
   public static QuizDetailResponse from(Quiz quiz) {
     return QuizDetailResponse.builder()
         .quizId(quiz.getId())
@@ -107,30 +107,31 @@ public class QuizDetailResponse {
 
   @Getter
   @NoArgsConstructor(access = AccessLevel.PROTECTED)
+  @Schema(description = "퀴즈 문항 응답 DTO")
   public static class QuestionInfo {
 
-    // 문항 ID다.
+    @Schema(description = "문항 ID", example = "101")
     private Long questionId;
 
-    // 문항 유형이다.
+    @Schema(description = "문항 유형", example = "MULTIPLE_CHOICE")
     private String questionType;
 
-    // 문항 본문이다.
+    @Schema(description = "문항 본문", example = "JWT의 장점으로 가장 적절한 것은 무엇인가?")
     private String questionText;
 
-    // 해설이다.
+    @Schema(description = "문항 해설", example = "JWT는 서버 세션 없이 인증 상태를 표현할 수 있습니다.")
     private String explanation;
 
-    // 배점이다.
+    @Schema(description = "문항 배점", example = "20")
     private Integer points;
 
-    // 문항 노출 순서다.
+    @Schema(description = "문항 노출 순서", example = "1")
     private Integer displayOrder;
 
-    // AI 생성 근거 구간이다.
+    @Schema(description = "AI 생성 문항일 경우 근거 타임스탬프", example = "00:10:15-00:11:03")
     private String sourceTimestamp;
 
-    // 선택지 목록이다.
+    @Schema(description = "문항 선택지 목록")
     private List<OptionInfo> options;
 
     @Builder
@@ -153,7 +154,6 @@ public class QuizDetailResponse {
       this.options = options;
     }
 
-    // QuizQuestion 엔티티를 문항 응답 DTO로 변환한다.
     public static QuestionInfo from(QuizQuestion question) {
       return QuestionInfo.builder()
           .questionId(question.getId())
@@ -175,18 +175,19 @@ public class QuizDetailResponse {
 
   @Getter
   @NoArgsConstructor(access = AccessLevel.PROTECTED)
+  @Schema(description = "퀴즈 선택지 응답 DTO")
   public static class OptionInfo {
 
-    // 선택지 ID다.
+    @Schema(description = "선택지 ID", example = "1001")
     private Long optionId;
 
-    // 선택지 내용이다.
+    @Schema(description = "선택지 내용", example = "서버 세션 없이 인증 상태를 유지할 수 있다.")
     private String optionText;
 
-    // 정답 여부다.
+    @Schema(description = "정답 여부", example = "true")
     private Boolean isCorrect;
 
-    // 노출 순서다.
+    @Schema(description = "선택지 노출 순서", example = "1")
     private Integer displayOrder;
 
     @Builder
@@ -197,7 +198,6 @@ public class QuizDetailResponse {
       this.displayOrder = displayOrder;
     }
 
-    // QuizQuestionOption 엔티티를 선택지 응답 DTO로 변환한다.
     public static OptionInfo from(QuizQuestionOption option) {
       return OptionInfo.builder()
           .optionId(option.getId())

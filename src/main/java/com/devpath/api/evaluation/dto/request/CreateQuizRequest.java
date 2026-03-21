@@ -15,45 +15,37 @@ import lombok.NoArgsConstructor;
 @Schema(description = "강사용 퀴즈 생성 요청 DTO")
 public class CreateQuizRequest {
 
-  // 어떤 로드맵 노드에 퀴즈를 연결할지 식별하는 노드 ID다.
+  // Evaluation Swagger 문서화 기준에 맞춘 퀴즈 생성 요청 DTO다.
   @NotNull
-  @Schema(description = "로드맵 노드 ID", example = "1")
+  @Schema(description = "퀴즈를 연결할 로드맵 노드 ID", example = "1")
   private Long roadmapNodeId;
 
-  // 강사가 작성한 퀴즈 제목이다.
   @NotBlank
   @Schema(description = "퀴즈 제목", example = "Spring Security 기초 퀴즈")
   private String title;
 
-  // 퀴즈 설명 또는 안내 문구다.
-  @Schema(description = "퀴즈 설명", example = "인증과 인가의 핵심 개념을 점검합니다.")
+  @Schema(description = "퀴즈 설명", example = "인증과 인가 핵심 개념을 확인하는 퀴즈입니다.")
   private String description;
 
-  // 수동 생성인지 AI 생성인지 퀴즈 유형을 지정한다.
   @NotNull
-  @Schema(description = "퀴즈 유형", example = "MANUAL")
+  @Schema(description = "퀴즈 생성 방식", example = "MANUAL")
   private QuizType quizType;
 
-  // 퀴즈 총점을 저장한다.
   @NotNull
   @Min(0)
   @Schema(description = "퀴즈 총점", example = "100")
   private Integer totalScore;
 
-  // 생성 직후 바로 공개할지 여부다.
-  @Schema(description = "공개 여부", example = "false")
+  @Schema(description = "생성 직후 퀴즈를 공개할지 여부", example = "false")
   private Boolean isPublished;
 
-  // 생성 직후 활성 상태로 둘지 여부다.
-  @Schema(description = "활성 여부", example = "true")
+  @Schema(description = "생성 직후 퀴즈를 활성 상태로 둘지 여부", example = "true")
   private Boolean isActive;
 
-  // 응시 후 정답 노출 여부다.
-  @Schema(description = "정답 공개 여부", example = "true")
+  @Schema(description = "응시 직후 정답을 공개할지 여부", example = "true")
   private Boolean exposeAnswer;
 
-  // 응시 후 해설 노출 여부다.
-  @Schema(description = "해설 공개 여부", example = "true")
+  @Schema(description = "응시 직후 해설을 공개할지 여부", example = "true")
   private Boolean exposeExplanation;
 
   @Builder

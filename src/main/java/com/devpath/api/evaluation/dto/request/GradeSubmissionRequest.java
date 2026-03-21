@@ -17,37 +17,35 @@ import lombok.NoArgsConstructor;
 @Schema(description = "제출물 루브릭 기반 채점 요청 DTO")
 public class GradeSubmissionRequest {
 
-    // 루브릭별 점수 목록이며 모든 루브릭에 대해 1개씩 전달하는 것을 기준으로 한다.
-    @Valid
-    @NotEmpty
-    @Schema(description = "루브릭별 점수 목록")
-    private List<RubricScoreRequest> rubricScores = new ArrayList<>();
+  // Evaluation Swagger 문서화 기준에 맞춘 루브릭 채점 요청 DTO다.
+  @Valid
+  @NotEmpty
+  @Schema(description = "루브릭별 점수 목록")
+  private List<RubricScoreRequest> rubricScores = new ArrayList<>();
+
+  @Builder
+  public GradeSubmissionRequest(List<RubricScoreRequest> rubricScores) {
+    this.rubricScores = rubricScores == null ? new ArrayList<>() : rubricScores;
+  }
+
+  @Getter
+  @NoArgsConstructor(access = AccessLevel.PROTECTED)
+  @Schema(description = "개별 루브릭 점수 요청 DTO")
+  public static class RubricScoreRequest {
+
+    @NotNull
+    @Schema(description = "루브릭 ID", example = "1")
+    private Long rubricId;
+
+    @NotNull
+    @Min(0)
+    @Schema(description = "해당 루브릭에서 부여한 점수", example = "8")
+    private Integer earnedPoints;
 
     @Builder
-    public GradeSubmissionRequest(List<RubricScoreRequest> rubricScores) {
-        this.rubricScores = rubricScores == null ? new ArrayList<>() : rubricScores;
+    public RubricScoreRequest(Long rubricId, Integer earnedPoints) {
+      this.rubricId = rubricId;
+      this.earnedPoints = earnedPoints;
     }
-
-    @Getter
-    @NoArgsConstructor(access = AccessLevel.PROTECTED)
-    @Schema(description = "개별 루브릭 점수 요청 DTO")
-    public static class RubricScoreRequest {
-
-        // 어떤 루브릭 기준에 대한 점수인지 식별하기 위한 rubricId다.
-        @NotNull
-        @Schema(description = "루브릭 ID", example = "1")
-        private Long rubricId;
-
-        // 해당 루브릭 기준에서 부여한 점수이며 0 이상이어야 한다.
-        @NotNull
-        @Min(0)
-        @Schema(description = "획득 점수", example = "8")
-        private Integer earnedPoints;
-
-        @Builder
-        public RubricScoreRequest(Long rubricId, Integer earnedPoints) {
-            this.rubricId = rubricId;
-            this.earnedPoints = earnedPoints;
-        }
-    }
+  }
 }

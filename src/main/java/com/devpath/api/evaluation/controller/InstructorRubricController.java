@@ -19,20 +19,22 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Instructor Evaluation - Rubric", description = "강사용 루브릭 관리 API")
+@Tag(name = "Instructor - Rubric", description = "강사용 과제 채점 루브릭 생성 및 수정 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/instructor")
 public class InstructorRubricController {
 
-  // 루브릭 생성 및 수정 비즈니스 로직을 담당하는 서비스다.
+  // Evaluation Swagger 문서화 기준에 맞춘 강사용 루브릭 컨트롤러다.
   private final RubricCommandService rubricCommandService;
 
-  // 강사가 특정 과제에 루브릭을 추가한다.
-  @Operation(summary = "강사 루브릭 생성", description = "강사가 특정 과제에 채점 루브릭 항목을 생성합니다.")
+  @Operation(
+      summary = "루브릭 생성",
+      description =
+          "강사가 특정 과제에 연결할 채점 루브릭 항목을 생성합니다. JWT 적용 전까지 Swagger 테스트용으로 userId를 요청 파라미터로 받습니다. 응답 데이터는 ApiResponse.data에 감싸져 반환됩니다.")
   @PostMapping("/assignments/{assignmentId}/rubrics")
   public ResponseEntity<ApiResponse<RubricResponse>> createRubric(
-      @Parameter(description = "강사 유저 ID", example = "1") @RequestParam Long userId,
+      @Parameter(description = "강사 ID", example = "1") @RequestParam Long userId,
       @Parameter(description = "과제 ID", example = "20") @PathVariable Long assignmentId,
       @Valid @RequestBody CreateRubricRequest request) {
     return ResponseEntity.ok(
@@ -41,14 +43,17 @@ public class InstructorRubricController {
             rubricCommandService.createRubric(userId, assignmentId, request)));
   }
 
-  // 강사가 기존 루브릭 항목을 수정한다.
-  @Operation(summary = "강사 루브릭 수정", description = "강사가 특정 루브릭 항목의 이름, 설명, 배점, 순서를 수정합니다.")
+  @Operation(
+      summary = "루브릭 수정",
+      description =
+          "강사가 특정 루브릭의 기준명, 설명, 배점, 표시 순서를 수정합니다. JWT 적용 전까지 Swagger 테스트용으로 userId를 요청 파라미터로 받습니다. 응답 데이터는 ApiResponse.data에 감싸져 반환됩니다.")
   @PatchMapping("/rubrics/{rubricId}")
   public ResponseEntity<ApiResponse<RubricResponse>> updateRubric(
-      @Parameter(description = "강사 유저 ID", example = "1") @RequestParam Long userId,
+      @Parameter(description = "강사 ID", example = "1") @RequestParam Long userId,
       @Parameter(description = "루브릭 ID", example = "301") @PathVariable Long rubricId,
       @Valid @RequestBody UpdateRubricRequest request) {
     return ResponseEntity.ok(
-        ApiResponse.success("루브릭이 수정되었습니다.", rubricCommandService.updateRubric(userId, rubricId, request)));
+        ApiResponse.success(
+            "루브릭이 수정되었습니다.", rubricCommandService.updateRubric(userId, rubricId, request)));
   }
 }
