@@ -1,6 +1,7 @@
 package com.devpath.api.learning.controller;
 
 import com.devpath.api.learning.dto.OcrResultResponse;
+import com.devpath.api.learning.dto.OcrTimestampMappingResponse;
 import com.devpath.api.learning.service.OcrService;
 import com.devpath.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -50,5 +51,27 @@ public class OcrController {
             @PathVariable Long ocrId
     ) {
         return ResponseEntity.ok(ApiResponse.ok(ocrService.getOcrResult(userId, ocrId)));
+    }
+
+    @Operation(summary = "OCR 키워드 검색",
+            description = "특정 레슨의 OCR 추출 텍스트에서 키워드를 검색합니다.")
+    @GetMapping("/lessons/{lessonId}/search")
+    public ResponseEntity<ApiResponse<List<OcrResultResponse>>> searchByKeyword(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable Long lessonId,
+            @RequestParam String keyword
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(ocrService.searchByKeyword(userId, lessonId, keyword)));
+    }
+
+    @Operation(summary = "OCR 타임스탬프 매핑 조회",
+            description = "특정 레슨의 OCR 결과 전체를 타임스탬프(mm:ss) 매핑 형태로 반환합니다. keyword 지정 시 해당 구간에 matched=true가 표시됩니다.")
+    @GetMapping("/lessons/{lessonId}/timestamp-mapping")
+    public ResponseEntity<ApiResponse<List<OcrTimestampMappingResponse>>> getTimestampMapping(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable Long lessonId,
+            @RequestParam(required = false) String keyword
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(ocrService.getTimestampMapping(userId, lessonId, keyword)));
     }
 }
