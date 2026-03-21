@@ -19,6 +19,7 @@ import lombok.NoArgsConstructor;
 @Schema(description = "강사용 퀴즈 문항 생성 요청 DTO")
 public class CreateQuizQuestionRequest {
 
+  // Evaluation Swagger 문서화 기준에 맞춘 퀴즈 문항 생성 요청 DTO다.
   @NotNull
   @Schema(description = "문항 유형", example = "MULTIPLE_CHOICE")
   private QuestionType questionType;

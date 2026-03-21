@@ -15,6 +15,7 @@ import lombok.NoArgsConstructor;
 @Schema(description = "AI 퀴즈 초안 수정 요청 DTO")
 public class UpdateAiQuizDraftRequest {
 
+  // Evaluation Swagger 문서화 기준에 맞춘 AI 퀴즈 초안 수정 요청 DTO다.
   @Schema(description = "수정할 초안 제목", example = "Spring Security 수정된 초안 퀴즈")
   private String title;
 

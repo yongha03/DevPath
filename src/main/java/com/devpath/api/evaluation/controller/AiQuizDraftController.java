@@ -29,6 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/evaluation/instructor/ai-quiz-drafts")
 public class AiQuizDraftController {
 
+  // Evaluation Swagger 문서화 기준에 맞춘 AI 퀴즈 초안 컨트롤러다.
   private final AiQuizDraftService aiQuizDraftService;
 
   @Operation(

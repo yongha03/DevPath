@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 @Schema(description = "제출물 피드백 저장 결과 응답 DTO")
 public class FeedbackResponse {
 
+  // Evaluation Swagger 문서화 기준에 맞춘 피드백 저장 결과 응답 DTO다.
   @Schema(description = "제출 ID", example = "1")
   private Long submissionId;
 

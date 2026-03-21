@@ -15,6 +15,7 @@ import lombok.NoArgsConstructor;
 @Schema(description = "강사용 퀴즈 생성 요청 DTO")
 public class CreateQuizRequest {
 
+  // Evaluation Swagger 문서화 기준에 맞춘 퀴즈 생성 요청 DTO다.
   @NotNull
   @Schema(description = "퀴즈를 연결할 로드맵 노드 ID", example = "1")
   private Long roadmapNodeId;

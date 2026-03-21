@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/instructor/quizzes")
 public class InstructorQuizController {
 
+  // Evaluation Swagger 문서화 기준에 맞춘 강사용 퀴즈 컨트롤러다.
   private final QuizCommandService quizCommandService;
 
   @Operation(

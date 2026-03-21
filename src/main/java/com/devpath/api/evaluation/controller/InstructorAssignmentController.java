@@ -24,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/instructor/assignments")
 public class InstructorAssignmentController {
 
+  // Evaluation Swagger 문서화 기준에 맞춘 강사용 과제 컨트롤러다.
   private final AssignmentCommandService assignmentCommandService;
 
   @Operation(

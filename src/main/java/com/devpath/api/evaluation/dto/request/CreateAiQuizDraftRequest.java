@@ -17,6 +17,7 @@ import lombok.NoArgsConstructor;
 @Schema(description = "AI 퀴즈 초안 생성 요청 DTO")
 public class CreateAiQuizDraftRequest {
 
+  // Evaluation Swagger 문서화 기준에 맞춘 AI 퀴즈 초안 생성 요청 DTO다.
   @NotNull
   @Schema(description = "AI 초안을 생성할 로드맵 노드 ID", example = "10")
   private Long nodeId;

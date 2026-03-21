@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 @Schema(description = "학습자용 제출 파일 정보 요청 DTO")
 public class CreateSubmissionFileRequest {
 
+  // Evaluation Swagger 문서화 기준에 맞춘 제출 파일 정보 요청 DTO다.
   @NotBlank
   @Schema(description = "파일명", example = "README.md")
   private String fileName;

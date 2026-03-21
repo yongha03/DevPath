@@ -14,6 +14,7 @@ import lombok.NoArgsConstructor;
 @Schema(description = "강사용 과제 상세 응답 DTO")
 public class AssignmentDetailResponse {
 
+  // Evaluation Swagger 문서화 기준에 맞춘 과제 상세 응답 DTO다.
   @Schema(description = "과제 ID", example = "20")
   private Long assignmentId;
 

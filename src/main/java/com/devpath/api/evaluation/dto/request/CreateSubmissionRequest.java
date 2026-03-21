@@ -14,6 +14,7 @@ import lombok.NoArgsConstructor;
 @Schema(description = "학습자용 과제 제출 생성 요청 DTO")
 public class CreateSubmissionRequest {
 
+  // Evaluation Swagger 문서화 기준에 맞춘 과제 제출 생성 요청 DTO다.
   @Schema(description = "텍스트형 제출 본문", example = "구현 요약과 실행 결과를 정리했습니다.")
   private String submissionText;
 

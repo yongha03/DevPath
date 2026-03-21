@@ -14,6 +14,7 @@ import lombok.NoArgsConstructor;
 @Schema(description = "학습자용 과제 precheck 요청 DTO")
 public class AssignmentPrecheckRequest {
 
+  // Evaluation Swagger 문서화 기준에 맞춘 과제 precheck 요청 DTO다.
   @Schema(description = "텍스트형 제출 내용을 미리 검증할 때 사용하는 제출 본문", example = "과제 설명에 맞춰 구현 내용과 실행 결과를 정리했습니다.")
   private String submissionText;
 

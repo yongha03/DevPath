@@ -17,6 +17,7 @@ import lombok.NoArgsConstructor;
 @Schema(description = "제출물 루브릭 기반 채점 요청 DTO")
 public class GradeSubmissionRequest {
 
+  // Evaluation Swagger 문서화 기준에 맞춘 루브릭 채점 요청 DTO다.
   @Valid
   @NotEmpty
   @Schema(description = "루브릭별 점수 목록")

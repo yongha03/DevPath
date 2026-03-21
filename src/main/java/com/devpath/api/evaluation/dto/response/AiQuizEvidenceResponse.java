@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 @Schema(description = "AI 퀴즈 생성 근거 구간 응답 DTO")
 public class AiQuizEvidenceResponse {
 
+  // Evaluation Swagger 문서화 기준에 맞춘 AI 퀴즈 근거 응답 DTO다.
   @Schema(description = "초안 ID", example = "1")
   private Long draftId;
 

@@ -30,6 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/evaluation/instructor")
 public class InstructorSubmissionController {
 
+  // Evaluation Swagger 문서화 기준에 맞춘 강사용 제출물 컨트롤러다.
   private final SubmissionQueryService submissionQueryService;
   private final SubmissionGradingService submissionGradingService;
 

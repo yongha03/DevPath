@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 @Schema(description = "AI 퀴즈 초안 채택 요청 DTO")
 public class AdoptAiQuizDraftRequest {
 
+  // Evaluation Swagger 문서화 기준에 맞춘 AI 퀴즈 초안 채택 요청 DTO다.
   @Schema(description = "채택 시 실제 퀴즈 제목으로 사용할 값", example = "Spring Security 최종 퀴즈")
   private String title;
 

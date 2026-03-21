@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 @Schema(description = "AI 퀴즈 초안 거부 요청 DTO")
 public class RejectAiQuizDraftRequest {
 
+  // Evaluation Swagger 문서화 기준에 맞춘 AI 퀴즈 초안 거부 요청 DTO다.
   @NotBlank
   @Schema(description = "AI 초안을 거부하는 사유", example = "문항 정확도가 낮아 재생성이 필요합니다.")
   private String reason;

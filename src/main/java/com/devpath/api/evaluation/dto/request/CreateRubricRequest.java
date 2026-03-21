@@ -14,6 +14,7 @@ import lombok.NoArgsConstructor;
 @Schema(description = "강사용 루브릭 생성 요청 DTO")
 public class CreateRubricRequest {
 
+  // Evaluation Swagger 문서화 기준에 맞춘 루브릭 생성 요청 DTO다.
   @NotBlank
   @Schema(description = "루브릭 기준명", example = "JWT 필터 구현")
   private String criteriaName;

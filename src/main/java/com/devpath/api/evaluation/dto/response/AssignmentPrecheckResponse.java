@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 @Schema(description = "과제 precheck 결과 응답 DTO")
 public class AssignmentPrecheckResponse {
 
+  // Evaluation Swagger 문서화 기준에 맞춘 precheck 결과 응답 DTO다.
   @Schema(description = "전체 precheck 통과 여부", example = "true")
   private Boolean passed;
 

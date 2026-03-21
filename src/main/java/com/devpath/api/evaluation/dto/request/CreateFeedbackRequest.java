@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 @Schema(description = "강사용 제출물 피드백 생성 요청 DTO")
 public class CreateFeedbackRequest {
 
+  // Evaluation Swagger 문서화 기준에 맞춘 피드백 생성 요청 DTO다.
   @NotBlank
   @Schema(description = "피드백 유형", example = "INDIVIDUAL")
   private String feedbackType;

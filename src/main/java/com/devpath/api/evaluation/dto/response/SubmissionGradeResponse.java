@@ -15,6 +15,7 @@ import lombok.NoArgsConstructor;
 @Schema(description = "제출물 채점 결과 응답 DTO")
 public class SubmissionGradeResponse {
 
+  // Evaluation Swagger 문서화 기준에 맞춘 제출 채점 결과 응답 DTO다.
   @Schema(description = "제출 ID", example = "1")
   private Long submissionId;
 

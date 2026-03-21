@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 @Schema(description = "강사용 퀴즈 선택지 생성 요청 DTO")
 public class CreateQuizQuestionOptionRequest {
 
+  // Evaluation Swagger 문서화 기준에 맞춘 퀴즈 선택지 생성 요청 DTO다.
   @NotBlank
   @Schema(description = "선택지 내용", example = "서버 세션 없이 인증 상태를 유지할 수 있다.")
   private String optionText;

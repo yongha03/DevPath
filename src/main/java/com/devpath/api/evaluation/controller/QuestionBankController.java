@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/evaluation/instructor/question-bank")
 public class QuestionBankController {
 
+  // Evaluation Swagger 문서화 기준에 맞춘 문제 은행 컨트롤러다.
   private final QuestionBankStatsService questionBankStatsService;
 
   @Operation(

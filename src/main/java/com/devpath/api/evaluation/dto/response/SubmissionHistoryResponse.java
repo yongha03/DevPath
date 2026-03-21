@@ -16,6 +16,7 @@ import lombok.NoArgsConstructor;
 @Schema(description = "학습자용 제출 이력 조회 응답 DTO")
 public class SubmissionHistoryResponse {
 
+  // Evaluation Swagger 문서화 기준에 맞춘 제출 이력 응답 DTO다.
   @Schema(description = "조회 대상 학습자 ID", example = "1")
   private Long learnerId;
 

@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 @Schema(description = "강사용 루브릭 응답 DTO")
 public class RubricResponse {
 
+  // Evaluation Swagger 문서화 기준에 맞춘 루브릭 응답 DTO다.
   @Schema(description = "루브릭 ID", example = "301")
   private Long rubricId;
 

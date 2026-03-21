@@ -14,6 +14,7 @@ import lombok.NoArgsConstructor;
 @Schema(description = "문제 은행 통계 응답 DTO")
 public class QuestionBankStatsResponse {
 
+  // Evaluation Swagger 문서화 기준에 맞춘 문제 은행 통계 응답 DTO다.
   @Schema(description = "전체 문제 수", example = "42")
   private Long totalQuestionCount;
 

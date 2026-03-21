@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 @Schema(description = "학습자용 오답 노트 저장 요청 DTO")
 public class SaveWrongAnswerNoteRequest {
 
+  // Evaluation Swagger 문서화 기준에 맞춘 오답 노트 저장 요청 DTO다.
   @NotNull
   @Schema(description = "오답 노트를 저장할 문항 ID", example = "10")
   private Long questionId;

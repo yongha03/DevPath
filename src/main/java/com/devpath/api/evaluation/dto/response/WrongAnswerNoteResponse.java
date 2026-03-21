@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 @Schema(description = "오답 노트 응답 DTO")
 public class WrongAnswerNoteResponse {
 
+  // Evaluation Swagger 문서화 기준에 맞춘 오답 노트 응답 DTO다.
   @Schema(description = "오답 노트 ID", example = "1")
   private Long noteId;
 

@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 @Schema(description = "학습자용 퀴즈 문항별 답안 요청 DTO")
 public class SubmitQuizAnswerRequest {
 
+  // Evaluation Swagger 문서화 기준에 맞춘 문항별 답안 요청 DTO다.
   @NotNull
   @Schema(description = "답안을 제출할 문항 ID", example = "10")
   private Long questionId;

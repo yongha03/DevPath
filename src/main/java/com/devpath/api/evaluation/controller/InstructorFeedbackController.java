@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/evaluation/instructor/submissions")
 public class InstructorFeedbackController {
 
+  // Evaluation Swagger 문서화 기준에 맞춘 강사용 피드백 컨트롤러다.
   private final FeedbackService feedbackService;
 
   @Operation(

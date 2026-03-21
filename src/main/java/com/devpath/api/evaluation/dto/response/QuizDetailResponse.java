@@ -18,6 +18,7 @@ import lombok.NoArgsConstructor;
 @Schema(description = "강사용 퀴즈 상세 응답 DTO")
 public class QuizDetailResponse {
 
+  // Evaluation Swagger 문서화 기준에 맞춘 퀴즈 상세 응답 DTO다.
   @Schema(description = "퀴즈 ID", example = "10")
   private Long quizId;
 

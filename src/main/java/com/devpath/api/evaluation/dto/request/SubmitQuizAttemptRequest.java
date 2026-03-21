@@ -16,6 +16,7 @@ import lombok.NoArgsConstructor;
 @Schema(description = "학습자용 퀴즈 응시 제출 요청 DTO")
 public class SubmitQuizAttemptRequest {
 
+  // Evaluation Swagger 문서화 기준에 맞춘 퀴즈 응시 제출 요청 DTO다.
   @Valid
   @NotEmpty
   @Schema(description = "문항별 답안 목록")

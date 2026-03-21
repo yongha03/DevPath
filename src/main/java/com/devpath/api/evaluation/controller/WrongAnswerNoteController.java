@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/evaluation/learner/wrong-answer-notes")
 public class WrongAnswerNoteController {
 
+  // Evaluation Swagger 문서화 기준에 맞춘 오답 노트 컨트롤러다.
   private final WrongAnswerNoteService wrongAnswerNoteService;
 
   @Operation(

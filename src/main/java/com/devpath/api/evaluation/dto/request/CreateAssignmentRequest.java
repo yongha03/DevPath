@@ -16,6 +16,7 @@ import lombok.NoArgsConstructor;
 @Schema(description = "강사용 과제 생성 및 제출 규칙 설정 요청 DTO")
 public class CreateAssignmentRequest {
 
+  // Evaluation Swagger 문서화 기준에 맞춘 과제 생성 요청 DTO다.
   @NotNull
   @Schema(description = "과제를 연결할 로드맵 노드 ID", example = "1")
   private Long roadmapNodeId;
