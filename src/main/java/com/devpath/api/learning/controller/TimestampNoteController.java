@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "강의 학습 - 타임스탬프 노트", description = "강의 구간별 노트 저장/조회/수정/삭제 API")
+@Tag(name = "강의 학습 - 타임스탬프 노트", description = "강의 구간별 노트 저장, 조회, 수정, 삭제 API")
 @RestController
 @RequestMapping("/api/learning/lessons")
 @RequiredArgsConstructor
@@ -32,7 +32,7 @@ public class TimestampNoteController {
 
     @Operation(
             summary = "타임스탬프 노트 저장",
-            description = "특정 재생 구간(초)에 노트를 저장합니다. timestampSecond는 노트 클릭 시 해당 구간으로 이동하는 기준값입니다."
+            description = "timestampSecond 또는 timestampText 값을 받아 정규화된 초 단위 값으로 노트를 저장합니다."
     )
     @PostMapping("/{lessonId}/notes")
     public ResponseEntity<ApiResponse<TimestampNoteResponse>> createNote(
@@ -46,7 +46,7 @@ public class TimestampNoteController {
 
     @Operation(
             summary = "타임스탬프 노트 목록 조회",
-            description = "특정 레슨의 노트 목록을 타임스탬프 순으로 조회합니다."
+            description = "특정 레슨의 노트를 timestampSecond 오름차순으로 조회합니다."
     )
     @GetMapping("/{lessonId}/notes")
     public ResponseEntity<ApiResponse<List<TimestampNoteResponse>>> getNotes(
@@ -58,7 +58,7 @@ public class TimestampNoteController {
 
     @Operation(
             summary = "타임스탬프 노트 수정",
-            description = "저장된 노트의 내용과 타임스탬프 위치를 수정합니다."
+            description = "timestampSecond 또는 timestampText 값을 다시 받아 노트의 위치와 내용을 수정합니다."
     )
     @PutMapping("/{lessonId}/notes/{noteId}")
     public ResponseEntity<ApiResponse<TimestampNoteResponse>> updateNote(
@@ -72,10 +72,7 @@ public class TimestampNoteController {
         ));
     }
 
-    @Operation(
-            summary = "타임스탬프 노트 삭제",
-            description = "저장된 노트를 삭제합니다."
-    )
+    @Operation(summary = "타임스탬프 노트 삭제", description = "저장된 노트를 삭제합니다.")
     @DeleteMapping("/{lessonId}/notes/{noteId}")
     public ResponseEntity<ApiResponse<Void>> deleteNote(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId,

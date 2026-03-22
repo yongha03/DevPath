@@ -17,13 +17,15 @@ public class TimestampNoteResponse {
     @Schema(description = "레슨 ID", example = "10")
     private Long lessonId;
 
-    @Schema(description = "타임스탬프(초)", example = "125")
+    @Schema(description = "정규화된 타임스탬프 초", example = "125")
     private Integer timestampSecond;
 
+    // 노트 클릭 시 플레이어가 바로 이동할 수 있도록 동일한 초 값을 함께 내려준다.
     @Schema(description = "플레이어 이동용 초 값", example = "125")
     private Integer seekSecond;
 
-    @Schema(description = "표시용 타임스탬프", example = "02:05")
+    // 화면 표시에 바로 쓸 수 있도록 mm:ss 형식 라벨을 함께 내려준다.
+    @Schema(description = "표시용 타임스탬프 라벨", example = "02:05")
     private String timestampLabel;
 
     @Schema(description = "노트 내용", example = "Spring Security 인증 흐름 다시 보기")
