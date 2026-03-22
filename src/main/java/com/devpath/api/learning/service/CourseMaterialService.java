@@ -3,6 +3,7 @@ package com.devpath.api.learning.service;
 import com.devpath.api.learning.dto.CourseMaterialResponse;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
+import com.devpath.domain.course.entity.CourseMaterial;
 import com.devpath.domain.course.repository.CourseMaterialRepository;
 import com.devpath.domain.course.repository.LessonRepository;
 import java.util.List;
@@ -29,5 +30,14 @@ public class CourseMaterialService {
                 .stream()
                 .map(CourseMaterialResponse::from)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public CourseMaterial getDownloadMaterial(Long lessonId, Long materialId) {
+        lessonRepository.findById(lessonId)
+                .orElseThrow(() -> new CustomException(ErrorCode.LESSON_NOT_FOUND));
+
+        return courseMaterialRepository.findByMaterialIdAndLessonLessonId(materialId, lessonId)
+                .orElseThrow(() -> new CustomException(ErrorCode.RESOURCE_NOT_FOUND));
     }
 }

@@ -1,5 +1,7 @@
 package com.devpath.api.learning.service;
 
+import com.devpath.api.learning.dto.TilPublishRequest;
+import com.devpath.api.learning.dto.TilPublishResponse;
 import com.devpath.api.learning.dto.TilRequest;
 import com.devpath.api.learning.dto.TilResponse;
 import com.devpath.common.exception.CustomException;
@@ -12,9 +14,12 @@ import com.devpath.domain.learning.repository.TilDraftRepository;
 import com.devpath.domain.learning.repository.TimestampNoteRepository;
 import com.devpath.domain.user.entity.User;
 import com.devpath.domain.user.repository.UserRepository;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
+import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -58,6 +63,7 @@ public class TilService {
     public TilResponse getTil(Long userId, Long tilId) {
         TilDraft til = tilDraftRepository.findByIdAndUserIdAndIsDeletedFalse(tilId, userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.TIL_NOT_FOUND));
+
         return TilResponse.from(til);
     }
 
@@ -80,7 +86,7 @@ public class TilService {
         return TilResponse.from(til);
     }
 
-    // 노트 목록 → TIL 초안 자동 변환
+    // 노트 목록 -> TIL 초안 자동 변환
     // 타임스탬프 순으로 정렬 후 노트 내용을 마크다운으로 이어 붙여 TIL 본문을 생성한다.
     @Transactional
     public TilResponse convertFromNotes(Long userId, TilRequest.ConvertFromNotes request) {
@@ -118,18 +124,38 @@ public class TilService {
         return TilResponse.from(tilDraftRepository.save(til));
     }
 
-    // 외부 블로그 발행 (stub)
-    // 실제 외부 블로그 API 연동은 추후 구현 예정이며, 현재는 발행 상태와 URL만 업데이트한다.
+    // 기존 publish 메서드는 userId, tilId 만 받았지만
+    // 이제 외부 블로그 발행 요청 body 를 함께 받아 계약을 맞춘다.
     @Transactional
-    public TilResponse publishToExternalBlog(Long userId, Long tilId) {
+    public TilPublishResponse publishToExternalBlog(Long userId, Long tilId, TilPublishRequest request) {
         TilDraft til = tilDraftRepository.findByIdAndUserIdAndIsDeletedFalse(tilId, userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.TIL_NOT_FOUND));
 
-        // stub: 실제 발행 대신 상태를 PUBLISHED로 변경하고 임시 URL을 생성한다.
-        String stubUrl = "https://devpath.blog/" + userId + "/til/" + tilId;
-        til.publish(stubUrl);
+        // 외부 발행 요청값을 기준으로 제목/본문을 최신화한다.
+        // 실제 외부 플랫폼 연동 전까지는 내부 TIL 데이터와 외부 발행 payload 를 동일하게 맞춘다.
+        til.updateContent(request.getTitle(), request.getContent());
 
-        return TilResponse.from(til);
+        // platform 문자열을 정규화한다.
+        String normalizedPlatform = normalizePlatform(request.getPlatform());
+
+        // 현재는 stub 구현이므로 mock external post id 를 생성한다.
+        String externalPostId = buildMockExternalPostId(tilId);
+
+        // 테스트 기대치에 맞춰 mock.blog.devpath 형식의 URL을 생성한다.
+        String publishedUrl = buildPublishedUrl(normalizedPlatform, externalPostId);
+
+        // 엔티티에는 publishedUrl 과 status 만 저장한다.
+        til.publish(publishedUrl);
+
+        return TilPublishResponse.builder()
+                .tilId(til.getId())
+                .published(true)
+                .platform(normalizedPlatform)
+                .externalPostId(externalPostId)
+                .publishedUrl(publishedUrl)
+                .draft(Boolean.TRUE.equals(request.getDraft()))
+                .publishedAt(LocalDateTime.now())
+                .build();
     }
 
     // TIL 본문의 마크다운 헤더(#, ##, ###)를 파싱하여 목차 JSON 문자열을 생성하고 저장한다.
@@ -149,15 +175,39 @@ public class TilService {
     private String buildTableOfContents(String content) {
         Pattern pattern = Pattern.compile("^(#{1,3})\\s+(.+)$", Pattern.MULTILINE);
         Matcher matcher = pattern.matcher(content);
-
         List<String> entries = new ArrayList<>();
+
         while (matcher.find()) {
             int level = matcher.group(1).length();
             String title = matcher.group(2).trim();
-            String anchor = title.toLowerCase().replaceAll("[^a-z0-9가-힣\\s]", "").trim().replaceAll("\\s+", "-");
-            entries.add(String.format("{\"level\":%d,\"title\":\"%s\",\"anchor\":\"%s\"}", level, title, anchor));
+            String anchor = title.toLowerCase()
+                    .replaceAll("[^a-z0-9가-힣\\s]", "")
+                    .trim()
+                    .replaceAll("\\s+", "-");
+
+            entries.add(String.format(
+                    "{\"level\":%d,\"title\":\"%s\",\"anchor\":\"%s\"}",
+                    level,
+                    title,
+                    anchor
+            ));
         }
 
         return "[" + String.join(",", entries) + "]";
+    }
+
+    // 외부 발행 플랫폼 문자열을 대문자로 정규화한다.
+    private String normalizePlatform(String platform) {
+        return platform.trim().toUpperCase(Locale.ROOT);
+    }
+
+    // mock/stub 외부 게시글 ID 를 생성한다.
+    private String buildMockExternalPostId(Long tilId) {
+        return "mock-post-" + tilId + "-" + UUID.randomUUID().toString().substring(0, 8);
+    }
+
+    // 현재는 플랫폼별 실제 Provider 연동 대신 공통 mock URL 을 사용한다.
+    private String buildPublishedUrl(String platform, String externalPostId) {
+        return "https://mock.blog.devpath/posts/" + externalPostId;
     }
 }

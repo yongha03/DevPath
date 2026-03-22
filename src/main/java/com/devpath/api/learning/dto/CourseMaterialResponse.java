@@ -12,6 +12,7 @@ public class CourseMaterialResponse {
     private String materialType;
     private String originalFileName;
     private String materialUrl;
+    private String downloadPath;
     private Integer displayOrder;
 
     public static CourseMaterialResponse from(CourseMaterial material) {
@@ -20,6 +21,8 @@ public class CourseMaterialResponse {
                 .materialType(material.getMaterialType())
                 .originalFileName(material.getOriginalFileName())
                 .materialUrl(material.getMaterialUrl())
+                .downloadPath("/api/learning/lessons/" + material.getLesson().getLessonId()
+                        + "/materials/" + material.getMaterialId() + "/download")
                 .displayOrder(material.getDisplayOrder())
                 .build();
     }

@@ -1,11 +1,17 @@
-package com.devpath.api.learner.service;
+package com.devpath.api.recommendation.service;
 
 import com.devpath.api.roadmap.service.CustomRoadmapCopyService;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
+import com.devpath.domain.learning.entity.LessonProgress;
+import com.devpath.domain.learning.entity.TilDraftStatus;
 import com.devpath.domain.learning.entity.recommendation.RecommendationHistory;
 import com.devpath.domain.learning.entity.recommendation.RiskWarning;
 import com.devpath.domain.learning.entity.recommendation.SupplementRecommendation;
+import com.devpath.domain.learning.repository.LessonProgressRepository;
+import com.devpath.domain.learning.repository.TilDraftRepository;
+import com.devpath.domain.learning.repository.TimestampNoteRepository;
+import com.devpath.domain.learning.repository.ocr.OcrResultRepository;
 import com.devpath.domain.learning.repository.recommendation.RecommendationHistoryRepository;
 import com.devpath.domain.learning.repository.recommendation.RiskWarningRepository;
 import com.devpath.domain.learning.repository.recommendation.SupplementRecommendationRepository;
@@ -60,6 +66,10 @@ public class NodeRecommendationService {
     private final RecommendationHistoryRepository recommendationHistoryRepository;
     private final RiskWarningRepository riskWarningRepository;
     private final SupplementRecommendationRepository supplementRecommendationRepository;
+    private final LessonProgressRepository lessonProgressRepository;
+    private final TimestampNoteRepository timestampNoteRepository;
+    private final TilDraftRepository tilDraftRepository;
+    private final OcrResultRepository ocrResultRepository;
 
     @Transactional
     public List<NodeRecommendation> generateRecommendations(Long userId, Long roadmapId) {
@@ -90,17 +100,17 @@ public class NodeRecommendationService {
 
         Set<String> userSkills = new LinkedHashSet<>(userTechStackRepository.findTagNamesByUserId(userId));
         Set<Long> completedNodeIds = getCompletedNodeIds(userId, roadmapId);
+        LearningSignalSnapshot signals = buildLearningSignalSnapshot(userId);
         Map<Long, List<String>> requiredTagsByNodeId = getRequiredTagsByNodeId(roadmapNodes);
 
         List<RecommendationCandidate> candidates = roadmapNodes.stream()
                 .filter(node -> !completedNodeIds.contains(node.getNodeId()))
-                .map(node -> toCandidate(node, requiredTagsByNodeId.getOrDefault(node.getNodeId(), List.of()), userSkills))
-                .sorted(
-                        Comparator.comparing(RecommendationCandidate::coveragePercent).reversed()
-                                .thenComparing(RecommendationCandidate::missingCount)
-                                .thenComparing(candidate -> candidate.node().getSortOrder())
-                                .thenComparing(candidate -> candidate.node().getNodeId())
-                )
+                .map(node -> toCandidate(
+                        node,
+                        requiredTagsByNodeId.getOrDefault(node.getNodeId(), List.of()),
+                        userSkills,
+                        signals
+                ))
                 .toList();
 
         if (candidates.isEmpty()) {
@@ -108,25 +118,38 @@ public class NodeRecommendationService {
         }
 
         RecommendationCandidate remedialCandidate = candidates.stream()
-                .filter(candidate -> candidate.coveragePercent() < 100.0)
-                .filter(candidate -> candidate.coveragePercent() > 0.0 || !candidate.requiredTags().isEmpty())
+                .filter(candidate -> candidate.missingCount() > 0 || candidate.coveragePercent() < 100.0)
+                .sorted(remedialComparator())
                 .findFirst()
                 .orElse(null);
 
-        RecommendationCandidate advancedCandidate = candidates.stream()
-                .filter(candidate -> candidate.coveragePercent() >= 100.0)
+        RecommendationCandidate advancedCandidate = signals.isReadyForAdvanced()
+                ? candidates.stream()
+                .filter(candidate -> candidate.coveragePercent() >= 80.0)
                 .filter(candidate -> remedialCandidate == null
                         || !candidate.node().getNodeId().equals(remedialCandidate.node().getNodeId()))
+                .sorted(advancedComparator())
                 .findFirst()
-                .orElse(null);
+                .orElse(null)
+                : null;
 
-        RecommendationCandidate optionalCandidate = candidates.stream()
+        RecommendationCandidate optionalCandidate = signals.hasLearningFlow()
+                ? candidates.stream()
                 .filter(candidate -> remedialCandidate == null
                         || !candidate.node().getNodeId().equals(remedialCandidate.node().getNodeId()))
                 .filter(candidate -> advancedCandidate == null
                         || !candidate.node().getNodeId().equals(advancedCandidate.node().getNodeId()))
+                .sorted(optionalComparator())
                 .findFirst()
-                .orElse(null);
+                .orElse(null)
+                : null;
+
+        if (remedialCandidate == null && advancedCandidate == null && optionalCandidate == null) {
+            optionalCandidate = candidates.stream()
+                    .sorted(optionalComparator())
+                    .findFirst()
+                    .orElse(null);
+        }
 
         List<NodeRecommendation> recommendations = new ArrayList<>();
         LocalDateTime expiresAt = LocalDateTime.now().plusDays(7);
@@ -138,14 +161,14 @@ public class NodeRecommendationService {
                             .roadmap(roadmap)
                             .recommendedNode(remedialCandidate.node())
                             .recommendationType(NodeRecommendation.RecommendationType.REMEDIAL)
-                            .reason(buildRemedialReason(remedialCandidate))
+                            .reason(buildRemedialReason(remedialCandidate, signals))
                             .priority(1)
                             .expiresAt(expiresAt)
                             .build()
             );
 
             recommendations.add(recommendation);
-            saveGeneratedArtifacts(user, recommendation, remedialCandidate);
+            saveGeneratedArtifacts(user, recommendation, remedialCandidate, signals);
         }
 
         if (advancedCandidate != null) {
@@ -155,14 +178,14 @@ public class NodeRecommendationService {
                             .roadmap(roadmap)
                             .recommendedNode(advancedCandidate.node())
                             .recommendationType(NodeRecommendation.RecommendationType.ADVANCED)
-                            .reason(buildAdvancedReason(advancedCandidate))
+                            .reason(buildAdvancedReason(advancedCandidate, signals))
                             .priority(recommendations.size() + 1)
                             .expiresAt(expiresAt)
                             .build()
             );
 
             recommendations.add(recommendation);
-            saveGeneratedArtifacts(user, recommendation, advancedCandidate);
+            saveGeneratedArtifacts(user, recommendation, advancedCandidate, signals);
         } else if (optionalCandidate != null) {
             NodeRecommendation recommendation = nodeRecommendationRepository.save(
                     NodeRecommendation.builder()
@@ -170,14 +193,14 @@ public class NodeRecommendationService {
                             .roadmap(roadmap)
                             .recommendedNode(optionalCandidate.node())
                             .recommendationType(NodeRecommendation.RecommendationType.OPTIONAL)
-                            .reason(buildOptionalReason(optionalCandidate))
+                            .reason(buildOptionalReason(optionalCandidate, signals))
                             .priority(recommendations.size() + 1)
                             .expiresAt(expiresAt)
                             .build()
             );
 
             recommendations.add(recommendation);
-            saveGeneratedArtifacts(user, recommendation, optionalCandidate);
+            saveGeneratedArtifacts(user, recommendation, optionalCandidate, signals);
         }
 
         return recommendations;
@@ -372,6 +395,48 @@ public class NodeRecommendationService {
                 .orElse(Set.of());
     }
 
+    private LearningSignalSnapshot buildLearningSignalSnapshot(Long userId) {
+        List<LessonProgress> progresses = lessonProgressRepository.findAllByUserId(userId);
+        int trackedLessons = progresses.size();
+        int averageProgressPercent = trackedLessons == 0
+                ? 0
+                : (int) Math.round(progresses.stream()
+                .mapToInt(progress -> safeInt(progress.getProgressPercent()))
+                .average()
+                .orElse(0.0));
+        int totalProgressSeconds = progresses.stream()
+                .mapToInt(progress -> safeInt(progress.getProgressSeconds()))
+                .sum();
+        long noteCount = timestampNoteRepository.countByUserIdAndIsDeletedFalse(userId);
+        long tilCount = tilDraftRepository.countByUserIdAndIsDeletedFalse(userId);
+        long publishedTilCount = tilDraftRepository.countByUserIdAndStatusAndIsDeletedFalse(
+                userId,
+                TilDraftStatus.PUBLISHED
+        );
+        long ocrCount = ocrResultRepository.countByUserId(userId);
+
+        double learningMomentum = Math.min(
+                100.0,
+                (averageProgressPercent * 0.55)
+                        + Math.min(noteCount, 5) * 6
+                        + Math.min(ocrCount, 5) * 4
+                        + Math.min(tilCount, 3) * 7
+                        + Math.min(publishedTilCount, 2) * 10
+                        + Math.min(totalProgressSeconds / 120.0, 20.0)
+        );
+
+        return new LearningSignalSnapshot(
+                trackedLessons,
+                averageProgressPercent,
+                totalProgressSeconds,
+                noteCount,
+                tilCount,
+                publishedTilCount,
+                ocrCount,
+                learningMomentum
+        );
+    }
+
     private Map<Long, List<String>> getRequiredTagsByNodeId(List<RoadmapNode> roadmapNodes) {
         List<Long> nodeIds = roadmapNodes.stream()
                 .map(RoadmapNode::getNodeId)
@@ -394,7 +459,8 @@ public class NodeRecommendationService {
     private RecommendationCandidate toCandidate(
             RoadmapNode node,
             List<String> requiredTags,
-            Set<String> userSkills
+            Set<String> userSkills,
+            LearningSignalSnapshot signals
     ) {
         long matchedCount = requiredTags.stream()
                 .filter(userSkills::contains)
@@ -404,10 +470,51 @@ public class NodeRecommendationService {
         int missingCount = requiredCount - (int) matchedCount;
         double coveragePercent = requiredCount == 0 ? 100.0 : (matchedCount * 100.0) / requiredCount;
 
-        return new RecommendationCandidate(node, requiredTags, (int) matchedCount, missingCount, coveragePercent);
+        double remedialScore = ((100.0 - coveragePercent) * 0.60)
+                + ((100.0 - signals.learningMomentum()) * 0.25)
+                + (missingCount * 5.0);
+        double advancedScore = (coveragePercent * 0.60)
+                + (signals.learningMomentum() * 0.40)
+                - (missingCount * 4.0);
+        double optionalScore = (coveragePercent * 0.70)
+                + (signals.learningMomentum() * 0.30)
+                - (missingCount * 2.0);
+
+        return new RecommendationCandidate(
+                node,
+                requiredTags,
+                (int) matchedCount,
+                missingCount,
+                coveragePercent,
+                remedialScore,
+                advancedScore,
+                optionalScore
+        );
     }
 
-    private String buildRemedialReason(RecommendationCandidate candidate) {
+    private Comparator<RecommendationCandidate> remedialComparator() {
+        return Comparator.comparingDouble(RecommendationCandidate::remedialScore).reversed()
+                .thenComparing(Comparator.comparingInt(RecommendationCandidate::missingCount).reversed())
+                .thenComparingDouble(RecommendationCandidate::coveragePercent)
+                .thenComparing(candidate -> candidate.node().getSortOrder())
+                .thenComparing(candidate -> candidate.node().getNodeId());
+    }
+
+    private Comparator<RecommendationCandidate> advancedComparator() {
+        return Comparator.comparingDouble(RecommendationCandidate::advancedScore).reversed()
+                .thenComparing(Comparator.comparingDouble(RecommendationCandidate::coveragePercent).reversed())
+                .thenComparing(candidate -> candidate.node().getSortOrder())
+                .thenComparing(candidate -> candidate.node().getNodeId());
+    }
+
+    private Comparator<RecommendationCandidate> optionalComparator() {
+        return Comparator.comparingDouble(RecommendationCandidate::optionalScore).reversed()
+                .thenComparing(Comparator.comparingDouble(RecommendationCandidate::coveragePercent).reversed())
+                .thenComparing(candidate -> candidate.node().getSortOrder())
+                .thenComparing(candidate -> candidate.node().getNodeId());
+    }
+
+    private String buildRemedialReason(RecommendationCandidate candidate, LearningSignalSnapshot signals) {
         if (candidate.requiredTags().isEmpty()) {
             return "기초 진입 노드라서 바로 시작해도 좋습니다.";
         }
@@ -417,7 +524,7 @@ public class NodeRecommendationService {
                 + "개를 보유해 부족한 역량을 보완하기 좋습니다.";
     }
 
-    private String buildAdvancedReason(RecommendationCandidate candidate) {
+    private String buildAdvancedReason(RecommendationCandidate candidate, LearningSignalSnapshot signals) {
         if (candidate.requiredTags().isEmpty()) {
             return "선행 태그 없이 바로 시작할 수 있는 노드입니다.";
         }
@@ -425,7 +532,7 @@ public class NodeRecommendationService {
         return "현재 보유 태그로 바로 학습할 수 있는 다음 단계 노드입니다.";
     }
 
-    private String buildOptionalReason(RecommendationCandidate candidate) {
+    private String buildOptionalReason(RecommendationCandidate candidate, LearningSignalSnapshot signals) {
         return "현재 태그와 일부 맞아 추가 학습 후보로 추천합니다.";
     }
 
@@ -478,7 +585,12 @@ public class NodeRecommendationService {
                 .orElse(null);
     }
 
-    private void saveGeneratedArtifacts(User user, NodeRecommendation recommendation, RecommendationCandidate candidate) {
+    private void saveGeneratedArtifacts(
+            User user,
+            NodeRecommendation recommendation,
+            RecommendationCandidate candidate,
+            LearningSignalSnapshot signals
+    ) {
         supplementRecommendationRepository.save(
                 SupplementRecommendation.builder()
                         .user(user)
@@ -500,7 +612,7 @@ public class NodeRecommendationService {
                 recommendation.getReason()
         );
 
-        createRiskWarningsIfNeeded(user, candidate);
+        createRiskWarningsIfNeeded(user, candidate, signals);
     }
 
     private void saveHistory(
@@ -525,7 +637,24 @@ public class NodeRecommendationService {
         );
     }
 
-    private void createRiskWarningsIfNeeded(User user, RecommendationCandidate candidate) {
+    private void createRiskWarningsIfNeeded(
+            User user,
+            RecommendationCandidate candidate,
+            LearningSignalSnapshot signals
+    ) {
+        if (signals.averageProgressPercent() < 30 && candidate.missingCount() > 0) {
+            riskWarningRepository.save(
+                    RiskWarning.builder()
+                            .user(user)
+                            .roadmapNode(candidate.node())
+                            .warningType("LOW_LEARNING_PROGRESS")
+                            .riskLevel("HIGH")
+                            .message("Average lesson progress is still low, so this node may feel difficult right now.")
+                            .build()
+            );
+            return;
+        }
+
         if (candidate.missingCount() > 0 && candidate.coveragePercent() < 50.0) {
             riskWarningRepository.save(
                     RiskWarning.builder()
@@ -577,12 +706,47 @@ public class NodeRecommendationService {
                 });
     }
 
+    private int safeInt(Integer value) {
+        return value == null ? 0 : value;
+    }
+
     private record RecommendationCandidate(
             RoadmapNode node,
             List<String> requiredTags,
             int matchedCount,
             int missingCount,
-            double coveragePercent
+            double coveragePercent,
+            double remedialScore,
+            double advancedScore,
+            double optionalScore
     ) {
+    }
+
+    private record LearningSignalSnapshot(
+            int trackedLessons,
+            int averageProgressPercent,
+            int totalProgressSeconds,
+            long noteCount,
+            long tilCount,
+            long publishedTilCount,
+            long ocrCount,
+            double learningMomentum
+    ) {
+        boolean isReadyForAdvanced() {
+            return learningMomentum >= 55.0
+                    && averageProgressPercent >= 45
+                    && noteCount > 0
+                    && (ocrCount > 0 || tilCount > 0);
+        }
+
+        boolean hasLearningFlow() {
+            return trackedLessons > 0
+                    && (totalProgressSeconds >= 300 || noteCount > 0 || ocrCount > 0 || tilCount > 0);
+        }
+
+        String describe() {
+            return "avg progress " + averageProgressPercent + "%, notes " + noteCount
+                    + ", OCR " + ocrCount + ", TIL " + tilCount + ", published TIL " + publishedTilCount;
+        }
     }
 }

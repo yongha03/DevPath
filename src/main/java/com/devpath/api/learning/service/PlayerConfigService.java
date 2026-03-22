@@ -36,6 +36,14 @@ public class PlayerConfigService {
         return PlayerConfigResponse.from(progress);
     }
 
+    @Transactional
+    public PlayerConfigResponse updatePipMode(Long userId, Long lessonId,
+            PlayerConfigRequest.UpdatePipMode request) {
+        LessonProgress progress = getOrCreateLessonProgress(userId, lessonId);
+        progress.updatePipMode(request.getPipEnabled());
+        return PlayerConfigResponse.from(progress);
+    }
+
     private LessonProgress getOrCreateLessonProgress(Long userId, Long lessonId) {
         return lessonProgressRepository.findByUserIdAndLessonLessonId(userId, lessonId)
                 .orElseGet(() -> {

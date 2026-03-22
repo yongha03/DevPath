@@ -88,6 +88,7 @@ class LearningRecommendationSwaggerFinalInspectionIntegrationTest {
 
     JsonNode playerConfig = getAsLearner("/api/learning/player/{lessonId}/config", lessonId);
     assertThat(playerConfig.get("defaultPlaybackRate").asDouble()).isEqualTo(1.0D);
+    assertThat(playerConfig.get("pipEnabled").asBoolean()).isFalse();
 
     JsonNode updatedPlayerConfig =
         putAsLearner(
@@ -95,6 +96,13 @@ class LearningRecommendationSwaggerFinalInspectionIntegrationTest {
             Map.of("defaultPlaybackRate", 1.25D),
             lessonId);
     assertThat(updatedPlayerConfig.get("defaultPlaybackRate").asDouble()).isEqualTo(1.25D);
+
+    JsonNode updatedPipConfig =
+        patchAsLearner(
+            "/api/learning/player/{lessonId}/config/pip",
+            Map.of("pipEnabled", true),
+            lessonId);
+    assertThat(updatedPipConfig.get("pipEnabled").asBoolean()).isTrue();
 
     JsonNode createdNote =
         postAsLearner(
@@ -131,7 +139,20 @@ class LearningRecommendationSwaggerFinalInspectionIntegrationTest {
     assertThat(firstMaterial.get("materialType").asText()).isNotBlank();
     assertThat(firstMaterial.get("originalFileName").asText()).isNotBlank();
     assertThat(firstMaterial.get("materialUrl").asText()).isNotBlank();
+    assertThat(firstMaterial.get("downloadPath").asText()).contains("/download");
     assertThat(firstMaterial.get("displayOrder").asInt()).isGreaterThanOrEqualTo(0);
+
+    mockMvc
+        .perform(
+            get(
+                    "/api/learning/lessons/{lessonId}/materials/{materialId}/download",
+                    lessonId,
+                    firstMaterial.get("materialId").asLong())
+                .with(authentication(learnerAuthentication())))
+        .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isFound())
+        .andExpect(
+            org.springframework.test.web.servlet.result.MockMvcResultMatchers.header()
+                .string("Location", firstMaterial.get("materialUrl").asText()));
 
     JsonNode createdTilDraft =
         postAsLearner(
@@ -170,7 +191,7 @@ class LearningRecommendationSwaggerFinalInspectionIntegrationTest {
                 "platform", "MOCK",
                 "title", "Spring Security 학습 정리",
                 "content", "# Spring Security\n인증과 인가를 학습했다.",
-                "tags", "spring-security,backend,til",
+                "tags", List.of("spring-security", "backend", "til"),
                 "draft", true,
                 "thumbnailUrl", "https://cdn.devpath.ai/images/spring-security-cover.png"),
             HttpStatus.CREATED,

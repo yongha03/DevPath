@@ -56,6 +56,9 @@ public class LessonProgress {
     @Column(name = "default_playback_rate", nullable = false)
     private Double defaultPlaybackRate = 1.0;
 
+    @Column(name = "is_pip_enabled", nullable = false)
+    private Boolean pipEnabled = false;
+
     // 강의를 100% 완료했는지 여부를 나타내는 플래그다.
     @Column(name = "is_completed", nullable = false)
     private Boolean isCompleted = false;
@@ -81,6 +84,7 @@ public class LessonProgress {
         this.progressPercent = 0;
         this.progressSeconds = 0;
         this.defaultPlaybackRate = 1.0;
+        this.pipEnabled = false;
         this.isCompleted = false;
         this.lastWatchedAt = LocalDateTime.now();
     }
@@ -98,5 +102,9 @@ public class LessonProgress {
     // 학습자가 선택한 재생 속도를 저장한다.
     public void updatePlaybackRate(Double defaultPlaybackRate) {
         this.defaultPlaybackRate = defaultPlaybackRate;
+    }
+
+    public void updatePipMode(Boolean pipEnabled) {
+        this.pipEnabled = pipEnabled == null ? false : pipEnabled;
     }
 }

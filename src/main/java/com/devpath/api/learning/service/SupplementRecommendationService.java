@@ -50,10 +50,12 @@ public class SupplementRecommendationService {
 
         if (status != null) {
             recommendations = supplementRecommendationRepository
-                    .findByUserIdAndStatusOrderByCreatedAtDesc(userId, status);
+                    .findAllByUserIdOrderByCreatedAtDesc(userId).stream()
+                    .filter(recommendation -> recommendation.getStatus() == status)
+                    .collect(Collectors.toList());
         } else {
             recommendations = supplementRecommendationRepository
-                    .findByUserIdOrderByCreatedAtDesc(userId);
+                    .findAllByUserIdOrderByCreatedAtDesc(userId);
         }
 
         return recommendations.stream()

@@ -1,5 +1,7 @@
 package com.devpath.api.learning.controller;
 
+import com.devpath.api.learning.dto.TilPublishRequest;
+import com.devpath.api.learning.dto.TilPublishResponse;
 import com.devpath.api.learning.dto.TilRequest;
 import com.devpath.api.learning.dto.TilResponse;
 import com.devpath.api.learning.service.TilService;
@@ -21,7 +23,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "강의 학습 - TIL", description = "TIL 초안 저장, 노트 변환, 조회 API")
+@Tag(name = "강의 학습 - TIL", description = "TIL 초안 저장, 노트 변환, 조회, 외부 블로그 발행 API")
 @RestController
 @RequestMapping("/api/learning/til")
 @RequiredArgsConstructor
@@ -76,14 +78,17 @@ public class TilController {
                 .body(ApiResponse.ok(tilService.convertFromNotes(userId, request)));
     }
 
-    @Operation(summary = "TIL 자동 목차화", description = "TIL 본문의 마크다운 헤더를 분석해 목차를 자동 생성합니다.")
-    @Operation(summary = "외부 블로그 발행", description = "작성한 TIL을 외부 블로그에 발행합니다. (현재 stub 구현)")
+    // 기존 request body 없는 publish API를 body 기반 계약으로 변경한다.
+    // 중복 @Operation 을 제거하고 외부 블로그 발행 설명만 유지한다.
+    @Operation(summary = "외부 블로그 발행", description = "작성한 TIL을 외부 블로그에 발행합니다.")
     @PostMapping("/{tilId}/publish")
-    public ResponseEntity<ApiResponse<TilResponse>> publishToExternalBlog(
-            @AuthenticationPrincipal Long userId,
-            @PathVariable Long tilId
+    public ResponseEntity<ApiResponse<TilPublishResponse>> publishToExternalBlog(
+            @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
+            @Parameter(description = "TIL ID", example = "1") @PathVariable Long tilId,
+            @Valid @RequestBody TilPublishRequest request
     ) {
-        return ResponseEntity.ok(ApiResponse.ok(tilService.publishToExternalBlog(userId, tilId)));
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.ok(tilService.publishToExternalBlog(userId, tilId, request)));
     }
 
     @Operation(summary = "TIL 자동 목차화", description = "TIL 본문의 마크다운 헤더(#, ##, ###)를 파싱하여 목차를 자동 생성합니다.")

@@ -1,16 +1,14 @@
-package com.devpath.api.learner.dto;
+package com.devpath.api.recommendation.dto;
 
 import com.devpath.domain.roadmap.entity.NodeRecommendation;
-import com.devpath.domain.roadmap.entity.RecommendationStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.stream.Collectors;
 
 public class NodeRecommendationDto {
 
@@ -18,36 +16,36 @@ public class NodeRecommendationDto {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    @Schema(description = "노드 추천 응답")
+    @Schema(description = "Recommendation item")
     public static class RecommendationResponse {
-        @Schema(description = "추천 ID")
+        @Schema(description = "Recommendation ID")
         private Long recommendationId;
 
-        @Schema(description = "추천된 노드 ID")
+        @Schema(description = "Recommended node ID")
         private Long nodeId;
 
-        @Schema(description = "노드 제목")
+        @Schema(description = "Recommended node title")
         private String nodeTitle;
 
-        @Schema(description = "추천 타입", example = "REMEDIAL")
+        @Schema(description = "Recommendation type", example = "REMEDIAL")
         private String recommendationType;
 
-        @Schema(description = "추천 사유")
+        @Schema(description = "Recommendation reason")
         private String reason;
 
-        @Schema(description = "우선순위 (낮을수록 중요)")
+        @Schema(description = "Priority")
         private Integer priority;
 
-        @Schema(description = "추천 상태", example = "PENDING")
+        @Schema(description = "Status", example = "PENDING")
         private String status;
 
-        @Schema(description = "생성일시")
+        @Schema(description = "Created at")
         private LocalDateTime createdAt;
 
-        @Schema(description = "만료일시")
+        @Schema(description = "Expires at")
         private LocalDateTime expiresAt;
 
-        @Schema(description = "만료 여부")
+        @Schema(description = "Expired flag")
         private Boolean isExpired;
 
         public static RecommendationResponse from(NodeRecommendation recommendation) {
@@ -70,27 +68,27 @@ public class NodeRecommendationDto {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    @Schema(description = "로드맵 전체 추천 목록 응답")
+    @Schema(description = "Roadmap recommendation list response")
     public static class RoadmapRecommendationsResponse {
-        @Schema(description = "로드맵 ID")
+        @Schema(description = "Roadmap ID")
         private Long roadmapId;
 
-        @Schema(description = "로드맵 제목")
+        @Schema(description = "Roadmap title")
         private String roadmapTitle;
 
-        @Schema(description = "전체 추천 수")
+        @Schema(description = "Total recommendation count")
         private Integer totalRecommendations;
 
-        @Schema(description = "PENDING 상태 추천 수")
+        @Schema(description = "Pending recommendation count")
         private Integer pendingCount;
 
-        @Schema(description = "ACCEPTED 상태 추천 수")
+        @Schema(description = "Accepted recommendation count")
         private Integer acceptedCount;
 
-        @Schema(description = "REJECTED 상태 추천 수")
+        @Schema(description = "Rejected recommendation count")
         private Integer rejectedCount;
 
-        @Schema(description = "추천 목록")
+        @Schema(description = "Recommendations")
         private List<RecommendationResponse> recommendations;
     }
 
@@ -98,15 +96,15 @@ public class NodeRecommendationDto {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    @Schema(description = "추천 생성 응답")
+    @Schema(description = "Recommendation generation response")
     public static class GenerateRecommendationsResponse {
-        @Schema(description = "로드맵 ID")
+        @Schema(description = "Roadmap ID")
         private Long roadmapId;
 
-        @Schema(description = "생성된 추천 수")
+        @Schema(description = "Generated recommendation count")
         private Integer generatedCount;
 
-        @Schema(description = "생성된 추천 목록")
+        @Schema(description = "Generated recommendations")
         private List<RecommendationResponse> recommendations;
 
         public static GenerateRecommendationsResponse from(Long roadmapId, List<NodeRecommendation> recommendations) {
@@ -126,21 +124,21 @@ public class NodeRecommendationDto {
     @Builder
     @NoArgsConstructor
     @AllArgsConstructor
-    @Schema(description = "추천 처리 응답")
+    @Schema(description = "Recommendation process response")
     public static class ProcessRecommendationResponse {
-        @Schema(description = "추천 ID")
+        @Schema(description = "Recommendation ID")
         private Long recommendationId;
 
-        @Schema(description = "처리 후 상태", example = "ACCEPTED")
+        @Schema(description = "Status", example = "ACCEPTED")
         private String status;
 
-        @Schema(description = "노드 ID")
+        @Schema(description = "Node ID")
         private Long nodeId;
 
-        @Schema(description = "노드 제목")
+        @Schema(description = "Node title")
         private String nodeTitle;
 
-        @Schema(description = "처리 메시지")
+        @Schema(description = "Message")
         private String message;
 
         public static ProcessRecommendationResponse from(NodeRecommendation recommendation, String message) {

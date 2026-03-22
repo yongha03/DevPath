@@ -77,7 +77,7 @@ import org.springframework.context.annotation.Import;
         CourseWishlistService.class,
         CourseEnrollmentService.class,
         SkillCheckService.class,
-        NodeRecommendationService.class,
+        com.devpath.api.recommendation.service.NodeRecommendationService.class,
         CustomRoadmapCopyService.class,
         JpaOfficialRoadmapReader.class,
         TagValidationService.class
@@ -88,7 +88,7 @@ class LearnerFlowIntegrationTest {
     @Autowired private CourseWishlistService courseWishlistService;
     @Autowired private CourseEnrollmentService courseEnrollmentService;
     @Autowired private SkillCheckService skillCheckService;
-    @Autowired private NodeRecommendationService nodeRecommendationService;
+    @Autowired private com.devpath.api.recommendation.service.NodeRecommendationService nodeRecommendationService;
     @Autowired private CustomRoadmapCopyService customRoadmapCopyService;
 
     @Autowired private UserRepository userRepository;

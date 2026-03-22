@@ -20,4 +20,14 @@ public class PlayerConfigRequest {
         @Schema(description = "기본 재생 속도", example = "1.25")
         private Double defaultPlaybackRate;
     }
+
+    @Getter
+    @NoArgsConstructor
+    @Schema(description = "PIP 모드 설정 요청 DTO")
+    public static class UpdatePipMode {
+
+        @NotNull(message = "PIP 모드 여부는 필수입니다.")
+        @Schema(description = "PIP 모드 활성화 여부", example = "true")
+        private Boolean pipEnabled;
+    }
 }

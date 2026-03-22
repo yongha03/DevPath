@@ -1,7 +1,7 @@
-package com.devpath.api.learner.controller;
+package com.devpath.api.recommendation.controller;
 
-import com.devpath.api.learner.dto.NodeRecommendationDto;
-import com.devpath.api.learner.service.NodeRecommendationService;
+import com.devpath.api.recommendation.dto.NodeRecommendationDto;
+import com.devpath.api.recommendation.service.NodeRecommendationService;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
 import com.devpath.common.response.ApiResponse;
@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/me")
 @RequiredArgsConstructor
-@Tag(name = "학습자 노드 추천", description = "AI 기반 로드맵 노드 추천 관리 API")
+@Tag(name = "추천 보강 노드", description = "로드맵 보강 노드 추천 관리 API")
 public class NodeRecommendationController {
 
     private final NodeRecommendationService nodeRecommendationService;
@@ -36,12 +36,12 @@ public class NodeRecommendationController {
 
     @PostMapping("/roadmaps/{roadmapId}/recommendations/init")
     @Operation(
-            summary = "AI 추천 노드 생성",
-            description = "진단 퀴즈 결과를 바탕으로 AI가 추천하는 보강/심화 노드를 생성합니다. 기존 PENDING 상태 추천은 만료 처리하고 변경 이력과 리스크 경고를 함께 기록합니다."
+            summary = "보강 노드 후보 생성",
+            description = "학습 진행, 노트, OCR, TIL 신호와 태그 적합도를 함께 반영해 추천 후보를 생성합니다."
     )
     public ResponseEntity<ApiResponse<NodeRecommendationDto.GenerateRecommendationsResponse>> generateRecommendations(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
-            @Parameter(description = "로드맵 ID") @PathVariable Long roadmapId
+            @Parameter(description = "Roadmap ID") @PathVariable Long roadmapId
     ) {
         List<NodeRecommendation> recommendations = nodeRecommendationService.generateRecommendations(userId, roadmapId);
         NodeRecommendationDto.GenerateRecommendationsResponse response =
@@ -52,13 +52,13 @@ public class NodeRecommendationController {
 
     @GetMapping("/roadmaps/{roadmapId}/recommendations")
     @Operation(
-            summary = "로드맵 추천 목록 조회",
-            description = "특정 로드맵의 추천 노드 목록을 조회합니다. pendingOnly=true면 PENDING 상태 추천만 반환합니다."
+            summary = "보강 노드 추천 목록 조회",
+            description = "로드맵별 추천 목록을 조회합니다. pendingOnly=true 이면 PENDING 상태만 반환합니다."
     )
     public ResponseEntity<ApiResponse<NodeRecommendationDto.RoadmapRecommendationsResponse>> getRecommendations(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
-            @Parameter(description = "로드맵 ID") @PathVariable Long roadmapId,
-            @Parameter(description = "PENDING 상태만 조회 여부") @RequestParam(defaultValue = "true") Boolean pendingOnly
+            @Parameter(description = "Roadmap ID") @PathVariable Long roadmapId,
+            @Parameter(description = "Pending 상태만 조회할지 여부") @RequestParam(defaultValue = "true") Boolean pendingOnly
     ) {
         nodeRecommendationService.processExpiredRecommendations(userId, roadmapId);
 
@@ -70,15 +70,13 @@ public class NodeRecommendationController {
                 : nodeRecommendationService.getRecommendations(userId, roadmapId);
 
         long pendingCount = recommendations.stream()
-                .filter(r -> r.getStatus() == RecommendationStatus.PENDING)
+                .filter(recommendation -> recommendation.getStatus() == RecommendationStatus.PENDING)
                 .count();
-
         long acceptedCount = recommendations.stream()
-                .filter(r -> r.getStatus() == RecommendationStatus.ACCEPTED)
+                .filter(recommendation -> recommendation.getStatus() == RecommendationStatus.ACCEPTED)
                 .count();
-
         long rejectedCount = recommendations.stream()
-                .filter(r -> r.getStatus() == RecommendationStatus.REJECTED)
+                .filter(recommendation -> recommendation.getStatus() == RecommendationStatus.REJECTED)
                 .count();
 
         NodeRecommendationDto.RoadmapRecommendationsResponse response =
@@ -100,62 +98,50 @@ public class NodeRecommendationController {
     }
 
     @PatchMapping("/recommendations/{recommendationId}/accept")
-    @Operation(
-            summary = "추천 수락",
-            description = "AI가 추천한 노드를 수락합니다. 수락 시 해당 노드가 사용자의 커스텀 로드맵에 추가되고 상태 변경 이력이 기록됩니다."
-    )
+    @Operation(summary = "추천 수락", description = "추천 노드를 수락해 커스텀 로드맵에 반영합니다.")
     public ResponseEntity<ApiResponse<NodeRecommendationDto.ProcessRecommendationResponse>> acceptRecommendation(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
-            @Parameter(description = "추천 ID") @PathVariable Long recommendationId
+            @Parameter(description = "Recommendation ID") @PathVariable Long recommendationId
     ) {
         NodeRecommendation recommendation = nodeRecommendationService.acceptRecommendation(userId, recommendationId);
 
-        NodeRecommendationDto.ProcessRecommendationResponse response =
+        return ResponseEntity.ok(ApiResponse.ok(
                 NodeRecommendationDto.ProcessRecommendationResponse.from(
                         recommendation,
-                        "추천 노드가 로드맵에 추가되었습니다."
-                );
-
-        return ResponseEntity.ok(ApiResponse.ok(response));
+                        "Recommended node added to your roadmap."
+                )
+        ));
     }
 
     @PatchMapping("/recommendations/{recommendationId}/reject")
-    @Operation(
-            summary = "추천 거절",
-            description = "AI가 추천한 노드를 거절합니다. 거절된 추천은 로드맵에 추가되지 않고 상태 변경 이력이 기록됩니다."
-    )
+    @Operation(summary = "추천 거절", description = "추천 노드를 거절합니다.")
     public ResponseEntity<ApiResponse<NodeRecommendationDto.ProcessRecommendationResponse>> rejectRecommendation(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
-            @Parameter(description = "추천 ID") @PathVariable Long recommendationId
+            @Parameter(description = "Recommendation ID") @PathVariable Long recommendationId
     ) {
         NodeRecommendation recommendation = nodeRecommendationService.rejectRecommendation(userId, recommendationId);
 
-        NodeRecommendationDto.ProcessRecommendationResponse response =
+        return ResponseEntity.ok(ApiResponse.ok(
                 NodeRecommendationDto.ProcessRecommendationResponse.from(
                         recommendation,
-                        "추천을 거절했습니다."
-                );
-
-        return ResponseEntity.ok(ApiResponse.ok(response));
+                        "Recommendation rejected."
+                )
+        ));
     }
 
     @PatchMapping("/recommendations/{recommendationId}/expire")
-    @Operation(
-            summary = "추천 만료 처리",
-            description = "추천을 수동으로 만료 처리하고 상태 변경 이력을 기록합니다."
-    )
+    @Operation(summary = "추천 만료 처리", description = "추천 노드를 수동으로 만료 처리합니다.")
     public ResponseEntity<ApiResponse<NodeRecommendationDto.ProcessRecommendationResponse>> expireRecommendation(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
-            @Parameter(description = "추천 ID") @PathVariable Long recommendationId
+            @Parameter(description = "Recommendation ID") @PathVariable Long recommendationId
     ) {
         NodeRecommendation recommendation = nodeRecommendationService.expireRecommendation(userId, recommendationId);
 
-        NodeRecommendationDto.ProcessRecommendationResponse response =
+        return ResponseEntity.ok(ApiResponse.ok(
                 NodeRecommendationDto.ProcessRecommendationResponse.from(
                         recommendation,
-                        "추천을 만료 처리했습니다."
-                );
-
-        return ResponseEntity.ok(ApiResponse.ok(response));
+                        "Recommendation expired."
+                )
+        ));
     }
 }

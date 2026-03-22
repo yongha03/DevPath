@@ -12,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -28,7 +29,7 @@ public class PlayerConfigController {
 
     @Operation(
             summary = "플레이어 설정 조회",
-            description = "저장된 재생 속도(defaultPlaybackRate) 등 플레이어 설정을 조회합니다."
+            description = "저장한 재생 속도와 PIP 모드 설정을 조회합니다."
     )
     @GetMapping("/{lessonId}/config")
     public ResponseEntity<ApiResponse<PlayerConfigResponse>> getPlayerConfig(
@@ -40,7 +41,7 @@ public class PlayerConfigController {
 
     @Operation(
             summary = "재생 속도 저장",
-            description = "학습자가 설정한 재생 속도를 저장합니다. defaultPlaybackRate는 0.5 ~ 2.0 범위를 권장합니다."
+            description = "사용자가 설정한 기본 재생 속도를 저장합니다."
     )
     @PutMapping("/{lessonId}/config")
     public ResponseEntity<ApiResponse<PlayerConfigResponse>> updatePlaybackRate(
@@ -49,5 +50,18 @@ public class PlayerConfigController {
             @Valid @RequestBody PlayerConfigRequest.UpdatePlaybackRate request
     ) {
         return ResponseEntity.ok(ApiResponse.ok(playerConfigService.updatePlaybackRate(userId, lessonId, request)));
+    }
+
+    @Operation(
+            summary = "PIP 모드 설정 저장",
+            description = "강의 플레이어의 PIP 모드 활성화 여부를 저장합니다."
+    )
+    @PatchMapping("/{lessonId}/config/pip")
+    public ResponseEntity<ApiResponse<PlayerConfigResponse>> updatePipMode(
+            @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
+            @Parameter(description = "레슨 ID", example = "10") @PathVariable Long lessonId,
+            @Valid @RequestBody PlayerConfigRequest.UpdatePipMode request
+    ) {
+        return ResponseEntity.ok(ApiResponse.ok(playerConfigService.updatePipMode(userId, lessonId, request)));
     }
 }

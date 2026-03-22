@@ -23,6 +23,9 @@ public class LessonProgressResponse {
     @Schema(description = "기본 재생 속도", example = "1.25")
     private Double defaultPlaybackRate;
 
+    @Schema(description = "PIP 모드 활성화 여부", example = "false")
+    private Boolean pipEnabled;
+
     @Schema(description = "수강 완료 여부", example = "false")
     private Boolean isCompleted;
 
@@ -35,6 +38,7 @@ public class LessonProgressResponse {
                 .progressPercent(progress.getProgressPercent())
                 .progressSeconds(progress.getProgressSeconds())
                 .defaultPlaybackRate(progress.getDefaultPlaybackRate())
+                .pipEnabled(progress.getPipEnabled())
                 .isCompleted(progress.getIsCompleted())
                 .lastWatchedAt(progress.getLastWatchedAt())
                 .build();

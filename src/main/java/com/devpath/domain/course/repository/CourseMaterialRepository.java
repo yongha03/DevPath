@@ -17,5 +17,7 @@ public interface CourseMaterialRepository extends JpaRepository<CourseMaterial, 
   Optional<CourseMaterial> findByMaterialIdAndLessonSectionCourseInstructorId(
       Long materialId, Long instructorId);
 
+  Optional<CourseMaterial> findByMaterialIdAndLessonLessonId(Long materialId, Long lessonId);
+
   void deleteAllByLessonSectionCourseCourseId(Long courseId);
 }
