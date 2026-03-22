@@ -5,13 +5,20 @@ import com.devpath.api.learning.dto.LessonProgressResponse;
 import com.devpath.api.learning.service.LessonProgressService;
 import com.devpath.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "강의 학습 - 진도율", description = "강의 세션 시작 및 진도율 저장/조회 API")
 @RestController
@@ -25,6 +32,7 @@ public class LessonProgressController {
     @PostMapping("/{lessonId}/start")
     public ResponseEntity<ApiResponse<LessonProgressResponse>> startSession(
             @AuthenticationPrincipal Long userId,
+            @Parameter(description = "레슨 ID", example = "10")
             @PathVariable Long lessonId
     ) {
         return ResponseEntity.status(HttpStatus.OK)
@@ -35,16 +43,18 @@ public class LessonProgressController {
     @PutMapping("/{lessonId}/progress")
     public ResponseEntity<ApiResponse<LessonProgressResponse>> saveProgress(
             @AuthenticationPrincipal Long userId,
+            @Parameter(description = "레슨 ID", example = "10")
             @PathVariable Long lessonId,
             @Valid @RequestBody LessonProgressRequest.SaveProgress request
     ) {
         return ResponseEntity.ok(ApiResponse.ok(lessonProgressService.saveProgress(userId, lessonId, request)));
     }
 
-    @Operation(summary = "진도율 조회", description = "현재 저장된 진도율과 재생 위치를 조회합니다.")
+    @Operation(summary = "진도율 조회", description = "현재 저장된 진도율과 재생 위치를 조회합니다. progressSeconds는 항상 함께 내려갑니다.")
     @GetMapping("/{lessonId}/progress")
     public ResponseEntity<ApiResponse<LessonProgressResponse>> getProgress(
             @AuthenticationPrincipal Long userId,
+            @Parameter(description = "레슨 ID", example = "10")
             @PathVariable Long lessonId
     ) {
         return ResponseEntity.ok(ApiResponse.ok(lessonProgressService.getProgress(userId, lessonId)));

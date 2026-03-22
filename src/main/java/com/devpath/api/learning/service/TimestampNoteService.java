@@ -24,10 +24,8 @@ public class TimestampNoteService {
     private final LessonRepository lessonRepository;
     private final UserRepository userRepository;
 
-    // 타임스탬프 노트 저장
     @Transactional
-    public TimestampNoteResponse createNote(Long userId, Long lessonId,
-            TimestampNoteRequest.Create request) {
+    public TimestampNoteResponse createNote(Long userId, Long lessonId, TimestampNoteRequest.Create request) {
         Lesson lesson = lessonRepository.findById(lessonId)
                 .orElseThrow(() -> new CustomException(ErrorCode.LESSON_NOT_FOUND));
         User user = userRepository.findById(userId)
@@ -36,14 +34,13 @@ public class TimestampNoteService {
         TimestampNote note = TimestampNote.builder()
                 .user(user)
                 .lesson(lesson)
-                .timestampSecond(request.getTimestampSecond())
+                .timestampSecond(normalizeTimestampSecond(request.getTimestampSecond()))
                 .content(request.getContent())
                 .build();
 
         return TimestampNoteResponse.from(timestampNoteRepository.save(note));
     }
 
-    // 특정 레슨의 타임스탬프 노트 목록 조회 (타임스탬프 순)
     @Transactional(readOnly = true)
     public List<TimestampNoteResponse> getNotes(Long userId, Long lessonId) {
         return timestampNoteRepository
@@ -53,20 +50,21 @@ public class TimestampNoteService {
                 .collect(Collectors.toList());
     }
 
-    // 타임스탬프 노트 수정
     @Transactional
-    public TimestampNoteResponse updateNote(Long userId, Long lessonId, Long noteId,
-            TimestampNoteRequest.Update request) {
+    public TimestampNoteResponse updateNote(Long userId, Long lessonId, Long noteId, TimestampNoteRequest.Update request) {
         TimestampNote note = timestampNoteRepository
                 .findByIdAndUserIdAndIsDeletedFalse(noteId, userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.TIMESTAMP_NOTE_NOT_FOUND));
 
-        note.updateContent(request.getTimestampSecond(), request.getContent());
+        if (!note.getLesson().getLessonId().equals(lessonId)) {
+            throw new CustomException(ErrorCode.TIMESTAMP_NOTE_NOT_FOUND);
+        }
+
+        note.updateContent(normalizeTimestampSecond(request.getTimestampSecond()), request.getContent());
 
         return TimestampNoteResponse.from(note);
     }
 
-    // 타임스탬프 노트 삭제 (soft delete)
     @Transactional
     public void deleteNote(Long userId, Long noteId) {
         TimestampNote note = timestampNoteRepository
@@ -74,5 +72,12 @@ public class TimestampNoteService {
                 .orElseThrow(() -> new CustomException(ErrorCode.TIMESTAMP_NOTE_NOT_FOUND));
 
         note.delete();
+    }
+
+    private Integer normalizeTimestampSecond(Integer timestampSecond) {
+        if (timestampSecond == null || timestampSecond < 0) {
+            return 0;
+        }
+        return timestampSecond;
     }
 }
