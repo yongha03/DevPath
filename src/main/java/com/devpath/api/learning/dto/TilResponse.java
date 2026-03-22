@@ -43,17 +43,15 @@ public class TilResponse {
     private LocalDateTime updatedAt;
 
     public static TilResponse from(TilDraft til) {
+        String toc = til.getTableOfContents() == null ? "[]" : til.getTableOfContents();
+
         return TilResponse.builder()
                 .tilId(til.getId())
                 .lessonId(til.getLesson() != null ? til.getLesson().getLessonId() : null)
                 .title(til.getTitle())
                 .content(til.getContent())
-                .tableOfContents(til.getTableOfContents() == null ? "[]" : til.getTableOfContents())
-                .hasTableOfContents(
-                        til.getTableOfContents() != null
-                                && !til.getTableOfContents().isBlank()
-                                && !"[]".equals(til.getTableOfContents())
-                )
+                .tableOfContents(toc)
+                .hasTableOfContents(!"[]".equals(toc) && !toc.isBlank())
                 .status(til.getStatus())
                 .publishedUrl(til.getPublishedUrl())
                 .createdAt(til.getCreatedAt())

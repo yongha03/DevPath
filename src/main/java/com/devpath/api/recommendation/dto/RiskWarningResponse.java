@@ -45,7 +45,7 @@ public class RiskWarningResponse {
         @Schema(description = "경고 ID", example = "1")
         private Long warningId;
 
-        @Schema(description = "노드 ID", example = "100")
+        @Schema(description = "로드맵 노드 ID", example = "100")
         private Long nodeId;
 
         @Schema(description = "노드 제목", example = "Spring Security")

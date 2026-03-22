@@ -27,7 +27,7 @@ public class RecommendationHistoryController {
     public ResponseEntity<ApiResponse<RecommendationHistoryResponse.ListResult>> getHistories(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
             @Parameter(description = "추천 ID", example = "10") @RequestParam(required = false) Long recommendationId,
-            @Parameter(description = "노드 ID", example = "100") @RequestParam(required = false) Long nodeId
+            @Parameter(description = "로드맵 노드 ID", example = "100") @RequestParam(required = false) Long nodeId
     ) {
         return ResponseEntity.ok(ApiResponse.ok(
                 recommendationHistoryService.getHistories(userId, recommendationId, nodeId)

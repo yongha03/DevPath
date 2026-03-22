@@ -8,7 +8,6 @@ import java.util.List;
 import lombok.Builder;
 import lombok.Getter;
 
-// Response DTOs follow the same nested-class style as the existing learning APIs.
 public class OcrResponse {
 
     @Getter
@@ -22,7 +21,7 @@ public class OcrResponse {
         @Schema(description = "레슨 ID", example = "10")
         private Long lessonId;
 
-        @Schema(description = "사용자 ID", example = "1")
+        @Schema(description = "학습자 ID", example = "1")
         private Long userId;
 
         @Schema(description = "프레임 타임스탬프(초)", example = "120")
@@ -31,7 +30,7 @@ public class OcrResponse {
         @Schema(description = "원본 이미지 URL", example = "https://cdn.devpath.ai/frames/lesson-10-120.png")
         private String sourceImageUrl;
 
-        @Schema(description = "OCR 상태", example = "COMPLETED")
+        @Schema(description = "OCR 처리 상태", example = "COMPLETED")
         private String status;
 
         @Schema(description = "추출 텍스트", example = "Spring Security는 인증과 인가를 담당한다.")

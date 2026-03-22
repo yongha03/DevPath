@@ -32,9 +32,8 @@ public class BlogPublishController {
     )
     @PostMapping("/{tilId}/publish")
     public ResponseEntity<ApiResponse<BlogPublishResponse.Publish>> publish(
-            @AuthenticationPrincipal Long userId,
-            @Parameter(description = "TIL ID", example = "1")
-            @PathVariable Long tilId,
+            @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
+            @Parameter(description = "TIL ID", example = "1") @PathVariable Long tilId,
             @Valid @RequestBody BlogPublishRequest.Publish request
     ) {
         return ResponseEntity.status(HttpStatus.CREATED)

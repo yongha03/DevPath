@@ -48,7 +48,7 @@ public class RecommendationHistoryResponse {
         @Schema(description = "추천 ID", example = "10")
         private Long recommendationId;
 
-        @Schema(description = "노드 ID", example = "100")
+        @Schema(description = "로드맵 노드 ID", example = "100")
         private Long nodeId;
 
         @Schema(description = "노드 제목", example = "Spring Security")

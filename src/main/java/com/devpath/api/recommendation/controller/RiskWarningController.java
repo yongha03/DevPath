@@ -28,7 +28,7 @@ public class RiskWarningController {
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
             @Parameter(description = "미확인 경고만 조회 여부", example = "true")
             @RequestParam(defaultValue = "false") Boolean onlyUnacknowledged,
-            @Parameter(description = "노드 ID", example = "100")
+            @Parameter(description = "로드맵 노드 ID", example = "100")
             @RequestParam(required = false) Long nodeId
     ) {
         return ResponseEntity.ok(ApiResponse.ok(
