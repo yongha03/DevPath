@@ -34,7 +34,7 @@ public class TimestampNoteService {
         TimestampNote note = TimestampNote.builder()
                 .user(user)
                 .lesson(lesson)
-                .timestampSecond(normalizeTimestampSecond(request.getTimestampSecond()))
+                .timestampSecond(resolveTimestampSecond(request.getTimestampSecond(), request.getTimestampText()))
                 .content(request.getContent())
                 .build();
 
@@ -60,7 +60,10 @@ public class TimestampNoteService {
             throw new CustomException(ErrorCode.TIMESTAMP_NOTE_NOT_FOUND);
         }
 
-        note.updateContent(normalizeTimestampSecond(request.getTimestampSecond()), request.getContent());
+        note.updateContent(
+                resolveTimestampSecond(request.getTimestampSecond(), request.getTimestampText()),
+                request.getContent()
+        );
 
         return TimestampNoteResponse.from(note);
     }
@@ -74,10 +77,54 @@ public class TimestampNoteService {
         note.delete();
     }
 
+    // 숫자 초가 들어오면 그대로 정규화하고 문자열이 오면 형식을 해석해 초 단위로 바꾼다.
+    private Integer resolveTimestampSecond(Integer timestampSecond, String timestampText) {
+        if (timestampText != null && !timestampText.isBlank()) {
+            return parseTimestampText(timestampText);
+        }
+        return normalizeTimestampSecond(timestampSecond);
+    }
+
+    // 음수나 null 입력은 저장하지 않도록 0으로 보정한다.
     private Integer normalizeTimestampSecond(Integer timestampSecond) {
         if (timestampSecond == null || timestampSecond < 0) {
             return 0;
         }
         return timestampSecond;
+    }
+
+    // 숫자 초, mm:ss, hh:mm:ss 세 가지 형식을 지원한다.
+    private Integer parseTimestampText(String timestampText) {
+        String normalizedText = timestampText == null ? "" : timestampText.trim();
+
+        if (normalizedText.isEmpty()) {
+            throw new CustomException(ErrorCode.INVALID_INPUT, "타임스탬프 문자열이 비어 있습니다.");
+        }
+
+        if (normalizedText.matches("\\d+")) {
+            return normalizeTimestampSecond(Integer.parseInt(normalizedText));
+        }
+
+        String[] parts = normalizedText.split(":");
+        if (parts.length != 2 && parts.length != 3) {
+            throw new CustomException(ErrorCode.INVALID_INPUT, "타임스탬프 형식은 초, mm:ss, hh:mm:ss 중 하나여야 합니다.");
+        }
+
+        int totalSeconds = 0;
+        for (int index = 0; index < parts.length; index++) {
+            String part = parts[index].trim();
+            if (!part.matches("\\d+")) {
+                throw new CustomException(ErrorCode.INVALID_INPUT, "타임스탬프에는 숫자만 사용할 수 있습니다.");
+            }
+
+            int value = Integer.parseInt(part);
+            if (index > 0 && value >= 60) {
+                throw new CustomException(ErrorCode.INVALID_INPUT, "분과 초는 60 미만이어야 합니다.");
+            }
+
+            totalSeconds = (totalSeconds * 60) + value;
+        }
+
+        return normalizeTimestampSecond(totalSeconds);
     }
 }
