@@ -1,3 +1,59 @@
+ALTER TABLE ocr_results
+    ADD COLUMN IF NOT EXISTS source_image_url VARCHAR(500);
+
+ALTER TABLE ocr_results
+    ADD COLUMN IF NOT EXISTS status VARCHAR(30);
+
+ALTER TABLE ocr_results
+    ADD COLUMN IF NOT EXISTS searchable_normalized_text TEXT;
+
+ALTER TABLE ocr_results
+    ADD COLUMN IF NOT EXISTS timestamp_mappings TEXT;
+
+ALTER TABLE ocr_results
+    ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP;
+
+UPDATE ocr_results
+SET source_image_url = COALESCE(source_image_url, '')
+WHERE source_image_url IS NULL;
+
+UPDATE ocr_results
+SET status = COALESCE(status, 'REQUESTED')
+WHERE status IS NULL;
+
+UPDATE ocr_results
+SET searchable_normalized_text = COALESCE(searchable_normalized_text, LOWER(REGEXP_REPLACE(TRIM(extracted_text), '\s+', ' ', 'g')))
+WHERE searchable_normalized_text IS NULL
+  AND extracted_text IS NOT NULL;
+
+UPDATE ocr_results
+SET timestamp_mappings = COALESCE(
+    timestamp_mappings,
+    '[{"second":' || COALESCE(frame_timestamp_second, 0) || ',"text":"' ||
+    REPLACE(REPLACE(REPLACE(COALESCE(extracted_text, ''), E'\\', E'\\\\'), '"', E'\\"'), E'\n', ' ') ||
+    '"}]'
+)
+WHERE timestamp_mappings IS NULL;
+
+UPDATE ocr_results
+SET updated_at = COALESCE(updated_at, created_at, NOW())
+WHERE updated_at IS NULL;
+
+ALTER TABLE ocr_results
+    ALTER COLUMN source_image_url SET DEFAULT '';
+
+ALTER TABLE ocr_results
+    ALTER COLUMN source_image_url SET NOT NULL;
+
+ALTER TABLE ocr_results
+    ALTER COLUMN status SET DEFAULT 'REQUESTED';
+
+ALTER TABLE ocr_results
+    ALTER COLUMN status SET NOT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_ocr_results_user_lesson_frame
+    ON ocr_results (user_id, lesson_id, frame_timestamp_second);
+
 ALTER TABLE user_profiles
     ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT TRUE;
 
