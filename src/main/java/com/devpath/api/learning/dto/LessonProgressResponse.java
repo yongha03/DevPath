@@ -1,19 +1,32 @@
 package com.devpath.api.learning.dto;
 
 import com.devpath.domain.learning.entity.LessonProgress;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
 import lombok.Builder;
 import lombok.Getter;
 
 @Getter
 @Builder
+@Schema(description = "강의 진도율 응답 DTO")
 public class LessonProgressResponse {
 
+    @Schema(description = "레슨 ID", example = "10")
     private Long lessonId;
+
+    @Schema(description = "진도율(%)", example = "42")
     private Integer progressPercent;
+
+    @Schema(description = "현재 재생 위치(초)", example = "315")
     private Integer progressSeconds;
+
+    @Schema(description = "기본 재생 속도", example = "1.25")
     private Double defaultPlaybackRate;
+
+    @Schema(description = "수강 완료 여부", example = "false")
     private Boolean isCompleted;
+
+    @Schema(description = "마지막 학습 시각", example = "2026-03-23T13:40:00")
     private LocalDateTime lastWatchedAt;
 
     public static LessonProgressResponse from(LessonProgress progress) {

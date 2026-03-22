@@ -17,11 +17,13 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.UpdateTimestamp;
 
 @Entity
 @Table(name = "ocr_results")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+// One OCR row is tied to a single lesson frame for one learner.
 public class OcrResult {
 
     @Id
@@ -29,41 +31,81 @@ public class OcrResult {
     @Column(name = "ocr_id")
     private Long id;
 
-    // OCR을 요청한 학습자와의 연관관계다.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
-    // OCR이 수행된 강의 레슨과의 연관관계다.
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "lesson_id", nullable = false)
     private Lesson lesson;
 
-    // OCR을 수행한 프레임의 재생 위치를 초 단위로 저장한다.
-    // 타임스탬프 매핑 및 해당 구간 이동에 활용된다.
     @Column(name = "frame_timestamp_second", nullable = false)
     private Integer frameTimestampSecond;
 
-    // EasyOCR Flask 서버가 추출한 텍스트 전문을 저장한다.
+    @Column(name = "source_image_url", nullable = false, length = 500)
+    private String sourceImageUrl;
+
+    @Column(name = "status", nullable = false, length = 30)
+    private String status;
+
     @Column(name = "extracted_text", columnDefinition = "TEXT")
     private String extractedText;
 
-    // OCR 인식 신뢰도(0.0~1.0)를 저장한다.
+    @Column(name = "searchable_normalized_text", columnDefinition = "TEXT")
+    private String searchableNormalizedText;
+
+    @Column(name = "timestamp_mappings", columnDefinition = "TEXT")
+    private String timestampMappings;
+
     @Column(name = "confidence")
     private Double confidence;
 
-    // 생성 시각을 자동 저장한다.
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
     @Builder
-    public OcrResult(User user, Lesson lesson, Integer frameTimestampSecond,
-            String extractedText, Double confidence) {
+    public OcrResult(
+            User user,
+            Lesson lesson,
+            Integer frameTimestampSecond,
+            String sourceImageUrl,
+            String status,
+            String extractedText,
+            String searchableNormalizedText,
+            String timestampMappings,
+            Double confidence
+    ) {
         this.user = user;
         this.lesson = lesson;
         this.frameTimestampSecond = frameTimestampSecond;
+        this.sourceImageUrl = sourceImageUrl;
+        this.status = status == null ? "REQUESTED" : status;
         this.extractedText = extractedText;
+        this.searchableNormalizedText = searchableNormalizedText;
+        this.timestampMappings = timestampMappings;
         this.confidence = confidence;
+    }
+
+    public void markCompleted(
+            String extractedText,
+            String searchableNormalizedText,
+            String timestampMappings,
+            Double confidence
+    ) {
+        // Completion stores both the raw text and the search-friendly projection.
+        this.extractedText = extractedText;
+        this.searchableNormalizedText = searchableNormalizedText;
+        this.timestampMappings = timestampMappings;
+        this.confidence = confidence;
+        this.status = "COMPLETED";
+    }
+
+    public void markFailed() {
+        this.status = "FAILED";
     }
 }

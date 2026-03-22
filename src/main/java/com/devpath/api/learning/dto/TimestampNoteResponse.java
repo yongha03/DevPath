@@ -1,19 +1,38 @@
 package com.devpath.api.learning.dto;
 
 import com.devpath.domain.learning.entity.TimestampNote;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
 import lombok.Builder;
 import lombok.Getter;
 
 @Getter
 @Builder
+@Schema(description = "타임스탬프 노트 응답 DTO")
 public class TimestampNoteResponse {
 
+    @Schema(description = "노트 ID", example = "1")
     private Long noteId;
+
+    @Schema(description = "레슨 ID", example = "10")
     private Long lessonId;
+
+    @Schema(description = "타임스탬프(초)", example = "125")
     private Integer timestampSecond;
+
+    @Schema(description = "플레이어 이동용 초 값", example = "125")
+    private Integer seekSecond;
+
+    @Schema(description = "표시용 타임스탬프", example = "02:05")
+    private String timestampLabel;
+
+    @Schema(description = "노트 내용", example = "Spring Security 인증 흐름 다시 보기")
     private String content;
+
+    @Schema(description = "생성 시각", example = "2026-03-23T10:30:00")
     private LocalDateTime createdAt;
+
+    @Schema(description = "수정 시각", example = "2026-03-23T10:40:00")
     private LocalDateTime updatedAt;
 
     public static TimestampNoteResponse from(TimestampNote note) {
@@ -21,9 +40,16 @@ public class TimestampNoteResponse {
                 .noteId(note.getId())
                 .lessonId(note.getLesson().getLessonId())
                 .timestampSecond(note.getTimestampSecond())
+                .seekSecond(note.getTimestampSecond())
+                .timestampLabel(toTimestampLabel(note.getTimestampSecond()))
                 .content(note.getContent())
                 .createdAt(note.getCreatedAt())
                 .updatedAt(note.getUpdatedAt())
                 .build();
+    }
+
+    private static String toTimestampLabel(Integer second) {
+        int value = second == null ? 0 : Math.max(0, second);
+        return String.format("%02d:%02d", value / 60, value % 60);
     }
 }

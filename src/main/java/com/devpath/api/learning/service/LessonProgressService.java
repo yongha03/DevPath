@@ -22,46 +22,40 @@ public class LessonProgressService {
     private final LessonRepository lessonRepository;
     private final UserRepository userRepository;
 
-    // 강의 세션 시작: 진도 이력이 없으면 새로 생성하고, 있으면 기존 진도 정보를 반환한다.
     @Transactional
     public LessonProgressResponse startSession(Long userId, Long lessonId) {
-        Lesson lesson = lessonRepository.findById(lessonId)
-                .orElseThrow(() -> new CustomException(ErrorCode.LESSON_NOT_FOUND));
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-
-        LessonProgress progress = lessonProgressRepository
-                .findByUserIdAndLessonLessonId(userId, lessonId)
-                .orElseGet(() -> lessonProgressRepository.save(
-                        LessonProgress.builder()
-                                .user(user)
-                                .lesson(lesson)
-                                .build()
-                ));
-
+        LessonProgress progress = getOrCreateLessonProgress(userId, lessonId);
         return LessonProgressResponse.from(progress);
     }
 
-    // 진도율 및 재생 위치 저장
     @Transactional
     public LessonProgressResponse saveProgress(Long userId, Long lessonId,
             LessonProgressRequest.SaveProgress request) {
-        LessonProgress progress = lessonProgressRepository
-                .findByUserIdAndLessonLessonId(userId, lessonId)
-                .orElseThrow(() -> new CustomException(ErrorCode.LESSON_PROGRESS_NOT_FOUND));
-
+        LessonProgress progress = getOrCreateLessonProgress(userId, lessonId);
         progress.updateProgress(request.getProgressPercent(), request.getProgressSeconds());
-
         return LessonProgressResponse.from(progress);
     }
 
-    // 현재 진도율 조회
     @Transactional(readOnly = true)
     public LessonProgressResponse getProgress(Long userId, Long lessonId) {
-        LessonProgress progress = lessonProgressRepository
-                .findByUserIdAndLessonLessonId(userId, lessonId)
-                .orElseThrow(() -> new CustomException(ErrorCode.LESSON_PROGRESS_NOT_FOUND));
-
+        LessonProgress progress = getOrCreateLessonProgress(userId, lessonId);
         return LessonProgressResponse.from(progress);
+    }
+
+    private LessonProgress getOrCreateLessonProgress(Long userId, Long lessonId) {
+        return lessonProgressRepository.findByUserIdAndLessonLessonId(userId, lessonId)
+                .orElseGet(() -> {
+                    Lesson lesson = lessonRepository.findById(lessonId)
+                            .orElseThrow(() -> new CustomException(ErrorCode.LESSON_NOT_FOUND));
+                    User user = userRepository.findById(userId)
+                            .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+                    return lessonProgressRepository.save(
+                            LessonProgress.builder()
+                                    .user(user)
+                                    .lesson(lesson)
+                                    .build()
+                    );
+                });
     }
 }

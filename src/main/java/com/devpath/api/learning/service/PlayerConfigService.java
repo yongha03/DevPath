@@ -4,8 +4,12 @@ import com.devpath.api.learning.dto.PlayerConfigRequest;
 import com.devpath.api.learning.dto.PlayerConfigResponse;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
+import com.devpath.domain.course.entity.Lesson;
+import com.devpath.domain.course.repository.LessonRepository;
 import com.devpath.domain.learning.entity.LessonProgress;
 import com.devpath.domain.learning.repository.LessonProgressRepository;
+import com.devpath.domain.user.entity.User;
+import com.devpath.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,27 +19,37 @@ import org.springframework.transaction.annotation.Transactional;
 public class PlayerConfigService {
 
     private final LessonProgressRepository lessonProgressRepository;
+    private final LessonRepository lessonRepository;
+    private final UserRepository userRepository;
 
-    // 특정 레슨의 플레이어 설정(재생 속도 등) 조회
     @Transactional(readOnly = true)
     public PlayerConfigResponse getPlayerConfig(Long userId, Long lessonId) {
-        LessonProgress progress = lessonProgressRepository
-                .findByUserIdAndLessonLessonId(userId, lessonId)
-                .orElseThrow(() -> new CustomException(ErrorCode.LESSON_PROGRESS_NOT_FOUND));
-
+        LessonProgress progress = getOrCreateLessonProgress(userId, lessonId);
         return PlayerConfigResponse.from(progress);
     }
 
-    // 재생 속도 저장
     @Transactional
     public PlayerConfigResponse updatePlaybackRate(Long userId, Long lessonId,
             PlayerConfigRequest.UpdatePlaybackRate request) {
-        LessonProgress progress = lessonProgressRepository
-                .findByUserIdAndLessonLessonId(userId, lessonId)
-                .orElseThrow(() -> new CustomException(ErrorCode.LESSON_PROGRESS_NOT_FOUND));
-
+        LessonProgress progress = getOrCreateLessonProgress(userId, lessonId);
         progress.updatePlaybackRate(request.getDefaultPlaybackRate());
-
         return PlayerConfigResponse.from(progress);
+    }
+
+    private LessonProgress getOrCreateLessonProgress(Long userId, Long lessonId) {
+        return lessonProgressRepository.findByUserIdAndLessonLessonId(userId, lessonId)
+                .orElseGet(() -> {
+                    Lesson lesson = lessonRepository.findById(lessonId)
+                            .orElseThrow(() -> new CustomException(ErrorCode.LESSON_NOT_FOUND));
+                    User user = userRepository.findById(userId)
+                            .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+                    return lessonProgressRepository.save(
+                            LessonProgress.builder()
+                                    .user(user)
+                                    .lesson(lesson)
+                                    .build()
+                    );
+                });
     }
 }
