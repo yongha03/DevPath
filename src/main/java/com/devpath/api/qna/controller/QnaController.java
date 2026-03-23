@@ -2,6 +2,7 @@ package com.devpath.api.qna.controller;
 
 import com.devpath.api.qna.dto.AnswerCreateRequest;
 import com.devpath.api.qna.dto.AnswerResponse;
+import com.devpath.api.qna.dto.DuplicateQuestionSuggestionResponse;
 import com.devpath.api.qna.dto.QuestionCreateRequest;
 import com.devpath.api.qna.dto.QuestionDetailResponse;
 import com.devpath.api.qna.dto.QuestionSummaryResponse;
@@ -46,6 +47,16 @@ public class QnaController {
     @Operation(summary = "질문 목록 조회", description = "삭제되지 않은 질문 목록을 최신순으로 조회합니다.")
     public ApiResponse<List<QuestionSummaryResponse>> getQuestions() {
         List<QuestionSummaryResponse> responses = qnaService.getQuestions();
+        return ApiResponse.ok(responses);
+    }
+
+    @GetMapping("/questions/duplicate-suggestions")
+    @Operation(summary = "중복 질문 추천", description = "질문 제목을 기준으로 유사한 기존 질문을 추천합니다.")
+    public ApiResponse<List<DuplicateQuestionSuggestionResponse>> getDuplicateSuggestions(
+            @Parameter(description = "중복 여부를 확인할 질문 제목", example = "Spring Security에서 JWT 필터가 두 번 실행됩니다.")
+            @RequestParam String title
+    ) {
+        List<DuplicateQuestionSuggestionResponse> responses = qnaService.getDuplicateSuggestions(title);
         return ApiResponse.ok(responses);
     }
 

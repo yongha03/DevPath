@@ -2,6 +2,7 @@ package com.devpath.api.qna.service;
 
 import com.devpath.api.qna.dto.AnswerCreateRequest;
 import com.devpath.api.qna.dto.AnswerResponse;
+import com.devpath.api.qna.dto.DuplicateQuestionSuggestionResponse;
 import com.devpath.api.qna.dto.QuestionCreateRequest;
 import com.devpath.api.qna.dto.QuestionDetailResponse;
 import com.devpath.api.qna.dto.QuestionSummaryResponse;
@@ -16,7 +17,10 @@ import com.devpath.domain.qna.repository.QuestionRepository;
 import com.devpath.domain.qna.repository.QuestionTemplateRepository;
 import com.devpath.domain.user.entity.User;
 import com.devpath.domain.user.repository.UserRepository;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,6 +29,8 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class QnaService {
+
+    private static final int DUPLICATE_SUGGESTION_LIMIT = 10;
 
     private final QuestionRepository questionRepository;
     private final AnswerRepository answerRepository;
@@ -118,6 +124,31 @@ public class QnaService {
                 .toList();
     }
 
+    public List<DuplicateQuestionSuggestionResponse> getDuplicateSuggestions(String title) {
+        String normalizedTitle = normalizeTitle(title);
+        List<String> keywords = extractKeywords(normalizedTitle);
+
+        Map<Long, DuplicateQuestionSuggestionResponse> suggestions = new LinkedHashMap<>();
+
+        for (String keyword : keywords) {
+            List<Question> matchedQuestions = questionRepository
+                    .findTop10ByIsDeletedFalseAndTitleContainingIgnoreCaseOrderByCreatedAtDesc(keyword);
+
+            for (Question matchedQuestion : matchedQuestions) {
+                suggestions.putIfAbsent(
+                        matchedQuestion.getId(),
+                        DuplicateQuestionSuggestionResponse.from(matchedQuestion, keyword)
+                );
+
+                if (suggestions.size() >= DUPLICATE_SUGGESTION_LIMIT) {
+                    return suggestions.values().stream().limit(DUPLICATE_SUGGESTION_LIMIT).toList();
+                }
+            }
+        }
+
+        return suggestions.values().stream().limit(DUPLICATE_SUGGESTION_LIMIT).toList();
+    }
+
     // 활성화된 템플릿 타입인지 검증한다.
     private void validateTemplateType(QuestionTemplateType templateType) {
         boolean exists = questionTemplateRepository.existsByTemplateTypeAndIsActiveTrue(templateType);
@@ -131,6 +162,39 @@ public class QnaService {
         return answerRepository.findAllByQuestionIdAndIsDeletedFalseOrderByCreatedAtAsc(questionId)
                 .stream()
                 .map(AnswerResponse::from)
+                .toList();
+    }
+
+    // 중복 추천용 제목 입력을 정규화한다.
+    private String normalizeTitle(String title) {
+        if (title == null || title.isBlank()) {
+            throw new CustomException(ErrorCode.INVALID_INPUT, "중복 추천을 위한 title 값은 필수입니다.");
+        }
+
+        return title.trim();
+    }
+
+    // 전체 제목과 분해 키워드를 검색 순서대로 만든다.
+    private List<String> extractKeywords(String normalizedTitle) {
+        List<String> splitKeywords = List.of(normalizedTitle.split("[\\s\\p{Punct}]+")).stream()
+                .map(String::trim)
+                .filter(keyword -> !keyword.isBlank())
+                .filter(keyword -> keyword.length() >= 2)
+                .map(keyword -> keyword.toLowerCase(Locale.ROOT))
+                .distinct()
+                .toList();
+
+        String fullTitleKeyword = normalizedTitle.toLowerCase(Locale.ROOT);
+
+        if (splitKeywords.contains(fullTitleKeyword)) {
+            return splitKeywords;
+        }
+
+        return java.util.stream.Stream.concat(
+                        java.util.stream.Stream.of(fullTitleKeyword),
+                        splitKeywords.stream()
+                )
+                .distinct()
                 .toList();
     }
 
