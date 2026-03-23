@@ -1,5 +1,7 @@
 package com.devpath.api.learning.controller;
 
+import com.devpath.api.learning.dto.RecommendationHistoryResponse;
+import com.devpath.api.learning.dto.RiskWarningResponse;
 import com.devpath.api.learning.dto.SupplementRecommendationResponse;
 import com.devpath.api.learning.service.SupplementRecommendationService;
 import com.devpath.common.response.ApiResponse;
@@ -19,7 +21,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "보강 노드 추천", description = "학습 진행 기반 자동 후보 생성과 수동 승인/거절 API")
+@Tag(name = "보강 노드 추천", description = "학습 진행 기반 자동 후보 생성과 수동 확인/거절 API")
 @RestController
 @RequestMapping("/api/learning/supplement-recommendations")
 @RequiredArgsConstructor
@@ -29,7 +31,7 @@ public class SupplementRecommendationController {
 
     @Operation(
             summary = "보강 노드 후보 생성",
-            description = "nodeId가 없으면 학습 진행 데이터로 자동 후보를 만들고, 있으면 해당 노드를 수동 추천으로 저장합니다."
+            description = "nodeId가 없으면 학습 진행 데이터로 자동 후보를 만들고 있으면 해당 노드를 수동 추천으로 저장합니다."
     )
     @PostMapping
     public ResponseEntity<ApiResponse<SupplementRecommendationResponse>> createRecommendation(
@@ -37,7 +39,6 @@ public class SupplementRecommendationController {
             @RequestParam(required = false) Long nodeId,
             @RequestParam(required = false) String reason
     ) {
-        // 한글 주석: nodeId를 비우면 progress-data-driven 자동 후보 생성기로 동작한다.
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.ok(supplementRecommendationService.createRecommendation(userId, nodeId, reason)));
     }
@@ -67,5 +68,39 @@ public class SupplementRecommendationController {
             @PathVariable Long recommendationId
     ) {
         return ResponseEntity.ok(ApiResponse.ok(supplementRecommendationService.rejectRecommendation(userId, recommendationId)));
+    }
+
+    @Operation(
+            summary = "추천 변경 이력 조회",
+            description = "recommendationId 또는 nodeId로 필터링할 수 있으며, 둘 다 없으면 전체 추천 변경 이력을 조회합니다."
+    )
+    @GetMapping("/histories")
+    public ResponseEntity<ApiResponse<List<RecommendationHistoryResponse>>> getRecommendationHistories(
+            @AuthenticationPrincipal Long userId,
+            @RequestParam(required = false) Long recommendationId,
+            @RequestParam(required = false) Long nodeId
+    ) {
+        return ResponseEntity.ok(
+                ApiResponse.ok(
+                        supplementRecommendationService.getRecommendationHistories(userId, recommendationId, nodeId)
+                )
+        );
+    }
+
+    @Operation(
+            summary = "추천 리스크 경고 조회",
+            description = "unacknowledgedOnly=true면 미확인 경고만 조회하고, nodeId로 특정 노드 경고만 필터링할 수 있습니다."
+    )
+    @GetMapping("/risk-warnings")
+    public ResponseEntity<ApiResponse<List<RiskWarningResponse>>> getRiskWarnings(
+            @AuthenticationPrincipal Long userId,
+            @RequestParam(required = false) Boolean unacknowledgedOnly,
+            @RequestParam(required = false) Long nodeId
+    ) {
+        return ResponseEntity.ok(
+                ApiResponse.ok(
+                        supplementRecommendationService.getRiskWarnings(userId, unacknowledgedOnly, nodeId)
+                )
+        );
     }
 }

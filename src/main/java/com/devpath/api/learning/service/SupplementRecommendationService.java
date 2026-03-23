@@ -1,5 +1,7 @@
 package com.devpath.api.learning.service;
 
+import com.devpath.api.learning.dto.RecommendationHistoryResponse;
+import com.devpath.api.learning.dto.RiskWarningResponse;
 import com.devpath.api.learning.dto.SupplementRecommendationResponse;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
@@ -94,6 +96,52 @@ public class SupplementRecommendationService {
     }
 
     // 한글 주석: 승인 시 before/after 상태를 recommendation_histories에 함께 남겨 이력 조회에서 바로 쓸 수 있게 한다.
+    @Transactional(readOnly = true)
+    public List<RecommendationHistoryResponse> getRecommendationHistories(
+            Long userId,
+            Long recommendationId,
+            Long nodeId
+    ) {
+        validateUser(userId);
+
+        List<RecommendationHistory> histories;
+        if (recommendationId != null) {
+            histories = recommendationHistoryRepository
+                    .findAllByUserIdAndRecommendationIdOrderByCreatedAtDesc(userId, recommendationId);
+        } else if (nodeId != null) {
+            histories = recommendationHistoryRepository
+                    .findAllByUserIdAndRoadmapNodeNodeIdOrderByCreatedAtDesc(userId, nodeId);
+        } else {
+            histories = recommendationHistoryRepository.findAllByUserIdOrderByCreatedAtDesc(userId);
+        }
+
+        return histories.stream()
+                .map(RecommendationHistoryResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<RiskWarningResponse> getRiskWarnings(
+            Long userId,
+            Boolean unacknowledgedOnly,
+            Long nodeId
+    ) {
+        validateUser(userId);
+
+        List<RiskWarning> warnings;
+        if (nodeId != null) {
+            warnings = riskWarningRepository.findAllByUserIdAndRoadmapNodeNodeIdOrderByCreatedAtDesc(userId, nodeId);
+        } else if (Boolean.TRUE.equals(unacknowledgedOnly)) {
+            warnings = riskWarningRepository.findAllByUserIdAndIsAcknowledgedFalseOrderByCreatedAtDesc(userId);
+        } else {
+            warnings = riskWarningRepository.findAllByUserIdOrderByCreatedAtDesc(userId);
+        }
+
+        return warnings.stream()
+                .map(RiskWarningResponse::from)
+                .toList();
+    }
+
     @Transactional
     public SupplementRecommendationResponse approveRecommendation(Long userId, Long recommendationId) {
         SupplementRecommendation recommendation = supplementRecommendationRepository.findById(recommendationId)
