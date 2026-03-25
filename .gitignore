@@ -11,7 +11,7 @@ build/
 .factorypath
 .project
 .settings
-.springBeans
+.springBeansl
 .sts4-cache
 bin/
 !**/src/main/**/bin/
@@ -40,3 +40,6 @@ out/
 .env
 .env.*.env
 .env.*
+
+# Claude Code
+CLAUDE.md
