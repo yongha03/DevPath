@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Instructor - Question Bank", description = "강사용 문제 은행 통계 조회 API")
+@Tag(name = "강의 평가 - 문제 은행", description = "강사용 문제 은행 통계 조회 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/evaluation/instructor/question-bank")

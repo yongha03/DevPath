@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Instructor - Rubric", description = "강사용 과제 채점 루브릭 생성 및 수정 API")
+@Tag(name = "강의 평가 - 루브릭", description = "강사용 과제 채점 루브릭 생성 및 수정 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/instructor")

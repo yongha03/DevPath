@@ -18,8 +18,11 @@ public class SwaggerGroupConfig {
                         "/api/courses/**",
                         "/api/evaluation/learner/**",
                         "/api/learning/**",
+                        "/api/posts/**",
+                        "/api/comments/**",
                         "/api/me/**",
                         "/api/my-roadmaps/**",
+                        "/api/qna/**",
                         "/api/recommendations/**",
                         "/api/roadmaps/**",
                         "/api/users/**")

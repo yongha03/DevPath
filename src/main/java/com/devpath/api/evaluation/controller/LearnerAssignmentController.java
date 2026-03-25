@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Learner - Assignment", description = "학습자용 과제 precheck, 제출, 제출 이력 조회 API")
+@Tag(name = "강의 평가 - 과제 제출", description = "학습자용 과제 precheck, 제출, 제출 이력 조회 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/evaluation/learner/assignments")

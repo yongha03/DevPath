@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Instructor - Assignment", description = "강사용 과제 생성 및 제출 규칙 관리 API")
+@Tag(name = "강의 평가 - 과제 관리", description = "강사용 과제 생성 및 제출 규칙 관리 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/instructor/assignments")

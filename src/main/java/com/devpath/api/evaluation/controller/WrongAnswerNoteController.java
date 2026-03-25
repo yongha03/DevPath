@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Learner - Wrong Answer Note", description = "학습자용 오답 노트 저장 API")
+@Tag(name = "강의 평가 - 오답 노트", description = "학습자용 오답 노트 저장 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/evaluation/learner/wrong-answer-notes")

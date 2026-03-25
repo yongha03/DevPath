@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Instructor - AI Quiz Draft", description = "강사용 AI 퀴즈 초안 생성, 검토, 채택 API")
+@Tag(name = "강의 평가 - AI 퀴즈 초안", description = "강사용 AI 퀴즈 초안 생성, 수정, 채택, 거부, 근거 조회 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/evaluation/instructor/ai-quiz-drafts")

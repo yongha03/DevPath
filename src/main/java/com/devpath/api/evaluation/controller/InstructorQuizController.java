@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Instructor - Quiz", description = "강사용 퀴즈 생성, 문항 추가, 정답/해설 관리 API")
+@Tag(name = "강의 평가 - 퀴즈 출제", description = "강사용 퀴즈 생성, 문항 추가, 정답/해설 관리 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/instructor/quizzes")
