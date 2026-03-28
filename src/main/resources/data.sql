@@ -1504,3 +1504,120 @@ SELECT u.user_id, '에러 해결 가이드', '에러를 해결할 때는 다음 
 FROM users u
 WHERE u.email = 'instructor@devpath.com'
   AND NOT EXISTS (SELECT 1 FROM qna_template qt WHERE qt.title = '에러 해결 가이드' AND qt.instructor_id = u.user_id);
+-- 스터디 그룹
+INSERT INTO study_group (name, description, status, max_members, is_deleted, created_at)
+SELECT 'Spring Boot 마스터 스터디', '매주 주말 온라인으로 진행하는 백엔드 스터디입니다.', 'RECRUITING', 6, false, CURRENT_TIMESTAMP
+    WHERE NOT EXISTS (SELECT 1 FROM study_group WHERE name = 'Spring Boot 마스터 스터디');
+
+INSERT INTO study_group (name, description, status, max_members, is_deleted, created_at)
+SELECT 'React 클론 코딩 스터디', 'React와 Tailwind를 활용한 프론트엔드 집중 스터디', 'IN_PROGRESS', 4, false, CURRENT_TIMESTAMP
+    WHERE NOT EXISTS (SELECT 1 FROM study_group WHERE name = 'React 클론 코딩 스터디');
+
+-- 스터디 그룹 멤버 (가정: COMMON BASE의 learner_id 1, 2 존재)
+-- (study_group ID 1과 2가 존재한다고 가정)
+INSERT INTO study_group_member (group_id, learner_id, join_status, joined_at)
+SELECT 1, 1, 'APPROVED', CURRENT_TIMESTAMP
+    WHERE NOT EXISTS (SELECT 1 FROM study_group_member WHERE group_id = 1 AND learner_id = 1);
+
+INSERT INTO study_group_member (group_id, learner_id, join_status, joined_at)
+SELECT 1, 2, 'PENDING', NULL
+    WHERE NOT EXISTS (SELECT 1 FROM study_group_member WHERE group_id = 1 AND learner_id = 2);
+
+INSERT INTO study_group_member (group_id, learner_id, join_status, joined_at)
+SELECT 2, 1, 'APPROVED', CURRENT_TIMESTAMP
+    WHERE NOT EXISTS (SELECT 1 FROM study_group_member WHERE group_id = 2 AND learner_id = 1);
+
+-- 플래너 목표
+INSERT INTO learner_goal (learner_id, goal_type, target_value, is_active)
+SELECT 1, 'WEEKLY_NODE_CLEAR', 3, true
+    WHERE NOT EXISTS (SELECT 1 FROM learner_goal WHERE learner_id = 1 AND goal_type = 'WEEKLY_NODE_CLEAR');
+
+INSERT INTO learner_goal (learner_id, goal_type, target_value, is_active)
+SELECT 2, 'WEEKLY_STUDY_TIME', 10, true
+    WHERE NOT EXISTS (SELECT 1 FROM learner_goal WHERE learner_id = 2 AND goal_type = 'WEEKLY_STUDY_TIME');
+
+-- 스트릭 (잔디) - Unique 제약조건 방어
+INSERT INTO streak (learner_id, current_streak, longest_streak, last_study_date)
+SELECT 1, 5, 14, CURRENT_DATE - INTERVAL '1 day'
+WHERE NOT EXISTS (SELECT 1 FROM streak WHERE learner_id = 1);
+
+INSERT INTO streak (learner_id, current_streak, longest_streak, last_study_date)
+SELECT 2, 0, 7, CURRENT_DATE - INTERVAL '3 day'
+WHERE NOT EXISTS (SELECT 1 FROM streak WHERE learner_id = 2);
+
+-- 프로젝트
+INSERT INTO project (name, description, status, is_deleted, created_at)
+SELECT 'DevPath 클론 코딩', 'React와 Spring Boot를 활용한 플랫폼 개발', 'PREPARING', false, CURRENT_TIMESTAMP
+    WHERE NOT EXISTS (SELECT 1 FROM project WHERE name = 'DevPath 클론 코딩');
+
+INSERT INTO project (name, description, status, is_deleted, created_at)
+SELECT 'AI 챗봇 서비스', 'OpenAI API를 활용한 맞춤형 멘토링 챗봇', 'IN_PROGRESS', false, CURRENT_TIMESTAMP
+    WHERE NOT EXISTS (SELECT 1 FROM project WHERE name = 'AI 챗봇 서비스');
+
+-- 프로젝트 아이디어 게시판
+INSERT INTO project_idea_post (author_id, title, content, status, is_deleted, created_at)
+SELECT 1, 'Spring Boot 기반 커머스 API 만들 분?', '백엔드 위주로 진행할 예정입니다.', 'PUBLISHED', false, CURRENT_TIMESTAMP
+    WHERE NOT EXISTS (SELECT 1 FROM project_idea_post WHERE title = 'Spring Boot 기반 커머스 API 만들 분?');
+
+-- ========================================
+-- PostgreSQL Sequence 보정 처리 (매우 중요)
+-- 명시적으로 ID를 넣거나 더미 데이터를 삽입한 후, 시퀀스를 동기화해 주어야 이후 POST 요청 시 ID 중복 에러가 나지 않습니다.
+-- ========================================
+SELECT setval('study_group_id_seq', (SELECT COALESCE(MAX(id), 1) FROM study_group));
+SELECT setval('study_group_member_id_seq', (SELECT COALESCE(MAX(id), 1) FROM study_group_member));
+SELECT setval('learner_goal_id_seq', (SELECT COALESCE(MAX(id), 1) FROM learner_goal));
+SELECT setval('streak_id_seq', (SELECT COALESCE(MAX(id), 1) FROM streak));
+SELECT setval('project_id_seq', (SELECT COALESCE(MAX(id), 1) FROM project));
+SELECT setval('project_idea_post_id_seq', (SELECT COALESCE(MAX(id), 1) FROM project_idea_post));
+-- ==========================================
+-- [추가분] 누락된 C 파트 심화 도메인 더미 데이터 (실제 엔티티 구조 100% 반영)
+-- ==========================================
+
+-- 1. 스터디 매칭 (Study Match) - requester_id, receiver_id, node_id 사용
+INSERT INTO study_match (requester_id, receiver_id, node_id, status, created_at)
+SELECT 1, 2, 101, 'ACCEPTED', CURRENT_TIMESTAMP
+    WHERE NOT EXISTS (SELECT 1 FROM study_match WHERE requester_id = 1 AND receiver_id = 2 AND node_id = 101);
+
+-- 2. 플래너: 주간 플랜 (Weekly Plan) - plan_content 사용
+INSERT INTO weekly_plan (learner_id, plan_content, status, created_at)
+SELECT 1, '이번 주 목표: Spring Security 인증 필터 완벽 이해 및 적용', 'IN_PROGRESS', CURRENT_TIMESTAMP
+    WHERE NOT EXISTS (SELECT 1 FROM weekly_plan WHERE learner_id = 1);
+
+-- 3. 프로젝트: 모집 역할 (Project Role)
+INSERT INTO project_role (project_id, role_type, required_count)
+SELECT 1, 'BACKEND', 2
+    WHERE NOT EXISTS (SELECT 1 FROM project_role WHERE project_id = 1 AND role_type = 'BACKEND');
+
+INSERT INTO project_role (project_id, role_type, required_count)
+SELECT 1, 'FRONTEND', 2
+    WHERE NOT EXISTS (SELECT 1 FROM project_role WHERE project_id = 1 AND role_type = 'FRONTEND');
+
+-- 4. 프로젝트: 참여 팀원 (Project Member)
+INSERT INTO project_member (project_id, learner_id, role_type, joined_at)
+SELECT 1, 1, 'LEADER', CURRENT_TIMESTAMP
+    WHERE NOT EXISTS (SELECT 1 FROM project_member WHERE project_id = 1 AND learner_id = 1);
+
+-- 5. 프로젝트: 초대 내역 (Project Invitation)
+INSERT INTO project_invitation (project_id, inviter_id, invitee_id, status, created_at)
+SELECT 1, 1, 3, 'PENDING', CURRENT_TIMESTAMP
+    WHERE NOT EXISTS (SELECT 1 FROM project_invitation WHERE project_id = 1 AND invitee_id = 3);
+
+-- 6. 멘토링: 지원 내역 (Mentoring Application)
+INSERT INTO mentoring_application (project_id, mentor_id, message, status, created_at)
+SELECT 1, 5, '백엔드 아키텍처 리뷰 부탁드립니다!', 'PENDING', CURRENT_TIMESTAMP
+    WHERE NOT EXISTS (SELECT 1 FROM mentoring_application WHERE project_id = 1 AND mentor_id = 5);
+
+-- 7. 학습 증명: 제출 내역 (Project Proof Submission)
+INSERT INTO project_proof_submission (project_id, submitter_id, proof_card_ref_id, submitted_at)
+SELECT 1, 1, 'PROOF-2026-ABC123X', CURRENT_TIMESTAMP
+    WHERE NOT EXISTS (SELECT 1 FROM project_proof_submission WHERE project_id = 1 AND submitter_id = 1);
+
+-- 8. 알림 (Learner Notification)
+INSERT INTO learner_notification (learner_id, type, message, is_read, created_at)
+SELECT 1, 'STUDY_GROUP', '새로운 스터디 팀원이 매칭되었습니다!', false, CURRENT_TIMESTAMP
+    WHERE NOT EXISTS (SELECT 1 FROM learner_notification WHERE learner_id = 1 AND type = 'STUDY_GROUP');
+
+-- 9. 대시보드 스냅샷 (Dashboard Snapshot) - completed_nodes 사용
+INSERT INTO dashboard_snapshot (learner_id, snapshot_date, total_study_hours, completed_nodes)
+SELECT 1, CURRENT_DATE, 45, 12
+    WHERE NOT EXISTS (SELECT 1 FROM dashboard_snapshot WHERE learner_id = 1 AND snapshot_date = CURRENT_DATE);
