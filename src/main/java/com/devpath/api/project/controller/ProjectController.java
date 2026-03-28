@@ -9,6 +9,8 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/projects")
 @RequiredArgsConstructor
@@ -25,10 +27,26 @@ public class ProjectController {
         return ApiResponse.ok(null);
     }
 
+    @GetMapping
+    @Operation(summary = "프로젝트 목록 조회", description = "전체 프로젝트 목록을 조회합니다.")
+    public ApiResponse<List<ProjectResponse>> getAllProjects() {
+        // TODO: ProjectService.getAllProjects() 연동
+        return ApiResponse.ok(null);
+    }
+
     @GetMapping("/{projectId}")
     @Operation(summary = "프로젝트 상세 조회", description = "특정 프로젝트의 상세 정보를 조회합니다.")
     public ApiResponse<ProjectResponse> getProject(@PathVariable Long projectId) {
         // TODO: ProjectService.getProject(projectId) 연동
+        return ApiResponse.ok(null);
+    }
+
+    @PutMapping("/{projectId}")
+    @Operation(summary = "프로젝트 수정", description = "기존 프로젝트의 정보를 수정합니다.")
+    public ApiResponse<ProjectResponse> updateProject(
+            @PathVariable Long projectId,
+            @Valid @RequestBody ProjectRequest request) {
+        // TODO: ProjectService.updateProject(projectId, request) 연동
         return ApiResponse.ok(null);
     }
 }
