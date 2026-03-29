@@ -4,17 +4,43 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-// Recommendation Change 요청 DTO 모음
 public class RecommendationChangeRequest {
 
-    // 추천 변경 제안 생성 요청 DTO
     @Getter
     @NoArgsConstructor
-    @Schema(description = "추천 변경 제안 생성 요청 DTO")
+    @Schema(description = "Recommendation change suggestion request")
     public static class Suggestion {
 
-        // 로드맵 ID
-        @Schema(description = "로드맵 ID", example = "1")
+        @Schema(description = "Roadmap id", example = "1")
         private Long roadmapId;
+
+        @Schema(description = "Max item count", example = "5")
+        private Integer limit;
+
+        public static Suggestion of(Long roadmapId, Integer limit) {
+            Suggestion suggestion = new Suggestion();
+            suggestion.roadmapId = roadmapId;
+            suggestion.limit = limit;
+            return suggestion;
+        }
+    }
+
+    @Getter
+    @NoArgsConstructor
+    @Schema(description = "Recommendation change recalculate request")
+    public static class RecalculateNextNodes {
+
+        @Schema(description = "Roadmap id", example = "1")
+        private Long roadmapId;
+
+        @Schema(description = "Max item count", example = "5")
+        private Integer limit;
+    }
+
+    public static class SuggestionHolder extends Suggestion {
+
+        public static Suggestion from(RecalculateNextNodes request) {
+            return Suggestion.of(request.getRoadmapId(), request.getLimit());
+        }
     }
 }

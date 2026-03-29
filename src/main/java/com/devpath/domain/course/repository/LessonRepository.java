@@ -8,36 +8,46 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-// 레슨 저장소다.
 public interface LessonRepository extends JpaRepository<Lesson, Long> {
 
-  // 섹션별 레슨 목록을 순서대로 조회한다.
-  List<Lesson> findAllBySectionSectionIdOrderByOrderIndexAsc(Long sectionId);
+    List<Lesson> findAllBySectionSectionIdOrderByOrderIndexAsc(Long sectionId);
 
-  // 선수 레슨 후보를 강사 소유권과 함께 조회한다.
-  List<Lesson> findAllByLessonIdInAndSectionCourseInstructorId(List<Long> lessonIds, Long instructorId);
+    List<Lesson> findAllByLessonIdInAndSectionCourseInstructorId(List<Long> lessonIds, Long instructorId);
 
-  // 강의 하위의 모든 레슨을 조회한다.
-  List<Lesson> findAllBySectionCourseCourseId(Long courseId);
+    List<Lesson> findAllBySectionCourseCourseId(Long courseId);
 
-  // 여러 강의에 포함된 공개 레슨 수를 조회한다.
-  @Query(
-      """
-      select count(l)
-      from Lesson l
-      where l.section.course.courseId in :courseIds
-        and coalesce(l.isPublished, false) = true
-      """)
-  long countPublishedLessonsByCourseIds(@Param("courseIds") Collection<Long> courseIds);
+    @Query("""
+        select count(l)
+        from Lesson l
+        where l.section.course.instructorId = :instructorId
+          and coalesce(l.isPublished, false) = true
+        """)
+    long countBySectionCourseInstructorIdAndIsPublishedTrue(@Param("instructorId") Long instructorId);
 
-  // 기존 정렬 메서드 호환용이다.
-  default List<Lesson> findAllBySectionSectionIdOrderBySortOrderAsc(Long sectionId) {
-    return findAllBySectionSectionIdOrderByOrderIndexAsc(sectionId);
-  }
+    @Query("""
+        select l
+        from Lesson l
+        join fetch l.section s
+        join fetch s.course c
+        where c.instructorId = :instructorId
+          and coalesce(l.isPublished, false) = true
+        order by c.courseId asc, l.orderIndex asc, l.lessonId asc
+        """)
+    List<Lesson> findAllBySectionCourseInstructorIdAndIsPublishedTrue(@Param("instructorId") Long instructorId);
 
-  // 특정 강사 소유 강의의 레슨을 조회한다.
-  Optional<Lesson> findByLessonIdAndSectionCourseInstructorId(Long lessonId, Long instructorId);
+    @Query("""
+        select count(l)
+        from Lesson l
+        where l.section.course.courseId in :courseIds
+          and coalesce(l.isPublished, false) = true
+        """)
+    long countPublishedLessonsByCourseIds(@Param("courseIds") Collection<Long> courseIds);
 
-  // 특정 강의 하위 레슨을 일괄 삭제한다.
-  void deleteAllBySectionCourseCourseId(Long courseId);
+    default List<Lesson> findAllBySectionSectionIdOrderBySortOrderAsc(Long sectionId) {
+        return findAllBySectionSectionIdOrderByOrderIndexAsc(sectionId);
+    }
+
+    Optional<Lesson> findByLessonIdAndSectionCourseInstructorId(Long lessonId, Long instructorId);
+
+    void deleteAllBySectionCourseCourseId(Long courseId);
 }

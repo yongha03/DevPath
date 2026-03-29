@@ -1,24 +1,85 @@
 package com.devpath.api.recommendation.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.time.LocalDateTime;
+import java.util.List;
 import lombok.Builder;
 import lombok.Getter;
 
-// Recommendation Change 응답 DTO 모음
 public class RecommendationChangeResponse {
 
-    // 추천 변경 응답 DTO
     @Getter
     @Builder
-    @Schema(description = "추천 변경 응답 DTO")
+    @Schema(description = "Recommendation change detail response")
     public static class Detail {
 
-        // 추천 변경 ID
-        @Schema(description = "추천 변경 ID", example = "1")
+        @Schema(description = "Change id", example = "1")
         private Long changeId;
 
-        // 추천 변경 상태
-        @Schema(description = "추천 변경 상태", example = "PENDING")
-        private String status;
+        @Schema(description = "Source recommendation id", example = "12")
+        private Long sourceRecommendationId;
+
+        @Schema(description = "Roadmap node id", example = "101")
+        private Long nodeId;
+
+        @Schema(description = "Roadmap node title", example = "Spring Security JWT authentication")
+        private String nodeTitle;
+
+        @Schema(description = "Reason", example = "Generated from supplement recommendation and weakness signals.")
+        private String reason;
+
+        @Schema(description = "Context summary", example = "tilCount=4, weaknessSignal=true, warningCount=2, historyCount=3")
+        private String contextSummary;
+
+        @Schema(description = "Change status", example = "SUGGESTED")
+        private String changeStatus;
+
+        @Schema(description = "Decision status", example = "UNDECIDED")
+        private String decisionStatus;
+
+        @Schema(description = "Suggested time", example = "2026-03-29T11:10:00")
+        private LocalDateTime suggestedAt;
+
+        @Schema(description = "Applied time", example = "2026-03-29T11:20:00")
+        private LocalDateTime appliedAt;
+
+        @Schema(description = "Ignored time", example = "2026-03-29T11:25:00")
+        private LocalDateTime ignoredAt;
+    }
+
+    @Getter
+    @Builder
+    @Schema(description = "Recommendation change history item")
+    public static class HistoryItem {
+
+        @Schema(description = "Change id", example = "1")
+        private Long changeId;
+
+        @Schema(description = "Roadmap node id", example = "101")
+        private Long nodeId;
+
+        @Schema(description = "Roadmap node title", example = "Spring Security JWT authentication")
+        private String nodeTitle;
+
+        @Schema(description = "Change status", example = "APPLIED")
+        private String changeStatus;
+
+        @Schema(description = "Decision status", example = "APPLIED")
+        private String decisionStatus;
+
+        @Schema(description = "Updated time", example = "2026-03-29T11:20:00")
+        private LocalDateTime updatedAt;
+    }
+
+    @Getter
+    @Builder
+    @Schema(description = "Recommendation change recalculate result")
+    public static class RecalculateResult {
+
+        @Schema(description = "Recalculated item count", example = "3")
+        private Integer recalculatedCount;
+
+        @Schema(description = "Regenerated recommendation changes")
+        private List<Detail> items;
     }
 }

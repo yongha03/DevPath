@@ -37,6 +37,11 @@ public class RecommendationHistoryService {
         return RecommendationHistoryResponse.ListResult.of(userId, histories);
     }
 
+    public long getRecentHistoryCountForRecommendationChange(Long userId) {
+        validateUser(userId);
+        return recommendationHistoryRepository.findAllByUserIdOrderByCreatedAtDesc(userId).size();
+    }
+
     private User validateUser(Long userId) {
         if (userId == null) {
             throw new CustomException(ErrorCode.UNAUTHORIZED);

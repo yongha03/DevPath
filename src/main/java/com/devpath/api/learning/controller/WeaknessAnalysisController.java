@@ -8,9 +8,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "취약점 분석", description = "진단 퀴즈 기반 취약점 분석 결과 조회 API")
+@Tag(name = "Learner - Weakness Analysis", description = "Diagnosis-based weakness analysis API")
 @RestController
 @RequestMapping("/api/learning/weakness-analysis")
 @RequiredArgsConstructor
@@ -18,21 +21,31 @@ public class WeaknessAnalysisController {
 
     private final WeaknessAnalysisService weaknessAnalysisService;
 
-    @Operation(summary = "진단 결과 ID로 취약점 분석 조회", description = "특정 진단 결과의 취약 태그 및 추천 노드 목록을 조회합니다.")
+    @Operation(
+        summary = "Get weakness analysis by result id",
+        description = "Returns weak tags and recommended nodes for a diagnosis result."
+    )
     @GetMapping("/results/{resultId}")
     public ResponseEntity<ApiResponse<WeaknessAnalysisResponse>> getAnalysisByResultId(
-            @AuthenticationPrincipal Long userId,
-            @PathVariable Long resultId
+        @AuthenticationPrincipal Long userId,
+        @PathVariable Long resultId
     ) {
-        return ResponseEntity.ok(ApiResponse.ok(weaknessAnalysisService.getAnalysisByResultId(userId, resultId)));
+        return ResponseEntity.ok(ApiResponse.ok(
+            weaknessAnalysisService.getAnalysisByResultId(userId, resultId)
+        ));
     }
 
-    @Operation(summary = "로드맵 최신 취약점 분석 조회", description = "특정 로드맵에 대한 가장 최근 진단 결과의 취약점 분석을 조회합니다.")
+    @Operation(
+        summary = "Get latest weakness analysis for roadmap",
+        description = "Returns the latest weakness analysis for a roadmap."
+    )
     @GetMapping("/roadmaps/{roadmapId}/latest")
     public ResponseEntity<ApiResponse<WeaknessAnalysisResponse>> getLatestAnalysis(
-            @AuthenticationPrincipal Long userId,
-            @PathVariable Long roadmapId
+        @AuthenticationPrincipal Long userId,
+        @PathVariable Long roadmapId
     ) {
-        return ResponseEntity.ok(ApiResponse.ok(weaknessAnalysisService.getLatestAnalysis(userId, roadmapId)));
+        return ResponseEntity.ok(ApiResponse.ok(
+            weaknessAnalysisService.getLatestAnalysis(userId, roadmapId)
+        ));
     }
 }

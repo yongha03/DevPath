@@ -15,21 +15,31 @@ public class WeaknessAnalysisService {
 
     private final DiagnosisResultRepository diagnosisResultRepository;
 
-    // 특정 진단 결과 ID로 취약점 분석 결과를 조회한다.
     @Transactional(readOnly = true)
     public WeaknessAnalysisResponse getAnalysisByResultId(Long userId, Long resultId) {
         DiagnosisResult result = diagnosisResultRepository.findByResultIdAndUser_Id(resultId, userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.RESOURCE_NOT_FOUND));
+            .orElseThrow(() -> new CustomException(ErrorCode.RESOURCE_NOT_FOUND));
 
         return WeaknessAnalysisResponse.from(result);
     }
 
-    // 특정 로드맵에 대한 가장 최근 취약점 분석 결과를 조회한다.
     @Transactional(readOnly = true)
     public WeaknessAnalysisResponse getLatestAnalysis(Long userId, Long roadmapId) {
         DiagnosisResult result = diagnosisResultRepository.findLatestByUserAndRoadmap(userId, roadmapId)
-                .orElseThrow(() -> new CustomException(ErrorCode.RESOURCE_NOT_FOUND));
+            .orElseThrow(() -> new CustomException(ErrorCode.RESOURCE_NOT_FOUND));
 
         return WeaknessAnalysisResponse.from(result);
+    }
+
+    @Transactional(readOnly = true)
+    public WeaknessAnalysisResponse getLatestAnalysisForHistory(Long userId) {
+        return diagnosisResultRepository.findTopByUser_IdOrderByCreatedAtDesc(userId)
+            .map(WeaknessAnalysisResponse::from)
+            .orElse(null);
+    }
+
+    @Transactional(readOnly = true)
+    public boolean hasLatestAnalysisSignalForRecommendationChange(Long userId) {
+        return getLatestAnalysisForHistory(userId) != null;
     }
 }

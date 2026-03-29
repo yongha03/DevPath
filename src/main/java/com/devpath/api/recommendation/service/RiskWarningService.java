@@ -35,6 +35,11 @@ public class RiskWarningService {
         return RiskWarningResponse.ListResult.of(userId, warnings);
     }
 
+    public long getUnacknowledgedWarningCountForRecommendationChange(Long userId) {
+        validateUser(userId);
+        return riskWarningRepository.findAllByUserIdAndIsAcknowledgedFalseOrderByCreatedAtDesc(userId).size();
+    }
+
     private User validateUser(Long userId) {
         if (userId == null) {
             throw new CustomException(ErrorCode.UNAUTHORIZED);
