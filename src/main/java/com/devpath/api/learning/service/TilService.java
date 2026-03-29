@@ -79,6 +79,11 @@ public class TilService {
         return getTilList(userId);
     }
 
+    @Transactional(readOnly = true)
+    public long getTilSignalCountForRecommendationChange(Long userId) {
+        return getTilList(userId).size();
+    }
+
     @Transactional
     public TilResponse updateTil(Long userId, Long tilId, TilRequest.Update request) {
         TilDraft til = tilDraftRepository.findByIdAndUserIdAndIsDeletedFalse(tilId, userId)

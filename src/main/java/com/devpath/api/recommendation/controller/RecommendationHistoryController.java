@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "추천 변경 이력", description = "추천 상태 전이 이력 조회 API")
+@Tag(name = "Learner - Recommendation History", description = "Existing recommendation transition history API")
 @RestController
 @RequestMapping("/api/recommendations/history")
 @RequiredArgsConstructor
@@ -22,15 +22,18 @@ public class RecommendationHistoryController {
 
     private final RecommendationHistoryService recommendationHistoryService;
 
-    @Operation(summary = "추천 변경 이력 조회", description = "추천 ID 또는 노드 ID 조건으로 추천 상태 변경 이력을 조회합니다.")
+    @Operation(
+        summary = "Get existing recommendation histories",
+        description = "Returns existing recommendation histories by recommendation id or roadmap node id."
+    )
     @GetMapping
     public ResponseEntity<ApiResponse<RecommendationHistoryResponse.ListResult>> getHistories(
-            @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
-            @Parameter(description = "추천 ID", example = "10") @RequestParam(required = false) Long recommendationId,
-            @Parameter(description = "로드맵 노드 ID", example = "100") @RequestParam(required = false) Long nodeId
+        @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
+        @Parameter(description = "Recommendation id", example = "10") @RequestParam(required = false) Long recommendationId,
+        @Parameter(description = "Roadmap node id", example = "100") @RequestParam(required = false) Long nodeId
     ) {
         return ResponseEntity.ok(ApiResponse.ok(
-                recommendationHistoryService.getHistories(userId, recommendationId, nodeId)
+            recommendationHistoryService.getHistories(userId, recommendationId, nodeId)
         ));
     }
 }

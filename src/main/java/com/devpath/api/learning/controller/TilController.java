@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "강의 학습 - TIL", description = "TIL 초안 저장, 노트 변환, 조회, 외부 블로그 발행 API")
+@Tag(name = "Learner - TIL", description = "TIL draft, conversion, retrieval, and publish API")
 @RestController
 @RequestMapping("/api/learning/til")
 @RequiredArgsConstructor
@@ -31,69 +31,69 @@ public class TilController {
 
     private final TilService tilService;
 
-    @Operation(summary = "TIL 초안 저장", description = "TIL을 직접 작성하여 초안으로 저장합니다.")
+    @Operation(summary = "Create TIL draft", description = "Creates a TIL draft.")
     @PostMapping("/draft")
     public ResponseEntity<ApiResponse<TilResponse>> createTil(
-            @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
-            @Valid @RequestBody TilRequest.Create request
+        @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
+        @Valid @RequestBody TilRequest.Create request
     ) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.ok(tilService.createTil(userId, request)));
+            .body(ApiResponse.ok(tilService.createTil(userId, request)));
     }
 
-    @Operation(summary = "TIL 단건 조회", description = "TIL ID로 특정 TIL을 조회합니다.")
+    @Operation(summary = "Get TIL", description = "Returns a single TIL by id.")
     @GetMapping("/{tilId}")
     public ResponseEntity<ApiResponse<TilResponse>> getTil(
-            @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
-            @Parameter(description = "TIL ID", example = "1") @PathVariable Long tilId
+        @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
+        @Parameter(description = "TIL id", example = "1") @PathVariable Long tilId
     ) {
         return ResponseEntity.ok(ApiResponse.ok(tilService.getTil(userId, tilId)));
     }
 
-    @Operation(summary = "TIL 목록 조회", description = "내 TIL 목록을 최신순으로 조회합니다.")
+    @Operation(summary = "Get TIL list", description = "Returns TILs in reverse chronological order.")
     @GetMapping
     public ResponseEntity<ApiResponse<List<TilResponse>>> getTilList(
-            @Parameter(hidden = true) @AuthenticationPrincipal Long userId
+        @Parameter(hidden = true) @AuthenticationPrincipal Long userId
     ) {
         return ResponseEntity.ok(ApiResponse.ok(tilService.getTilList(userId)));
     }
 
-    @Operation(summary = "TIL 수정", description = "저장된 TIL의 제목과 본문을 수정합니다.")
+    @Operation(summary = "Update TIL", description = "Updates a TIL title and content.")
     @PutMapping("/{tilId}")
     public ResponseEntity<ApiResponse<TilResponse>> updateTil(
-            @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
-            @Parameter(description = "TIL ID", example = "1") @PathVariable Long tilId,
-            @Valid @RequestBody TilRequest.Update request
+        @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
+        @Parameter(description = "TIL id", example = "1") @PathVariable Long tilId,
+        @Valid @RequestBody TilRequest.Update request
     ) {
         return ResponseEntity.ok(ApiResponse.ok(tilService.updateTil(userId, tilId, request)));
     }
 
-    @Operation(summary = "노트 기반 TIL 변환", description = "선택한 타임스탬프 노트를 시간순으로 정리해 TIL 초안으로 변환합니다.")
+    @Operation(summary = "Convert notes to TIL", description = "Converts timestamp notes into a TIL draft.")
     @PostMapping("/convert")
     public ResponseEntity<ApiResponse<TilResponse>> convertFromNotes(
-            @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
-            @Valid @RequestBody TilRequest.ConvertFromNotes request
+        @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
+        @Valid @RequestBody TilRequest.ConvertFromNotes request
     ) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.ok(tilService.convertFromNotes(userId, request)));
+            .body(ApiResponse.ok(tilService.convertFromNotes(userId, request)));
     }
 
-    @Operation(summary = "외부 블로그 발행", description = "작성한 TIL을 외부 블로그에 발행합니다.")
+    @Operation(summary = "Publish TIL", description = "Publishes a TIL to an external blog.")
     @PostMapping("/{tilId}/publish")
     public ResponseEntity<ApiResponse<TilPublishResponse>> publishToExternalBlog(
-            @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
-            @Parameter(description = "TIL ID", example = "1") @PathVariable Long tilId,
-            @Valid @RequestBody TilPublishRequest request
+        @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
+        @Parameter(description = "TIL id", example = "1") @PathVariable Long tilId,
+        @Valid @RequestBody TilPublishRequest request
     ) {
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(ApiResponse.ok(tilService.publishToExternalBlog(userId, tilId, request)));
+            .body(ApiResponse.ok(tilService.publishToExternalBlog(userId, tilId, request)));
     }
 
-    @Operation(summary = "TIL 자동 목차화", description = "TIL 본문의 마크다운 헤더(#, ##, ###)를 파싱하여 목차를 자동 생성합니다.")
+    @Operation(summary = "Generate TIL table of contents", description = "Generates a table of contents from markdown headers.")
     @PostMapping("/{tilId}/toc")
     public ResponseEntity<ApiResponse<TilResponse>> generateTableOfContents(
-            @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
-            @Parameter(description = "TIL ID", example = "1") @PathVariable Long tilId
+        @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
+        @Parameter(description = "TIL id", example = "1") @PathVariable Long tilId
     ) {
         return ResponseEntity.ok(ApiResponse.ok(tilService.generateTableOfContents(userId, tilId)));
     }

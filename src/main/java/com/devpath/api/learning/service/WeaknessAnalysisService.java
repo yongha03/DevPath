@@ -37,4 +37,9 @@ public class WeaknessAnalysisService {
             .map(WeaknessAnalysisResponse::from)
             .orElse(null);
     }
+
+    @Transactional(readOnly = true)
+    public boolean hasLatestAnalysisSignalForRecommendationChange(Long userId) {
+        return getLatestAnalysisForHistory(userId) != null;
+    }
 }
