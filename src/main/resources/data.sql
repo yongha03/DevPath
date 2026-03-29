@@ -1621,3 +1621,365 @@ SELECT 1, 'STUDY_GROUP', '새로운 스터디 팀원이 매칭되었습니다!',
 INSERT INTO dashboard_snapshot (learner_id, snapshot_date, total_study_hours, completed_nodes)
 SELECT 1, CURRENT_DATE, 45, 12
     WHERE NOT EXISTS (SELECT 1 FROM dashboard_snapshot WHERE learner_id = 1 AND snapshot_date = CURRENT_DATE);
+
+-- ========================================
+-- 10. A SEED
+-- Learning Automation / Proof / History / Recommendation / Analytics
+-- owner: A
+-- ========================================
+
+-- quiz / assignment parent seed
+INSERT INTO quizzes (
+    quiz_id,
+    node_id,
+    title,
+    description,
+    quiz_type,
+    total_score,
+    is_published,
+    is_active,
+    expose_answer,
+    expose_explanation,
+    is_deleted,
+    created_at,
+    updated_at
+) VALUES
+(10901, 1, 'Java Basics 핵심 퀴즈', 'Java Basics 노드 학습 확인용 퀴즈입니다.', 'MANUAL', 10, TRUE, TRUE, TRUE, TRUE, FALSE, NOW() - INTERVAL '7 day', NOW() - INTERVAL '7 day'),
+(10902, 2, 'HTTP Fundamentals 핵심 퀴즈', 'HTTP Fundamentals 노드 학습 확인용 퀴즈입니다.', 'MANUAL', 10, TRUE, TRUE, TRUE, TRUE, FALSE, NOW() - INTERVAL '7 day', NOW() - INTERVAL '7 day');
+
+INSERT INTO assignments (
+    assignment_id,
+    node_id,
+    title,
+    description,
+    submission_type,
+    due_at,
+    allowed_file_formats,
+    readme_required,
+    test_required,
+    lint_required,
+    submission_rule_description,
+    total_score,
+    is_published,
+    is_active,
+    allow_late_submission,
+    is_deleted,
+    created_at,
+    updated_at
+) VALUES
+(11901, 1, 'Java Basics 실습 과제', '기본 문법과 객체지향 기초를 정리하는 과제입니다.', 'URL', NOW() - INTERVAL '4 day', NULL, TRUE, FALSE, FALSE, 'GitHub 저장소 URL을 제출합니다.', 100, TRUE, TRUE, TRUE, FALSE, NOW() - INTERVAL '7 day', NOW() - INTERVAL '7 day'),
+(11902, 2, 'HTTP Fundamentals 정리 과제', 'HTTP 메서드와 상태 코드를 정리하는 과제입니다.', 'URL', NOW() - INTERVAL '1 day', NULL, TRUE, FALSE, FALSE, 'GitHub 저장소 URL을 제출합니다.', 100, TRUE, TRUE, TRUE, FALSE, NOW() - INTERVAL '7 day', NOW() - INTERVAL '7 day');
+
+-- lesson_progress 완료/미완료
+INSERT INTO lesson_progress (
+    progress_id,
+    user_id,
+    lesson_id,
+    progress_percent,
+    progress_seconds,
+    default_playback_rate,
+    is_pip_enabled,
+    is_completed,
+    last_watched_at,
+    created_at,
+    updated_at
+) VALUES
+(10001, 1, 1, 100, 780, 1.0, FALSE, TRUE, NOW() - INTERVAL '5 day', NOW() - INTERVAL '7 day', NOW() - INTERVAL '5 day'),
+(10002, 1, 2, 65, 598, 1.25, TRUE, FALSE, NOW() - INTERVAL '2 day', NOW() - INTERVAL '6 day', NOW() - INTERVAL '2 day'),
+(10003, 2, 1, 100, 780, 1.0, FALSE, TRUE, NOW() - INTERVAL '3 day', NOW() - INTERVAL '8 day', NOW() - INTERVAL '3 day'),
+(10004, 2, 3, 40, 440, 1.0, FALSE, FALSE, NOW() - INTERVAL '1 day', NOW() - INTERVAL '4 day', NOW() - INTERVAL '1 day');
+
+-- quiz_attempts 통과/실패
+INSERT INTO quiz_attempts (
+    attempt_id,
+    quiz_id,
+    learner_id,
+    score,
+    max_score,
+    started_at,
+    completed_at,
+    time_spent_seconds,
+    is_passed,
+    attempt_number,
+    created_at,
+    updated_at,
+    is_deleted
+) VALUES
+(11001, 10901, 1, 9, 10, NOW() - INTERVAL '5 day' - INTERVAL '10 minute', NOW() - INTERVAL '5 day', 600, TRUE, 1, NOW() - INTERVAL '5 day', NOW() - INTERVAL '5 day', FALSE),
+(11002, 10902, 1, 4, 10, NOW() - INTERVAL '2 day' - INTERVAL '8 minute', NOW() - INTERVAL '2 day', 480, FALSE, 1, NOW() - INTERVAL '2 day', NOW() - INTERVAL '2 day', FALSE),
+(11003, 10901, 2, 8, 10, NOW() - INTERVAL '3 day' - INTERVAL '9 minute', NOW() - INTERVAL '3 day', 540, TRUE, 1, NOW() - INTERVAL '3 day', NOW() - INTERVAL '3 day', FALSE);
+
+-- assignment_submissions 제출/미제출/통과
+INSERT INTO assignment_submissions (
+    submission_id,
+    assignment_id,
+    learner_id,
+    submission_status,
+    submission_url,
+    is_late,
+    submitted_at,
+    graded_at,
+    total_score,
+    readme_passed,
+    test_passed,
+    lint_passed,
+    file_format_passed,
+    created_at,
+    updated_at,
+    is_deleted
+) VALUES
+(12001, 11901, 1, 'GRADED', 'https://github.com/example/devpath-assignment-1', FALSE, NOW() - INTERVAL '5 day', NOW() - INTERVAL '4 day', 95, TRUE, TRUE, TRUE, TRUE, NOW() - INTERVAL '5 day', NOW() - INTERVAL '4 day', FALSE),
+(12002, 11902, 1, 'SUBMITTED', 'https://github.com/example/devpath-assignment-2', FALSE, NOW() - INTERVAL '2 day', NULL, NULL, NULL, NULL, NULL, NULL, NOW() - INTERVAL '2 day', NOW() - INTERVAL '2 day', FALSE),
+(12003, 11901, 2, 'GRADED', 'https://github.com/example/devpath-assignment-3', FALSE, NOW() - INTERVAL '3 day', NOW() - INTERVAL '2 day', 82, TRUE, TRUE, FALSE, TRUE, NOW() - INTERVAL '3 day', NOW() - INTERVAL '2 day', FALSE);
+
+-- til / timestamp_note
+INSERT INTO timestamp_notes (
+    note_id,
+    user_id,
+    lesson_id,
+    timestamp_second,
+    content,
+    created_at,
+    updated_at,
+    is_deleted
+) VALUES
+(13001, 1, 1, 120, 'DI와 IoC 차이를 다시 정리했다.', NOW() - INTERVAL '6 day', NOW() - INTERVAL '6 day', FALSE),
+(13002, 1, 2, 420, 'Bean lifecycle callback 흐름을 다시 봤다.', NOW() - INTERVAL '5 day', NOW() - INTERVAL '5 day', FALSE),
+(13003, 2, 3, 300, '연관관계 매핑 전략 비교 포인트를 메모했다.', NOW() - INTERVAL '4 day', NOW() - INTERVAL '4 day', FALSE);
+
+INSERT INTO til_drafts (
+    til_id,
+    user_id,
+    lesson_id,
+    title,
+    content,
+    status,
+    published_url,
+    created_at,
+    updated_at,
+    is_deleted
+) VALUES
+(14001, 1, 1, 'Spring IoC와 DI 정리', 'DI, IoC, BeanContainer 흐름을 정리했다.', 'PUBLISHED', 'https://velog.io/@devpath/ioc-di', NOW() - INTERVAL '5 day', NOW() - INTERVAL '5 day', FALSE),
+(14002, 1, 2, 'Bean 생명주기 정리', 'Bean 생성과 소멸 콜백 시점을 정리했다.', 'DRAFT', NULL, NOW() - INTERVAL '2 day', NOW() - INTERVAL '2 day', FALSE),
+(14003, 2, 3, 'JPA 연관관계 매핑 메모', '일대다와 다대일 매핑 차이를 정리했다.', 'PUBLISHED', 'https://velog.io/@devpath/jpa-mapping', NOW() - INTERVAL '3 day', NOW() - INTERVAL '3 day', FALSE);
+
+-- supplement_recommendation
+INSERT INTO supplement_recommendations (
+    recommendation_id,
+    user_id,
+    node_id,
+    reason,
+    priority,
+    coverage_percent,
+    missing_tag_count,
+    status,
+    created_at,
+    updated_at
+) VALUES
+(15001, 1, 2, 'HTTP 기초 보강이 필요해 추천이 생성되었습니다.', 90, 52.0, 2, 'PENDING', NOW() - INTERVAL '2 day', NOW() - INTERVAL '2 day'),
+(15002, 1, 3, 'Spring Boot 기본기 보강 추천이 승인되었습니다.', 85, 71.0, 1, 'APPROVED', NOW() - INTERVAL '1 day', NOW() - INTERVAL '1 day'),
+(15003, 2, 2, 'HTTP 요청/응답 흐름 복습 추천이 생성되었습니다.', 80, 58.0, 2, 'PENDING', NOW() - INTERVAL '1 day', NOW() - INTERVAL '1 day');
+
+-- node_clearance / reason
+INSERT INTO node_clearances (
+    node_clearance_id,
+    user_id,
+    node_id,
+    clearance_status,
+    lesson_completion_rate,
+    required_tags_satisfied,
+    missing_tag_count,
+    lesson_completed,
+    quiz_passed,
+    assignment_passed,
+    proof_eligible,
+    cleared_at,
+    last_calculated_at,
+    created_at,
+    updated_at
+) VALUES
+(16001, 1, 1, 'CLEARED', 100.00, TRUE, 0, TRUE, TRUE, TRUE, TRUE, NOW() - INTERVAL '4 day', NOW() - INTERVAL '4 day', NOW() - INTERVAL '4 day', NOW() - INTERVAL '4 day'),
+(16002, 1, 2, 'NOT_CLEARED', 65.00, FALSE, 1, FALSE, FALSE, FALSE, FALSE, NULL, NOW() - INTERVAL '2 day', NOW() - INTERVAL '2 day', NOW() - INTERVAL '2 day'),
+(16003, 2, 1, 'CLEARED', 100.00, TRUE, 0, TRUE, TRUE, TRUE, TRUE, NOW() - INTERVAL '3 day', NOW() - INTERVAL '3 day', NOW() - INTERVAL '3 day', NOW() - INTERVAL '3 day');
+
+INSERT INTO node_clearance_reasons (
+    node_clearance_reason_id,
+    node_clearance_id,
+    reason_type,
+    is_satisfied,
+    detail_message,
+    created_at
+) VALUES
+(16101, 16001, 'LESSON_COMPLETION', TRUE, '레슨 완강률: 100.00%', NOW() - INTERVAL '4 day'),
+(16102, 16001, 'REQUIRED_TAGS', TRUE, '필수 태그를 모두 보유하고 있습니다.', NOW() - INTERVAL '4 day'),
+(16103, 16001, 'QUIZ_PASS', TRUE, '퀴즈 조건을 만족했습니다.', NOW() - INTERVAL '4 day'),
+(16104, 16001, 'ASSIGNMENT_PASS', TRUE, '과제 조건을 만족했습니다.', NOW() - INTERVAL '4 day'),
+(16105, 16001, 'PROOF_ELIGIBLE', TRUE, 'Proof Card 발급 가능 상태입니다.', NOW() - INTERVAL '4 day'),
+(16106, 16002, 'LESSON_COMPLETION', FALSE, '레슨 완강률: 65.00%', NOW() - INTERVAL '2 day'),
+(16107, 16002, 'MISSING_TAGS', FALSE, 'HTTP', NOW() - INTERVAL '2 day'),
+(16108, 16002, 'PROOF_ELIGIBLE', FALSE, 'Proof Card 발급 조건이 아직 충족되지 않았습니다.', NOW() - INTERVAL '2 day');
+
+-- proof_card / certificate / share / download_history
+INSERT INTO proof_cards (
+    proof_card_id,
+    user_id,
+    node_id,
+    node_clearance_id,
+    title,
+    description,
+    proof_card_status,
+    issued_at,
+    created_at,
+    updated_at
+) VALUES
+(17001, 1, 1, 16001, 'Java Basics Proof Card', 'Java Basics 노드의 학습 완료 및 검증 조건 충족 결과를 증명합니다.', 'ISSUED', NOW() - INTERVAL '4 day', NOW() - INTERVAL '4 day', NOW() - INTERVAL '4 day'),
+(17002, 2, 1, 16003, 'Java Basics Proof Card', 'Java Basics 노드의 학습 완료 및 검증 조건 충족 결과를 증명합니다.', 'ISSUED', NOW() - INTERVAL '3 day', NOW() - INTERVAL '3 day', NOW() - INTERVAL '3 day');
+
+INSERT INTO proof_card_tags (
+    proof_card_tag_id,
+    proof_card_id,
+    tag_id,
+    skill_evidence_type
+) VALUES
+(17101, 17001, 1, 'VERIFIED'),
+(17102, 17001, 2, 'HELD'),
+(17103, 17002, 1, 'VERIFIED');
+
+INSERT INTO proof_card_shares (
+    proof_card_share_id,
+    proof_card_id,
+    share_token,
+    share_status,
+    expires_at,
+    access_count,
+    created_at,
+    updated_at
+) VALUES
+(17201, 17001, 'proof-share-token-17001', 'ACTIVE', NOW() + INTERVAL '30 day', 7, NOW() - INTERVAL '3 day', NOW() - INTERVAL '1 day'),
+(17202, 17002, 'proof-share-token-17002', 'ACTIVE', NOW() + INTERVAL '15 day', 2, NOW() - INTERVAL '2 day', NOW() - INTERVAL '1 day');
+
+INSERT INTO certificates (
+    certificate_id,
+    proof_card_id,
+    certificate_number,
+    certificate_status,
+    issued_at,
+    pdf_file_name,
+    pdf_generated_at,
+    last_downloaded_at,
+    created_at,
+    updated_at
+) VALUES
+(17301, 17001, 'CERT-20260329-A001', 'PDF_READY', NOW() - INTERVAL '3 day', 'certificate-CERT-20260329-A001.pdf', NOW() - INTERVAL '3 day', NOW() - INTERVAL '2 day', NOW() - INTERVAL '3 day', NOW() - INTERVAL '2 day'),
+(17302, 17002, 'CERT-20260329-A002', 'ISSUED', NOW() - INTERVAL '2 day', NULL, NULL, NULL, NOW() - INTERVAL '2 day', NOW() - INTERVAL '2 day');
+
+INSERT INTO certificate_download_histories (
+    certificate_download_history_id,
+    certificate_id,
+    downloaded_by,
+    download_reason,
+    downloaded_at
+) VALUES
+(17401, 17301, 1, '포트폴리오 제출', NOW() - INTERVAL '2 day'),
+(17402, 17301, 1, '이력 정리', NOW() - INTERVAL '1 day');
+
+-- learning_history_share_link
+INSERT INTO learning_history_share_links (
+    learning_history_share_link_id,
+    user_id,
+    share_token,
+    title,
+    expires_at,
+    access_count,
+    is_active,
+    created_at,
+    updated_at
+) VALUES
+(17501, 1, 'history-share-token-17501', 'Learner Kim 학습 이력', NOW() + INTERVAL '30 day', 5, TRUE, NOW() - INTERVAL '2 day', NOW() - INTERVAL '1 day');
+
+-- recommendation_change 샘플
+INSERT INTO recommendation_changes (
+    recommendation_change_id,
+    user_id,
+    node_id,
+    source_recommendation_id,
+    reason,
+    context_summary,
+    change_status,
+    decision_status,
+    suggested_at,
+    applied_at,
+    ignored_at,
+    created_at,
+    updated_at
+) VALUES
+(18001, 1, 2, 15001, '부족 태그와 최근 학습 기록을 반영한 추천입니다.', 'tilCount=2, weaknessSignal=true, warningCount=1, historyCount=1', 'SUGGESTED', 'UNDECIDED', NOW() - INTERVAL '1 day', NULL, NULL, NOW() - INTERVAL '1 day', NOW() - INTERVAL '1 day'),
+(18002, 1, 3, 15002, '퀴즈 실패 이력을 반영해 후속 노드 추천을 조정했습니다.', 'tilCount=2, weaknessSignal=true, warningCount=1, historyCount=2', 'APPLIED', 'APPLIED', NOW() - INTERVAL '12 hour', NOW() - INTERVAL '6 hour', NULL, NOW() - INTERVAL '12 hour', NOW() - INTERVAL '6 hour'),
+(18003, 2, 2, 15003, '보강 추천 우선순위를 조정한 제안입니다.', 'tilCount=1, weaknessSignal=false, warningCount=0, historyCount=0', 'IGNORED', 'IGNORED', NOW() - INTERVAL '10 hour', NULL, NOW() - INTERVAL '4 hour', NOW() - INTERVAL '10 hour', NOW() - INTERVAL '4 hour');
+
+-- learning_rule / metric_sample
+INSERT INTO learning_automation_rules (
+    learning_automation_rule_id,
+    rule_key,
+    rule_name,
+    description,
+    rule_value,
+    priority,
+    rule_status,
+    created_at,
+    updated_at
+) VALUES
+(19001, 'PROOF_CARD_AUTO_ISSUE', 'Proof Card 자동 발급', '노드 클리어 시 Proof Card를 자동 발급합니다.', 'true', 100, 'ENABLED', NOW() - INTERVAL '7 day', NOW() - INTERVAL '7 day'),
+(19002, 'PROOF_CARD_MANUAL_ISSUE', 'Proof Card 수동 발급', '수동 발급 API 허용 여부입니다.', 'true', 90, 'ENABLED', NOW() - INTERVAL '7 day', NOW() - INTERVAL '7 day'),
+(19003, 'RECOMMENDATION_CHANGE_ENABLED', '추천 변경 활성화', '추천 변경 제안 기능 활성화 여부입니다.', 'true', 80, 'ENABLED', NOW() - INTERVAL '7 day', NOW() - INTERVAL '7 day'),
+(19004, 'RECOMMENDATION_CHANGE_MAX_LIMIT', '추천 변경 최대 개수', '추천 변경 제안 최대 개수입니다.', '5', 70, 'ENABLED', NOW() - INTERVAL '7 day', NOW() - INTERVAL '7 day'),
+(19005, 'SUPPLEMENT_RECOMMENDATION_ENABLED', '보강 추천 활성화', '보강 추천 생성 기능 활성화 여부입니다.', 'true', 60, 'ENABLED', NOW() - INTERVAL '7 day', NOW() - INTERVAL '7 day');
+
+INSERT INTO automation_monitor_snapshots (
+    automation_monitor_snapshot_id,
+    monitor_key,
+    monitor_status,
+    snapshot_value,
+    snapshot_message,
+    measured_at,
+    created_at
+) VALUES
+(19101, 'PROOF_CARD_AUTO_ISSUE', 'HEALTHY', 1.0, '자동 발급 룰이 활성화되어 있습니다.', NOW() - INTERVAL '1 day', NOW() - INTERVAL '1 day'),
+(19102, 'PROOF_CARD_MANUAL_ISSUE', 'HEALTHY', 1.0, '수동 발급 룰이 활성화되어 있습니다.', NOW() - INTERVAL '1 day', NOW() - INTERVAL '1 day'),
+(19103, 'RECOMMENDATION_CHANGE_ENABLED', 'HEALTHY', 1.0, '추천 변경 룰이 활성화되어 있습니다.', NOW() - INTERVAL '1 day', NOW() - INTERVAL '1 day'),
+(19104, 'SUPPLEMENT_RECOMMENDATION_ENABLED', 'HEALTHY', 1.0, '보강 추천 룰이 활성화되어 있습니다.', NOW() - INTERVAL '1 day', NOW() - INTERVAL '1 day');
+
+INSERT INTO learning_metric_samples (
+    learning_metric_sample_id,
+    metric_type,
+    metric_label,
+    metric_value,
+    sampled_at,
+    created_at
+) VALUES
+(19201, 'OVERVIEW', 'clearanceRate', 87.50, NOW() - INTERVAL '1 day', NOW() - INTERVAL '1 day'),
+(19202, 'COMPLETION_RATE', 'roadmapCompletionRate', 42.80, NOW() - INTERVAL '1 day', NOW() - INTERVAL '1 day'),
+(19203, 'AVERAGE_WATCH_TIME', 'averageLearningDurationSeconds', 1380.00, NOW() - INTERVAL '1 day', NOW() - INTERVAL '1 day'),
+(19204, 'QUIZ_STATS', 'quizQualityScore', 79.40, NOW() - INTERVAL '1 day', NOW() - INTERVAL '1 day');
+
+-- 시퀀스 보정
+SELECT setval(pg_get_serial_sequence('quizzes', 'quiz_id'), COALESCE((SELECT MAX(quiz_id) FROM quizzes), 1), true);
+SELECT setval(pg_get_serial_sequence('assignments', 'assignment_id'), COALESCE((SELECT MAX(assignment_id) FROM assignments), 1), true);
+SELECT setval(pg_get_serial_sequence('lesson_progress', 'progress_id'), COALESCE((SELECT MAX(progress_id) FROM lesson_progress), 1), true);
+SELECT setval(pg_get_serial_sequence('quiz_attempts', 'attempt_id'), COALESCE((SELECT MAX(attempt_id) FROM quiz_attempts), 1), true);
+SELECT setval(pg_get_serial_sequence('assignment_submissions', 'submission_id'), COALESCE((SELECT MAX(submission_id) FROM assignment_submissions), 1), true);
+SELECT setval(pg_get_serial_sequence('timestamp_notes', 'note_id'), COALESCE((SELECT MAX(note_id) FROM timestamp_notes), 1), true);
+SELECT setval(pg_get_serial_sequence('til_drafts', 'til_id'), COALESCE((SELECT MAX(til_id) FROM til_drafts), 1), true);
+SELECT setval(pg_get_serial_sequence('supplement_recommendations', 'recommendation_id'), COALESCE((SELECT MAX(recommendation_id) FROM supplement_recommendations), 1), true);
+SELECT setval(pg_get_serial_sequence('node_clearances', 'node_clearance_id'), COALESCE((SELECT MAX(node_clearance_id) FROM node_clearances), 1), true);
+SELECT setval(pg_get_serial_sequence('node_clearance_reasons', 'node_clearance_reason_id'), COALESCE((SELECT MAX(node_clearance_reason_id) FROM node_clearance_reasons), 1), true);
+SELECT setval(pg_get_serial_sequence('proof_cards', 'proof_card_id'), COALESCE((SELECT MAX(proof_card_id) FROM proof_cards), 1), true);
+SELECT setval(pg_get_serial_sequence('proof_card_tags', 'proof_card_tag_id'), COALESCE((SELECT MAX(proof_card_tag_id) FROM proof_card_tags), 1), true);
+SELECT setval(pg_get_serial_sequence('proof_card_shares', 'proof_card_share_id'), COALESCE((SELECT MAX(proof_card_share_id) FROM proof_card_shares), 1), true);
+SELECT setval(pg_get_serial_sequence('certificates', 'certificate_id'), COALESCE((SELECT MAX(certificate_id) FROM certificates), 1), true);
+SELECT setval(pg_get_serial_sequence('certificate_download_histories', 'certificate_download_history_id'), COALESCE((SELECT MAX(certificate_download_history_id) FROM certificate_download_histories), 1), true);
+SELECT setval(pg_get_serial_sequence('learning_history_share_links', 'learning_history_share_link_id'), COALESCE((SELECT MAX(learning_history_share_link_id) FROM learning_history_share_links), 1), true);
+SELECT setval(pg_get_serial_sequence('recommendation_changes', 'recommendation_change_id'), COALESCE((SELECT MAX(recommendation_change_id) FROM recommendation_changes), 1), true);
+SELECT setval(pg_get_serial_sequence('learning_automation_rules', 'learning_automation_rule_id'), COALESCE((SELECT MAX(learning_automation_rule_id) FROM learning_automation_rules), 1), true);
+SELECT setval(pg_get_serial_sequence('automation_monitor_snapshots', 'automation_monitor_snapshot_id'), COALESCE((SELECT MAX(automation_monitor_snapshot_id) FROM automation_monitor_snapshots), 1), true);
+SELECT setval(pg_get_serial_sequence('learning_metric_samples', 'learning_metric_sample_id'), COALESCE((SELECT MAX(learning_metric_sample_id) FROM learning_metric_samples), 1), true);
