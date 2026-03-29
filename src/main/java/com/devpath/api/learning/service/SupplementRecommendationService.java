@@ -95,6 +95,11 @@ public class SupplementRecommendationService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public List<SupplementRecommendationResponse> getRecommendationsForHistory(Long userId) {
+        return getRecommendations(userId, null);
+    }
+
     // 한글 주석: 승인 시 before/after 상태를 recommendation_histories에 함께 남겨 이력 조회에서 바로 쓸 수 있게 한다.
     @Transactional(readOnly = true)
     public List<RecommendationHistoryResponse> getRecommendationHistories(

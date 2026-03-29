@@ -74,6 +74,11 @@ public class TilService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public List<TilResponse> getTilListForHistory(Long userId) {
+        return getTilList(userId);
+    }
+
     @Transactional
     public TilResponse updateTil(Long userId, Long tilId, TilRequest.Update request) {
         TilDraft til = tilDraftRepository.findByIdAndUserIdAndIsDeletedFalse(tilId, userId)

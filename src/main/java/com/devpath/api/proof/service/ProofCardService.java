@@ -70,6 +70,11 @@ public class ProofCardService {
             .toList();
     }
 
+    @Transactional(readOnly = true)
+    public List<ProofCardResponse.Summary> getProofCardsForHistory(Long userId) {
+        return getProofCards(userId);
+    }
+
     // Proof Card 상세를 조회한다.
     @Transactional(readOnly = true)
     public ProofCardResponse.Detail getProofCard(Long userId, Long proofCardId) {
@@ -98,6 +103,11 @@ public class ProofCardService {
                 .tags(tagItemMap.getOrDefault(proofCard.getId(), List.of()))
                 .build())
             .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProofCardResponse.GalleryItem> getProofCardGalleryForHistory(Long userId) {
+        return getGallery(userId);
     }
 
     // Proof Card를 생성하고 태그를 저장한다.
