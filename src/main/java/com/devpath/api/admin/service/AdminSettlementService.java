@@ -8,12 +8,11 @@ import com.devpath.api.settlement.entity.Settlement;
 import com.devpath.api.settlement.repository.SettlementRepository;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
-import java.time.temporal.ChronoUnit;
 
 @Service
 @RequiredArgsConstructor
@@ -25,18 +24,20 @@ public class AdminSettlementService {
 
     public void holdSettlement(Long settlementId, Long adminId, SettlementHoldRequest request) {
         Settlement settlement = settlementRepository.findByIdAndIsDeletedFalse(settlementId)
-                .orElseThrow(() -> new CustomException(ErrorCode.RESOURCE_NOT_FOUND));
+                .orElseThrow(() -> new CustomException(ErrorCode.SETTLEMENT_NOT_FOUND));
+
         settlement.hold();
     }
 
     @Transactional(readOnly = true)
     public SettlementEligibilityResponse checkEligibility(Long refundRequestId) {
         RefundRequest refundRequest = refundRepository.findByIdAndIsDeletedFalse(refundRequestId)
-                .orElseThrow(() -> new CustomException(ErrorCode.RESOURCE_NOT_FOUND));
+                .orElseThrow(() -> new CustomException(ErrorCode.REFUND_NOT_FOUND));
 
         LocalDateTime purchasedAt = refundRequest.getRequestedAt();
         LocalDateTime refundDeadline = purchasedAt.plusDays(7);
         LocalDateTime now = LocalDateTime.now();
+
         boolean isEligible = now.isBefore(refundDeadline);
         long remainingDays = Math.max(0, ChronoUnit.DAYS.between(now, refundDeadline));
 

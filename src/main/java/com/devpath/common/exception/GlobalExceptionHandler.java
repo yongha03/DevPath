@@ -2,12 +2,14 @@ package com.devpath.common.exception;
 
 import com.devpath.common.response.ApiResponse;
 import com.devpath.common.security.JwtAuthenticationException;
+import com.fasterxml.jackson.databind.exc.InvalidFormatException;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -42,7 +44,7 @@ public class GlobalExceptionHandler {
   // RequestBody 검증 실패 시 첫 번째 오류 메시지를 반환한다.
   public ResponseEntity<ApiResponse<Void>> handleMethodArgumentNotValidException(
       MethodArgumentNotValidException e) {
-    // 여러 검증 오류가 있어도 사용자에게는 가장 먼저 확인된 메시지를 우선 전달한다.
+    // 여러 검증 오류가 있어도 사용자에게는 가장 먼저 확인할 메시지를 우선 전달한다.
     String message =
         Optional.ofNullable(e.getBindingResult().getFieldError())
             .map(FieldError::getDefaultMessage)
@@ -65,6 +67,27 @@ public class GlobalExceptionHandler {
         .body(ApiResponse.error(ErrorCode.INVALID_INPUT.name(), message));
   }
 
+  @ExceptionHandler(HttpMessageNotReadableException.class)
+  // enum 값 오입력 같은 RequestBody 파싱 오류를 공통 에러 응답으로 변환한다.
+  public ResponseEntity<ApiResponse<Void>> handleHttpMessageNotReadableException(
+      HttpMessageNotReadableException e) {
+    Throwable cause = e.getCause();
+
+    if (cause instanceof InvalidFormatException invalidFormatException) {
+      String message =
+          Optional.ofNullable(invalidFormatException.getPath())
+              .filter(path -> !path.isEmpty())
+              .map(path -> path.get(0).getFieldName() + " 필드의 enum 값이 올바르지 않습니다.")
+              .orElse("요청 본문 형식이 올바르지 않습니다.");
+
+      return ResponseEntity.status(ErrorCode.INVALID_INPUT.getStatus())
+          .body(ApiResponse.error(ErrorCode.INVALID_INPUT.name(), message));
+    }
+
+    return ResponseEntity.status(ErrorCode.INVALID_INPUT.getStatus())
+        .body(ApiResponse.error(ErrorCode.INVALID_INPUT.name(), ErrorCode.INVALID_INPUT.getMessage()));
+  }
+
   @ExceptionHandler(ConstraintViolationException.class)
   // 메서드 파라미터 제약 조건 위반 예외를 처리한다.
   public ResponseEntity<ApiResponse<Void>> handleConstraintViolationException(
@@ -81,7 +104,7 @@ public class GlobalExceptionHandler {
   }
 
   @ExceptionHandler(DataIntegrityViolationException.class)
-  // DB 제약 조건 위반 시 중복 여부를 판단해 알맞은 오류 코드로 변환한다.
+  // DB 제약 조건 위반 및 중복 여부를 진단해 도메인 오류 코드로 변환한다.
   public ResponseEntity<ApiResponse<Void>> handleDataIntegrityViolation(
       DataIntegrityViolationException e) {
     // 실제 DB 오류 메시지에서 제약 조건 이름을 읽어 어떤 중복인지 구분한다.
@@ -100,9 +123,9 @@ public class GlobalExceptionHandler {
   }
 
   @ExceptionHandler(Exception.class)
-  // 처리되지 않은 예외를 기록하고 500 오류 응답을 반환한다.
+  // 처리하지 못한 예외를 기록하고 500 오류 응답을 반환한다.
   public ResponseEntity<ApiResponse<Void>> handleException(Exception e) {
-    // 예상하지 못한 오류는 로그로 남겨야 이후 원인 분석이 가능하다.
+    // 예상하지 못한 오류는 로그로 남겨 후속 원인 분석이 가능하도록 한다.
     log.error("Unhandled exception", e);
     return ResponseEntity.status(ErrorCode.INTERNAL_SERVER_ERROR.getStatus())
         .body(

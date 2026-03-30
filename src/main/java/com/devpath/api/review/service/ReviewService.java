@@ -6,12 +6,11 @@ import com.devpath.api.review.entity.Review;
 import com.devpath.api.review.repository.ReviewRepository;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
+import java.util.List;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -41,7 +40,8 @@ public class ReviewService {
     @Transactional(readOnly = true)
     public ReviewResponse getReview(Long reviewId) {
         Review review = reviewRepository.findByIdAndIsDeletedFalse(reviewId)
-                .orElseThrow(() -> new CustomException(ErrorCode.RESOURCE_NOT_FOUND));
+                .orElseThrow(() -> new CustomException(ErrorCode.REVIEW_NOT_FOUND));
+
         return ReviewResponse.from(review);
     }
 }
