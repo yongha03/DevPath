@@ -20,6 +20,6 @@ public class ChannelProfileUpdateRequest {
     @Schema(description = "전문분야 목록", example = "[\"Spring Boot\", \"JPA\", \"PostgreSQL\"]")
     private List<String> expertiseList;
 
-    @Schema(description = "외부 링크 목록", example = "[\"https://github.com/devpath\", \"https://blog.devpath.com\"]")
+    @Schema(description = "외부 링크 목록", example = "[\"https://github.com/devpath\", \"https://velog.io/@devpath\"]")
     private List<String> externalLinks;
 }
