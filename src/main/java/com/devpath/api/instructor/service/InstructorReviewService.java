@@ -19,6 +19,7 @@ import com.devpath.api.review.entity.ReviewStatus;
 import com.devpath.api.review.repository.ReviewRepository;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
+import com.devpath.domain.course.repository.CourseRepository;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,11 +37,12 @@ public class InstructorReviewService {
     private final ReviewReplyRepository reviewReplyRepository;
     private final ReviewTemplateRepository reviewTemplateRepository;
     private final ReviewReportRepository reviewReportRepository;
+    private final CourseRepository courseRepository;
 
     public ReviewReplyResponse createReply(Long reviewId, Long instructorId, ReviewReplyRequest request) {
-        getActiveReview(reviewId);
+        Review review = getManagedReview(reviewId, instructorId);
 
-        if (!reviewReplyRepository.findByReviewIdAndIsDeletedFalse(reviewId).isEmpty()) {
+        if (reviewReplyRepository.findByReviewIdAndIsDeletedFalse(reviewId).isPresent()) {
             throw new CustomException(ErrorCode.DUPLICATE_RESOURCE);
         }
 
@@ -50,30 +52,49 @@ public class InstructorReviewService {
                 .content(request.getContent())
                 .build();
 
-        return ReviewReplyResponse.from(reviewReplyRepository.save(reply));
+        ReviewReply saved = reviewReplyRepository.save(reply);
+        review.markAnswered();
+
+        return ReviewReplyResponse.from(saved);
     }
 
     public ReviewReplyResponse updateReply(Long reviewId, Long replyId, Long instructorId, ReviewReplyRequest request) {
-        ReviewReply reply = getActiveReply(replyId);
+        getManagedReview(reviewId, instructorId);
+
+        ReviewReply reply = reviewReplyRepository.findByIdAndIsDeletedFalse(replyId)
+                .orElseThrow(() -> new CustomException(ErrorCode.RESOURCE_NOT_FOUND));
+
         validateReplyOwner(reply, reviewId, instructorId);
         reply.updateContent(request.getContent());
+
         return ReviewReplyResponse.from(reply);
     }
 
     public void deleteReply(Long reviewId, Long replyId, Long instructorId) {
-        ReviewReply reply = getActiveReply(replyId);
+        Review review = getManagedReview(reviewId, instructorId);
+
+        ReviewReply reply = reviewReplyRepository.findByIdAndIsDeletedFalse(replyId)
+                .orElseThrow(() -> new CustomException(ErrorCode.RESOURCE_NOT_FOUND));
+
         validateReplyOwner(reply, reviewId, instructorId);
         reply.delete();
+        review.markUnanswered();
     }
 
-    public void updateStatus(Long reviewId, ReviewStatusUpdateRequest request) {
-        Review review = getActiveReview(reviewId);
+    public void updateStatus(Long reviewId, Long instructorId, ReviewStatusUpdateRequest request) {
+        Review review = getManagedReview(reviewId, instructorId);
         review.changeStatus(request.getStatus());
     }
 
-    public void addIssueTags(Long reviewId, ReviewIssueTagRequest request) {
-        Review review = getActiveReview(reviewId);
-        String tagsRaw = String.join(",", request.getIssueTags());
+    public void addIssueTags(Long reviewId, Long instructorId, ReviewIssueTagRequest request) {
+        Review review = getManagedReview(reviewId, instructorId);
+
+        String tagsRaw = request.getIssueTags().stream()
+                .filter(tag -> tag != null && !tag.isBlank())
+                .map(String::trim)
+                .distinct()
+                .collect(Collectors.joining(","));
+
         review.updateIssueTags(tagsRaw);
     }
 
@@ -138,47 +159,47 @@ public class InstructorReviewService {
         return reviewTemplateRepository.findByInstructorIdAndIsDeletedFalse(instructorId)
                 .stream()
                 .map(ReviewTemplateResponse::from)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     public ReviewTemplateResponse updateTemplate(Long templateId, Long instructorId, ReviewTemplateRequest request) {
-        ReviewTemplate template = getActiveTemplate(templateId, instructorId);
+        ReviewTemplate template = getManagedTemplate(templateId, instructorId);
         template.update(request.getTitle(), request.getContent());
         return ReviewTemplateResponse.from(template);
     }
 
     public void deleteTemplate(Long templateId, Long instructorId) {
-        ReviewTemplate template = getActiveTemplate(templateId, instructorId);
+        ReviewTemplate template = getManagedTemplate(templateId, instructorId);
         template.delete();
     }
 
     public void hideReview(Long reviewId, Long instructorId) {
-        Review review = getActiveReview(reviewId);
+        Review review = getManagedReview(reviewId, instructorId);
         review.hide();
     }
 
     public void resolveReport(Long reviewId, Long instructorId) {
-        Review review = getActiveReview(reviewId);
+        Review review = getManagedReview(reviewId, instructorId);
 
-        List<ReviewReport> reports = reviewReportRepository.findAllByReviewIdAndIsResolvedFalse(reviewId);
-        for (ReviewReport report : reports) {
-            report.resolve(instructorId);
-        }
+        reviewReportRepository.findAllByReviewIdAndIsResolvedFalse(reviewId)
+                .forEach(report -> report.resolve(instructorId));
 
         review.resolveReport();
     }
 
-    private Review getActiveReview(Long reviewId) {
-        return reviewRepository.findByIdAndIsDeletedFalse(reviewId)
+    // Ensure the review belongs to a course managed by the instructor.
+    private Review getManagedReview(Long reviewId, Long instructorId) {
+        Review review = reviewRepository.findByIdAndIsDeletedFalse(reviewId)
                 .orElseThrow(() -> new CustomException(ErrorCode.REVIEW_NOT_FOUND));
+
+        if (!courseRepository.existsByCourseIdAndInstructorId(review.getCourseId(), instructorId)) {
+            throw new CustomException(ErrorCode.UNAUTHORIZED_ACTION);
+        }
+
+        return review;
     }
 
-    private ReviewReply getActiveReply(Long replyId) {
-        return reviewReplyRepository.findByIdAndIsDeletedFalse(replyId)
-                .orElseThrow(() -> new CustomException(ErrorCode.RESOURCE_NOT_FOUND));
-    }
-
-    private ReviewTemplate getActiveTemplate(Long templateId, Long instructorId) {
+    private ReviewTemplate getManagedTemplate(Long templateId, Long instructorId) {
         ReviewTemplate template = reviewTemplateRepository.findByIdAndIsDeletedFalse(templateId)
                 .orElseThrow(() -> new CustomException(ErrorCode.RESOURCE_NOT_FOUND));
 

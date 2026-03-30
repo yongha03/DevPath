@@ -1,5 +1,6 @@
 package com.devpath.api.review.dto;
 
+import com.devpath.api.instructor.entity.ReviewReply;
 import com.devpath.api.review.entity.Review;
 import com.devpath.api.review.entity.ReviewStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -30,7 +31,7 @@ public class ReviewResponse {
     @Schema(description = "리뷰 내용", example = "예제가 많아서 이해하기 쉬웠습니다.")
     private String content;
 
-    @Schema(description = "리뷰 상태", example = "UNANSWERED")
+    @Schema(description = "리뷰 상태", example = "ANSWERED")
     private ReviewStatus status;
 
     @Schema(description = "숨김 여부", example = "false")
@@ -39,13 +40,16 @@ public class ReviewResponse {
     @Schema(description = "이슈 태그 목록", example = "[\"slow-audio\", \"too-fast\"]")
     private List<String> issueTags;
 
+    @Schema(description = "강사 공식 답글")
+    private ReviewOfficialReplyResponse officialReply;
+
     @Schema(description = "작성 시각")
     private LocalDateTime createdAt;
 
     @Schema(description = "수정 시각")
     private LocalDateTime updatedAt;
 
-    public static ReviewResponse from(Review review) {
+    public static ReviewResponse from(Review review, ReviewReply officialReply) {
         return ReviewResponse.builder()
                 .id(review.getId())
                 .courseId(review.getCourseId())
@@ -55,6 +59,11 @@ public class ReviewResponse {
                 .status(review.getStatus())
                 .isHidden(review.getIsHidden())
                 .issueTags(parseIssueTags(review.getIssueTagsRaw()))
+                .officialReply(
+                        officialReply == null
+                                ? null
+                                : ReviewOfficialReplyResponse.from(officialReply)
+                )
                 .createdAt(review.getCreatedAt())
                 .updatedAt(review.getUpdatedAt())
                 .build();
