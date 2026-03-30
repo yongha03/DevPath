@@ -1,10 +1,10 @@
 package com.devpath.api.instructor.dto.qna;
 
+import com.devpath.domain.qna.entity.QnaStatus;
 import com.devpath.domain.qna.entity.Question;
+import java.time.LocalDateTime;
 import lombok.Builder;
 import lombok.Getter;
-
-import java.time.LocalDateTime;
 
 @Getter
 @Builder
@@ -15,7 +15,7 @@ public class QnaInboxResponse {
     private Long learnerId;
     private String title;
     private String content;
-    private String status;
+    private QnaStatus status;
     private String lectureTimestamp;
     private LocalDateTime createdAt;
 

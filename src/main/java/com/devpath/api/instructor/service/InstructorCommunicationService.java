@@ -9,6 +9,7 @@ import com.devpath.api.review.entity.ReviewStatus;
 import com.devpath.api.review.repository.ReviewRepository;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
+import com.devpath.domain.qna.entity.QnaStatus;
 import com.devpath.domain.qna.repository.QuestionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -26,10 +27,11 @@ public class InstructorCommunicationService {
     @Transactional(readOnly = true)
     public UnansweredSummaryResponse getUnansweredSummary(Long instructorId) {
         long unansweredQnaCount = questionRepository
-                .findAllByInstructorIdAndQnaStatusAndIsDeletedFalse(instructorId, "UNANSWERED")
+                .findAllByInstructorIdAndQnaStatusAndIsDeletedFalse(instructorId, QnaStatus.UNANSWERED)
                 .size();
         long unansweredReviewCount = reviewRepository
                 .countByInstructorIdAndStatus(instructorId, ReviewStatus.UNANSWERED);
+
         return UnansweredSummaryResponse.builder()
                 .unansweredQnaCount(unansweredQnaCount)
                 .unansweredReviewCount(unansweredReviewCount)
@@ -54,9 +56,11 @@ public class InstructorCommunicationService {
     public DmRoomResponse getDmRoom(Long roomId, Long instructorId) {
         DmRoom dmRoom = dmRoomRepository.findByIdAndIsDeletedFalse(roomId)
                 .orElseThrow(() -> new CustomException(ErrorCode.RESOURCE_NOT_FOUND));
+
         if (!dmRoom.getInstructorId().equals(instructorId)) {
             throw new CustomException(ErrorCode.UNAUTHORIZED_ACTION);
         }
+
         return DmRoomResponse.from(dmRoom);
     }
 }

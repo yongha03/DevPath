@@ -10,7 +10,14 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "Instructor - Subscription", description = "강사 채널 구독 API")
 @RestController
@@ -24,16 +31,20 @@ public class InstructorSubscriptionController {
     @PostMapping
     public ApiResponse<SubscriptionResponse> subscribe(
             @RequestBody @Valid SubscriptionRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal Long userId) {
-        return ApiResponse.success("채널을 팔로우했습니다.",
-                instructorSubscriptionService.subscribe(request.getChannelId(), userId));
+            @Parameter(hidden = true) @AuthenticationPrincipal Long userId
+    ) {
+        return ApiResponse.success(
+                "채널을 팔로우했습니다.",
+                instructorSubscriptionService.subscribe(request.getChannelId(), userId)
+        );
     }
 
     @Operation(summary = "채널 언팔로우")
     @DeleteMapping("/{channelId}")
     public ApiResponse<Void> unsubscribe(
             @PathVariable Long channelId,
-            @Parameter(hidden = true) @AuthenticationPrincipal Long userId) {
+            @Parameter(hidden = true) @AuthenticationPrincipal Long userId
+    ) {
         instructorSubscriptionService.unsubscribe(channelId, userId);
         return ApiResponse.success("채널 팔로우를 취소했습니다.", null);
     }
@@ -43,7 +54,8 @@ public class InstructorSubscriptionController {
     public ApiResponse<Void> updateNotification(
             @PathVariable Long channelId,
             @Parameter(description = "알림 활성화 여부") @RequestParam boolean notificationEnabled,
-            @Parameter(hidden = true) @AuthenticationPrincipal Long userId) {
+            @Parameter(hidden = true) @AuthenticationPrincipal Long userId
+    ) {
         instructorSubscriptionService.updateNotification(channelId, userId, notificationEnabled);
         return ApiResponse.success("알림 설정이 변경되었습니다.", null);
     }

@@ -1,17 +1,34 @@
 package com.devpath.api.instructor.controller;
 
-import com.devpath.api.instructor.dto.qna.*;
+import com.devpath.api.instructor.dto.qna.QnaAnswerRequest;
+import com.devpath.api.instructor.dto.qna.QnaAnswerResponse;
+import com.devpath.api.instructor.dto.qna.QnaDraftRequest;
+import com.devpath.api.instructor.dto.qna.QnaDraftResponse;
+import com.devpath.api.instructor.dto.qna.QnaInboxResponse;
+import com.devpath.api.instructor.dto.qna.QnaStatusUpdateRequest;
+import com.devpath.api.instructor.dto.qna.QnaTemplateRequest;
+import com.devpath.api.instructor.dto.qna.QnaTemplateResponse;
+import com.devpath.api.instructor.dto.qna.QnaTimelineResponse;
 import com.devpath.api.instructor.service.InstructorQnaInboxService;
 import com.devpath.common.response.ApiResponse;
+import com.devpath.domain.qna.entity.QnaStatus;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "Instructor - QnA Inbox", description = "강사 QnA Inbox 관리 API")
 @RestController
@@ -24,8 +41,9 @@ public class InstructorQnaInboxController {
     @Operation(summary = "QnA Inbox 목록 조회", description = "status 파라미터로 미답변/답변완료 필터")
     @GetMapping
     public ApiResponse<List<QnaInboxResponse>> getInbox(
-            @Parameter(description = "QnA 상태 필터 (UNANSWERED/ANSWERED)") @RequestParam(required = false) String status,
-            @Parameter(hidden = true) @AuthenticationPrincipal Long userId) {
+            @Parameter(description = "QnA 상태 필터") @RequestParam(required = false) QnaStatus status,
+            @Parameter(hidden = true) @AuthenticationPrincipal Long userId
+    ) {
         return ApiResponse.success("QnA Inbox 조회 성공", instructorQnaInboxService.getInbox(userId, status));
     }
 
@@ -33,17 +51,20 @@ public class InstructorQnaInboxController {
     @PatchMapping("/{questionId}/status")
     public ApiResponse<Void> updateStatus(
             @PathVariable Long questionId,
-            @RequestBody @Valid QnaStatusUpdateRequest request) {
-        instructorQnaInboxService.updateStatus(questionId, request);
+            @Valid @RequestBody QnaStatusUpdateRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal Long userId
+    ) {
+        instructorQnaInboxService.updateStatus(questionId, userId, request);
         return ApiResponse.success("질문 상태가 변경되었습니다.", null);
     }
 
-    @Operation(summary = "답변 임시저장", description = "이미 임시저장이 있으면 덮어씀")
+    @Operation(summary = "답변 임시저장", description = "이미 임시저장이 있으면 덮어쓴다")
     @PostMapping("/{questionId}/drafts")
     public ApiResponse<QnaDraftResponse> saveDraft(
             @PathVariable Long questionId,
-            @RequestBody @Valid QnaDraftRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal Long userId) {
+            @Valid @RequestBody QnaDraftRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal Long userId
+    ) {
         return ApiResponse.success("임시저장되었습니다.", instructorQnaInboxService.saveDraft(questionId, userId, request));
     }
 
@@ -51,8 +72,9 @@ public class InstructorQnaInboxController {
     @PostMapping("/{questionId}/answers")
     public ApiResponse<QnaAnswerResponse> createAnswer(
             @PathVariable Long questionId,
-            @RequestBody @Valid QnaAnswerRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal Long userId) {
+            @Valid @RequestBody QnaAnswerRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal Long userId
+    ) {
         return ApiResponse.success("답변이 등록되었습니다.", instructorQnaInboxService.createAnswer(questionId, userId, request));
     }
 
@@ -61,31 +83,35 @@ public class InstructorQnaInboxController {
     public ApiResponse<QnaAnswerResponse> updateAnswer(
             @PathVariable Long questionId,
             @PathVariable Long answerId,
-            @RequestBody @Valid QnaAnswerRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal Long userId) {
+            @Valid @RequestBody QnaAnswerRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal Long userId
+    ) {
         return ApiResponse.success("답변이 수정되었습니다.", instructorQnaInboxService.updateAnswer(questionId, answerId, userId, request));
     }
 
-    @Operation(summary = "질문 타임라인/컨텍스트 조회", description = "질문 원문 + 답변 이력 + 임시저장 통합 반환")
+    @Operation(summary = "질문 타임라인 컨텍스트 조회", description = "질문 원문 + 답변 이력 + 임시저장 통합 반환")
     @GetMapping("/{questionId}/timeline")
     public ApiResponse<QnaTimelineResponse> getTimeline(
             @PathVariable Long questionId,
-            @Parameter(hidden = true) @AuthenticationPrincipal Long userId) {
+            @Parameter(hidden = true) @AuthenticationPrincipal Long userId
+    ) {
         return ApiResponse.success("타임라인 조회 성공", instructorQnaInboxService.getTimeline(questionId, userId));
     }
 
     @Operation(summary = "QnA 답변 템플릿 등록")
     @PostMapping("/templates")
     public ApiResponse<QnaTemplateResponse> createTemplate(
-            @RequestBody @Valid QnaTemplateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal Long userId) {
+            @Valid @RequestBody QnaTemplateRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal Long userId
+    ) {
         return ApiResponse.success("템플릿이 등록되었습니다.", instructorQnaInboxService.createTemplate(userId, request));
     }
 
     @Operation(summary = "QnA 답변 템플릿 목록 조회")
     @GetMapping("/templates")
     public ApiResponse<List<QnaTemplateResponse>> getTemplates(
-            @Parameter(hidden = true) @AuthenticationPrincipal Long userId) {
+            @Parameter(hidden = true) @AuthenticationPrincipal Long userId
+    ) {
         return ApiResponse.success("템플릿 목록 조회 성공", instructorQnaInboxService.getTemplates(userId));
     }
 
@@ -93,8 +119,9 @@ public class InstructorQnaInboxController {
     @PutMapping("/templates/{templateId}")
     public ApiResponse<QnaTemplateResponse> updateTemplate(
             @PathVariable Long templateId,
-            @RequestBody @Valid QnaTemplateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal Long userId) {
+            @Valid @RequestBody QnaTemplateRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal Long userId
+    ) {
         return ApiResponse.success("템플릿이 수정되었습니다.", instructorQnaInboxService.updateTemplate(templateId, userId, request));
     }
 
@@ -102,7 +129,8 @@ public class InstructorQnaInboxController {
     @DeleteMapping("/templates/{templateId}")
     public ApiResponse<Void> deleteTemplate(
             @PathVariable Long templateId,
-            @Parameter(hidden = true) @AuthenticationPrincipal Long userId) {
+            @Parameter(hidden = true) @AuthenticationPrincipal Long userId
+    ) {
         instructorQnaInboxService.deleteTemplate(templateId, userId);
         return ApiResponse.success("템플릿이 삭제되었습니다.", null);
     }

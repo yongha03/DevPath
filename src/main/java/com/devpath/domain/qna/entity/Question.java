@@ -56,8 +56,9 @@ public class Question {
     @Column(name = "lecture_timestamp", length = 20)
     private String lectureTimestamp;
 
-    @Column(name = "qna_status", length = 20)
-    private String qnaStatus = "UNANSWERED";
+    @Enumerated(EnumType.STRING)
+    @Column(name = "qna_status", nullable = false, length = 20)
+    private QnaStatus qnaStatus = QnaStatus.UNANSWERED;
 
     @Column(name = "view_count", nullable = false)
     private int viewCount;
@@ -91,37 +92,31 @@ public class Question {
         this.updatedAt = LocalDateTime.now();
     }
 
-    // 질문 상세 조회 시 조회수를 증가시킨다.
     public void incrementViewCount() {
         this.viewCount++;
     }
 
-    // 이미 채택된 답변이 있는지 확인한다.
     public boolean hasAdoptedAnswer() {
         return this.adoptedAnswerId != null;
     }
 
-    // 채택된 답변 ID를 질문에 반영한다.
     public void adoptAnswer(Long answerId) {
         this.adoptedAnswerId = answerId;
         this.updatedAt = LocalDateTime.now();
     }
 
-    // 질문을 soft delete 처리한다.
     public void deleteQuestion() {
         this.isDeleted = true;
         this.updatedAt = LocalDateTime.now();
     }
 
-    // QnA 상태를 변경한다.
-    public void updateQnaStatus(String status) {
+    public void updateQnaStatus(QnaStatus status) {
         this.qnaStatus = status;
         this.updatedAt = LocalDateTime.now();
     }
 
-    // 질문을 답변 완료 상태로 변경한다.
     public void markAsAnswered() {
-        this.qnaStatus = QuestionStatus.ANSWERED.name();
+        this.qnaStatus = QnaStatus.ANSWERED;
         this.updatedAt = LocalDateTime.now();
     }
 }

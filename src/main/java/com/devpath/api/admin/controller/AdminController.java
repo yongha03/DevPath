@@ -2,76 +2,57 @@ package com.devpath.api.admin.controller;
 
 import com.devpath.api.admin.service.AdminService;
 import com.devpath.api.user.dto.RoadmapDto;
-// import com.devpath.api.user.dto.TagDto; // 태그 DTO 미사용으로 주석 처리
 import com.devpath.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
-@Tag(name = "관리자 API", description = "관리자 전용 데이터 관리 API (오피셜 로드맵)")
-// 관리자 전용 기능을 제공하는 컨트롤러
+@Tag(name = "Admin - Roadmap", description = "관리자 오피셜 로드맵 관리 API")
 public class AdminController {
 
     private final AdminService adminService;
 
-  /* =========================================================================
-     [리팩토링] 태그 관련 API는 AdminTagGovernanceController로 모두 이관되었습니다.
-     따라서 아래 3개의 메서드는 충돌 방지를 위해 주석(또는 삭제) 처리합니다.
-     ========================================================================= */
-
-  /*
-  @Operation(summary = "기술 태그 생성 (관리자)")
-  @PostMapping("/tags")
-  public ApiResponse<TagDto.Response> createTag(@Valid @RequestBody TagDto.CreateRequest request) {
-    return ApiResponse.success("태그가 성공적으로 생성되었습니다.", adminService.createTag(request));
-  }
-
-  @Operation(summary = "기술 태그 수정 (관리자)")
-  @PutMapping("/tags/{tagId}")
-  public ApiResponse<TagDto.Response> updateTag(
-      @PathVariable Long tagId, @Valid @RequestBody TagDto.CreateRequest request) {
-    return ApiResponse.success("태그가 성공적으로 수정되었습니다.", adminService.updateTag(tagId, request));
-  }
-
-  @Operation(summary = "기술 태그 삭제 (관리자)")
-  @DeleteMapping("/tags/{tagId}")
-  public ApiResponse<Void> deleteTag(@PathVariable Long tagId) {
-    adminService.deleteTag(tagId);
-    return ApiResponse.success("태그가 성공적으로 삭제되었습니다.", null);
-  }
-  */
-
-    // =========================================================================
-    // 로드맵 관련 API는 그대로 유지합니다.
-    // =========================================================================
-
-    @Operation(summary = "오피셜 로드맵 생성 (관리자)")
+    // 관리자 전용 컨트롤러에서는 오피셜 로드맵 관리만 담당한다.
+    @Operation(summary = "오피셜 로드맵 생성")
     @PostMapping("/roadmaps")
-    // 관리자가 공식 로드맵을 새로 생성한다.
     public ApiResponse<RoadmapDto.Response> createOfficialRoadmap(
-            @Valid @RequestBody RoadmapDto.CreateRequest request, @AuthenticationPrincipal Long adminId) {
+            @Valid @RequestBody RoadmapDto.CreateRequest request,
+            @AuthenticationPrincipal Long adminId
+    ) {
         return ApiResponse.success(
-                "오피셜 로드맵이 성공적으로 생성되었습니다.", adminService.createOfficialRoadmap(request, adminId));
+                "오피셜 로드맵이 성공적으로 생성되었습니다.",
+                adminService.createOfficialRoadmap(request, adminId)
+        );
     }
 
-    @Operation(summary = "오피셜 로드맵 수정 (관리자)")
-    @PutMapping("/roadmaps/{roadmapId}")
     // 공식 로드맵의 제목과 설명을 수정한다.
+    @Operation(summary = "오피셜 로드맵 수정")
+    @PutMapping("/roadmaps/{roadmapId}")
     public ApiResponse<RoadmapDto.Response> updateOfficialRoadmap(
-            @PathVariable Long roadmapId, @Valid @RequestBody RoadmapDto.CreateRequest request) {
+            @PathVariable Long roadmapId,
+            @Valid @RequestBody RoadmapDto.CreateRequest request
+    ) {
         return ApiResponse.success(
-                "오피셜 로드맵이 성공적으로 수정되었습니다.", adminService.updateOfficialRoadmap(roadmapId, request));
+                "오피셜 로드맵이 성공적으로 수정되었습니다.",
+                adminService.updateOfficialRoadmap(roadmapId, request)
+        );
     }
 
-    @Operation(summary = "오피셜 로드맵 삭제 (Soft Delete)")
+    // 공식 로드맵은 물리 삭제 대신 soft delete 처리한다.
+    @Operation(summary = "오피셜 로드맵 삭제")
     @DeleteMapping("/roadmaps/{roadmapId}")
-    // 공식 로드맵을 바로 삭제하지 않고 삭제 상태로만 변경한다.
     public ApiResponse<Void> deleteOfficialRoadmap(@PathVariable Long roadmapId) {
         adminService.deleteOfficialRoadmap(roadmapId);
         return ApiResponse.success("오피셜 로드맵이 성공적으로 삭제되었습니다.", null);

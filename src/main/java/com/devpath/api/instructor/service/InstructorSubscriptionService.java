@@ -5,6 +5,7 @@ import com.devpath.api.instructor.entity.InstructorSubscription;
 import com.devpath.api.instructor.repository.InstructorSubscriptionRepository;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
+import com.devpath.domain.user.repository.UserProfileRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,21 +16,41 @@ import org.springframework.transaction.annotation.Transactional;
 public class InstructorSubscriptionService {
 
     private final InstructorSubscriptionRepository subscriptionRepository;
+    private final UserProfileRepository userProfileRepository;
 
     public SubscriptionResponse subscribe(Long channelId, Long learnerId) {
-        subscriptionRepository.findByChannelIdAndLearnerIdAndIsDeletedFalse(channelId, learnerId)
-                .ifPresent(s -> { throw new CustomException(ErrorCode.DUPLICATE_RESOURCE); });
-        InstructorSubscription subscription = InstructorSubscription.builder()
-                .channelId(channelId)
-                .learnerId(learnerId)
-                .build();
-        return SubscriptionResponse.from(subscriptionRepository.save(subscription));
+        validateChannel(channelId);
+
+        if (channelId.equals(learnerId)) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+
+        InstructorSubscription subscription = subscriptionRepository.findByChannelIdAndLearnerId(
+                        channelId,
+                        learnerId
+                )
+                .map(existing -> {
+                    if (Boolean.FALSE.equals(existing.getIsDeleted())) {
+                        throw new CustomException(ErrorCode.DUPLICATE_RESOURCE);
+                    }
+                    existing.resubscribe();
+                    return existing;
+                })
+                .orElseGet(() -> subscriptionRepository.save(
+                        InstructorSubscription.builder()
+                                .channelId(channelId)
+                                .learnerId(learnerId)
+                                .build()
+                ));
+
+        return SubscriptionResponse.from(subscription);
     }
 
     public void unsubscribe(Long channelId, Long learnerId) {
         InstructorSubscription subscription = subscriptionRepository
                 .findByChannelIdAndLearnerIdAndIsDeletedFalse(channelId, learnerId)
                 .orElseThrow(() -> new CustomException(ErrorCode.RESOURCE_NOT_FOUND));
+
         subscription.unsubscribe();
     }
 
@@ -37,6 +58,13 @@ public class InstructorSubscriptionService {
         InstructorSubscription subscription = subscriptionRepository
                 .findByChannelIdAndLearnerIdAndIsDeletedFalse(channelId, learnerId)
                 .orElseThrow(() -> new CustomException(ErrorCode.RESOURCE_NOT_FOUND));
+
         subscription.updateNotification(notificationEnabled);
+    }
+
+    // Only real instructor channels can be followed.
+    private void validateChannel(Long channelId) {
+        userProfileRepository.findByUserId(channelId)
+                .orElseThrow(() -> new CustomException(ErrorCode.RESOURCE_NOT_FOUND));
     }
 }
