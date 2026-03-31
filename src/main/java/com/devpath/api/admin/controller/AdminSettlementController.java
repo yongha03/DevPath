@@ -10,7 +10,13 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "Admin - Settlement", description = "관리자 정산 관리 API")
 @RestController
@@ -20,20 +26,27 @@ public class AdminSettlementController {
 
     private final AdminSettlementService adminSettlementService;
 
+    // 보류는 PENDING settlement만 가능하며 처리 이력을 함께 남긴다.
     @Operation(summary = "정산 보류 처리")
     @PostMapping("/{settlementId}/hold")
     public ApiResponse<Void> holdSettlement(
             @PathVariable Long settlementId,
             @RequestBody @Valid SettlementHoldRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal Long userId) {
+            @Parameter(hidden = true) @AuthenticationPrincipal Long userId
+    ) {
         adminSettlementService.holdSettlement(settlementId, userId, request);
         return ApiResponse.success("정산이 보류 처리되었습니다.", null);
     }
 
-    @Operation(summary = "환불 보증기간 기준 정산 가능 여부 계산", description = "환불 요청 ID 기반으로 7일 보증기간 경과 여부 반환")
+    // eligibility는 계산 전용 API이며 DB 상태를 바꾸지 않는다.
+    @Operation(summary = "환불 기준 정산 가능 여부 계산", description = "기간/진도율/보류 상태를 기준으로 정산 가능 여부를 계산합니다.")
     @GetMapping("/eligibility")
     public ApiResponse<SettlementEligibilityResponse> checkEligibility(
-            @Parameter(description = "환불 요청 ID") @RequestParam Long refundRequestId) {
-        return ApiResponse.success("정산 가능 여부를 조회했습니다.", adminSettlementService.checkEligibility(refundRequestId));
+            @Parameter(description = "환불 요청 ID") @RequestParam Long refundRequestId
+    ) {
+        return ApiResponse.success(
+                "정산 가능 여부를 조회했습니다.",
+                adminSettlementService.checkEligibility(refundRequestId)
+        );
     }
 }
