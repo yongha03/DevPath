@@ -46,6 +46,23 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
             @Param("status") QnaStatus status
     );
 
+    // 미답변 요약은 count query로 바로 집계한다.
+    @Query("""
+            SELECT COUNT(q)
+            FROM Question q
+            WHERE q.courseId IN (
+                SELECT c.courseId
+                FROM Course c
+                WHERE c.instructorId = :instructorId
+            )
+            AND q.isDeleted = false
+            AND q.qnaStatus = :status
+            """)
+    long countByInstructorIdAndQnaStatus(
+            @Param("instructorId") Long instructorId,
+            @Param("status") QnaStatus status
+    );
+
     // 질문 상세 조작은 담당 강사 소유 질문만 조회한다.
     @Query("""
             SELECT q
