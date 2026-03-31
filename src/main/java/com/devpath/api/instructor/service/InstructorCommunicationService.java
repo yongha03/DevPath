@@ -22,7 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@Transactional
+@Transactional(readOnly = true)
 public class InstructorCommunicationService {
 
     private final QuestionRepository questionRepository;
@@ -31,7 +31,7 @@ public class InstructorCommunicationService {
     private final DmMessageRepository dmMessageRepository;
     private final UserRepository userRepository;
 
-    @Transactional(readOnly = true)
+    // 집계는 리스트 전체를 불러오지 않고 count query를 우선 사용한다.
     public UnansweredSummaryResponse getUnansweredSummary(Long instructorId) {
         long unansweredQnaCount = questionRepository.countByInstructorIdAndQnaStatus(
                 instructorId,
@@ -49,6 +49,7 @@ public class InstructorCommunicationService {
                 .build();
     }
 
+    @Transactional
     public DmRoomResponse createDmRoom(Long instructorId, DmRoomCreateRequest request) {
         validateDmTarget(instructorId, request.getLearnerId());
 
@@ -64,7 +65,6 @@ public class InstructorCommunicationService {
         return toResponse(dmRoom);
     }
 
-    @Transactional(readOnly = true)
     public DmRoomResponse getDmRoom(Long roomId, Long instructorId) {
         DmRoom dmRoom = dmRoomRepository.findByIdAndInstructorIdAndIsDeletedFalse(roomId, instructorId)
                 .orElseThrow(() -> new CustomException(ErrorCode.UNAUTHORIZED_ACTION));

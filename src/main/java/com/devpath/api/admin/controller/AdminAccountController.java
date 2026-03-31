@@ -30,7 +30,7 @@ public class AdminAccountController {
     @Operation(summary = "회원 목록 조회", description = "운영 대상 회원 목록을 조회합니다.")
     @GetMapping
     public ApiResponse<List<AccountDetailResponse>> getAccounts() {
-        return ApiResponse.success("회원 목록을 조회했습니다.", adminAccountService.getAccounts(null));
+        return ApiResponse.success("회원 목록을 조회했습니다.", adminAccountService.getAccounts());
     }
 
     @Operation(summary = "회원 상세 조회", description = "특정 회원의 계정 상세 정보를 조회합니다.")

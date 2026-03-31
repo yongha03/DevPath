@@ -13,11 +13,12 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@Transactional
+@Transactional(readOnly = true)
 public class AdminNoticeService {
 
     private final NoticeRepository noticeRepository;
 
+    @Transactional
     public NoticeResponse createNotice(Long adminId, NoticeCreateRequest request) {
         Notice notice = Notice.builder()
                 .authorId(adminId)
@@ -29,6 +30,7 @@ public class AdminNoticeService {
         return NoticeResponse.from(noticeRepository.save(notice));
     }
 
+    @Transactional
     public NoticeResponse updateNotice(Long noticeId, Long adminId, NoticeCreateRequest request) {
         Notice notice = getActiveNotice(noticeId);
 
@@ -41,12 +43,12 @@ public class AdminNoticeService {
         return NoticeResponse.from(notice);
     }
 
+    @Transactional
     public void deleteNotice(Long noticeId, Long adminId) {
         Notice notice = getActiveNotice(noticeId);
         notice.delete();
     }
 
-    @Transactional(readOnly = true)
     public List<NoticeResponse> getNotices() {
         return noticeRepository.findByIsDeletedFalseOrderByIsPinnedDescCreatedAtDesc()
                 .stream()
@@ -54,11 +56,11 @@ public class AdminNoticeService {
                 .toList();
     }
 
-    @Transactional(readOnly = true)
     public NoticeResponse getNotice(Long noticeId) {
         return NoticeResponse.from(getActiveNotice(noticeId));
     }
 
+    // 공지 조회 공통 로직을 묶어서 NPE/중복 코드를 줄인다.
     private Notice getActiveNotice(Long noticeId) {
         return noticeRepository.findByIdAndIsDeletedFalse(noticeId)
                 .orElseThrow(() -> new CustomException(ErrorCode.NOTICE_NOT_FOUND));

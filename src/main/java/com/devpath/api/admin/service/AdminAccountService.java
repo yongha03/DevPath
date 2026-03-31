@@ -18,28 +18,24 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@Transactional
+@Transactional(readOnly = true)
 public class AdminAccountService {
 
     private final UserRepository userRepository;
     private final AccountLogRepository accountLogRepository;
 
-    @Transactional(readOnly = true)
-    public List<AccountDetailResponse> getAccounts(AccountStatus status) {
-        List<User> users = status == null
-                ? userRepository.findAllByOrderByCreatedAtDesc()
-                : userRepository.findAllByAccountStatusOrderByCreatedAtDesc(status);
-
-        return users.stream()
+    // 목록 조회는 읽기 전용 트랜잭션에서 제네릭 타입을 명확히 반환한다.
+    public List<AccountDetailResponse> getAccounts() {
+        return userRepository.findAllByOrderByCreatedAtDesc().stream()
                 .map(AccountDetailResponse::from)
                 .toList();
     }
 
-    @Transactional(readOnly = true)
     public AccountDetailResponse getAccount(Long userId) {
         return AccountDetailResponse.from(getUser(userId));
     }
 
+    @Transactional
     public void restrictAccount(Long userId, Long adminId, AccountStatusUpdateRequest request) {
         User user = getUser(userId);
         validateTransition(user.getAccountStatus(), AccountStatus.RESTRICTED);
@@ -47,6 +43,7 @@ public class AdminAccountService {
         saveLog(userId, adminId, AccountLogType.RESTRICT, request.getReason());
     }
 
+    @Transactional
     public void deactivateAccount(Long userId, Long adminId, AccountStatusUpdateRequest request) {
         User user = getUser(userId);
         validateTransition(user.getAccountStatus(), AccountStatus.DEACTIVATED);
@@ -54,6 +51,7 @@ public class AdminAccountService {
         saveLog(userId, adminId, AccountLogType.DEACTIVATE, request.getReason());
     }
 
+    @Transactional
     public void restoreAccount(Long userId, Long adminId, AccountStatusUpdateRequest request) {
         User user = getUser(userId);
         validateTransition(user.getAccountStatus(), AccountStatus.ACTIVE);
@@ -61,6 +59,7 @@ public class AdminAccountService {
         saveLog(userId, adminId, AccountLogType.RESTORE, request.getReason());
     }
 
+    @Transactional
     public void withdrawAccount(Long userId, Long adminId, AccountStatusUpdateRequest request) {
         User user = getUser(userId);
         validateTransition(user.getAccountStatus(), AccountStatus.WITHDRAWN);
@@ -68,6 +67,7 @@ public class AdminAccountService {
         saveLog(userId, adminId, AccountLogType.WITHDRAW, request.getReason());
     }
 
+    @Transactional
     public void approveInstructor(Long userId, Long adminId, AccountStatusUpdateRequest request) {
         User user = getUser(userId);
 
@@ -80,7 +80,6 @@ public class AdminAccountService {
         saveLog(userId, adminId, AccountLogType.APPROVE_INSTRUCTOR, request.getReason());
     }
 
-    @Transactional(readOnly = true)
     public List<AccountLogResponse> getAccountLogs(Long userId) {
         getUser(userId);
 
