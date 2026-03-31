@@ -14,5 +14,11 @@ public interface SettlementRepository extends JpaRepository<Settlement, Long> {
 
     Optional<Settlement> findByIdAndIsDeletedFalse(Long id);
 
+    // 환불 차감 대상은 HELD가 아닌 최신 PENDING settlement만 본다.
+    Optional<Settlement> findTopByInstructorIdAndStatusAndIsDeletedFalseOrderByCreatedAtDesc(
+            Long instructorId,
+            SettlementStatus status
+    );
+
     long countByInstructorIdAndStatusAndIsDeletedFalse(Long instructorId, SettlementStatus status);
 }
