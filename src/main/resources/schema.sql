@@ -139,3 +139,78 @@ CREATE INDEX IF NOT EXISTS idx_supplement_recommendations_user_node_created_at
 
 ALTER TABLE user_profiles
     ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT TRUE;
+
+-- Legacy local PostgreSQL rows can exist without these newer columns.
+UPDATE lesson_progress
+SET is_pip_enabled = COALESCE(is_pip_enabled, FALSE)
+WHERE EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_name = 'lesson_progress'
+      AND column_name = 'is_pip_enabled'
+)
+  AND is_pip_enabled IS NULL;
+
+UPDATE tags
+SET is_deleted = COALESCE(is_deleted, FALSE)
+WHERE EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_name = 'tags'
+      AND column_name = 'is_deleted'
+)
+  AND is_deleted IS NULL;
+
+UPDATE refund_request rr
+SET instructor_id = COALESCE(rr.instructor_id, c.instructor_id)
+FROM courses c
+WHERE rr.course_id = c.course_id
+  AND EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_name = 'refund_request'
+        AND column_name = 'instructor_id'
+  )
+  AND rr.instructor_id IS NULL;
+
+UPDATE refund_request
+SET enrolled_at = COALESCE(enrolled_at, requested_at, processed_at, NOW())
+WHERE EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_name = 'refund_request'
+      AND column_name = 'enrolled_at'
+)
+  AND enrolled_at IS NULL;
+
+UPDATE refund_request
+SET progress_percent_snapshot = COALESCE(progress_percent_snapshot, 0)
+WHERE EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_name = 'refund_request'
+      AND column_name = 'progress_percent_snapshot'
+)
+  AND progress_percent_snapshot IS NULL;
+
+UPDATE refund_request rr
+SET refund_amount = COALESCE(rr.refund_amount, CAST(c.price AS BIGINT), 0)
+FROM courses c
+WHERE rr.course_id = c.course_id
+  AND EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_name = 'refund_request'
+        AND column_name = 'refund_amount'
+  )
+  AND rr.refund_amount IS NULL;
+
+UPDATE refund_request
+SET is_deleted = COALESCE(is_deleted, FALSE)
+WHERE EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_name = 'refund_request'
+      AND column_name = 'is_deleted'
+)
+  AND is_deleted IS NULL;

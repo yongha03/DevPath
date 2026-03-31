@@ -56,7 +56,7 @@ public class LessonProgress {
     @Column(name = "default_playback_rate", nullable = false)
     private Double defaultPlaybackRate = 1.0;
 
-    @Column(name = "is_pip_enabled", nullable = false)
+    @Column(name = "is_pip_enabled", nullable = false, columnDefinition = "boolean default false")
     private Boolean pipEnabled = false;
 
     // 강의를 100% 완료했는지 여부를 나타내는 플래그다.

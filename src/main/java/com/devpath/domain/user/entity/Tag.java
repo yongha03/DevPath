@@ -25,7 +25,7 @@ public class Tag {
   private Boolean isOfficial = true;
 
   @Builder.Default
-  @Column(name = "is_deleted", nullable = false)
+  @Column(name = "is_deleted", nullable = false, columnDefinition = "boolean default false")
   private Boolean isDeleted = false;
 
   public void softDelete() {

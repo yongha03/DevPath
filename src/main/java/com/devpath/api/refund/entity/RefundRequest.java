@@ -39,19 +39,19 @@ public class RefundRequest {
     @Column(nullable = false)
     private Long courseId;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "bigint default 0")
     private Long instructorId;
 
     @Column(columnDefinition = "TEXT")
     private String reason;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "timestamp default CURRENT_TIMESTAMP")
     private LocalDateTime enrolledAt;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "integer default 0")
     private Integer progressPercentSnapshot;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "bigint default 0")
     private Long refundAmount;
 
     @Enumerated(EnumType.STRING)
@@ -60,7 +60,7 @@ public class RefundRequest {
     private RefundStatus status = RefundStatus.PENDING;
 
     @Builder.Default
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "boolean default false")
     private Boolean isDeleted = false;
 
     @CreatedDate
