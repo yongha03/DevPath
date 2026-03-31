@@ -10,6 +10,7 @@ import com.devpath.api.admin.repository.AdminPermissionRepository;
 import com.devpath.api.admin.repository.AdminRoleRepository;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
+import com.devpath.domain.user.entity.AccountStatus;
 import com.devpath.domain.user.entity.User;
 import com.devpath.domain.user.repository.UserRepository;
 import java.util.List;
@@ -27,13 +28,15 @@ public class AdminPermissionService {
     private final UserRepository userRepository;
 
     public RoleResponse createRole(RoleCreateRequest request) {
+        validateCreateRoleName(request.getRoleName());
+
         AdminRole adminRole = AdminRole.builder()
-                .roleName(request.getRoleName())
+                .roleName(request.getRoleName().trim())
                 .description(request.getDescription())
                 .build();
 
         AdminRole savedRole = adminRoleRepository.save(adminRole);
-        savePermissions(savedRole, request.getPermissionCodes());
+        savePermissions(savedRole, normalizePermissionCodes(request.getPermissionCodes()));
 
         return RoleResponse.from(savedRole, getPermissionCodes(savedRole.getId()));
     }
@@ -42,12 +45,14 @@ public class AdminPermissionService {
         AdminRole adminRole = adminRoleRepository.findByIdAndIsDeletedFalse(roleId)
                 .orElseThrow(() -> new CustomException(ErrorCode.RESOURCE_NOT_FOUND));
 
-        adminRole.update(request.getRoleName(), request.getDescription());
+        validateUpdateRoleName(roleId, request.getRoleName());
+
+        adminRole.update(request.getRoleName().trim(), request.getDescription());
 
         adminPermissionRepository.findByAdminRoleIdAndIsDeletedFalse(roleId)
                 .forEach(AdminPermission::delete);
 
-        savePermissions(adminRole, request.getPermissionCodes());
+        savePermissions(adminRole, normalizePermissionCodes(request.getPermissionCodes()));
 
         return RoleResponse.from(adminRole, getPermissionCodes(adminRole.getId()));
     }
@@ -72,26 +77,60 @@ public class AdminPermissionService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.ACCOUNT_NOT_FOUND));
 
+        // 탈퇴/비활성 계정의 강사 등급은 운영상 변경하지 않는다.
+        if (user.getAccountStatus() != AccountStatus.ACTIVE) {
+            throw new CustomException(ErrorCode.INVALID_STATUS_TRANSITION);
+        }
+
         user.changeInstructorGrade(request.getGrade());
     }
 
     // role에 연결된 permission row를 일괄 저장한다.
     private void savePermissions(AdminRole adminRole, List<String> permissionCodes) {
-        if (permissionCodes == null || permissionCodes.isEmpty()) {
-            return;
+        for (String code : permissionCodes) {
+            adminPermissionRepository.save(
+                    AdminPermission.builder()
+                            .adminRole(adminRole)
+                            .permissionCode(code)
+                            .description(code)
+                            .build()
+            );
+        }
+    }
+
+    // 권한 코드는 공백 제거, 중복 제거 후 저장한다.
+    private List<String> normalizePermissionCodes(List<String> permissionCodes) {
+        if (permissionCodes == null) {
+            return List.of();
         }
 
-        permissionCodes.stream()
+        return permissionCodes.stream()
                 .filter(code -> code != null && !code.isBlank())
                 .map(String::trim)
                 .distinct()
-                .forEach(code -> adminPermissionRepository.save(
-                        AdminPermission.builder()
-                                .adminRole(adminRole)
-                                .permissionCode(code)
-                                .description(code)
-                                .build()
-                ));
+                .toList();
+    }
+
+    private void validateCreateRoleName(String roleName) {
+        String normalized = roleName == null ? "" : roleName.trim();
+        if (normalized.isBlank()) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+
+        if (adminRoleRepository.existsByRoleNameAndIsDeletedFalse(normalized)) {
+            throw new CustomException(ErrorCode.DUPLICATE_RESOURCE);
+        }
+    }
+
+    private void validateUpdateRoleName(Long roleId, String roleName) {
+        String normalized = roleName == null ? "" : roleName.trim();
+        if (normalized.isBlank()) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+
+        if (adminRoleRepository.existsByRoleNameAndIsDeletedFalseAndIdNot(normalized, roleId)) {
+            throw new CustomException(ErrorCode.DUPLICATE_RESOURCE);
+        }
     }
 
     // 응답 DTO에는 현재 활성 permission code 목록만 내려준다.

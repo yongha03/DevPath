@@ -13,7 +13,13 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "Instructor - Marketing", description = "강사 마케팅 도구 API")
 @RestController
@@ -23,37 +29,41 @@ public class InstructorMarketingController {
 
     private final InstructorMarketingService instructorMarketingService;
 
-    @Operation(summary = "할인 쿠폰 발행")
+    @Operation(summary = "할인 쿠폰 발행", description = "강사 쿠폰을 생성합니다.")
     @PostMapping("/coupons")
     public ApiResponse<CouponResponse> createCoupon(
             @RequestBody @Valid CouponCreateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal Long userId) {
+            @Parameter(hidden = true) @AuthenticationPrincipal Long userId
+    ) {
         return ApiResponse.success("쿠폰이 발행되었습니다.", instructorMarketingService.createCoupon(userId, request));
     }
 
-    @Operation(summary = "타임세일/프로모션 등록")
+    @Operation(summary = "타임세일/프로모션 등록", description = "프로모션을 등록합니다.")
     @PostMapping("/promotions")
     public ApiResponse<Void> createPromotion(
             @RequestBody @Valid PromotionCreateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal Long userId) {
+            @Parameter(hidden = true) @AuthenticationPrincipal Long userId
+    ) {
         instructorMarketingService.createPromotion(userId, request);
         return ApiResponse.success("프로모션이 등록되었습니다.", null);
     }
 
-    @Operation(summary = "강의 홍보 상태 변경")
+    @Operation(summary = "강의 홍보 상태 변경", description = "강의의 프로모션 노출 상태를 변경합니다.")
     @PatchMapping("/courses/{courseId}/promotion-status")
     public ApiResponse<Void> updatePromotionStatus(
             @PathVariable Long courseId,
             @RequestBody @Valid PromotionStatusUpdateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal Long userId) {
+            @Parameter(hidden = true) @AuthenticationPrincipal Long userId
+    ) {
         instructorMarketingService.updatePromotionStatus(courseId, userId, request);
         return ApiResponse.success("홍보 상태가 변경되었습니다.", null);
     }
 
-    @Operation(summary = "유입/전환 통계 조회")
+    @Operation(summary = "유입/전환 통계 조회", description = "강사 전환 통계를 조회합니다.")
     @GetMapping("/conversions")
     public ApiResponse<ConversionResponse> getConversions(
-            @Parameter(hidden = true) @AuthenticationPrincipal Long userId) {
+            @Parameter(hidden = true) @AuthenticationPrincipal Long userId
+    ) {
         return ApiResponse.success("전환 통계를 조회했습니다.", instructorMarketingService.getConversions(userId));
     }
 }

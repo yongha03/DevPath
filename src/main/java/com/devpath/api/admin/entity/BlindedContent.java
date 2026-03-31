@@ -1,4 +1,4 @@
-package com.devpath.api.instructor.entity;
+package com.devpath.api.admin.entity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -17,33 +17,38 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 @Entity
-@Table(name = "conversion_stat")
+@Table(name = "blinded_content")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor(access = AccessLevel.PRIVATE)
 @Builder
 @EntityListeners(AuditingEntityListener.class)
-public class ConversionStat {
+public class BlindedContent {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @Column(nullable = false)
-    private Long instructorId;
-
-    @Column
-    private Long courseId;
+    private Long contentId;
 
     @Column(nullable = false)
-    private Long totalVisitors;
+    private Long adminId;
 
-    @Column(nullable = false)
-    private Long totalSignups;
+    @Column(columnDefinition = "TEXT", nullable = false)
+    private String reason;
 
+    @Builder.Default
     @Column(nullable = false)
-    private Long totalPurchases;
+    private Boolean isActive = true;
 
     @CreatedDate
-    private LocalDateTime calculatedAt;
+    private LocalDateTime blindedAt;
+
+    // 같은 콘텐츠를 다시 블라인드하면 사유와 처리자만 최신값으로 갱신한다.
+    public void blind(Long adminId, String reason) {
+        this.adminId = adminId;
+        this.reason = reason;
+        this.isActive = true;
+    }
 }
