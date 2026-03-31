@@ -25,8 +25,12 @@ public class LearnerNotificationService {
 
     @Transactional
     public void markAsRead(Long learnerId, Long notificationId) {
-        LearnerNotification notification = notificationRepository.findByIdAndLearnerId(notificationId, learnerId)
-                .orElseThrow(() -> new CustomException(ErrorCode.UNAUTHORIZED_ACTION, "본인의 알림만 읽음 처리할 수 있습니다."));
+        LearnerNotification notification = notificationRepository.findById(notificationId)
+                .orElseThrow(() -> new CustomException(ErrorCode.RESOURCE_NOT_FOUND, "Notification not found."));
+
+        if (!notification.getLearnerId().equals(learnerId)) {
+            throw new CustomException(ErrorCode.UNAUTHORIZED_ACTION, "Only your notifications can be marked as read.");
+        }
 
         notification.markAsRead();
     }

@@ -28,9 +28,10 @@ public class ProjectInvitationService {
     @Transactional
     public InvitationResponse inviteMember(InvitationRequest request, Long inviterId) {
         Project project = getProjectEntity(request.getProjectId());
+        validateProjectMember(project.getId(), inviterId);
 
         if (projectMemberRepository.existsByProjectIdAndLearnerId(project.getId(), request.getInviteeId())) {
-            throw new CustomException(ErrorCode.DUPLICATE_RESOURCE, "이미 프로젝트에 참여 중인 사용자입니다.");
+            throw new CustomException(ErrorCode.DUPLICATE_RESOURCE, "The invitee is already a project member.");
         }
 
         if (projectInvitationRepository.existsByProjectIdAndInviteeIdAndStatus(
@@ -38,7 +39,7 @@ public class ProjectInvitationService {
                 request.getInviteeId(),
                 ProjectInvitationStatus.PENDING
         )) {
-            throw new CustomException(ErrorCode.DUPLICATE_RESOURCE, "이미 대기 중인 초대가 존재합니다.");
+            throw new CustomException(ErrorCode.DUPLICATE_RESOURCE, "A pending invitation already exists.");
         }
 
         ProjectInvitation invitation = ProjectInvitation.builder()
@@ -52,11 +53,12 @@ public class ProjectInvitationService {
     }
 
     @Transactional
-    public InvitationResponse acceptInvitation(Long invitationId) {
+    public InvitationResponse acceptInvitation(Long invitationId, Long learnerId) {
         ProjectInvitation invitation = getInvitationEntity(invitationId);
+        validateInvitationOwner(invitation, learnerId);
 
         if (invitation.getStatus() != ProjectInvitationStatus.PENDING) {
-            throw new CustomException(ErrorCode.INVALID_INPUT, "대기 중인 초대만 수락할 수 있습니다.");
+            throw new CustomException(ErrorCode.INVALID_INPUT, "Only pending invitations can be accepted.");
         }
 
         getProjectEntity(invitation.getProjectId());
@@ -75,24 +77,37 @@ public class ProjectInvitationService {
     }
 
     @Transactional
-    public InvitationResponse rejectInvitation(Long invitationId) {
+    public InvitationResponse rejectInvitation(Long invitationId, Long learnerId) {
         ProjectInvitation invitation = getInvitationEntity(invitationId);
+        validateInvitationOwner(invitation, learnerId);
 
         if (invitation.getStatus() != ProjectInvitationStatus.PENDING) {
-            throw new CustomException(ErrorCode.INVALID_INPUT, "대기 중인 초대만 거절할 수 있습니다.");
+            throw new CustomException(ErrorCode.INVALID_INPUT, "Only pending invitations can be rejected.");
         }
 
         invitation.reject();
         return InvitationResponse.from(invitation);
     }
 
+    private void validateProjectMember(Long projectId, Long learnerId) {
+        if (!projectMemberRepository.existsByProjectIdAndLearnerId(projectId, learnerId)) {
+            throw new CustomException(ErrorCode.UNAUTHORIZED_ACTION, "Only project members can invite users.");
+        }
+    }
+
+    private void validateInvitationOwner(ProjectInvitation invitation, Long learnerId) {
+        if (!invitation.getInviteeId().equals(learnerId)) {
+            throw new CustomException(ErrorCode.UNAUTHORIZED_ACTION, "Only the invitee can process this invitation.");
+        }
+    }
+
     private ProjectInvitation getInvitationEntity(Long invitationId) {
         return projectInvitationRepository.findById(invitationId)
-                .orElseThrow(() -> new CustomException(ErrorCode.RESOURCE_NOT_FOUND, "프로젝트 초대를 찾을 수 없습니다."));
+                .orElseThrow(() -> new CustomException(ErrorCode.RESOURCE_NOT_FOUND, "Project invitation not found."));
     }
 
     private Project getProjectEntity(Long projectId) {
         return projectRepository.findByIdAndIsDeletedFalse(projectId)
-                .orElseThrow(() -> new CustomException(ErrorCode.RESOURCE_NOT_FOUND, "프로젝트를 찾을 수 없습니다."));
+                .orElseThrow(() -> new CustomException(ErrorCode.RESOURCE_NOT_FOUND, "Project not found."));
     }
 }

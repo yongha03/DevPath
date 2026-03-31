@@ -16,7 +16,7 @@ import java.util.Comparator;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -50,7 +50,6 @@ public class StudyMatchService {
     public List<StudyMatchRecommendationResponse> getRecommendations(Long learnerId) {
         List<NodeClearance> myInProgressClearances =
                 nodeClearanceRepository.findInProgressClearancesByUserId(learnerId);
-
         if (myInProgressClearances.isEmpty()) {
             return List.of();
         }
@@ -60,14 +59,12 @@ public class StudyMatchService {
                 .distinct()
                 .limit(MAX_ACTIVE_NODE_WINDOW)
                 .toList();
-
         if (myPriorityNodeIds.isEmpty()) {
             return List.of();
         }
 
         List<NodeClearance> candidateClearances =
                 nodeClearanceRepository.findCandidateInProgressClearances(learnerId, myPriorityNodeIds);
-
         if (candidateClearances.isEmpty()) {
             return List.of();
         }
@@ -76,15 +73,14 @@ public class StudyMatchService {
                 .collect(Collectors.groupingBy(clearance -> clearance.getUser().getId()));
 
         List<Long> candidateLearnerIds = candidateClearanceMap.keySet().stream().toList();
-
         List<LearnerGoal> myGoals = learnerGoalRepository.findAllByLearnerIdAndIsActiveTrue(learnerId);
+
         Map<Long, List<LearnerGoal>> candidateGoalMap = learnerGoalRepository
                 .findAllByLearnerIdInAndIsActiveTrue(candidateLearnerIds)
                 .stream()
                 .collect(Collectors.groupingBy(LearnerGoal::getLearnerId));
 
-        Map<Long, Integer> candidateStreakMap = streakRepository.findAllByLearnerIdIn(candidateLearnerIds)
-                .stream()
+        Map<Long, Integer> candidateStreakMap = streakRepository.findAllByLearnerIdIn(candidateLearnerIds).stream()
                 .collect(Collectors.toMap(Streak::getLearnerId, Streak::getCurrentStreak));
 
         LocalDateTime recentActivityCutoff = LocalDateTime.now().minusDays(7);
@@ -100,13 +96,13 @@ public class StudyMatchService {
                         entry.getKey(),
                         entry.getValue()
                 ))
-                .filter(Objects::nonNull)
+                .flatMap(Optional::stream)
                 .sorted(Comparator.comparing(StudyMatchRecommendationResponse::getMatchScore).reversed())
                 .limit(MAX_RECOMMENDATION_COUNT)
                 .toList();
     }
 
-    private StudyMatchRecommendationResponse buildRecommendation(
+    private Optional<StudyMatchRecommendationResponse> buildRecommendation(
             Long learnerId,
             List<Long> myPriorityNodeIds,
             List<LearnerGoal> myGoals,
@@ -120,17 +116,15 @@ public class StudyMatchService {
                 .map(clearance -> clearance.getNode().getNodeId())
                 .distinct()
                 .toList();
-
         if (sharedNodeIds.isEmpty()) {
-            return null;
+            return Optional.empty();
         }
 
         if (studyMatchRepository.existsActiveMatchBetweenUsersForNodes(learnerId, candidateLearnerId, sharedNodeIds)) {
-            return null;
+            return Optional.empty();
         }
 
         Long primarySharedNodeId = resolvePrimarySharedNodeId(myPriorityNodeIds, sharedNodeIds);
-
         int nodeScore = calculateNodeScore(myPriorityNodeIds, sharedNodeIds, primarySharedNodeId);
         int goalScore = calculateGoalSimilarityScore(
                 myGoals,
@@ -140,20 +134,18 @@ public class StudyMatchService {
                 lessonProgressRepository.countByUserIdAndLastWatchedAtAfter(candidateLearnerId, recentActivityCutoff)
         );
         int streakScore = calculateStreakScore(candidateStreakMap.getOrDefault(candidateLearnerId, 0));
-
-        int totalScore = Math.min(
-                100,
-                nodeScore + goalScore + activityScore + streakScore
-        );
+        int totalScore = Math.min(100, nodeScore + goalScore + activityScore + streakScore);
 
         String maskedName = maskName(candidateSharedClearances.get(0).getUser().getName());
 
-        return StudyMatchRecommendationResponse.builder()
-                .recommendedLearnerId(candidateLearnerId)
-                .maskedName(maskedName)
-                .sharedNodeId(primarySharedNodeId)
-                .matchScore(totalScore)
-                .build();
+        return Optional.of(
+                StudyMatchRecommendationResponse.builder()
+                        .recommendedLearnerId(candidateLearnerId)
+                        .maskedName(maskedName)
+                        .sharedNodeId(primarySharedNodeId)
+                        .matchScore(totalScore)
+                        .build()
+        );
     }
 
     private Long resolvePrimarySharedNodeId(List<Long> myPriorityNodeIds, List<Long> sharedNodeIds) {
@@ -167,7 +159,6 @@ public class StudyMatchService {
 
     private int calculateNodeScore(List<Long> myPriorityNodeIds, List<Long> sharedNodeIds, Long primarySharedNodeId) {
         int score = 30;
-
         int sharedNodeBonus = Math.min(10, Math.max(0, sharedNodeIds.size() - 1) * 5);
         score += sharedNodeBonus;
 
@@ -194,13 +185,11 @@ public class StudyMatchService {
         Set<PlannerGoalType> sharedGoalTypes = myGoalMap.keySet().stream()
                 .filter(candidateGoalMap::containsKey)
                 .collect(Collectors.toSet());
-
         if (sharedGoalTypes.isEmpty()) {
             return 0;
         }
 
         int sameGoalTypeScore = Math.min(15, sharedGoalTypes.size() * 7);
-
         int targetClosenessScore = sharedGoalTypes.stream()
                 .mapToInt(goalType -> {
                     int myTarget = myGoalMap.get(goalType);
@@ -216,15 +205,9 @@ public class StudyMatchService {
 
     private Map<PlannerGoalType, Integer> toGoalMap(List<LearnerGoal> goals) {
         Map<PlannerGoalType, Integer> goalMap = new EnumMap<>(PlannerGoalType.class);
-
         for (LearnerGoal goal : goals) {
-            goalMap.merge(
-                    goal.getGoalType(),
-                    goal.getTargetValue(),
-                    Math::max
-            );
+            goalMap.merge(goal.getGoalType(), goal.getTargetValue(), Math::max);
         }
-
         return goalMap;
     }
 
@@ -232,7 +215,6 @@ public class StudyMatchService {
         if (recentActivityCount <= 0) {
             return 0;
         }
-
         return (int) Math.min(ACTIVITY_SCORE_MAX, recentActivityCount * 2);
     }
 
@@ -240,23 +222,19 @@ public class StudyMatchService {
         if (currentStreak <= 0) {
             return 0;
         }
-
         return Math.min(STREAK_SCORE_MAX, currentStreak * 2);
     }
 
     private String maskName(String name) {
         if (name == null || name.isBlank()) {
-            return "익*명";
+            return "anon";
         }
-
         if (name.length() == 1) {
             return name.charAt(0) + "*";
         }
-
         if (name.length() == 2) {
             return name.charAt(0) + "*";
         }
-
         return name.charAt(0) + "*" + name.charAt(name.length() - 1);
     }
 }

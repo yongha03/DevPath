@@ -1729,3 +1729,1024 @@ SELECT setval('notice_id_seq', (SELECT COALESCE(MAX(id), 1) FROM notice));
 SELECT setval('instructor_notification_id_seq', (SELECT COALESCE(MAX(id), 1) FROM instructor_notification));
 SELECT setval('dm_room_id_seq', (SELECT COALESCE(MAX(id), 1) FROM dm_room));
 SELECT setval('dm_message_id_seq', (SELECT COALESCE(MAX(id), 1) FROM dm_message));
+
+-- ========================================
+-- C SECTION USERS
+-- ========================================
+INSERT INTO users (email, password, name, role_name, is_active, created_at, updated_at)
+SELECT
+    'learner2@devpath.com',
+    '$2a$10$RcdWJBwl.kuttYmqm/BN..6aZKeLNlq9DiNFHbZgZxfTzzNDD33o2',
+    'Learner Park',
+    'ROLE_LEARNER',
+    TRUE,
+    NOW(),
+    NOW()
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM users
+    WHERE email = 'learner2@devpath.com'
+);
+
+INSERT INTO users (email, password, name, role_name, is_active, created_at, updated_at)
+SELECT
+    'learner3@devpath.com',
+    '$2a$10$RcdWJBwl.kuttYmqm/BN..6aZKeLNlq9DiNFHbZgZxfTzzNDD33o2',
+    'Learner Lee',
+    'ROLE_LEARNER',
+    TRUE,
+    NOW(),
+    NOW()
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM users
+    WHERE email = 'learner3@devpath.com'
+);
+
+-- ========================================
+-- C SECTION STUDY
+-- ========================================
+INSERT INTO study_group (name, description, status, max_members, is_deleted, created_at)
+SELECT
+    'Spring Boot API Study Crew',
+    'Spring Boot, JPA, Security를 같이 학습하는 모집중 스터디 그룹',
+    'RECRUITING',
+    5,
+    FALSE,
+    '2026-03-24 09:00:00'
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM study_group
+    WHERE name = 'Spring Boot API Study Crew'
+      AND is_deleted = FALSE
+);
+
+INSERT INTO study_group (name, description, status, max_members, is_deleted, created_at)
+SELECT
+    'Algorithm Deep Dive',
+    '모집이 끝나고 진행중인 알고리즘 스터디 그룹',
+    'IN_PROGRESS',
+    4,
+    FALSE,
+    '2026-03-20 19:00:00'
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM study_group
+    WHERE name = 'Algorithm Deep Dive'
+      AND is_deleted = FALSE
+);
+
+-- 현재 스키마에서는 study_group_application 대신 study_group_member.join_status 로 신청/승인/거절을 표현한다.
+INSERT INTO study_group_member (group_id, learner_id, join_status, joined_at)
+SELECT
+    sg.id,
+    u.user_id,
+    'APPROVED',
+    '2026-03-24 09:10:00'
+FROM study_group sg, users u
+WHERE sg.name = 'Spring Boot API Study Crew'
+  AND u.email = 'learner@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM study_group_member sgm
+      WHERE sgm.group_id = sg.id
+        AND sgm.learner_id = u.user_id
+  );
+
+INSERT INTO study_group_member (group_id, learner_id, join_status, joined_at)
+SELECT
+    sg.id,
+    u.user_id,
+    'PENDING',
+    NULL
+FROM study_group sg, users u
+WHERE sg.name = 'Spring Boot API Study Crew'
+  AND u.email = 'learner2@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM study_group_member sgm
+      WHERE sgm.group_id = sg.id
+        AND sgm.learner_id = u.user_id
+  );
+
+INSERT INTO study_group_member (group_id, learner_id, join_status, joined_at)
+SELECT
+    sg.id,
+    u.user_id,
+    'REJECTED',
+    NULL
+FROM study_group sg, users u
+WHERE sg.name = 'Spring Boot API Study Crew'
+  AND u.email = 'learner3@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM study_group_member sgm
+      WHERE sgm.group_id = sg.id
+        AND sgm.learner_id = u.user_id
+  );
+
+INSERT INTO study_group_member (group_id, learner_id, join_status, joined_at)
+SELECT
+    sg.id,
+    u.user_id,
+    'APPROVED',
+    '2026-03-21 10:00:00'
+FROM study_group sg, users u
+WHERE sg.name = 'Algorithm Deep Dive'
+  AND u.email = 'learner2@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM study_group_member sgm
+      WHERE sgm.group_id = sg.id
+        AND sgm.learner_id = u.user_id
+  );
+
+INSERT INTO study_match (requester_id, receiver_id, node_id, status, created_at)
+SELECT
+    requester.user_id,
+    receiver.user_id,
+    rn.node_id,
+    'RECOMMENDED',
+    '2026-03-25 08:30:00'
+FROM users requester, users receiver, roadmaps r, roadmap_nodes rn
+WHERE requester.email = 'learner@devpath.com'
+  AND receiver.email = 'learner2@devpath.com'
+  AND r.title = 'Backend Master Roadmap'
+  AND rn.roadmap_id = r.roadmap_id
+  AND rn.title = 'Java Basics'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM study_match sm
+      WHERE sm.requester_id = requester.user_id
+        AND sm.receiver_id = receiver.user_id
+        AND sm.node_id = rn.node_id
+  );
+
+INSERT INTO study_match (requester_id, receiver_id, node_id, status, created_at)
+SELECT
+    requester.user_id,
+    receiver.user_id,
+    rn.node_id,
+    'ACCEPTED',
+    '2026-03-26 20:15:00'
+FROM users requester, users receiver, roadmaps r, roadmap_nodes rn
+WHERE requester.email = 'learner2@devpath.com'
+  AND receiver.email = 'learner3@devpath.com'
+  AND r.title = 'Backend Master Roadmap'
+  AND rn.roadmap_id = r.roadmap_id
+  AND rn.title = 'HTTP Fundamentals'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM study_match sm
+      WHERE sm.requester_id = requester.user_id
+        AND sm.receiver_id = receiver.user_id
+        AND sm.node_id = rn.node_id
+  );
+
+-- ========================================
+-- C SECTION PLANNER
+-- ========================================
+INSERT INTO learner_goal (learner_id, goal_type, target_value, is_active)
+SELECT
+    u.user_id,
+    'WEEKLY_NODE_CLEAR',
+    3,
+    TRUE
+FROM users u
+WHERE u.email = 'learner@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM learner_goal lg
+      WHERE lg.learner_id = u.user_id
+        AND lg.goal_type = 'WEEKLY_NODE_CLEAR'
+        AND lg.target_value = 3
+  );
+
+INSERT INTO learner_goal (learner_id, goal_type, target_value, is_active)
+SELECT
+    u.user_id,
+    'WEEKLY_STUDY_TIME',
+    10,
+    TRUE
+FROM users u
+WHERE u.email = 'learner2@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM learner_goal lg
+      WHERE lg.learner_id = u.user_id
+        AND lg.goal_type = 'WEEKLY_STUDY_TIME'
+        AND lg.target_value = 10
+  );
+
+INSERT INTO learner_goal (learner_id, goal_type, target_value, is_active)
+SELECT
+    u.user_id,
+    'CUSTOM',
+    1,
+    TRUE
+FROM users u
+WHERE u.email = 'learner3@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM learner_goal lg
+      WHERE lg.learner_id = u.user_id
+        AND lg.goal_type = 'CUSTOM'
+        AND lg.target_value = 1
+  );
+
+INSERT INTO weekly_plan (learner_id, plan_content, status, created_at)
+SELECT
+    u.user_id,
+    '월/수/금: Spring Boot Intro 2개 레슨 수강, 화/목: HTTP Fundamentals 복습, 토: 퀴즈 정리',
+    'PLANNED',
+    '2026-03-24 07:00:00'
+FROM users u
+WHERE u.email = 'learner@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM weekly_plan wp
+      WHERE wp.learner_id = u.user_id
+        AND wp.plan_content = '월/수/금: Spring Boot Intro 2개 레슨 수강, 화/목: HTTP Fundamentals 복습, 토: 퀴즈 정리'
+  );
+
+INSERT INTO weekly_plan (learner_id, plan_content, status, created_at)
+SELECT
+    u.user_id,
+    '주간 계획 조정본: JPA 파트 난이도가 높아 실습 비중을 늘리고, 토요일에 과제 제출까지 완료',
+    'IN_PROGRESS',
+    '2026-03-25 07:10:00'
+FROM users u
+WHERE u.email = 'learner@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM weekly_plan wp
+      WHERE wp.learner_id = u.user_id
+        AND wp.plan_content = '주간 계획 조정본: JPA 파트 난이도가 높아 실습 비중을 늘리고, 토요일에 과제 제출까지 완료'
+  );
+
+INSERT INTO weekly_plan (learner_id, plan_content, status, created_at)
+SELECT
+    u.user_id,
+    '이번 주 목표: 알고리즘 5문제 풀이, 스터디 발표 자료 준비, 프로젝트 아이디어 초안 작성',
+    'PLANNED',
+    '2026-03-24 08:00:00'
+FROM users u
+WHERE u.email = 'learner2@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM weekly_plan wp
+      WHERE wp.learner_id = u.user_id
+        AND wp.plan_content = '이번 주 목표: 알고리즘 5문제 풀이, 스터디 발표 자료 준비, 프로젝트 아이디어 초안 작성'
+  );
+
+INSERT INTO streak (learner_id, current_streak, longest_streak, last_study_date)
+SELECT
+    u.user_id,
+    5,
+    8,
+    DATE '2026-03-30'
+FROM users u
+WHERE u.email = 'learner@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM streak s
+      WHERE s.learner_id = u.user_id
+  );
+
+INSERT INTO streak (learner_id, current_streak, longest_streak, last_study_date)
+SELECT
+    u.user_id,
+    2,
+    4,
+    DATE '2026-03-29'
+FROM users u
+WHERE u.email = 'learner2@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM streak s
+      WHERE s.learner_id = u.user_id
+  );
+
+INSERT INTO recovery_plan (learner_id, plan_details, created_at)
+SELECT
+    u.user_id,
+    '스트릭 복구 플랜: 오늘 30분 복습, 내일 1시간 실습, 모레 퀴즈 재응시로 루틴 복구',
+    '2026-03-30 06:30:00'
+FROM users u
+WHERE u.email = 'learner2@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM recovery_plan rp
+      WHERE rp.learner_id = u.user_id
+        AND rp.plan_details = '스트릭 복구 플랜: 오늘 30분 복습, 내일 1시간 실습, 모레 퀴즈 재응시로 루틴 복구'
+  );
+
+-- ========================================
+-- C SECTION NOTIFICATION
+-- ========================================
+INSERT INTO learner_notification (learner_id, type, message, is_read, created_at)
+SELECT
+    u.user_id,
+    'STUDY_GROUP',
+    'Spring Boot API Study Crew 참여 신청이 승인되었습니다.',
+    FALSE,
+    '2026-03-26 09:00:00'
+FROM users u
+WHERE u.email = 'learner@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM learner_notification n
+      WHERE n.learner_id = u.user_id
+        AND n.message = 'Spring Boot API Study Crew 참여 신청이 승인되었습니다.'
+  );
+
+INSERT INTO learner_notification (learner_id, type, message, is_read, created_at)
+SELECT
+    u.user_id,
+    'PLANNER',
+    '이번 주 학습 플랜이 생성되었습니다. 첫 번째 일정은 월요일 19:00입니다.',
+    FALSE,
+    '2026-03-24 07:05:00'
+FROM users u
+WHERE u.email = 'learner@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM learner_notification n
+      WHERE n.learner_id = u.user_id
+        AND n.message = '이번 주 학습 플랜이 생성되었습니다. 첫 번째 일정은 월요일 19:00입니다.'
+  );
+
+INSERT INTO learner_notification (learner_id, type, message, is_read, created_at)
+SELECT
+    u.user_id,
+    'PROJECT',
+    '프로젝트 역할이 BACKEND로 배정되었습니다.',
+    TRUE,
+    '2026-03-27 10:30:00'
+FROM users u
+WHERE u.email = 'learner2@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM learner_notification n
+      WHERE n.learner_id = u.user_id
+        AND n.message = '프로젝트 역할이 BACKEND로 배정되었습니다.'
+  );
+
+INSERT INTO learner_notification (learner_id, type, message, is_read, created_at)
+SELECT
+    u.user_id,
+    'STREAK',
+    '학습 스트릭이 5일째 유지 중입니다. 오늘도 이어가보세요.',
+    TRUE,
+    '2026-03-30 21:00:00'
+FROM users u
+WHERE u.email = 'learner@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM learner_notification n
+      WHERE n.learner_id = u.user_id
+        AND n.message = '학습 스트릭이 5일째 유지 중입니다. 오늘도 이어가보세요.'
+  );
+
+-- ========================================
+-- C SECTION DASHBOARD
+-- ========================================
+INSERT INTO dashboard_snapshot (learner_id, total_study_hours, completed_nodes, snapshot_date)
+SELECT u.user_id, 2, 0, DATE '2026-03-24'
+FROM users u
+WHERE u.email = 'learner@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM dashboard_snapshot ds
+      WHERE ds.learner_id = u.user_id
+        AND ds.snapshot_date = DATE '2026-03-24'
+  );
+
+INSERT INTO dashboard_snapshot (learner_id, total_study_hours, completed_nodes, snapshot_date)
+SELECT u.user_id, 3, 1, DATE '2026-03-25'
+FROM users u
+WHERE u.email = 'learner@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM dashboard_snapshot ds
+      WHERE ds.learner_id = u.user_id
+        AND ds.snapshot_date = DATE '2026-03-25'
+  );
+
+INSERT INTO dashboard_snapshot (learner_id, total_study_hours, completed_nodes, snapshot_date)
+SELECT u.user_id, 1, 1, DATE '2026-03-26'
+FROM users u
+WHERE u.email = 'learner@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM dashboard_snapshot ds
+      WHERE ds.learner_id = u.user_id
+        AND ds.snapshot_date = DATE '2026-03-26'
+  );
+
+INSERT INTO dashboard_snapshot (learner_id, total_study_hours, completed_nodes, snapshot_date)
+SELECT u.user_id, 4, 2, DATE '2026-03-27'
+FROM users u
+WHERE u.email = 'learner@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM dashboard_snapshot ds
+      WHERE ds.learner_id = u.user_id
+        AND ds.snapshot_date = DATE '2026-03-27'
+  );
+
+INSERT INTO dashboard_snapshot (learner_id, total_study_hours, completed_nodes, snapshot_date)
+SELECT u.user_id, 2, 2, DATE '2026-03-28'
+FROM users u
+WHERE u.email = 'learner@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM dashboard_snapshot ds
+      WHERE ds.learner_id = u.user_id
+        AND ds.snapshot_date = DATE '2026-03-28'
+  );
+
+INSERT INTO dashboard_snapshot (learner_id, total_study_hours, completed_nodes, snapshot_date)
+SELECT u.user_id, 5, 3, DATE '2026-03-29'
+FROM users u
+WHERE u.email = 'learner@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM dashboard_snapshot ds
+      WHERE ds.learner_id = u.user_id
+        AND ds.snapshot_date = DATE '2026-03-29'
+  );
+
+INSERT INTO dashboard_snapshot (learner_id, total_study_hours, completed_nodes, snapshot_date)
+SELECT u.user_id, 3, 3, DATE '2026-03-30'
+FROM users u
+WHERE u.email = 'learner@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM dashboard_snapshot ds
+      WHERE ds.learner_id = u.user_id
+        AND ds.snapshot_date = DATE '2026-03-30'
+  );
+
+INSERT INTO dashboard_snapshot (learner_id, total_study_hours, completed_nodes, snapshot_date)
+SELECT u.user_id, 2, 1, DATE '2026-03-30'
+FROM users u
+WHERE u.email = 'learner2@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM dashboard_snapshot ds
+      WHERE ds.learner_id = u.user_id
+        AND ds.snapshot_date = DATE '2026-03-30'
+  );
+
+-- ========================================
+-- C SECTION PROJECT
+-- ========================================
+INSERT INTO project (name, description, status, is_deleted, created_at)
+SELECT
+    'DevPath Team Workspace',
+    'DevPath 팀 협업 워크스페이스용 프로젝트. 역할 배정, 멘토링, Proof 제출 테스트용 데이터',
+    'IN_PROGRESS',
+    FALSE,
+    '2026-03-23 14:00:00'
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM project
+    WHERE name = 'DevPath Team Workspace'
+      AND is_deleted = FALSE
+);
+
+INSERT INTO project (name, description, status, is_deleted, created_at)
+SELECT
+    'Portfolio Builder Squad',
+    '포트폴리오 제작 중심의 준비중 프로젝트. 초대 거절/멘토링 승인 시나리오 테스트용 데이터',
+    'PREPARING',
+    FALSE,
+    '2026-03-22 11:00:00'
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM project
+    WHERE name = 'Portfolio Builder Squad'
+      AND is_deleted = FALSE
+);
+
+INSERT INTO project_role (project_id, role_type, required_count)
+SELECT
+    p.id,
+    'LEADER',
+    1
+FROM project p
+WHERE p.name = 'DevPath Team Workspace'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM project_role pr
+      WHERE pr.project_id = p.id
+        AND pr.role_type = 'LEADER'
+  );
+
+INSERT INTO project_role (project_id, role_type, required_count)
+SELECT
+    p.id,
+    'BACKEND',
+    2
+FROM project p
+WHERE p.name = 'DevPath Team Workspace'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM project_role pr
+      WHERE pr.project_id = p.id
+        AND pr.role_type = 'BACKEND'
+  );
+
+INSERT INTO project_role (project_id, role_type, required_count)
+SELECT
+    p.id,
+    'FRONTEND',
+    1
+FROM project p
+WHERE p.name = 'DevPath Team Workspace'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM project_role pr
+      WHERE pr.project_id = p.id
+        AND pr.role_type = 'FRONTEND'
+  );
+
+INSERT INTO project_role (project_id, role_type, required_count)
+SELECT
+    p.id,
+    'FULLSTACK',
+    2
+FROM project p
+WHERE p.name = 'Portfolio Builder Squad'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM project_role pr
+      WHERE pr.project_id = p.id
+        AND pr.role_type = 'FULLSTACK'
+  );
+
+INSERT INTO project_member (project_id, learner_id, role_type, joined_at)
+SELECT
+    p.id,
+    u.user_id,
+    'LEADER',
+    '2026-03-23 14:10:00'
+FROM project p, users u
+WHERE p.name = 'DevPath Team Workspace'
+  AND u.email = 'learner@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM project_member pm
+      WHERE pm.project_id = p.id
+        AND pm.learner_id = u.user_id
+  );
+
+INSERT INTO project_member (project_id, learner_id, role_type, joined_at)
+SELECT
+    p.id,
+    u.user_id,
+    'BACKEND',
+    '2026-03-24 10:00:00'
+FROM project p, users u
+WHERE p.name = 'DevPath Team Workspace'
+  AND u.email = 'learner2@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM project_member pm
+      WHERE pm.project_id = p.id
+        AND pm.learner_id = u.user_id
+  );
+
+INSERT INTO project_member (project_id, learner_id, role_type, joined_at)
+SELECT
+    p.id,
+    u.user_id,
+    'FULLSTACK',
+    '2026-03-22 11:30:00'
+FROM project p, users u
+WHERE p.name = 'Portfolio Builder Squad'
+  AND u.email = 'learner3@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM project_member pm
+      WHERE pm.project_id = p.id
+        AND pm.learner_id = u.user_id
+  );
+
+INSERT INTO project_invitation (project_id, inviter_id, invitee_id, status, created_at)
+SELECT
+    p.id,
+    inviter.user_id,
+    invitee.user_id,
+    'PENDING',
+    '2026-03-28 13:00:00'
+FROM project p, users inviter, users invitee
+WHERE p.name = 'DevPath Team Workspace'
+  AND inviter.email = 'learner@devpath.com'
+  AND invitee.email = 'learner3@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM project_invitation pi
+      WHERE pi.project_id = p.id
+        AND pi.inviter_id = inviter.user_id
+        AND pi.invitee_id = invitee.user_id
+  );
+
+INSERT INTO project_invitation (project_id, inviter_id, invitee_id, status, created_at)
+SELECT
+    p.id,
+    inviter.user_id,
+    invitee.user_id,
+    'ACCEPTED',
+    '2026-03-24 09:40:00'
+FROM project p, users inviter, users invitee
+WHERE p.name = 'DevPath Team Workspace'
+  AND inviter.email = 'learner@devpath.com'
+  AND invitee.email = 'learner2@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM project_invitation pi
+      WHERE pi.project_id = p.id
+        AND pi.inviter_id = inviter.user_id
+        AND pi.invitee_id = invitee.user_id
+  );
+
+INSERT INTO project_invitation (project_id, inviter_id, invitee_id, status, created_at)
+SELECT
+    p.id,
+    inviter.user_id,
+    invitee.user_id,
+    'REJECTED',
+    '2026-03-25 16:20:00'
+FROM project p, users inviter, users invitee
+WHERE p.name = 'Portfolio Builder Squad'
+  AND inviter.email = 'learner3@devpath.com'
+  AND invitee.email = 'learner2@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM project_invitation pi
+      WHERE pi.project_id = p.id
+        AND pi.inviter_id = inviter.user_id
+        AND pi.invitee_id = invitee.user_id
+  );
+
+INSERT INTO mentoring_application (project_id, mentor_id, message, status, created_at)
+SELECT
+    p.id,
+    mentor.user_id,
+    'Spring Security 구조 리뷰와 API 인증 흐름 피드백이 필요합니다.',
+    'PENDING',
+    '2026-03-29 15:00:00'
+FROM project p, users mentor
+WHERE p.name = 'DevPath Team Workspace'
+  AND mentor.email = 'instructor@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM mentoring_application ma
+      WHERE ma.project_id = p.id
+        AND ma.mentor_id = mentor.user_id
+        AND ma.message = 'Spring Security 구조 리뷰와 API 인증 흐름 피드백이 필요합니다.'
+  );
+
+INSERT INTO mentoring_application (project_id, mentor_id, message, status, created_at)
+SELECT
+    p.id,
+    mentor.user_id,
+    '포트폴리오 초안 구조와 README 작성 방향에 대한 피드백 요청',
+    'APPROVED',
+    '2026-03-27 12:00:00'
+FROM project p, users mentor
+WHERE p.name = 'Portfolio Builder Squad'
+  AND mentor.email = 'instructor@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM mentoring_application ma
+      WHERE ma.project_id = p.id
+        AND ma.mentor_id = mentor.user_id
+        AND ma.message = '포트폴리오 초안 구조와 README 작성 방향에 대한 피드백 요청'
+  );
+
+INSERT INTO project_idea_post (author_id, title, content, status, is_deleted, created_at)
+SELECT
+    u.user_id,
+    '캡스톤용 DevPath 협업 워크스페이스 고도화 아이디어',
+    '프로젝트 멤버 초대, 역할 배정, Proof Card 제출 흐름을 하나의 시연 시나리오로 묶는 기능 제안',
+    'PUBLISHED',
+    FALSE,
+    '2026-03-26 18:00:00'
+FROM users u
+WHERE u.email = 'learner@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM project_idea_post pip
+      WHERE pip.author_id = u.user_id
+        AND pip.title = '캡스톤용 DevPath 협업 워크스페이스 고도화 아이디어'
+  );
+
+INSERT INTO project_idea_post (author_id, title, content, status, is_deleted, created_at)
+SELECT
+    u.user_id,
+    '개인 포트폴리오 빌더 연동 초안',
+    '학습 이력과 프로젝트 산출물을 한 번에 정리하는 포트폴리오 빌더 페이지 연결안',
+    'DRAFT',
+    FALSE,
+    '2026-03-28 20:10:00'
+FROM users u
+WHERE u.email = 'learner2@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM project_idea_post pip
+      WHERE pip.author_id = u.user_id
+        AND pip.title = '개인 포트폴리오 빌더 연동 초안'
+  );
+
+-- proof_card_ref_id 는 현재 문자열 참조값만 저장하므로 Swagger 검증용 더미 ref 값을 직접 넣는다.
+-- 중복 제출 방지 테스트용 ref: PROOF-C-001
+INSERT INTO project_proof_submission (project_id, submitter_id, proof_card_ref_id, submitted_at)
+SELECT
+    p.id,
+    u.user_id,
+    'PROOF-C-001',
+    '2026-03-29 11:00:00'
+FROM project p, users u
+WHERE p.name = 'DevPath Team Workspace'
+  AND u.email = 'learner@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM project_proof_submission pps
+      WHERE pps.project_id = p.id
+        AND pps.submitter_id = u.user_id
+        AND pps.proof_card_ref_id = 'PROOF-C-001'
+  );
+
+INSERT INTO project_proof_submission (project_id, submitter_id, proof_card_ref_id, submitted_at)
+SELECT
+    p.id,
+    u.user_id,
+    'PROOF-C-002',
+    '2026-03-29 11:20:00'
+FROM project p, users u
+WHERE p.name = 'DevPath Team Workspace'
+  AND u.email = 'learner2@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM project_proof_submission pps
+      WHERE pps.project_id = p.id
+        AND pps.submitter_id = u.user_id
+        AND pps.proof_card_ref_id = 'PROOF-C-002'
+  );
+
+INSERT INTO project_proof_submission (project_id, submitter_id, proof_card_ref_id, submitted_at)
+SELECT
+    p.id,
+    u.user_id,
+    'PROOF-C-003',
+    '2026-03-30 09:30:00'
+FROM project p, users u
+WHERE p.name = 'Portfolio Builder Squad'
+  AND u.email = 'learner3@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM project_proof_submission pps
+      WHERE pps.project_id = p.id
+        AND pps.submitter_id = u.user_id
+        AND pps.proof_card_ref_id = 'PROOF-C-003'
+  );
+
+-- ========================================
+-- C SECTION SEQUENCE FIX
+-- ========================================
+SELECT setval('study_group_id_seq', (SELECT COALESCE(MAX(id), 1) FROM study_group));
+SELECT setval('study_group_member_id_seq', (SELECT COALESCE(MAX(id), 1) FROM study_group_member));
+SELECT setval('study_match_id_seq', (SELECT COALESCE(MAX(id), 1) FROM study_match));
+SELECT setval('learner_goal_id_seq', (SELECT COALESCE(MAX(id), 1) FROM learner_goal));
+SELECT setval('weekly_plan_id_seq', (SELECT COALESCE(MAX(id), 1) FROM weekly_plan));
+SELECT setval('streak_id_seq', (SELECT COALESCE(MAX(id), 1) FROM streak));
+SELECT setval('recovery_plan_id_seq', (SELECT COALESCE(MAX(id), 1) FROM recovery_plan));
+SELECT setval('learner_notification_id_seq', (SELECT COALESCE(MAX(id), 1) FROM learner_notification));
+SELECT setval('dashboard_snapshot_id_seq', (SELECT COALESCE(MAX(id), 1) FROM dashboard_snapshot));
+SELECT setval('project_id_seq', (SELECT COALESCE(MAX(id), 1) FROM project));
+SELECT setval('project_invitation_id_seq', (SELECT COALESCE(MAX(id), 1) FROM project_invitation));
+SELECT setval('project_member_id_seq', (SELECT COALESCE(MAX(id), 1) FROM project_member));
+SELECT setval('project_role_id_seq', (SELECT COALESCE(MAX(id), 1) FROM project_role));
+SELECT setval('mentoring_application_id_seq', (SELECT COALESCE(MAX(id), 1) FROM mentoring_application));
+SELECT setval('project_idea_post_id_seq', (SELECT COALESCE(MAX(id), 1) FROM project_idea_post));
+SELECT setval('project_proof_submission_id_seq', (SELECT COALESCE(MAX(id), 1) FROM project_proof_submission));
+
+INSERT INTO users (email, password, name, role_name, is_active, created_at, updated_at)
+SELECT
+    'learner4@devpath.com',
+    '$2a$10$RcdWJBwl.kuttYmqm/BN..6aZKeLNlq9DiNFHbZgZxfTzzNDD33o2',
+    'Learner Choi',
+    'ROLE_LEARNER',
+    TRUE,
+    NOW(),
+    NOW()
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM users
+    WHERE email = 'learner4@devpath.com'
+);
+
+UPDATE study_group
+SET status = 'RECRUITING'
+WHERE name = 'Spring Boot API Study Crew'
+  AND is_deleted = FALSE;
+
+UPDATE study_group
+SET status = 'IN_PROGRESS'
+WHERE name = 'Algorithm Deep Dive'
+  AND is_deleted = FALSE;
+
+INSERT INTO study_group_member (group_id, learner_id, join_status, joined_at)
+SELECT
+    sg.id,
+    u.user_id,
+    'PENDING',
+    NULL
+FROM study_group sg, users u
+WHERE sg.name = 'Algorithm Deep Dive'
+  AND u.email = 'learner3@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM study_group_member sgm
+      WHERE sgm.group_id = sg.id
+        AND sgm.learner_id = u.user_id
+  );
+
+INSERT INTO study_group_member (group_id, learner_id, join_status, joined_at)
+SELECT
+    sg.id,
+    u.user_id,
+    'PENDING',
+    NULL
+FROM study_group sg, users u
+WHERE sg.name = 'Spring Boot API Study Crew'
+  AND u.email = 'learner4@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM study_group_member sgm
+      WHERE sgm.group_id = sg.id
+        AND sgm.learner_id = u.user_id
+  );
+
+INSERT INTO learner_notification (learner_id, type, message, is_read, created_at)
+SELECT
+    u.user_id,
+    'STUDY_GROUP',
+    'Algorithm Deep Dive 스터디 참여 신청이 접수되었습니다.',
+    FALSE,
+    '2026-03-30 09:10:00'
+FROM users u
+WHERE u.email = 'learner3@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM learner_notification n
+      WHERE n.learner_id = u.user_id
+        AND n.message = 'Algorithm Deep Dive 스터디 참여 신청이 접수되었습니다.'
+  );
+
+INSERT INTO learner_notification (learner_id, type, message, is_read, created_at)
+SELECT
+    u.user_id,
+    'PROJECT',
+    'DevPath Team Workspace 프로젝트 초대가 도착했습니다.',
+    FALSE,
+    '2026-03-30 10:00:00'
+FROM users u
+WHERE u.email = 'learner3@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM learner_notification n
+      WHERE n.learner_id = u.user_id
+        AND n.message = 'DevPath Team Workspace 프로젝트 초대가 도착했습니다.'
+  );
+
+INSERT INTO learner_notification (learner_id, type, message, is_read, created_at)
+SELECT
+    u.user_id,
+    'PLANNER',
+    '이번 주 학습 플랜 조정이 완료되었습니다.',
+    TRUE,
+    '2026-03-30 10:30:00'
+FROM users u
+WHERE u.email = 'learner@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM learner_notification n
+      WHERE n.learner_id = u.user_id
+        AND n.message = '이번 주 학습 플랜 조정이 완료되었습니다.'
+  );
+
+UPDATE streak
+SET current_streak = 5,
+    longest_streak = GREATEST(longest_streak, 5),
+    last_study_date = DATE '2026-03-30'
+WHERE learner_id = (
+    SELECT user_id
+    FROM users
+    WHERE email = 'learner@devpath.com'
+);
+
+INSERT INTO recovery_plan (learner_id, plan_details, created_at)
+SELECT
+    u.user_id,
+    '복귀 플랜: 오늘 30분 복습, 내일 1시간 실습, 모레 스터디 발표 준비',
+    '2026-03-30 07:00:00'
+FROM users u
+WHERE u.email = 'learner@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM recovery_plan rp
+      WHERE rp.learner_id = u.user_id
+        AND rp.plan_details = '복귀 플랜: 오늘 30분 복습, 내일 1시간 실습, 모레 스터디 발표 준비'
+  );
+
+UPDATE project_invitation
+SET status = 'PENDING'
+WHERE project_id = (
+    SELECT id
+    FROM project
+    WHERE name = 'DevPath Team Workspace'
+      AND is_deleted = FALSE
+)
+AND invitee_id = (
+    SELECT user_id
+    FROM users
+    WHERE email = 'learner3@devpath.com'
+);
+
+INSERT INTO project_role (project_id, role_type, required_count)
+SELECT
+    p.id,
+    'DESIGN',
+    1
+FROM project p
+WHERE p.name = 'DevPath Team Workspace'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM project_role pr
+      WHERE pr.project_id = p.id
+        AND pr.role_type = 'DESIGN'
+  );
+
+INSERT INTO mentoring_application (project_id, mentor_id, message, status, created_at)
+SELECT
+    p.id,
+    mentor.user_id,
+    '프로젝트 API 설계 리뷰와 시연 흐름 검토가 필요합니다.',
+    'PENDING',
+    '2026-03-30 11:00:00'
+FROM project p, users mentor
+WHERE p.name = 'DevPath Team Workspace'
+  AND mentor.email = 'instructor@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM mentoring_application ma
+      WHERE ma.project_id = p.id
+        AND ma.message = '프로젝트 API 설계 리뷰와 시연 흐름 검토가 필요합니다.'
+  );
+
+INSERT INTO project_idea_post (author_id, title, content, status, is_deleted, created_at)
+SELECT
+    u.user_id,
+    '스터디 그룹-프로젝트 연동 아이디어',
+    '같은 노드 학습자 자동 매칭 후 프로젝트 팀 빌딩으로 자연스럽게 이어지는 흐름을 제안합니다.',
+    'PUBLISHED',
+    FALSE,
+    '2026-03-30 12:00:00'
+FROM users u
+WHERE u.email = 'learner3@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM project_idea_post pip
+      WHERE pip.author_id = u.user_id
+        AND pip.title = '스터디 그룹-프로젝트 연동 아이디어'
+  );
+
+INSERT INTO project_proof_submission (project_id, submitter_id, proof_card_ref_id, submitted_at)
+SELECT
+    p.id,
+    u.user_id,
+    'PROOF-C-004',
+    '2026-03-30 12:30:00'
+FROM project p, users u
+WHERE p.name = 'DevPath Team Workspace'
+  AND u.email = 'learner3@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM project_proof_submission pps
+      WHERE pps.project_id = p.id
+        AND pps.submitter_id = u.user_id
+        AND pps.proof_card_ref_id = 'PROOF-C-004'
+  );
+
+SELECT setval('users_user_id_seq', (SELECT COALESCE(MAX(user_id), 1) FROM users));
+SELECT setval('study_group_member_id_seq', (SELECT COALESCE(MAX(id), 1) FROM study_group_member));
+SELECT setval('learner_notification_id_seq', (SELECT COALESCE(MAX(id), 1) FROM learner_notification));
+SELECT setval('recovery_plan_id_seq', (SELECT COALESCE(MAX(id), 1) FROM recovery_plan));
+SELECT setval('project_role_id_seq', (SELECT COALESCE(MAX(id), 1) FROM project_role));
+SELECT setval('mentoring_application_id_seq', (SELECT COALESCE(MAX(id), 1) FROM mentoring_application));
+SELECT setval('project_idea_post_id_seq', (SELECT COALESCE(MAX(id), 1) FROM project_idea_post));
+SELECT setval('project_proof_submission_id_seq', (SELECT COALESCE(MAX(id), 1) FROM project_proof_submission));

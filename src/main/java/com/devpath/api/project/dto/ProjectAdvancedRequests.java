@@ -2,8 +2,11 @@ package com.devpath.api.project.dto;
 
 import com.devpath.domain.project.entity.ProjectRoleType;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.Size;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -12,74 +15,90 @@ public class ProjectAdvancedRequests {
 
     @Getter
     @NoArgsConstructor(access = AccessLevel.PROTECTED)
-    @Schema(description = "프로젝트 초대 요청 DTO")
+    @Schema(description = "Project invitation request")
     public static class InvitationRequest {
-        @NotNull(message = "프로젝트 ID는 필수입니다.")
-        @Schema(description = "프로젝트 ID", example = "1")
+
+        @NotNull(message = "Project id is required.")
+        @Positive(message = "Project id must be positive.")
+        @Schema(description = "Project id", example = "1")
         private Long projectId;
 
-        @NotNull(message = "초대할 유저 ID는 필수입니다.")
-        @Schema(description = "초대받는 유저 ID", example = "2")
+        @NotNull(message = "Invitee id is required.")
+        @Positive(message = "Invitee id must be positive.")
+        @Schema(description = "Invitee user id", example = "2")
         private Long inviteeId;
     }
 
     @Getter
     @NoArgsConstructor(access = AccessLevel.PROTECTED)
-    @Schema(description = "프로젝트 역할 생성/수정 요청 DTO")
+    @Schema(description = "Project role request")
     public static class RoleRequest {
-        @NotNull(message = "프로젝트 ID는 필수입니다.")
-        @Schema(description = "프로젝트 ID", example = "1")
+
+        @NotNull(message = "Project id is required.")
+        @Positive(message = "Project id must be positive.")
+        @Schema(description = "Project id", example = "1")
         private Long projectId;
 
-        @NotNull(message = "역할 타입은 필수입니다.")
-        @Schema(description = "역할 (예: BACKEND, FRONTEND)", example = "BACKEND")
+        @NotNull(message = "Role type is required.")
+        @Schema(description = "Role type", example = "BACKEND")
         private ProjectRoleType roleType;
 
-        @NotNull(message = "필요 인원 수는 필수입니다.")
-        @Schema(description = "해당 역할의 모집 필요 인원", example = "2")
+        @NotNull(message = "Required count is required.")
+        @Min(value = 1, message = "Required count must be at least 1.")
+        @Schema(description = "Required count", example = "2")
         private Integer requiredCount;
     }
 
     @Getter
     @NoArgsConstructor(access = AccessLevel.PROTECTED)
-    @Schema(description = "멘토링 지원 요청 DTO")
+    @Schema(description = "Project mentoring request")
     public static class MentoringRequest {
-        @NotNull(message = "프로젝트 ID는 필수입니다.")
-        @Schema(description = "프로젝트 ID", example = "1")
+
+        @NotNull(message = "Project id is required.")
+        @Positive(message = "Project id must be positive.")
+        @Schema(description = "Project id", example = "1")
         private Long projectId;
 
-        @NotNull(message = "멘토 ID는 필수입니다.")
-        @Schema(description = "지원할 멘토의 ID", example = "5")
+        @NotNull(message = "Mentor id is required.")
+        @Positive(message = "Mentor id must be positive.")
+        @Schema(description = "Mentor id", example = "5")
         private Long mentorId;
 
-        @NotBlank(message = "지원 메시지는 필수입니다.")
-        @Schema(description = "멘토에게 남기는 지원 메시지", example = "열심히 하겠습니다!")
+        @NotBlank(message = "Message is required.")
+        @Size(max = 1000, message = "Message must be 1000 characters or fewer.")
+        @Schema(description = "Request message", example = "I want feedback on our Spring Security design.")
         private String message;
     }
 
     @Getter
     @NoArgsConstructor(access = AccessLevel.PROTECTED)
-    @Schema(description = "프로젝트 아이디어 게시글 요청 DTO")
+    @Schema(description = "Project idea post request")
     public static class IdeaPostRequest {
-        @NotBlank(message = "제목은 필수입니다.")
-        @Schema(description = "게시글 제목", example = "O2O 펫 시터 플랫폼 팀원 구합니다.")
+
+        @NotBlank(message = "Title is required.")
+        @Size(max = 100, message = "Title must be 100 characters or fewer.")
+        @Schema(description = "Title", example = "Looking for backend members")
         private String title;
 
-        @NotBlank(message = "내용은 필수입니다.")
-        @Schema(description = "게시글 내용", example = "프로젝트 상세 내용...")
+        @NotBlank(message = "Content is required.")
+        @Size(max = 3000, message = "Content must be 3000 characters or fewer.")
+        @Schema(description = "Content", example = "Project overview and recruiting details.")
         private String content;
     }
 
     @Getter
     @NoArgsConstructor(access = AccessLevel.PROTECTED)
-    @Schema(description = "프로젝트 인증(Proof) 제출 요청 DTO")
+    @Schema(description = "Project proof submission request")
     public static class ProofSubmissionRequest {
-        @NotNull(message = "프로젝트 ID는 필수입니다.")
-        @Schema(description = "프로젝트 ID", example = "1")
+
+        @NotNull(message = "Project id is required.")
+        @Positive(message = "Project id must be positive.")
+        @Schema(description = "Project id", example = "1")
         private Long projectId;
 
-        @NotBlank(message = "Proof Card ID는 필수입니다.")
-        @Schema(description = "발급된 Proof Card의 참조 ID", example = "PROOF-2026-ABC")
+        @NotBlank(message = "Proof card ref id is required.")
+        @Size(max = 100, message = "Proof card ref id must be 100 characters or fewer.")
+        @Schema(description = "Proof card ref id", example = "PROOF-2026-ABC")
         private String proofCardRefId;
     }
 }

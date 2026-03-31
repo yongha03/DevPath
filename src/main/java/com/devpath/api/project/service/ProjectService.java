@@ -26,7 +26,7 @@ public class ProjectService {
     @Transactional
     public ProjectResponse createProject(ProjectRequest request, Long creatorId) {
         Project project = Project.builder()
-                .name(request.getName())
+                .name(request.getName().trim())
                 .description(request.getDescription())
                 .status(ProjectStatus.PREPARING)
                 .build();
@@ -54,14 +54,22 @@ public class ProjectService {
     }
 
     @Transactional
-    public ProjectResponse updateProject(Long projectId, ProjectRequest request) {
+    public ProjectResponse updateProject(Long projectId, Long requesterId, ProjectRequest request) {
         Project project = getProjectEntity(projectId);
-        project.updateProject(request.getName(), request.getDescription());
+        validateProjectMember(project.getId(), requesterId);
+
+        project.updateProject(request.getName().trim(), request.getDescription());
         return ProjectResponse.from(project);
+    }
+
+    private void validateProjectMember(Long projectId, Long requesterId) {
+        if (!projectMemberRepository.existsByProjectIdAndLearnerId(projectId, requesterId)) {
+            throw new CustomException(ErrorCode.UNAUTHORIZED_ACTION, "Only project members can update the project.");
+        }
     }
 
     private Project getProjectEntity(Long projectId) {
         return projectRepository.findByIdAndIsDeletedFalse(projectId)
-                .orElseThrow(() -> new CustomException(ErrorCode.RESOURCE_NOT_FOUND, "프로젝트를 찾을 수 없습니다."));
+                .orElseThrow(() -> new CustomException(ErrorCode.RESOURCE_NOT_FOUND, "Project not found."));
     }
 }

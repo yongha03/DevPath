@@ -1,8 +1,8 @@
 package com.devpath.api.planner.service;
 
+import com.devpath.api.planner.dto.RecoveryPlanRequest;
+import com.devpath.api.planner.dto.RecoveryPlanResponse;
 import com.devpath.api.planner.dto.StreakResponse;
-import com.devpath.common.exception.CustomException;
-import com.devpath.common.exception.ErrorCode;
 import com.devpath.domain.planner.entity.RecoveryPlan;
 import com.devpath.domain.planner.entity.Streak;
 import com.devpath.domain.planner.repository.RecoveryPlanRepository;
@@ -42,22 +42,17 @@ public class LearnerStreakService {
 
         streak.incrementStreak(LocalDate.now());
         Streak savedStreak = streakRepository.save(streak);
-
         return StreakResponse.from(savedStreak);
     }
 
     @Transactional
-    public String createRecoveryPlan(Long learnerId, String planDetails) {
-        if (planDetails == null || planDetails.trim().isEmpty()) {
-            throw new CustomException(ErrorCode.INVALID_INPUT, "복구 계획 내용은 비어 있을 수 없습니다.");
-        }
-
+    public RecoveryPlanResponse createRecoveryPlan(Long learnerId, RecoveryPlanRequest request) {
         RecoveryPlan recoveryPlan = RecoveryPlan.builder()
                 .learnerId(learnerId)
-                .planDetails(planDetails.trim())
+                .planDetails(request.getPlanDetails().trim())
                 .build();
 
-        recoveryPlanRepository.save(recoveryPlan);
-        return "복구 계획이 생성되었습니다.";
+        RecoveryPlan savedRecoveryPlan = recoveryPlanRepository.save(recoveryPlan);
+        return RecoveryPlanResponse.from(savedRecoveryPlan);
     }
 }

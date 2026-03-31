@@ -9,6 +9,7 @@ import com.devpath.domain.project.entity.MentoringApplicationStatus;
 import com.devpath.domain.project.entity.Project;
 import com.devpath.domain.project.entity.ProjectStatus;
 import com.devpath.domain.project.repository.MentoringApplicationRepository;
+import com.devpath.domain.project.repository.ProjectMemberRepository;
 import com.devpath.domain.project.repository.ProjectRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -22,35 +23,43 @@ public class MentoringApplicationService {
 
     private final MentoringApplicationRepository mentoringApplicationRepository;
     private final ProjectRepository projectRepository;
+    private final ProjectMemberRepository projectMemberRepository;
 
     @Transactional
-    public MentoringResponse applyForMentoring(MentoringRequest request) {
+    public MentoringResponse applyForMentoring(MentoringRequest request, Long requesterId) {
         Project project = getProjectEntity(request.getProjectId());
-
+        validateProjectMember(project.getId(), requesterId);
         validateProjectStatus(project);
         validateDuplicatePendingApplication(request);
 
         MentoringApplication application = MentoringApplication.builder()
                 .projectId(project.getId())
                 .mentorId(request.getMentorId())
-                .message(request.getMessage())
+                .message(request.getMessage().trim())
                 .status(MentoringApplicationStatus.PENDING)
                 .build();
 
         return MentoringResponse.from(mentoringApplicationRepository.save(application));
     }
 
-    public List<MentoringResponse> getMentoringApplications(Long projectId) {
+    public List<MentoringResponse> getMentoringApplications(Long projectId, Long requesterId) {
         getProjectEntity(projectId);
+        validateProjectMember(projectId, requesterId);
 
         return mentoringApplicationRepository.findAllByProjectIdOrderByCreatedAtDesc(projectId).stream()
                 .map(MentoringResponse::from)
                 .toList();
     }
 
+    private void validateProjectMember(Long projectId, Long requesterId) {
+        if (!projectMemberRepository.existsByProjectIdAndLearnerId(projectId, requesterId)) {
+            throw new CustomException(ErrorCode.UNAUTHORIZED_ACTION, "Only project members can access mentoring applications.");
+        }
+    }
+
     private void validateProjectStatus(Project project) {
         if (project.getStatus() == ProjectStatus.COMPLETED || project.getStatus() == ProjectStatus.ON_HOLD) {
-            throw new CustomException(ErrorCode.INVALID_INPUT, "현재 프로젝트 상태에서는 멘토링을 신청할 수 없습니다.");
+            throw new CustomException(ErrorCode.INVALID_INPUT, "Mentoring is not available for the current project status.");
         }
     }
 
@@ -60,12 +69,12 @@ public class MentoringApplicationService {
                 request.getMentorId(),
                 MentoringApplicationStatus.PENDING
         )) {
-            throw new CustomException(ErrorCode.DUPLICATE_RESOURCE, "이미 대기 중인 멘토링 신청이 존재합니다.");
+            throw new CustomException(ErrorCode.DUPLICATE_RESOURCE, "A pending mentoring application already exists.");
         }
     }
 
     private Project getProjectEntity(Long projectId) {
         return projectRepository.findByIdAndIsDeletedFalse(projectId)
-                .orElseThrow(() -> new CustomException(ErrorCode.RESOURCE_NOT_FOUND, "프로젝트를 찾을 수 없습니다."));
+                .orElseThrow(() -> new CustomException(ErrorCode.RESOURCE_NOT_FOUND, "Project not found."));
     }
 }
