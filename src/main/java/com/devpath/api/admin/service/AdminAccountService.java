@@ -8,14 +8,13 @@ import com.devpath.api.admin.entity.AccountLogType;
 import com.devpath.api.admin.repository.AccountLogRepository;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
+import com.devpath.domain.user.entity.AccountStatus;
 import com.devpath.domain.user.entity.User;
 import com.devpath.domain.user.repository.UserRepository;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -26,83 +25,101 @@ public class AdminAccountService {
     private final AccountLogRepository accountLogRepository;
 
     @Transactional(readOnly = true)
-    public List<AccountDetailResponse> getAccounts() {
-        return userRepository.findAll().stream()
+    public List<AccountDetailResponse> getAccounts(AccountStatus status) {
+        List<User> users = status == null
+                ? userRepository.findAllByOrderByCreatedAtDesc()
+                : userRepository.findAllByAccountStatusOrderByCreatedAtDesc(status);
+
+        return users.stream()
                 .map(AccountDetailResponse::from)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     @Transactional(readOnly = true)
     public AccountDetailResponse getAccount(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.ACCOUNT_NOT_FOUND));
-        return AccountDetailResponse.from(user);
+        return AccountDetailResponse.from(getUser(userId));
     }
 
     public void restrictAccount(Long userId, Long adminId, AccountStatusUpdateRequest request) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.ACCOUNT_NOT_FOUND));
+        User user = getUser(userId);
+        validateTransition(user.getAccountStatus(), AccountStatus.RESTRICTED);
         user.restrict();
-        accountLogRepository.save(AccountLog.builder()
-                .targetUserId(userId)
-                .adminId(adminId)
-                .logType(AccountLogType.RESTRICT)
-                .reason(request.getReason())
-                .build());
+        saveLog(userId, adminId, AccountLogType.RESTRICT, request.getReason());
     }
 
     public void deactivateAccount(Long userId, Long adminId, AccountStatusUpdateRequest request) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.ACCOUNT_NOT_FOUND));
+        User user = getUser(userId);
+        validateTransition(user.getAccountStatus(), AccountStatus.DEACTIVATED);
         user.deactivate();
-        accountLogRepository.save(AccountLog.builder()
-                .targetUserId(userId)
-                .adminId(adminId)
-                .logType(AccountLogType.DEACTIVATE)
-                .reason(request.getReason())
-                .build());
+        saveLog(userId, adminId, AccountLogType.DEACTIVATE, request.getReason());
     }
 
     public void restoreAccount(Long userId, Long adminId, AccountStatusUpdateRequest request) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.ACCOUNT_NOT_FOUND));
+        User user = getUser(userId);
+        validateTransition(user.getAccountStatus(), AccountStatus.ACTIVE);
         user.restore();
-        accountLogRepository.save(AccountLog.builder()
-                .targetUserId(userId)
-                .adminId(adminId)
-                .logType(AccountLogType.RESTORE)
-                .reason(request.getReason())
-                .build());
+        saveLog(userId, adminId, AccountLogType.RESTORE, request.getReason());
     }
 
     public void withdrawAccount(Long userId, Long adminId, AccountStatusUpdateRequest request) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.ACCOUNT_NOT_FOUND));
+        User user = getUser(userId);
+        validateTransition(user.getAccountStatus(), AccountStatus.WITHDRAWN);
         user.withdraw();
-        accountLogRepository.save(AccountLog.builder()
-                .targetUserId(userId)
-                .adminId(adminId)
-                .logType(AccountLogType.WITHDRAW)
-                .reason(request.getReason())
-                .build());
+        saveLog(userId, adminId, AccountLogType.WITHDRAW, request.getReason());
     }
 
     public void approveInstructor(Long userId, Long adminId, AccountStatusUpdateRequest request) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.ACCOUNT_NOT_FOUND));
+        User user = getUser(userId);
+
+        // 탈퇴/비활성/제한 계정은 강사 승인 대상에서 제외한다.
+        if (user.getAccountStatus() != AccountStatus.ACTIVE) {
+            throw new CustomException(ErrorCode.INVALID_STATUS_TRANSITION);
+        }
+
         user.approveInstructor();
-        accountLogRepository.save(AccountLog.builder()
-                .targetUserId(userId)
-                .adminId(adminId)
-                .logType(AccountLogType.APPROVE_INSTRUCTOR)
-                .reason(request.getReason())
-                .build());
+        saveLog(userId, adminId, AccountLogType.APPROVE_INSTRUCTOR, request.getReason());
     }
 
     @Transactional(readOnly = true)
     public List<AccountLogResponse> getAccountLogs(Long userId) {
-        return accountLogRepository.findByTargetUserIdOrderByProcessedAtDesc(userId).stream()
+        getUser(userId);
+
+        return accountLogRepository.findByTargetUserIdOrderByProcessedAtDesc(userId)
+                .stream()
                 .map(AccountLogResponse::from)
-                .collect(Collectors.toList());
+                .toList();
+    }
+
+    // 계정 상태 전이 규칙을 서비스 한 곳에서 고정한다.
+    private void validateTransition(AccountStatus current, AccountStatus target) {
+        boolean valid = switch (current) {
+            case ACTIVE -> target == AccountStatus.RESTRICTED
+                    || target == AccountStatus.DEACTIVATED
+                    || target == AccountStatus.WITHDRAWN;
+            case RESTRICTED, DEACTIVATED -> target == AccountStatus.ACTIVE
+                    || target == AccountStatus.WITHDRAWN;
+            case WITHDRAWN -> false;
+        };
+
+        if (!valid) {
+            throw new CustomException(ErrorCode.INVALID_STATUS_TRANSITION);
+        }
+    }
+
+    private User getUser(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.ACCOUNT_NOT_FOUND));
+    }
+
+    // 계정 운영 이력은 상태 전이 직후 공통 포맷으로 저장한다.
+    private void saveLog(Long userId, Long adminId, AccountLogType logType, String reason) {
+        accountLogRepository.save(
+                AccountLog.builder()
+                        .targetUserId(userId)
+                        .adminId(adminId)
+                        .logType(logType)
+                        .reason(reason)
+                        .build()
+        );
     }
 }

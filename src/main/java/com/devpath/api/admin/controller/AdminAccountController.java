@@ -5,15 +5,21 @@ import com.devpath.api.admin.dto.account.AccountLogResponse;
 import com.devpath.api.admin.dto.account.AccountStatusUpdateRequest;
 import com.devpath.api.admin.service.AdminAccountService;
 import com.devpath.common.response.ApiResponse;
+import com.devpath.domain.user.entity.AccountStatus;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "Admin - Account Management", description = "관리자 계정 관리 API")
 @RestController
@@ -23,10 +29,13 @@ public class AdminAccountController {
 
     private final AdminAccountService adminAccountService;
 
+    // 계정 목록은 상태 필터 없이 전체 조회하거나 특정 상태로 필터링할 수 있다.
     @Operation(summary = "회원 목록 조회")
     @GetMapping
-    public ApiResponse<List<AccountDetailResponse>> getAccounts() {
-        return ApiResponse.success("회원 목록을 조회했습니다.", adminAccountService.getAccounts());
+    public ApiResponse<List<AccountDetailResponse>> getAccounts(
+            @Parameter(description = "계정 상태 필터") @RequestParam(required = false) AccountStatus status
+    ) {
+        return ApiResponse.success("회원 목록을 조회했습니다.", adminAccountService.getAccounts(status));
     }
 
     @Operation(summary = "회원 상세 조회")
@@ -40,7 +49,8 @@ public class AdminAccountController {
     public ApiResponse<Void> restrictAccount(
             @PathVariable Long userId,
             @RequestBody @Valid AccountStatusUpdateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal Long adminId) {
+            @Parameter(hidden = true) @AuthenticationPrincipal Long adminId
+    ) {
         adminAccountService.restrictAccount(userId, adminId, request);
         return ApiResponse.success("계정이 제한되었습니다.", null);
     }
@@ -50,7 +60,8 @@ public class AdminAccountController {
     public ApiResponse<Void> deactivateAccount(
             @PathVariable Long userId,
             @RequestBody @Valid AccountStatusUpdateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal Long adminId) {
+            @Parameter(hidden = true) @AuthenticationPrincipal Long adminId
+    ) {
         adminAccountService.deactivateAccount(userId, adminId, request);
         return ApiResponse.success("계정이 비활성화되었습니다.", null);
     }
@@ -60,7 +71,8 @@ public class AdminAccountController {
     public ApiResponse<Void> restoreAccount(
             @PathVariable Long userId,
             @RequestBody @Valid AccountStatusUpdateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal Long adminId) {
+            @Parameter(hidden = true) @AuthenticationPrincipal Long adminId
+    ) {
         adminAccountService.restoreAccount(userId, adminId, request);
         return ApiResponse.success("계정이 복구되었습니다.", null);
     }
@@ -70,17 +82,20 @@ public class AdminAccountController {
     public ApiResponse<Void> withdrawAccount(
             @PathVariable Long userId,
             @RequestBody @Valid AccountStatusUpdateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal Long adminId) {
+            @Parameter(hidden = true) @AuthenticationPrincipal Long adminId
+    ) {
         adminAccountService.withdrawAccount(userId, adminId, request);
         return ApiResponse.success("탈퇴 처리가 완료되었습니다.", null);
     }
 
+    // 강사 승인은 활성 계정만 가능하게 서비스에서 막는다.
     @Operation(summary = "강사 가입 승인")
     @PatchMapping("/{userId}/approve-instructor")
     public ApiResponse<Void> approveInstructor(
             @PathVariable Long userId,
             @RequestBody @Valid AccountStatusUpdateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal Long adminId) {
+            @Parameter(hidden = true) @AuthenticationPrincipal Long adminId
+    ) {
         adminAccountService.approveInstructor(userId, adminId, request);
         return ApiResponse.success("강사 가입이 승인되었습니다.", null);
     }
