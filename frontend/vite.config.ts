@@ -3,7 +3,7 @@ import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
-const backendTarget = 'http://localhost:8083'
+const backendTarget = 'http://localhost:8082'
 
 const proxyToBackend = {
   target: backendTarget,

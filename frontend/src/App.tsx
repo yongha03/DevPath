@@ -209,7 +209,7 @@ function App() {
             <button
               type="button"
               onClick={() => go('survey.html')}
-              className="bg-brand flex items-center justify-center gap-2 rounded-xl px-8 py-4 text-lg font-bold text-white shadow-xl shadow-green-500/30 transition hover:bg-green-600"
+              className="bg-brand flex items-center justify-center gap-2 rounded-xl px-8 py-4 text-lg font-bold text-white shadow-xl shadow-green-500/30 transition duration-200 hover:-translate-y-0.5 hover:bg-green-600 hover:shadow-2xl"
             >
               <i className="fas fa-magic" /> AI 로드맵 추천받기
             </button>
@@ -309,13 +309,13 @@ function App() {
               길은 이미 정해져 있습니다.
             </h2>
             <p className="mb-8 text-lg leading-relaxed text-gray-600">
-              백엔드, 프론트엔드, DevOps 등 직무별 표준 커리큘럼을 제공합니다. AI가 당신의 현재
-              실력을 진단하고, 가장 필요한 학습을 추천해 드립니다.
+              백엔드, 프론트엔드, DevOps 등 목표 직무별 커리큘럼을 제공합니다. AI가 현재 역량을
+              진단하고, 지금 필요한 학습 순서를 추천해드립니다.
             </p>
             <ul className="mb-8 space-y-4">
               <li className="flex items-center gap-3">
                 <i className="fas fa-check-circle text-xl text-brand" />
-                <span className="text-gray-700">트리 구조의 시각적 로드맵</span>
+                <span className="text-gray-700">트리 구조로 보는 시각적 로드맵</span>
               </li>
               <li className="flex items-center gap-3">
                 <i className="fas fa-check-circle text-xl text-brand" />
@@ -333,42 +333,92 @@ function App() {
             >
               로드맵 보러가기 &rarr;
             </button>
+
+            <h2 className="hidden mb-6 text-4xl leading-tight font-bold text-gray-900">
+              헤매지 마세요.
+              <br />
+              길은 이미 정해져 있습니다.
+            </h2>
+            <p className="hidden mb-8 text-lg leading-relaxed text-gray-600">
+              백엔드, 프론트엔드, DevOps 등 직무별 표준 커리큘럼을 제공합니다. AI가 당신의 현재
+              실력을 진단하고, 가장 필요한 학습을 추천해 드립니다.
+            </p>
+            <ul className="hidden mb-8 space-y-4">
+              <li className="flex items-center gap-3">
+                <i className="fas fa-check-circle text-xl text-brand" />
+                <span className="text-gray-700">트리 구조의 시각적 로드맵</span>
+              </li>
+              <li className="flex items-center gap-3">
+                <i className="fas fa-check-circle text-xl text-brand" />
+                <span className="text-gray-700">검증된 고품질 강의 큐레이션</span>
+              </li>
+              <li className="flex items-center gap-3">
+                <i className="fas fa-check-circle text-xl text-brand" />
+                <span className="text-gray-700">학습 진척도 자동 추적</span>
+              </li>
+            </ul>
+            <button
+              type="button"
+              onClick={() => go('roadmap-hub.html')}
+              className="hidden text-lg font-bold text-brand hover:underline"
+            >
+              로드맵 보러가기 &rarr;
+            </button>
           </div>
 
-          <div
-            className="relative flex h-96 flex-1 items-center justify-center overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl"
-            data-aos="fade-left"
-          >
-            <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] opacity-50" />
+          <div className="roadmap-preview-shell" data-aos="fade-left">
+            <div className="roadmap-preview-scene">
+              <svg
+                aria-hidden="true"
+                viewBox="0 0 252 262"
+                className="roadmap-preview-lines"
+              >
+                <path d="M126 38 V64" stroke="#d7dee7" strokeWidth="3.5" strokeLinecap="round" />
+                <path d="M64 64 H188" stroke="#d7dee7" strokeWidth="3.5" strokeLinecap="round" />
+                <path d="M64 64 V76" stroke="#d7dee7" strokeWidth="3.5" strokeLinecap="round" />
+                <path d="M188 64 V76" stroke="#d7dee7" strokeWidth="3.5" strokeLinecap="round" />
+                <path
+                  d="M126 64 V182"
+                  stroke="#dfe5ec"
+                  strokeWidth="3.5"
+                  strokeLinecap="round"
+                  strokeDasharray="6 9"
+                />
+                <circle cx="126" cy="64" r="6" fill="#ffffff" stroke="#d7dee7" strokeWidth="3.5" />
+                <circle cx="126" cy="182" r="4.5" fill="#ffffff" stroke="#d7dee7" strokeWidth="3" />
+              </svg>
 
-            <div className="relative w-full max-w-sm">
-              <div className="roadmap-line left-1/2 top-10 h-20 w-1 -translate-x-1/2 bg-green-200" />
-              <div className="roadmap-line left-1/2 top-30 h-1 w-32 -translate-x-1/2 bg-green-200" />
-              <div className="roadmap-line left-[25%] top-30 h-10 w-1 bg-green-200" />
-              <div className="roadmap-line right-[25%] top-30 h-10 w-1 bg-green-200" />
-
-              <div className="relative z-10 flex flex-col items-center gap-8">
-                <div className="flex items-center gap-2 rounded-full bg-gray-900 px-6 py-3 text-sm font-bold text-white shadow-lg">
-                  <i className="fas fa-flag" /> 시작: 개발 기초
-                </div>
-                <div className="flex w-full justify-center gap-16">
-                  <div className="flex flex-col items-center">
-                    <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full border-2 border-brand bg-white text-xl text-brand shadow-md">
-                      <i className="fab fa-html5" />
-                    </div>
-                    <span className="text-xs font-bold text-gray-600">HTML/CSS</span>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full border-2 border-blue-500 bg-white text-xl text-blue-500 shadow-md">
-                      <i className="fab fa-js" />
-                    </div>
-                    <span className="text-xs font-bold text-gray-600">JavaScript</span>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm text-gray-500 shadow-md">
-                  <i className="fas fa-lock text-gray-300" /> 다음 단계: 프레임워크
-                </div>
+              <div className="roadmap-preview-pill">
+                <i className="fas fa-flag" />
+                <span>시작: 개발 기초</span>
               </div>
+
+              <div className="roadmap-preview-branches">
+                <article className="roadmap-preview-card roadmap-preview-card--green">
+                  <div className="roadmap-preview-icon roadmap-preview-icon--green">
+                    <i className="fab fa-html5" />
+                  </div>
+                  <div className="roadmap-preview-title">HTML/CSS</div>
+                  <div className="roadmap-preview-copy">기초 마크업</div>
+                </article>
+
+                <article className="roadmap-preview-card roadmap-preview-card--blue">
+                  <div className="roadmap-preview-icon roadmap-preview-icon--blue">
+                    <i className="fab fa-js" />
+                  </div>
+                  <div className="roadmap-preview-title">JavaScript</div>
+                  <div className="roadmap-preview-copy">상호작용 로직</div>
+                </article>
+              </div>
+
+              <article className="roadmap-preview-next">
+                <div className="roadmap-preview-next-badge">
+                  <i className="fas fa-lock text-[10px]" />
+                  <span>Next</span>
+                </div>
+                <div className="roadmap-preview-next-title">다음 단계: 프레임워크</div>
+                <div className="roadmap-preview-copy">React 또는 Spring으로 확장</div>
+              </article>
             </div>
           </div>
         </div>
@@ -530,7 +580,7 @@ function App() {
           <button
             type="button"
             onClick={() => go('survey.html')}
-            className="text-brand rounded-xl bg-white px-10 py-4 text-lg font-bold shadow-xl transition hover:scale-105 hover:bg-gray-100"
+            className="text-brand rounded-xl bg-white px-10 py-4 text-lg font-bold shadow-xl transition duration-200 hover:-translate-y-0.5 hover:scale-105 hover:bg-gray-100 hover:shadow-2xl"
           >
             AI 로드맵 추천받기
           </button>

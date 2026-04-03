@@ -66,11 +66,6 @@ tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
 }
 
-tasks.named('bootRun') {
-    // Keep local runs stable even when 8082 is occupied.
-    environment 'SERVER_PORT', System.getenv('SERVER_PORT') ?: '8083'
-}
-
 spotless {
     java {
         target 'src/*/java/**/*.java'

@@ -1,9 +1,15 @@
-version: '3.8'
 services:
   frontend:
     build:
       context: ./frontend
     container_name: devpath-frontend
+    develop:
+      watch:
+        - action: rebuild
+          path: ./frontend
+          ignore:
+            - node_modules/
+            - dist/
     ports:
       - "80:80"
     extra_hosts:
