@@ -2,6 +2,7 @@ package com.devpath.domain.user.repository;
 
 import com.devpath.domain.user.entity.UserTechStack;
 import java.util.List;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -19,6 +20,9 @@ public interface UserTechStackRepository extends JpaRepository<UserTechStack, Lo
   void deleteAllByTagId(@Param("tagId") Long tagId);
 
   List<UserTechStack> findAllByTagTagId(Long tagId);
+
+  @EntityGraph(attributePaths = "tag")
+  List<UserTechStack> findAllByUser_Id(Long userId);
 
   boolean existsByUser_IdAndTag_TagId(Long userId, Long tagId);
 }

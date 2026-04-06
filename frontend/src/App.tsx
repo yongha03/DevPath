@@ -1,16 +1,52 @@
-import { useEffect, useState } from 'react'
+import { type CSSProperties, useEffect, useState } from 'react'
+import AccountUserMenu from './components/AccountUserMenu'
 import AuthModal, { type AuthView } from './components/AuthModal'
-import { authApi } from './lib/api'
-import { clearStoredAuthSession, readStoredAuthSession } from './lib/auth-session'
+import SiteHeader from './components/SiteHeader'
+import { authApi, userApi } from './lib/api'
+import { AUTH_SESSION_SYNC_EVENT, clearStoredAuthSession, readStoredAuthSession } from './lib/auth-session'
 
-declare global {
-  interface Window {
-    AOS?: {
-      init: (options: Record<string, unknown>) => void
-      refresh?: () => void
-    }
-  }
+type AosInstance = {
+  init: (options: { duration: number; once: boolean; offset: number }) => void
+  refresh?: () => void
 }
+
+const headerLinks = [
+  { key: 'roadmap', href: 'roadmap-hub.html', label: '로드맵' },
+  { key: 'lecture', href: 'lecture-list.html', label: '강의' },
+  { key: 'project', href: 'lounge-dashboard.html', label: '프로젝트' },
+  { key: 'community', href: 'community-list.html', label: '커뮤니티' },
+  { key: 'jobMatching', href: 'job-matching.html', label: '채용분석' },
+]
+
+const instructorHeaderLink = { key: 'instructorDashboard', href: 'instructor-dashboard.html', label: '강사 대시보드' }
+
+type HeaderMoveKey = 'brandGroup' | 'navGroup'
+
+// Edit these values directly when you want to move each header group.
+const headerMoveOffsets: Record<HeaderMoveKey, { x: number; y: number }> = {
+  brandGroup: { x: 7.5, y: 0 },
+  navGroup: { x: -10, y: 0 },
+}
+
+const serviceLinks = [
+  { href: 'roadmap-hub.html', label: '로드맵' },
+  { href: 'lecture-list.html', label: '강의' },
+  { href: 'workspace-hub.html', label: '워크스페이스' },
+  { href: 'job-matching.html', label: '채용 분석' },
+]
+
+const communityLinks = [
+  { href: 'community-lounge.html', label: '라운지' },
+  { href: 'mentoring-hub.html', label: '멘토링 찾기' },
+  { href: 'dev-showcase.html', label: '쇼케이스' },
+  { href: 'project-list.html', label: '프로젝트' },
+]
+
+const supportLinks = [
+  { href: '#', label: '공지사항' },
+  { href: '#', label: '자주 묻는 질문' },
+  { href: '#', label: '문의하기' },
+]
 
 function go(path: string) {
   window.location.href = path
@@ -38,67 +74,80 @@ function syncAuthViewInLocation(view: AuthView | null) {
   window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
 }
 
+function initAos() {
+  const aos = (window as Window & { AOS?: AosInstance }).AOS
+
+  aos?.init({
+    duration: 800,
+    once: true,
+    offset: 100,
+  })
+  aos?.refresh?.()
+}
+
+function getHeaderMoveStyle(key: HeaderMoveKey): CSSProperties {
+  const offset = headerMoveOffsets[key]
+  return {
+    transform: `translate(${offset.x}px, ${offset.y}px)`,
+  }
+}
+
 function App() {
   const [session, setSession] = useState(() => readStoredAuthSession())
+  const [profileImage, setProfileImage] = useState<string | null>(null)
   const [authView, setAuthView] = useState<AuthView | null>(() => readAuthViewFromLocation())
+  const showInstructorDashboard = session?.role === 'ROLE_INSTRUCTOR'
+  const navGroupOffset = headerMoveOffsets.navGroup
+  const headerUserStyle = { transform: 'translateX(-20px)' }
+  const headerNavStyle = { transform: `translate(${17.5 + navGroupOffset.x}px, ${navGroupOffset.y}px)` }
 
   useEffect(() => {
     document.title = 'DevPath - 개발자 성장의 모든 것'
-
-    const initAos = () => {
-      window.AOS?.init({
-        duration: 800,
-        once: true,
-        offset: 100,
-      })
-      window.AOS?.refresh?.()
-    }
-
-    if (window.AOS) {
-      initAos()
-      return
-    }
-
-    const existingScript = document.querySelector<HTMLScriptElement>(
-      'script[data-aos-script="true"]',
-    )
-
-    if (existingScript) {
-      existingScript.addEventListener('load', initAos)
-
-      return () => {
-        existingScript.removeEventListener('load', initAos)
-      }
-    }
-
-    const script = document.createElement('script')
-    script.src = 'https://unpkg.com/aos@2.3.1/dist/aos.js'
-    script.async = true
-    script.dataset.aosScript = 'true'
-    script.onload = initAos
-    document.body.appendChild(script)
-
-    return () => {
-      script.onload = null
-    }
+    initAos()
   }, [])
 
   useEffect(() => {
+    // 로그인/로그아웃이 다른 탭에서 발생해도 홈 헤더 상태를 바로 반영합니다.
     const syncSession = () => {
       setSession(readStoredAuthSession())
     }
 
     window.addEventListener('storage', syncSession)
+    window.addEventListener(AUTH_SESSION_SYNC_EVENT, syncSession)
     syncSession()
 
     return () => {
       window.removeEventListener('storage', syncSession)
+      window.removeEventListener(AUTH_SESSION_SYNC_EVENT, syncSession)
     }
   }, [])
 
   useEffect(() => {
+    // 홈에서 모달을 직접 열고 닫을 수 있도록 URL 상태도 함께 맞춥니다.
     syncAuthViewInLocation(authView)
   }, [authView])
+
+  useEffect(() => {
+    if (!session) {
+      setProfileImage(null)
+      return
+    }
+
+    const controller = new AbortController()
+
+    userApi
+      .getMyProfile(controller.signal)
+      .then((profile) => {
+        setProfileImage(profile.profileImage)
+      })
+      .catch(() => {
+        setProfileImage(null)
+      })
+
+    return () => {
+      controller.abort()
+    }
+  }, [session])
 
   async function handleLogout() {
     const currentSession = readStoredAuthSession()
@@ -108,7 +157,7 @@ function App() {
         await authApi.logout(currentSession.refreshToken)
       }
     } catch {
-      // Clear the browser session even if the backend logout request fails.
+      // 서버 로그아웃이 실패해도 브라우저 세션은 정리합니다.
     } finally {
       clearStoredAuthSession()
       setSession(null)
@@ -129,68 +178,99 @@ function App() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col text-gray-800">
-      <nav className="fixed z-50 w-full border-b border-gray-100 bg-white/80 backdrop-blur-md transition-all">
-        <div className="mx-auto grid h-16 max-w-7xl grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-6">
-          <a
-            href="home.html"
-            className="group flex items-center justify-self-start text-xl font-bold text-gray-900 brand-gap"
-          >
-            <i className="fas fa-code-branch text-brand transition group-hover:rotate-12 brand-icon-shift" />
-            <span className="brand-text-shift">DevPath</span>
-          </a>
+    <div className="min-h-screen text-gray-800">
+      <SiteHeader
+        session={session}
+        profileImage={profileImage}
+        onLogout={handleLogout}
+        onLoginClick={() => openAuthModal('login')}
+      />
 
-          <div className="header-nav-shift header-nav-gap hidden items-center justify-self-center text-sm font-bold text-gray-500 md:flex">
-            <a href="roadmap-hub.html" className="transition hover:text-brand">
-              로드맵
-            </a>
-            <a href="lecture-list.html" className="transition hover:text-brand">
-              강의
-            </a>
-            <a href="lounge-dashboard.html" className="transition hover:text-brand">
-              프로젝트
-            </a>
-            <a href="community-list.html" className="transition hover:text-brand">
-              커뮤니티
-            </a>
-            <a href="job-matching.html" className="transition hover:text-brand">
-              채용분석
+      {false ? <nav className="app-header">
+        <div className="mx-auto flex h-full w-full max-w-[1600px] items-center gap-8 px-8">
+          <div className="hidden w-60 items-center px-4 lg:flex" style={{ transform: 'translateX(var(--logo-nudge))' }}>
+            <a
+              href="home.html"
+              className="group flex items-center gap-2 text-xl font-bold text-gray-900"
+              style={getHeaderMoveStyle('brandGroup')}
+            >
+              <i className="fas fa-code-branch text-brand inline-block transition group-hover:rotate-12" />
+              <span className="inline-block">
+                DevPath
+              </span>
             </a>
           </div>
 
-          {session ? (
-            <div className="flex items-center justify-self-end gap-3">
-              <div className="hidden text-right sm:block">
-                <div className="text-sm font-bold text-gray-900">{session.name}</div>
-              </div>
-              <button
-                type="button"
-                onClick={handleLogout}
-                className="rounded-full bg-gray-900 px-5 py-2 text-sm font-bold text-white shadow-lg transition hover:bg-black"
-              >
-                로그아웃
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center justify-self-end gap-3">
-              <button
-                type="button"
-                onClick={() => openAuthModal('login')}
-                className="rounded-full bg-gray-900 px-5 py-2 text-sm font-bold text-white shadow-lg transition hover:bg-black"
-              >
-                로그인
-              </button>
-            </div>
-          )}
-        </div>
-      </nav>
+          <div className="flex items-center lg:hidden">
+            <a
+              href="home.html"
+              className="group flex items-center gap-2 text-xl font-bold text-gray-900"
+              style={getHeaderMoveStyle('brandGroup')}
+            >
+              <i className="fas fa-code-branch text-brand inline-block transition group-hover:rotate-12" />
+              <span className="inline-block">
+                DevPath
+              </span>
+            </a>
+          </div>
 
-      <section className="hero-bg relative overflow-hidden px-6 pb-20 pt-40">
+          <div className="hidden flex-1 items-center justify-center text-sm font-bold text-gray-500 md:flex">
+            <div className="relative inline-flex items-center gap-10" style={headerNavStyle}>
+              {headerLinks.map((item) => (
+                <a key={item.key} href={item.href} className="inline-block whitespace-nowrap transition hover:text-brand">
+                  {item.label}
+                </a>
+              ))}
+
+              {showInstructorDashboard ? (
+                <a
+                  href={instructorHeaderLink.href}
+                  className="absolute top-1/2 left-full ml-10 inline-block -translate-y-1/2 whitespace-nowrap transition hover:text-brand"
+                >
+                  {instructorHeaderLink.label}
+                </a>
+              ) : null}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 md:w-60">
+            <div className="hidden md:block" style={headerUserStyle}>
+              {session ? (
+                <AccountUserMenu session={session!} profileImage={profileImage} onLogout={handleLogout} />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => openAuthModal('login')}
+                  className="rounded-full bg-gray-900 px-5 py-2 text-sm font-bold text-white shadow-lg transition hover:bg-black"
+                >
+                  로그인
+                </button>
+              )}
+            </div>
+
+            <div className="md:hidden">
+              {session ? (
+                <AccountUserMenu session={session!} profileImage={profileImage} onLogout={handleLogout} />
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => openAuthModal('login')}
+                  className="rounded-full bg-gray-900 px-5 py-2 text-sm font-bold text-white shadow-lg transition hover:bg-black"
+                >
+                  로그인
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      </nav> : null}
+
+      <section className="hero-bg relative overflow-hidden px-6 pt-40 pb-20">
         <div className="animate-blob absolute top-20 left-10 h-72 w-72 rounded-full bg-green-200 opacity-20 mix-blend-multiply blur-3xl filter" />
         <div className="animate-blob animation-delay-2000 absolute top-20 right-10 h-72 w-72 rounded-full bg-blue-200 opacity-20 mix-blend-multiply blur-3xl filter" />
 
         <div className="relative z-10 mx-auto max-w-6xl text-center" data-aos="fade-up">
-          <span className="mb-6 inline-block rounded-full border border-green-200 bg-white px-3 py-1 text-xs font-bold text-brand shadow-sm">
+          <span className="text-brand mb-6 inline-block rounded-full border border-green-200 bg-white px-3 py-1 text-xs font-bold shadow-sm">
             🚀 개발자 커리어 가속화 플랫폼
           </span>
           <h1 className="mb-6 text-5xl leading-tight font-extrabold tracking-tight text-gray-900 md:text-7xl">
@@ -209,7 +289,7 @@ function App() {
             <button
               type="button"
               onClick={() => go('survey.html')}
-              className="bg-brand flex items-center justify-center gap-2 rounded-xl px-8 py-4 text-lg font-bold text-white shadow-xl shadow-green-500/30 transition duration-200 hover:-translate-y-0.5 hover:bg-green-600 hover:shadow-2xl"
+              className="bg-brand flex items-center justify-center gap-2 rounded-xl px-8 py-4 text-lg font-bold text-white shadow-xl shadow-green-500/30 transition hover:bg-green-600"
             >
               <i className="fas fa-magic" /> AI 로드맵 추천받기
             </button>
@@ -231,23 +311,14 @@ function App() {
                 <h3 className="font-bold text-gray-800">Trending Skills</h3>
               </div>
               <div className="flex flex-wrap gap-2">
-                <span className="rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">
-                  Spring Boot
-                </span>
-                <span className="rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">
-                  React
-                </span>
-                <span className="rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">
-                  Docker
-                </span>
-                <span className="rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">
-                  Kubernetes
-                </span>
-                <span className="rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">
-                  Python
-                </span>
+                <span className="rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">Spring Boot</span>
+                <span className="rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">React</span>
+                <span className="rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">Docker</span>
+                <span className="rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">Kubernetes</span>
+                <span className="rounded bg-gray-100 px-2 py-1 text-xs font-medium text-gray-600">Python</span>
               </div>
             </div>
+
             <div className="glass-panel float rounded-2xl p-6" style={{ animationDelay: '1s' }}>
               <div className="mb-4 flex items-center gap-3">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 text-blue-500">
@@ -262,7 +333,7 @@ function App() {
                     <span>85%</span>
                   </div>
                   <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
-                    <div className="h-full rounded-full bg-blue-500" style={{ width: '85%' }} />
+                    <div className="h-full w-[85%] rounded-full bg-blue-500" />
                   </div>
                 </div>
                 <div>
@@ -271,11 +342,12 @@ function App() {
                     <span>42%</span>
                   </div>
                   <div className="h-1.5 w-full overflow-hidden rounded-full bg-gray-200">
-                    <div className="h-full rounded-full bg-green-500" style={{ width: '42%' }} />
+                    <div className="h-full w-[42%] rounded-full bg-green-500" />
                   </div>
                 </div>
               </div>
             </div>
+
             <div className="glass-panel float rounded-2xl p-6" style={{ animationDelay: '2s' }}>
               <div className="mb-4 flex items-center gap-3">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-purple-100 text-purple-500">
@@ -300,125 +372,72 @@ function App() {
       <section id="features" className="overflow-hidden bg-gray-50 py-24">
         <div className="mx-auto flex max-w-7xl flex-col items-center gap-16 px-6 md:flex-row">
           <div className="flex-1" data-aos="fade-right">
-            <span className="mb-2 block text-sm font-bold tracking-widest text-brand uppercase">
-              Step 1. Learn
-            </span>
+            <span className="text-brand mb-2 block text-sm font-bold tracking-widest uppercase">Step 1. Learn</span>
             <h2 className="mb-6 text-4xl leading-tight font-bold text-gray-900">
               헤매지 마세요.
               <br />
               길은 이미 정해져 있습니다.
             </h2>
             <p className="mb-8 text-lg leading-relaxed text-gray-600">
-              백엔드, 프론트엔드, DevOps 등 목표 직무별 커리큘럼을 제공합니다. AI가 현재 역량을
-              진단하고, 지금 필요한 학습 순서를 추천해드립니다.
+              백엔드, 프론트엔드, DevOps 등 직무별 표준 커리큘럼을 제공합니다. AI가 당신의 현재 실력을
+              진단하고, 가장 필요한 학습을 추천해 드립니다.
             </p>
             <ul className="mb-8 space-y-4">
               <li className="flex items-center gap-3">
-                <i className="fas fa-check-circle text-xl text-brand" />
-                <span className="text-gray-700">트리 구조로 보는 시각적 로드맵</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <i className="fas fa-check-circle text-xl text-brand" />
-                <span className="text-gray-700">검증된 고품질 강의 큐레이션</span>
-              </li>
-              <li className="flex items-center gap-3">
-                <i className="fas fa-check-circle text-xl text-brand" />
-                <span className="text-gray-700">학습 진척도 자동 추적</span>
-              </li>
-            </ul>
-            <button
-              type="button"
-              onClick={() => go('roadmap-hub.html')}
-              className="text-lg font-bold text-brand hover:underline"
-            >
-              로드맵 보러가기 &rarr;
-            </button>
-
-            <h2 className="hidden mb-6 text-4xl leading-tight font-bold text-gray-900">
-              헤매지 마세요.
-              <br />
-              길은 이미 정해져 있습니다.
-            </h2>
-            <p className="hidden mb-8 text-lg leading-relaxed text-gray-600">
-              백엔드, 프론트엔드, DevOps 등 직무별 표준 커리큘럼을 제공합니다. AI가 당신의 현재
-              실력을 진단하고, 가장 필요한 학습을 추천해 드립니다.
-            </p>
-            <ul className="hidden mb-8 space-y-4">
-              <li className="flex items-center gap-3">
-                <i className="fas fa-check-circle text-xl text-brand" />
+                <i className="fas fa-check-circle text-brand text-xl" />
                 <span className="text-gray-700">트리 구조의 시각적 로드맵</span>
               </li>
               <li className="flex items-center gap-3">
-                <i className="fas fa-check-circle text-xl text-brand" />
+                <i className="fas fa-check-circle text-brand text-xl" />
                 <span className="text-gray-700">검증된 고품질 강의 큐레이션</span>
               </li>
               <li className="flex items-center gap-3">
-                <i className="fas fa-check-circle text-xl text-brand" />
+                <i className="fas fa-check-circle text-brand text-xl" />
                 <span className="text-gray-700">학습 진척도 자동 추적</span>
               </li>
             </ul>
             <button
               type="button"
               onClick={() => go('roadmap-hub.html')}
-              className="hidden text-lg font-bold text-brand hover:underline"
+              className="text-brand text-lg font-bold hover:underline"
             >
-              로드맵 보러가기 &rarr;
+              로드맵 보러가기 →
             </button>
           </div>
 
-          <div className="roadmap-preview-shell" data-aos="fade-left">
-            <div className="roadmap-preview-scene">
-              <svg
-                aria-hidden="true"
-                viewBox="0 0 252 262"
-                className="roadmap-preview-lines"
-              >
-                <path d="M126 38 V64" stroke="#d7dee7" strokeWidth="3.5" strokeLinecap="round" />
-                <path d="M64 64 H188" stroke="#d7dee7" strokeWidth="3.5" strokeLinecap="round" />
-                <path d="M64 64 V76" stroke="#d7dee7" strokeWidth="3.5" strokeLinecap="round" />
-                <path d="M188 64 V76" stroke="#d7dee7" strokeWidth="3.5" strokeLinecap="round" />
-                <path
-                  d="M126 64 V182"
-                  stroke="#dfe5ec"
-                  strokeWidth="3.5"
-                  strokeLinecap="round"
-                  strokeDasharray="6 9"
-                />
-                <circle cx="126" cy="64" r="6" fill="#ffffff" stroke="#d7dee7" strokeWidth="3.5" />
-                <circle cx="126" cy="182" r="4.5" fill="#ffffff" stroke="#d7dee7" strokeWidth="3" />
-              </svg>
+          <div
+            className="relative flex h-96 flex-1 items-center justify-center overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl"
+            data-aos="fade-left"
+          >
+            <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] opacity-50" />
+            <div className="relative w-full max-w-sm">
+              <div className="absolute top-10 left-1/2 h-20 w-1 -translate-x-1/2 bg-green-200" />
+              <div className="absolute top-[120px] left-1/2 h-1 w-32 -translate-x-1/2 bg-green-200" />
+              <div className="absolute top-[120px] left-[25%] h-10 w-1 bg-green-200" />
+              <div className="absolute top-[120px] right-[25%] h-10 w-1 bg-green-200" />
 
-              <div className="roadmap-preview-pill">
-                <i className="fas fa-flag" />
-                <span>시작: 개발 기초</span>
-              </div>
-
-              <div className="roadmap-preview-branches">
-                <article className="roadmap-preview-card roadmap-preview-card--green">
-                  <div className="roadmap-preview-icon roadmap-preview-icon--green">
-                    <i className="fab fa-html5" />
-                  </div>
-                  <div className="roadmap-preview-title">HTML/CSS</div>
-                  <div className="roadmap-preview-copy">기초 마크업</div>
-                </article>
-
-                <article className="roadmap-preview-card roadmap-preview-card--blue">
-                  <div className="roadmap-preview-icon roadmap-preview-icon--blue">
-                    <i className="fab fa-js" />
-                  </div>
-                  <div className="roadmap-preview-title">JavaScript</div>
-                  <div className="roadmap-preview-copy">상호작용 로직</div>
-                </article>
-              </div>
-
-              <article className="roadmap-preview-next">
-                <div className="roadmap-preview-next-badge">
-                  <i className="fas fa-lock text-[10px]" />
-                  <span>Next</span>
+              <div className="relative z-10 flex flex-col items-center gap-8">
+                <div className="flex items-center gap-2 rounded-full bg-gray-900 px-6 py-3 text-sm font-bold text-white shadow-lg">
+                  <i className="fas fa-flag" /> 시작: 개발 기초
                 </div>
-                <div className="roadmap-preview-next-title">다음 단계: 프레임워크</div>
-                <div className="roadmap-preview-copy">React 또는 Spring으로 확장</div>
-              </article>
+                <div className="flex w-full justify-center gap-16">
+                  <div className="flex flex-col items-center">
+                    <div className="text-brand mb-2 flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#00C471] bg-white text-xl shadow-md">
+                      <i className="fab fa-html5" />
+                    </div>
+                    <span className="text-xs font-bold text-gray-600">HTML/CSS</span>
+                  </div>
+                  <div className="flex flex-col items-center">
+                    <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full border-2 border-blue-500 bg-white text-xl text-blue-500 shadow-md">
+                      <i className="fab fa-js" />
+                    </div>
+                    <span className="text-xs font-bold text-gray-600">JavaScript</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm text-gray-500 shadow-md">
+                  <i className="fas fa-lock text-gray-300" /> 다음 단계: 프레임워크
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -427,17 +446,15 @@ function App() {
       <section className="bg-white py-24">
         <div className="mx-auto flex max-w-7xl flex-col items-center gap-16 px-6 md:flex-row-reverse">
           <div className="flex-1" data-aos="fade-left">
-            <span className="mb-2 block text-sm font-bold tracking-widest text-blue-600 uppercase">
-              Step 2. Build
-            </span>
+            <span className="mb-2 block text-sm font-bold tracking-widest text-blue-600 uppercase">Step 2. Build</span>
             <h2 className="mb-6 text-4xl leading-tight font-bold text-gray-900">
               배운 것을 내 것으로.
               <br />
               실전 프로젝트.
             </h2>
             <p className="mb-8 text-lg leading-relaxed text-gray-600">
-              단순한 강의 시청은 그만. 나만의 워크스페이스에서 코드를 작성하고, 현업 멘토에게
-              직접적인 코드 리뷰와 피드백을 받아보세요.
+              단순한 강의 시청은 그만. 나만의 워크스페이스에서 코드를 작성하고, 현업 멘토에게 직접적인 코드
+              리뷰와 피드백을 받아보세요.
             </p>
             <div className="mb-8 grid grid-cols-2 gap-4">
               <div className="rounded-xl bg-gray-50 p-4">
@@ -456,7 +473,7 @@ function App() {
               onClick={() => go('workspace-hub.html')}
               className="text-lg font-bold text-blue-600 hover:underline"
             >
-              워크스페이스 체험하기 &rarr;
+              워크스페이스 체험하기 →
             </button>
           </div>
 
@@ -473,34 +490,35 @@ function App() {
               <div className="p-6 text-gray-300">
                 <div className="flex">
                   <span className="mr-4 text-gray-500">1</span>
-                  <span className="text-purple-400">const</span>{' '}
-                  <span className="text-blue-400">devPath</span> ={' '}
-                  <span className="text-yellow-300">{'{'}</span>
+                  <span className="text-purple-400">const</span>&nbsp;
+                  <span className="text-blue-400">devPath</span> = <span className="text-yellow-300">{'{'}</span>
                 </div>
                 <div className="flex">
-                  <span className="mr-4 text-gray-500">2</span>&nbsp;&nbsp;
-                  <span className="text-blue-300">goal</span>:{' '}
-                  <span className="text-green-400">'Senior Developer'</span>,
+                  <span className="mr-4 text-gray-500">2</span>
+                  <span>&nbsp;&nbsp;</span>
+                  <span className="text-blue-300">goal</span>: <span className="text-green-400">'Senior Developer'</span>,
                 </div>
                 <div className="flex">
-                  <span className="mr-4 text-gray-500">3</span>&nbsp;&nbsp;
-                  <span className="text-blue-300">skills</span>: [
-                  <span className="text-green-400">'React'</span>,{' '}
+                  <span className="mr-4 text-gray-500">3</span>
+                  <span>&nbsp;&nbsp;</span>
+                  <span className="text-blue-300">skills</span>: [<span className="text-green-400">'React'</span>,{' '}
                   <span className="text-green-400">'Node.js'</span>],
                 </div>
                 <div className="flex">
-                  <span className="mr-4 text-gray-500">4</span>&nbsp;&nbsp;
-                  <span className="text-blue-300">start</span>:{' '}
-                  <span className="text-purple-400">function</span>() {'{'}
+                  <span className="mr-4 text-gray-500">4</span>
+                  <span>&nbsp;&nbsp;</span>
+                  <span className="text-blue-300">start</span>: <span className="text-purple-400">function</span>() {'{'}
                 </div>
                 <div className="flex">
-                  <span className="mr-4 text-gray-500">5</span>&nbsp;&nbsp;&nbsp;&nbsp;
-                  <span className="text-blue-300">console</span>.
-                  <span className="text-yellow-300">log</span>(
+                  <span className="mr-4 text-gray-500">5</span>
+                  <span>&nbsp;&nbsp;&nbsp;&nbsp;</span>
+                  <span className="text-blue-300">console</span>.<span className="text-yellow-300">log</span>(
                   <span className="text-green-400">'Growth Started!'</span>);
                 </div>
                 <div className="flex">
-                  <span className="mr-4 text-gray-500">6</span>&nbsp;&nbsp;{'}'}
+                  <span className="mr-4 text-gray-500">6</span>
+                  <span>&nbsp;&nbsp;</span>
+                  {'}'}
                 </div>
                 <div className="flex">
                   <span className="mr-4 text-gray-500">7</span>
@@ -518,28 +536,26 @@ function App() {
 
       <section className="bg-gray-900 py-24 text-white">
         <div className="mx-auto max-w-7xl px-6 text-center">
-          <span className="mb-2 block text-sm font-bold tracking-widest text-brand uppercase">
-            Step 3. Career
-          </span>
+          <span className="text-brand mb-2 block text-sm font-bold tracking-widest uppercase">Step 3. Career</span>
           <h2 className="mb-6 text-4xl font-bold">데이터로 증명하는 나의 실력</h2>
           <p className="mx-auto mb-12 max-w-2xl text-lg text-gray-400">
-            학습 이력, 프로젝트 결과물, 멘토의 평가가 모여 'Proof Card'가 됩니다.
+            학습 이력, 프로젝트 결과물, 멘토의 평가가 모여 &apos;Proof Card&apos;가 됩니다.
             <br />
             AI가 당신의 시장 가치를 분석하고 딱 맞는 기업을 매칭해 드립니다.
           </p>
 
           <div className="mb-12 grid grid-cols-1 gap-8 md:grid-cols-3">
             <div
-              className="hover:border-brand rounded-2xl border border-gray-700 bg-gray-800 p-8 transition"
+              className="rounded-2xl border border-gray-700 bg-gray-800 p-8 transition hover:border-brand"
               data-aos="fade-up"
               data-aos-delay="0"
             >
-              <i className="fas fa-certificate mb-4 text-4xl text-brand" />
+              <i className="fas fa-certificate text-brand mb-4 text-4xl" />
               <h3 className="mb-2 text-xl font-bold">Proof Card</h3>
               <p className="text-sm text-gray-400">위변조 불가능한 학습 인증서</p>
             </div>
             <div
-              className="hover:border-brand rounded-2xl border border-gray-700 bg-gray-800 p-8 transition"
+              className="rounded-2xl border border-gray-700 bg-gray-800 p-8 transition hover:border-brand"
               data-aos="fade-up"
               data-aos-delay="100"
             >
@@ -548,7 +564,7 @@ function App() {
               <p className="text-sm text-gray-400">내 스킬셋의 연봉 예측</p>
             </div>
             <div
-              className="hover:border-brand rounded-2xl border border-gray-700 bg-gray-800 p-8 transition"
+              className="rounded-2xl border border-gray-700 bg-gray-800 p-8 transition hover:border-brand"
               data-aos="fade-up"
               data-aos-delay="200"
             >
@@ -580,14 +596,14 @@ function App() {
           <button
             type="button"
             onClick={() => go('survey.html')}
-            className="text-brand rounded-xl bg-white px-10 py-4 text-lg font-bold shadow-xl transition duration-200 hover:-translate-y-0.5 hover:scale-105 hover:bg-gray-100 hover:shadow-2xl"
+            className="text-brand rounded-xl bg-white px-10 py-4 text-lg font-bold shadow-xl transition hover:scale-105 hover:bg-gray-100"
           >
             AI 로드맵 추천받기
           </button>
         </div>
       </section>
 
-      <footer className="border-t border-gray-200 bg-gray-50 pb-8 pt-16">
+      <footer className="border-t border-gray-200 bg-gray-50 pt-16 pb-8">
         <div className="mx-auto max-w-7xl px-6">
           <div className="mb-12 grid grid-cols-1 gap-12 md:grid-cols-4">
             <div className="md:col-span-1">
@@ -600,77 +616,47 @@ function App() {
                 Learn, Build, and Grow.
               </p>
             </div>
+
             <div>
               <h4 className="mb-4 font-bold text-gray-900">서비스</h4>
               <ul className="space-y-2 text-sm text-gray-500">
-                <li>
-                  <a href="roadmap-hub.html" className="hover:text-brand">
-                    로드맵
-                  </a>
-                </li>
-                <li>
-                  <a href="lecture-list.html" className="hover:text-brand">
-                    강의
-                  </a>
-                </li>
-                <li>
-                  <a href="workspace-hub.html" className="hover:text-brand">
-                    워크스페이스
-                  </a>
-                </li>
-                <li>
-                  <a href="job-matching.html" className="hover:text-brand">
-                    채용 분석
-                  </a>
-                </li>
+                {serviceLinks.map((item) => (
+                  <li key={item.href}>
+                    <a href={item.href} className="hover:text-brand">
+                      {item.label}
+                    </a>
+                  </li>
+                ))}
               </ul>
             </div>
+
             <div>
               <h4 className="mb-4 font-bold text-gray-900">커뮤니티</h4>
               <ul className="space-y-2 text-sm text-gray-500">
-                <li>
-                  <a href="community-lounge.html" className="hover:text-brand">
-                    라운지
-                  </a>
-                </li>
-                <li>
-                  <a href="mentoring-hub.html" className="hover:text-brand">
-                    멘토링 찾기
-                  </a>
-                </li>
-                <li>
-                  <a href="dev-showcase.html" className="hover:text-brand">
-                    쇼케이스
-                  </a>
-                </li>
-                <li>
-                  <a href="project-list.html" className="hover:text-brand">
-                    프로젝트
-                  </a>
-                </li>
+                {communityLinks.map((item) => (
+                  <li key={item.href}>
+                    <a href={item.href} className="hover:text-brand">
+                      {item.label}
+                    </a>
+                  </li>
+                ))}
               </ul>
             </div>
+
             <div>
               <h4 className="mb-4 font-bold text-gray-900">고객지원</h4>
               <ul className="space-y-2 text-sm text-gray-500">
-                <li>
-                  <a href="#" className="hover:text-brand">
-                    공지사항
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-brand">
-                    자주 묻는 질문
-                  </a>
-                </li>
-                <li>
-                  <a href="#" className="hover:text-brand">
-                    문의하기
-                  </a>
-                </li>
+                {supportLinks.map((item) => (
+                  <li key={item.label}>
+                    <a href={item.href} className="hover:text-brand">
+                      {item.label}
+                    </a>
+                  </li>
+                ))}
               </ul>
             </div>
           </div>
+
           <div className="border-t border-gray-200 pt-8 text-center text-xs text-gray-400">
             &copy; 2026 DevPath Inc. All rights reserved.
           </div>
