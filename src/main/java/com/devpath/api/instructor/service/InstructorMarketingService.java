@@ -1,8 +1,10 @@
 package com.devpath.api.instructor.service;
 
 import com.devpath.api.instructor.dto.marketing.ConversionResponse;
+import com.devpath.api.instructor.dto.marketing.CouponListResponse;
 import com.devpath.api.instructor.dto.marketing.CouponCreateRequest;
 import com.devpath.api.instructor.dto.marketing.CouponResponse;
+import com.devpath.api.instructor.dto.marketing.PromotionListResponse;
 import com.devpath.api.instructor.dto.marketing.PromotionCreateRequest;
 import com.devpath.api.instructor.dto.marketing.PromotionStatusUpdateRequest;
 import com.devpath.api.instructor.entity.ConversionStat;
@@ -13,6 +15,7 @@ import com.devpath.api.instructor.repository.CouponRepository;
 import com.devpath.api.instructor.repository.PromotionRepository;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
+import com.devpath.domain.course.entity.Course;
 import com.devpath.domain.course.repository.CourseRepository;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -21,6 +24,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -92,7 +96,48 @@ public class InstructorMarketingService {
     }
 
     @Transactional(readOnly = true)
+    public List<CouponListResponse> getCoupons(Long instructorId) {
+        Map<Long, String> courseTitles = loadCourseTitleMap(instructorId);
+
+        return couponRepository.findByInstructorIdAndIsDeletedFalse(instructorId).stream()
+                .map(coupon -> new CouponListResponse(
+                        coupon.getId(),
+                        coupon.getTargetCourseId(),
+                        coupon.getTargetCourseId() == null
+                                ? "전체 강의"
+                                : courseTitles.getOrDefault(coupon.getTargetCourseId(), "강의"),
+                        coupon.getCouponCode(),
+                        coupon.getDiscountType(),
+                        coupon.getDiscountValue(),
+                        coupon.getUsageCount(),
+                        coupon.getMaxUsageCount(),
+                        coupon.getExpiresAt(),
+                        coupon.getExpiresAt() == null || coupon.getExpiresAt().isAfter(LocalDateTime.now())
+                ))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<PromotionListResponse> getPromotions(Long instructorId) {
+        Map<Long, String> courseTitles = loadCourseTitleMap(instructorId);
+
+        return promotionRepository.findByInstructorIdAndIsDeletedFalse(instructorId).stream()
+                .map(promotion -> new PromotionListResponse(
+                        promotion.getId(),
+                        promotion.getCourseId(),
+                        courseTitles.getOrDefault(promotion.getCourseId(), "강의"),
+                        promotion.getPromotionType(),
+                        promotion.getDiscountRate(),
+                        Boolean.TRUE.equals(promotion.getIsActive()),
+                        promotion.getStartAt(),
+                        promotion.getEndAt()
+                ))
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
     public ConversionResponse getConversions(Long instructorId) {
+        Map<Long, String> courseTitles = loadCourseTitleMap(instructorId);
         ConversionStat overall = conversionStatRepository
                 .findTopByInstructorIdAndCourseIdIsNullOrderByCalculatedAtDesc(instructorId)
                 .orElse(null);
@@ -127,28 +172,29 @@ public class InstructorMarketingService {
         List<ConversionResponse.CourseConversionItem> courseConversions = new ArrayList<>();
         for (ConversionStat stat : latestByCourse.values()) {
             courseConversions.add(
-                    ConversionResponse.CourseConversionItem.builder()
-                            .courseId(stat.getCourseId())
-                            .totalVisitors(stat.getTotalVisitors())
-                            .totalSignups(stat.getTotalSignups())
-                            .totalPurchases(stat.getTotalPurchases())
-                            .signupRate(calculateRate(stat.getTotalVisitors(), stat.getTotalSignups()))
-                            .purchaseRate(calculateRate(stat.getTotalVisitors(), stat.getTotalPurchases()))
-                            .calculatedAt(stat.getCalculatedAt())
-                            .build()
+                    new ConversionResponse.CourseConversionItem(
+                            stat.getCourseId(),
+                            courseTitles.get(stat.getCourseId()),
+                            stat.getTotalVisitors(),
+                            stat.getTotalSignups(),
+                            stat.getTotalPurchases(),
+                            calculateRate(stat.getTotalVisitors(), stat.getTotalSignups()),
+                            calculateRate(stat.getTotalVisitors(), stat.getTotalPurchases()),
+                            stat.getCalculatedAt()
+                    )
             );
         }
 
-        return ConversionResponse.builder()
-                .totalVisitors(totalVisitors)
-                .totalSignups(totalSignups)
-                .totalPurchases(totalPurchases)
-                .signupRate(signupRate)
-                .purchaseRate(purchaseRate)
-                .dailySnapshotCount(dailySnapshotCount)
-                .weeklySnapshotCount(weeklySnapshotCount)
-                .courseConversions(courseConversions)
-                .build();
+        return new ConversionResponse(
+                totalVisitors,
+                totalSignups,
+                totalPurchases,
+                signupRate,
+                purchaseRate,
+                dailySnapshotCount,
+                weeklySnapshotCount,
+                courseConversions
+        );
     }
 
     // 쿠폰 코드는 충돌이 날 때까지 재생성한다.
@@ -203,5 +249,10 @@ public class InstructorMarketingService {
             return 0.0;
         }
         return Math.round((numerator * 10000.0 / denominator)) / 100.0;
+    }
+
+    private Map<Long, String> loadCourseTitleMap(Long instructorId) {
+        return courseRepository.findAllByInstructorIdOrderByCourseIdDesc(instructorId).stream()
+                .collect(Collectors.toMap(Course::getCourseId, Course::getTitle, (left, right) -> left, LinkedHashMap::new));
     }
 }

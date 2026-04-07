@@ -79,4 +79,6 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
             @Param("questionId") Long questionId,
             @Param("instructorId") Long instructorId
     );
+
+    long countByCourseIdAndIsDeletedFalse(Long courseId);
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react'
 import { userApi } from '../lib/api'
+import { PROFILE_UPDATED_EVENT, type ProfileSyncPayload } from '../lib/profile-sync'
 import { LearnerHeader } from './template'
 import type { AuthSession } from '../types/auth'
 
@@ -31,6 +32,19 @@ export default function LearnerLayout({
       controller.abort()
     }
   }, [session.userId])
+
+  useEffect(() => {
+    const syncProfileImage = (event: Event) => {
+      const profileEvent = event as CustomEvent<ProfileSyncPayload>
+      setProfileImage(profileEvent.detail.profileImage)
+    }
+
+    window.addEventListener(PROFILE_UPDATED_EVENT, syncProfileImage)
+
+    return () => {
+      window.removeEventListener(PROFILE_UPDATED_EVENT, syncProfileImage)
+    }
+  }, [])
 
   return (
     <div className="flex min-h-screen text-gray-800">

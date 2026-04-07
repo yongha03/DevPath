@@ -10,6 +10,7 @@ import SettingsPage from './account/pages/SettingsPage'
 import { authApi } from './lib/api'
 import { getAccountPageMeta, getCurrentAccountPageKey, type AccountPageKey } from './lib/account-navigation'
 import { AUTH_SESSION_SYNC_EVENT, clearStoredAuthSession, readStoredAuthSession } from './lib/auth-session'
+import { PROFILE_UPDATED_EVENT, type ProfileSyncPayload } from './lib/profile-sync'
 import type { AuthSession } from './types/auth'
 
 function LoginRequiredView() {
@@ -85,13 +86,28 @@ export default function LearnerApp() {
       setSession(readStoredAuthSession())
     }
 
+    const syncProfile = (event: Event) => {
+      const profileEvent = event as CustomEvent<ProfileSyncPayload>
+
+      setSession((current) =>
+        current
+          ? {
+              ...current,
+              name: profileEvent.detail.name,
+            }
+          : readStoredAuthSession(),
+      )
+    }
+
     window.addEventListener('storage', syncSession)
     window.addEventListener(AUTH_SESSION_SYNC_EVENT, syncSession)
+    window.addEventListener(PROFILE_UPDATED_EVENT, syncProfile)
     syncSession()
 
     return () => {
       window.removeEventListener('storage', syncSession)
       window.removeEventListener(AUTH_SESSION_SYNC_EVENT, syncSession)
+      window.removeEventListener(PROFILE_UPDATED_EVENT, syncProfile)
     }
   }, [])
 

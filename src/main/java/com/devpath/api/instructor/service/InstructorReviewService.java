@@ -1,6 +1,7 @@
 package com.devpath.api.instructor.service;
 
 import com.devpath.api.instructor.dto.review.ReviewHelpfulResponse;
+import com.devpath.api.instructor.dto.review.InstructorReviewListResponse;
 import com.devpath.api.instructor.dto.review.ReviewIssueTagRequest;
 import com.devpath.api.instructor.dto.review.ReviewReplyRequest;
 import com.devpath.api.instructor.dto.review.ReviewReplyResponse;
@@ -19,10 +20,14 @@ import com.devpath.api.review.entity.ReviewStatus;
 import com.devpath.api.review.repository.ReviewRepository;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
+import com.devpath.domain.course.entity.Course;
 import com.devpath.domain.course.repository.CourseRepository;
+import com.devpath.domain.user.entity.User;
+import com.devpath.domain.user.repository.UserRepository;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -38,6 +43,53 @@ public class InstructorReviewService {
     private final ReviewTemplateRepository reviewTemplateRepository;
     private final ReviewReportRepository reviewReportRepository;
     private final CourseRepository courseRepository;
+    private final UserRepository userRepository;
+
+    @Transactional(readOnly = true)
+    public List<InstructorReviewListResponse> getReviews(Long instructorId) {
+        List<Review> reviews = reviewRepository.findAllByInstructorIdOrderByCreatedAtDesc(instructorId);
+        if (reviews.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, Course> coursesById = courseRepository.findAllByInstructorIdOrderByCourseIdDesc(instructorId).stream()
+                .collect(Collectors.toMap(Course::getCourseId, Function.identity(), (left, right) -> left, LinkedHashMap::new));
+        Map<Long, User> learnersById = userRepository.findAllById(reviews.stream().map(Review::getLearnerId).distinct().toList())
+                .stream()
+                .collect(Collectors.toMap(User::getId, Function.identity(), (left, right) -> left, LinkedHashMap::new));
+        Map<Long, ReviewReply> repliesByReviewId = reviewReplyRepository.findAllByReviewIdInAndIsDeletedFalse(
+                        reviews.stream().map(Review::getId).toList()
+                ).stream()
+                .collect(Collectors.toMap(ReviewReply::getReviewId, Function.identity(), (left, right) -> left, LinkedHashMap::new));
+
+        return reviews.stream()
+                .map(review -> {
+                    Course course = coursesById.get(review.getCourseId());
+                    User learner = learnersById.get(review.getLearnerId());
+                    ReviewReply reply = repliesByReviewId.get(review.getId());
+
+                    return new InstructorReviewListResponse(
+                            review.getId(),
+                            review.getCourseId(),
+                            course == null ? "강의" : course.getTitle(),
+                            review.getRating(),
+                            learner == null ? "Learner" : learner.getName(),
+                            review.getCreatedAt(),
+                            review.getStatus() == null ? null : review.getStatus().name(),
+                            review.getContent(),
+                            splitIssueTags(review.getIssueTagsRaw()),
+                            review.getIsHidden(),
+                            reply == null ? null : new InstructorReviewListResponse.ReplyInfo(
+                                    reply.getId(),
+                                    "Instructor",
+                                    reply.getContent(),
+                                    reply.getCreatedAt(),
+                                    reply.getUpdatedAt()
+                            )
+                    );
+                })
+                .toList();
+    }
 
     public ReviewReplyResponse createReply(Long reviewId, Long instructorId, ReviewReplyRequest request) {
         Review review = getManagedReview(reviewId, instructorId);
@@ -214,5 +266,16 @@ public class InstructorReviewService {
         if (!reply.getReviewId().equals(reviewId) || !reply.getInstructorId().equals(instructorId)) {
             throw new CustomException(ErrorCode.UNAUTHORIZED_ACTION);
         }
+    }
+
+    private List<String> splitIssueTags(String raw) {
+        if (raw == null || raw.isBlank()) {
+            return List.of();
+        }
+
+        return List.of(raw.split(",")).stream()
+                .map(String::trim)
+                .filter(tag -> !tag.isBlank())
+                .toList();
     }
 }

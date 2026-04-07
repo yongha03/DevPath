@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent, type KeyboardEvent } from 'react'
 import { userApi } from '../../lib/api'
 import UserAvatar from '../../components/UserAvatar'
 import { updateStoredAuthSession } from '../../lib/auth-session'
+import { notifyProfileUpdated } from '../../lib/profile-sync'
 import { LearnerContentRow, LearnerPageShell, MyMenuSidebar } from '../template'
 import type { TechTag, UserProfile, UserProfileUpdateRequest } from '../../types/learner'
 import type { AuthSession } from '../../types/auth'
@@ -128,6 +129,10 @@ export default function ProfilePage({ session }: { session: AuthSession }) {
       setProfile(updatedProfile)
       setForm(toForm(updatedProfile))
       updateStoredAuthSession({ name: updatedProfile.name })
+      notifyProfileUpdated({
+        name: updatedProfile.name,
+        profileImage: updatedProfile.profileImage,
+      })
       setMessage('프로필이 저장되었습니다.')
     } catch (submitError) {
       setError(submitError instanceof Error ? submitError.message : '프로필 저장 중 문제가 발생했습니다.')

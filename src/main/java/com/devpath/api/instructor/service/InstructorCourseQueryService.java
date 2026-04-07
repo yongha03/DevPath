@@ -1,15 +1,20 @@
 package com.devpath.api.instructor.service;
 
 import com.devpath.api.common.dto.CourseDetailResponse;
+import com.devpath.api.instructor.dto.course.InstructorCourseListResponse;
+import com.devpath.api.review.entity.Review;
+import com.devpath.api.review.repository.ReviewRepository;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
 import com.devpath.domain.course.entity.Course;
+import com.devpath.domain.course.entity.CourseEnrollment;
 import com.devpath.domain.course.entity.CourseMaterial;
 import com.devpath.domain.course.entity.CourseObjective;
 import com.devpath.domain.course.entity.CourseSection;
 import com.devpath.domain.course.entity.CourseTagMap;
 import com.devpath.domain.course.entity.CourseTargetAudience;
 import com.devpath.domain.course.entity.Lesson;
+import com.devpath.domain.course.repository.CourseEnrollmentRepository;
 import com.devpath.domain.course.repository.CourseMaterialRepository;
 import com.devpath.domain.course.repository.CourseObjectiveRepository;
 import com.devpath.domain.course.repository.CourseRepository;
@@ -17,12 +22,16 @@ import com.devpath.domain.course.repository.CourseSectionRepository;
 import com.devpath.domain.course.repository.CourseTagMapRepository;
 import com.devpath.domain.course.repository.CourseTargetAudienceRepository;
 import com.devpath.domain.course.repository.LessonRepository;
+import com.devpath.domain.qna.repository.QuestionRepository;
 import com.devpath.domain.user.entity.UserProfile;
 import com.devpath.domain.user.repository.UserProfileRepository;
 import com.devpath.domain.user.repository.UserRepository;
 import com.devpath.domain.user.repository.UserTechStackRepository;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,14 +44,78 @@ public class InstructorCourseQueryService {
 
     private final UserRepository userRepository;
     private final CourseRepository courseRepository;
+    private final CourseEnrollmentRepository courseEnrollmentRepository;
     private final CourseSectionRepository courseSectionRepository;
     private final LessonRepository lessonRepository;
     private final CourseMaterialRepository courseMaterialRepository;
     private final CourseObjectiveRepository courseObjectiveRepository;
     private final CourseTargetAudienceRepository courseTargetAudienceRepository;
     private final CourseTagMapRepository courseTagMapRepository;
+    private final QuestionRepository questionRepository;
+    private final ReviewRepository reviewRepository;
     private final UserProfileRepository userProfileRepository;
     private final UserTechStackRepository userTechStackRepository;
+
+    public List<InstructorCourseListResponse> getCourseList(Long instructorId) {
+        validateAuthenticatedUser(instructorId);
+
+        List<Course> courses = courseRepository.findAllByInstructorIdOrderByCourseIdDesc(instructorId);
+        if (courses.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, List<CourseEnrollment>> enrollmentsByCourseId = courseEnrollmentRepository
+                .findAllByCourseInstructorIdOrderByEnrolledAtDesc(instructorId)
+                .stream()
+                .collect(Collectors.groupingBy(
+                        enrollment -> enrollment.getCourse().getCourseId(),
+                        LinkedHashMap::new,
+                        Collectors.toList()
+                ));
+
+        Map<Long, List<Review>> reviewsByCourseId = reviewRepository.findAllByInstructorIdOrderByCreatedAtDesc(instructorId)
+                .stream()
+                .collect(Collectors.groupingBy(Review::getCourseId, LinkedHashMap::new, Collectors.toList()));
+
+        return courses.stream()
+                .map(course -> {
+                    List<CourseEnrollment> enrollments = enrollmentsByCourseId.getOrDefault(course.getCourseId(), List.of());
+                    List<Review> reviews = reviewsByCourseId.getOrDefault(course.getCourseId(), List.of());
+                    List<String> tags = courseTagMapRepository.findTagNamesByCourseId(course.getCourseId());
+                    List<Lesson> lessons = lessonRepository.findAllBySectionCourseCourseId(course.getCourseId());
+
+                    double averageProgressPercent = enrollments.stream()
+                            .map(CourseEnrollment::getProgressPercentage)
+                            .filter(progress -> progress != null)
+                            .mapToInt(Integer::intValue)
+                            .average()
+                            .orElse(0.0);
+
+                    double averageRating = reviews.stream()
+                            .map(Review::getRating)
+                            .filter(rating -> rating != null)
+                            .mapToInt(Integer::intValue)
+                            .average()
+                            .orElse(0.0);
+
+                    return new InstructorCourseListResponse(
+                            course.getCourseId(),
+                            course.getTitle(),
+                            course.getStatus() == null ? null : course.getStatus().name(),
+                            tags.isEmpty() ? "General" : tags.get(0),
+                            course.getDifficultyLevel() == null ? "-" : course.getDifficultyLevel().name(),
+                            course.getDurationSeconds(),
+                            (long) lessons.size(),
+                            (long) enrollments.size(),
+                            round(averageProgressPercent),
+                            questionRepository.countByCourseIdAndIsDeletedFalse(course.getCourseId()),
+                            round(averageRating),
+                            course.getThumbnailUrl(),
+                            course.getPublishedAt()
+                    );
+                })
+                .toList();
+    }
 
     // 현재 로그인한 강사의 강의 상세 정보를 조회한다.
     public CourseDetailResponse getCourseDetail(Long instructorId, Long courseId) {
@@ -239,5 +312,9 @@ public class InstructorCourseQueryService {
                         .sortOrder(material.getDisplayOrder())
                         .build())
                 .toList();
+    }
+
+    private double round(double value) {
+        return Math.round(value * 10.0) / 10.0;
     }
 }

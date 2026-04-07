@@ -15,6 +15,8 @@ import com.devpath.api.instructor.repository.QnaAnswerDraftRepository;
 import com.devpath.api.instructor.repository.QnaTemplateRepository;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
+import com.devpath.domain.course.entity.Course;
+import com.devpath.domain.course.repository.CourseRepository;
 import com.devpath.domain.qna.entity.Answer;
 import com.devpath.domain.qna.entity.QnaStatus;
 import com.devpath.domain.qna.entity.Question;
@@ -22,7 +24,9 @@ import com.devpath.domain.qna.repository.AnswerRepository;
 import com.devpath.domain.qna.repository.QuestionRepository;
 import com.devpath.domain.user.entity.User;
 import com.devpath.domain.user.repository.UserRepository;
+import java.util.Map;
 import java.util.List;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +39,7 @@ public class InstructorQnaInboxService {
     private final QuestionRepository questionRepository;
     private final AnswerRepository answerRepository;
     private final UserRepository userRepository;
+    private final CourseRepository courseRepository;
     private final QnaAnswerDraftRepository draftRepository;
     private final QnaTemplateRepository templateRepository;
 
@@ -44,8 +49,10 @@ public class InstructorQnaInboxService {
                 ? questionRepository.findAllByInstructorIdAndQnaStatusAndIsDeletedFalse(instructorId, status)
                 : questionRepository.findAllByInstructorIdAndIsDeletedFalse(instructorId);
 
+        Map<Long, String> courseTitles = resolveCourseTitles(questions);
+
         return questions.stream()
-                .map(QnaInboxResponse::from)
+                .map(question -> QnaInboxResponse.from(question, courseTitles.get(question.getCourseId())))
                 .toList();
     }
 
@@ -147,13 +154,13 @@ public class InstructorQnaInboxService {
                 .map(QnaDraftResponse::from)
                 .orElse(null);
 
-        return QnaTimelineResponse.builder()
-                .question(QnaInboxResponse.from(question))
-                .publishedAnswer(publishedAnswer)
-                .draft(draft)
-                .lectureTitle(question.getTitle())
-                .lectureTimestamp(question.getLectureTimestamp())
-                .build();
+        return new QnaTimelineResponse(
+                QnaInboxResponse.from(question, resolveCourseTitle(question.getCourseId())),
+                publishedAnswer,
+                draft,
+                question.getTitle(),
+                question.getLectureTimestamp()
+        );
     }
 
     public QnaTemplateResponse createTemplate(Long instructorId, QnaTemplateRequest request) {
@@ -206,5 +213,30 @@ public class InstructorQnaInboxService {
         }
 
         return template;
+    }
+
+    private Map<Long, String> resolveCourseTitles(List<Question> questions) {
+        List<Long> courseIds = questions.stream()
+                .map(Question::getCourseId)
+                .filter(courseId -> courseId != null)
+                .distinct()
+                .toList();
+
+        if (courseIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return courseRepository.findAllById(courseIds).stream()
+                .collect(Collectors.toMap(Course::getCourseId, Course::getTitle, (left, right) -> left));
+    }
+
+    private String resolveCourseTitle(Long courseId) {
+        if (courseId == null) {
+            return null;
+        }
+
+        return courseRepository.findById(courseId)
+                .map(Course::getTitle)
+                .orElse(null);
     }
 }

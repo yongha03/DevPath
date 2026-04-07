@@ -21,7 +21,7 @@ public class SettlementResponse {
                 .settlementId(settlement.getId())
                 .instructorId(settlement.getInstructorId())
                 .amount(settlement.getAmount())
-                .status(settlement.getStatus().name())
+                .status(settlement.getStatus() == null ? null : settlement.getStatus().name())
                 .settledAt(settlement.getSettledAt())
                 .build();
     }

@@ -2,31 +2,27 @@ package com.devpath.api.instructor.dto.marketing;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import lombok.Builder;
-import lombok.Getter;
 
-@Getter
-@Builder
-public class ConversionResponse {
+public record ConversionResponse(
+        long totalVisitors,
+        long totalSignups,
+        long totalPurchases,
+        double signupRate,
+        double purchaseRate,
+        long dailySnapshotCount,
+        long weeklySnapshotCount,
+        List<CourseConversionItem> courseConversions
+) {
 
-    private long totalVisitors;
-    private long totalSignups;
-    private long totalPurchases;
-    private double signupRate;
-    private double purchaseRate;
-    private long dailySnapshotCount;
-    private long weeklySnapshotCount;
-    private List<CourseConversionItem> courseConversions;
-
-    @Getter
-    @Builder
-    public static class CourseConversionItem {
-        private Long courseId;
-        private long totalVisitors;
-        private long totalSignups;
-        private long totalPurchases;
-        private double signupRate;
-        private double purchaseRate;
-        private LocalDateTime calculatedAt;
+    public record CourseConversionItem(
+            Long courseId,
+            String courseTitle,
+            long totalVisitors,
+            long totalSignups,
+            long totalPurchases,
+            double signupRate,
+            double purchaseRate,
+            LocalDateTime calculatedAt
+    ) {
     }
 }

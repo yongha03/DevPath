@@ -70,4 +70,17 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
             GROUP BY r.rating
             """)
     List<Object[]> findRatingDistributionByInstructorId(@Param("instructorId") Long instructorId);
+
+    @Query("""
+            SELECT r
+            FROM Review r
+            WHERE r.courseId IN (
+                SELECT c.courseId
+                FROM Course c
+                WHERE c.instructorId = :instructorId
+            )
+            AND r.isDeleted = false
+            ORDER BY r.createdAt DESC
+            """)
+    List<Review> findAllByInstructorIdOrderByCreatedAtDesc(@Param("instructorId") Long instructorId);
 }

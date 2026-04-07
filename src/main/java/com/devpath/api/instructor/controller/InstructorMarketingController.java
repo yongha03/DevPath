@@ -2,8 +2,10 @@ package com.devpath.api.instructor.controller;
 
 import com.devpath.api.instructor.dto.marketing.ConversionResponse;
 import com.devpath.api.instructor.dto.marketing.CouponCreateRequest;
+import com.devpath.api.instructor.dto.marketing.CouponListResponse;
 import com.devpath.api.instructor.dto.marketing.CouponResponse;
 import com.devpath.api.instructor.dto.marketing.PromotionCreateRequest;
+import com.devpath.api.instructor.dto.marketing.PromotionListResponse;
 import com.devpath.api.instructor.dto.marketing.PromotionStatusUpdateRequest;
 import com.devpath.api.instructor.service.InstructorMarketingService;
 import com.devpath.common.response.ApiResponse;
@@ -11,6 +13,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,7 +24,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Instructor - Marketing", description = "강사 마케팅 도구 API")
+@Tag(name = "Instructor - Marketing", description = "Instructor marketing API")
 @RestController
 @RequestMapping("/api/instructor/marketing")
 @RequiredArgsConstructor
@@ -29,26 +32,42 @@ public class InstructorMarketingController {
 
     private final InstructorMarketingService instructorMarketingService;
 
-    @Operation(summary = "할인 쿠폰 발행", description = "강사 쿠폰을 생성합니다.")
+    @Operation(summary = "Create coupon")
     @PostMapping("/coupons")
     public ApiResponse<CouponResponse> createCoupon(
             @RequestBody @Valid CouponCreateRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId
     ) {
-        return ApiResponse.success("쿠폰이 발행되었습니다.", instructorMarketingService.createCoupon(userId, request));
+        return ApiResponse.success("Coupon created.", instructorMarketingService.createCoupon(userId, request));
     }
 
-    @Operation(summary = "타임세일/프로모션 등록", description = "프로모션을 등록합니다.")
+    @Operation(summary = "List coupons")
+    @GetMapping("/coupons")
+    public ApiResponse<List<CouponListResponse>> getCoupons(
+            @Parameter(hidden = true) @AuthenticationPrincipal Long userId
+    ) {
+        return ApiResponse.success("Coupons loaded.", instructorMarketingService.getCoupons(userId));
+    }
+
+    @Operation(summary = "Create promotion")
     @PostMapping("/promotions")
     public ApiResponse<Void> createPromotion(
             @RequestBody @Valid PromotionCreateRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId
     ) {
         instructorMarketingService.createPromotion(userId, request);
-        return ApiResponse.success("프로모션이 등록되었습니다.", null);
+        return ApiResponse.success("Promotion created.", null);
     }
 
-    @Operation(summary = "강의 홍보 상태 변경", description = "강의의 프로모션 노출 상태를 변경합니다.")
+    @Operation(summary = "List promotions")
+    @GetMapping("/promotions")
+    public ApiResponse<List<PromotionListResponse>> getPromotions(
+            @Parameter(hidden = true) @AuthenticationPrincipal Long userId
+    ) {
+        return ApiResponse.success("Promotions loaded.", instructorMarketingService.getPromotions(userId));
+    }
+
+    @Operation(summary = "Update promotion status")
     @PatchMapping("/courses/{courseId}/promotion-status")
     public ApiResponse<Void> updatePromotionStatus(
             @PathVariable Long courseId,
@@ -56,14 +75,14 @@ public class InstructorMarketingController {
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId
     ) {
         instructorMarketingService.updatePromotionStatus(courseId, userId, request);
-        return ApiResponse.success("홍보 상태가 변경되었습니다.", null);
+        return ApiResponse.success("Promotion status updated.", null);
     }
 
-    @Operation(summary = "유입/전환 통계 조회", description = "강사 전환 통계를 조회합니다.")
+    @Operation(summary = "Get conversion stats")
     @GetMapping("/conversions")
     public ApiResponse<ConversionResponse> getConversions(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId
     ) {
-        return ApiResponse.success("전환 통계를 조회했습니다.", instructorMarketingService.getConversions(userId));
+        return ApiResponse.success("Conversion stats loaded.", instructorMarketingService.getConversions(userId));
     }
 }

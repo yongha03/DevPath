@@ -65,7 +65,7 @@ public class InstructorRevenueService {
                         .settlementId(settlement.getId())
                         .amount(settlement.getAmount())
                         .settledAt(settlement.getSettledAt())
-                        .status(settlement.getStatus().name())
+                        .status(settlement.getStatus() == null ? null : settlement.getStatus().name())
                         .build())
                 .toList();
 

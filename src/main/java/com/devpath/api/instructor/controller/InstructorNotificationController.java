@@ -10,10 +10,12 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Instructor - Notification", description = "강사 알림 API")
+@Tag(name = "Instructor - Notification", description = "Instructor notification API")
 @RestController
 @RequestMapping("/api/instructor/notifications")
 @RequiredArgsConstructor
@@ -21,11 +23,21 @@ public class InstructorNotificationController {
 
     private final InstructorNotificationService instructorNotificationService;
 
-    @Operation(summary = "통합 알림 조회", description = "강사 전용 알림 목록을 최신순으로 조회합니다.")
+    @Operation(summary = "List instructor notifications")
     @GetMapping
     public ApiResponse<List<NotificationResponse>> getNotifications(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId
     ) {
-        return ApiResponse.success("알림 목록을 조회했습니다.", instructorNotificationService.getNotifications(userId));
+        return ApiResponse.success("Notifications loaded.", instructorNotificationService.getNotifications(userId));
+    }
+
+    @Operation(summary = "Mark instructor notification as read")
+    @PatchMapping("/{notificationId}/read")
+    public ApiResponse<Void> markAsRead(
+            @PathVariable Long notificationId,
+            @Parameter(hidden = true) @AuthenticationPrincipal Long userId
+    ) {
+        instructorNotificationService.markAsRead(userId, notificationId);
+        return ApiResponse.success("Notification marked as read.", null);
     }
 }
