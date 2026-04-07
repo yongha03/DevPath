@@ -1,6 +1,7 @@
 import type { AuthSession, AuthTokenClaims, AuthTokenResponse } from '../types/auth'
 
 const AUTH_STORAGE_KEY = 'devpath.auth.session'
+export const AUTH_SESSION_SYNC_EVENT = 'devpath:auth-session-sync'
 
 function decodeBase64Url(value: string) {
   const normalized = value.replace(/-/g, '+').replace(/_/g, '/')
@@ -53,6 +54,10 @@ function writeToStorage(storage: Storage, session: AuthSession) {
   storage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session))
 }
 
+function notifyAuthSessionChanged() {
+  window.dispatchEvent(new Event(AUTH_SESSION_SYNC_EVENT))
+}
+
 function readFromStorage(storage: Storage): AuthSession | null {
   const raw = storage.getItem(AUTH_STORAGE_KEY)
 
@@ -79,6 +84,7 @@ export function persistAuthSession(
 
   otherStorage.removeItem(AUTH_STORAGE_KEY)
   writeToStorage(targetStorage, session)
+  notifyAuthSessionChanged()
 
   return session
 }
@@ -90,6 +96,26 @@ export function readStoredAuthSession(): AuthSession | null {
 export function clearStoredAuthSession() {
   localStorage.removeItem(AUTH_STORAGE_KEY)
   sessionStorage.removeItem(AUTH_STORAGE_KEY)
+  notifyAuthSessionChanged()
+}
+
+export function updateStoredAuthSession(patch: Partial<Pick<AuthSession, 'name'>>) {
+  const session = readStoredAuthSession()
+
+  if (!session) {
+    return null
+  }
+
+  const nextSession: AuthSession = {
+    ...session,
+    ...patch,
+  }
+
+  const targetStorage = session.storage === 'local' ? localStorage : sessionStorage
+  writeToStorage(targetStorage, nextSession)
+  notifyAuthSessionChanged()
+
+  return nextSession
 }
 
 export function getRoleLabel(role: string | null) {

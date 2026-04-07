@@ -81,6 +81,14 @@ public class User {
     this.lastLoginAt = LocalDateTime.now();
   }
 
+  public void updateName(String name) {
+    this.name = name;
+  }
+
+  public void changePassword(String encodedPassword) {
+    this.password = encodedPassword;
+  }
+
   public void restrict() {
     if (this.accountStatus == AccountStatus.RESTRICTED) {
       throw new CustomException(ErrorCode.ACCOUNT_ALREADY_RESTRICTED);
