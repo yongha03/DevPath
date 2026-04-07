@@ -37,6 +37,10 @@ public class CustomRoadmapNode {
   @Column(nullable = false, length = 20)
   private NodeStatus status;
 
+  // 커스텀 로드맵 내 표시 순서 (원본 sort_order 기반으로 초기화, ADD 시 재정렬 반영)
+  @Column(name = "custom_sort_order")
+  private Integer customSortOrder;
+
   @Column(name = "started_at")
   private LocalDateTime startedAt;
 
@@ -44,10 +48,20 @@ public class CustomRoadmapNode {
   private LocalDateTime completedAt;
 
   @Builder
-  public CustomRoadmapNode(CustomRoadmap customRoadmap, RoadmapNode originalNode) {
+  public CustomRoadmapNode(CustomRoadmap customRoadmap, RoadmapNode originalNode, Integer customSortOrder) {
     this.customRoadmap = customRoadmap;
     this.originalNode = originalNode;
     this.status = NodeStatus.NOT_STARTED; // 초기 상태는 '시작 전'
+    // 명시적으로 전달된 값이 없으면 원본 노드의 sort_order를 그대로 사용
+    this.customSortOrder = customSortOrder != null ? customSortOrder
+        : (originalNode != null ? originalNode.getSortOrder() : null);
+  }
+
+  // 커스텀 순서 변경 비즈니스 메서드 (노드 삽입 시 기존 노드 밀기에 사용)
+  public void shiftSortOrder(int delta) {
+    if (this.customSortOrder != null) {
+      this.customSortOrder += delta;
+    }
   }
 
   // 학습 시작 상태로 변경하는 비즈니스 메서드

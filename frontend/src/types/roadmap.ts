@@ -28,6 +28,7 @@ export interface RecommendationChange {
   sourceRecommendationId: number | null
   nodeId: number
   nodeTitle: string
+  nodeSortOrder: number | null
   reason: string
   contextSummary: string
   nodeChangeType: ChangeType

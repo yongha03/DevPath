@@ -2,8 +2,10 @@ package com.devpath.api.roadmap.controller;
 
 import com.devpath.api.roadmap.dto.CustomRoadmapCopyDto;
 import com.devpath.api.roadmap.dto.MyRoadmapDto;
+import com.devpath.api.roadmap.dto.NodeClearResponse;
 import com.devpath.api.roadmap.service.CustomRoadmapCopyService;
 import com.devpath.api.roadmap.service.CustomRoadmapQueryService;
+import com.devpath.api.roadmap.service.NodeClearanceCommandService;
 import com.devpath.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -26,6 +28,7 @@ public class CustomRoadmapController {
 
   private final CustomRoadmapCopyService customRoadmapCopyService;
   private final CustomRoadmapQueryService customRoadmapQueryService;
+  private final NodeClearanceCommandService nodeClearanceCommandService;
 
   @Operation(
       summary = "내 커스텀 로드맵 목록 조회",
@@ -71,6 +74,19 @@ public class CustomRoadmapController {
     return ResponseEntity.ok(
         ApiResponse.success(
             "커스텀 로드맵이 생성되었습니다.", CustomRoadmapCopyDto.Response.of(customRoadmapId)));
+  }
+
+  @Operation(
+      summary = "노드 클리어",
+      description = "선행 노드 완료 및 필수 태그 조건을 충족하면 노드를 완료 처리합니다. (JWT 적용 전 userId 임시 파라미터)")
+  @PostMapping("/{customRoadmapId}/nodes/{customNodeId}/clear")
+  public ResponseEntity<ApiResponse<NodeClearResponse>> clearNode(
+      @Parameter(description = "유저 ID (JWT 적용 전 임시)", example = "1") @RequestParam Long userId,
+      @Parameter(description = "커스텀 로드맵 ID", example = "10") @PathVariable Long customRoadmapId,
+      @Parameter(description = "커스텀 노드 ID", example = "101") @PathVariable Long customNodeId) {
+    return ResponseEntity.ok(
+        ApiResponse.success("노드가 클리어되었습니다.",
+            nodeClearanceCommandService.clearNode(userId, customRoadmapId, customNodeId)));
   }
 
   @Operation(summary = "내 커스텀 로드맵 삭제", description = "커스텀 로드맵을 삭제합니다. (JWT 적용 전 userId 임시 파라미터)")

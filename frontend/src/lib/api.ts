@@ -91,6 +91,15 @@ export const roadmapApi = {
   getProofCards(signal?: AbortSignal) {
     return request<ProofCardSummary[]>('/api/me/proof-cards', { method: 'GET', signal }, { auth: true })
   },
+  clearNode(customRoadmapId: number, customNodeId: number) {
+    const session = readStoredAuthSession()
+    const query = session?.userId ? `?userId=${session.userId}` : ''
+    return request<{ customNodeId: number; title: string }>(
+      `/api/my-roadmaps/${customRoadmapId}/nodes/${customNodeId}/clear${query}`,
+      { method: 'POST' },
+      { auth: true },
+    )
+  },
 }
 
 export const authApi = {

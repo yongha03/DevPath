@@ -45,6 +45,7 @@ public enum ErrorCode {
   CUSTOM_NODE_NOT_FOUND(HttpStatus.NOT_FOUND, "커스텀 노드를 찾을 수 없습니다."),
 
   INSUFFICIENT_TAGS(HttpStatus.BAD_REQUEST, "노드 진입에 필요한 태그가 부족합니다."),
+  NODE_LOCKED(HttpStatus.FORBIDDEN, "선행 노드를 먼저 완료해야 합니다."),
   NODE_ALREADY_COMPLETED(HttpStatus.BAD_REQUEST, "이미 완료된 노드입니다."),
 
   QUIZ_NOT_FOUND(HttpStatus.NOT_FOUND, "진단 퀴즈를 찾을 수 없습니다."),

@@ -13,6 +13,8 @@ public interface CustomNodePrerequisiteRepository
     extends JpaRepository<CustomNodePrerequisite, Long> {
   List<CustomNodePrerequisite> findAllByCustomRoadmap(CustomRoadmap customRoadmap);
 
+  List<CustomNodePrerequisite> findAllByCustomNode(CustomRoadmapNode customNode);
+
   void deleteAllByCustomRoadmap(CustomRoadmap customRoadmap);
 
   /** 삭제 대상 노드가 subject이거나 prerequisite인 레코드를 모두 제거 */

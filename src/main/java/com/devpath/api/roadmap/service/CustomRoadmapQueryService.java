@@ -5,6 +5,7 @@ import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
 import com.devpath.domain.roadmap.entity.CustomRoadmap;
 import com.devpath.domain.roadmap.entity.CustomRoadmapNode;
+import com.devpath.domain.roadmap.entity.NodeStatus;
 import com.devpath.domain.roadmap.repository.CustomNodePrerequisiteRepository;
 import com.devpath.domain.roadmap.repository.CustomRoadmapNodeRepository;
 import com.devpath.domain.roadmap.repository.CustomRoadmapRepository;
@@ -39,7 +40,7 @@ public class CustomRoadmapQueryService {
   public MyRoadmapDto.DetailResponse getMyRoadmap(Long userId, Long customRoadmapId) {
     CustomRoadmap customRoadmap = getOwnedRoadmap(userId, customRoadmapId);
     List<CustomRoadmapNode> customNodes =
-        customRoadmapNodeRepository.findAllByCustomRoadmapOrderByOriginalNodeSortOrderAsc(
+        customRoadmapNodeRepository.findAllByCustomRoadmapOrderByCustomSortOrderAsc(
             customRoadmap);
     Map<Long, List<Long>> prerequisiteIdsByNodeId =
         customNodePrerequisiteRepository.findAllByCustomRoadmap(customRoadmap).stream()
@@ -50,7 +51,10 @@ public class CustomRoadmapQueryService {
                         prerequisite -> prerequisite.getPrerequisiteCustomNode().getId(),
                         Collectors.toList())));
 
-    return MyRoadmapDto.DetailResponse.from(customRoadmap, customNodes, prerequisiteIdsByNodeId);
+    Map<Long, NodeStatus> statusByNodeId = customNodes.stream()
+        .collect(Collectors.toMap(CustomRoadmapNode::getId, CustomRoadmapNode::getStatus));
+
+    return MyRoadmapDto.DetailResponse.from(customRoadmap, customNodes, prerequisiteIdsByNodeId, statusByNodeId);
   }
 
   @Transactional

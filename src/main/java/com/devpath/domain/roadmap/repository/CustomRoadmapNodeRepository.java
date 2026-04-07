@@ -15,6 +15,13 @@ public interface CustomRoadmapNodeRepository extends JpaRepository<CustomRoadmap
   List<CustomRoadmapNode> findAllByCustomRoadmapOrderByOriginalNodeSortOrderAsc(
       CustomRoadmap customRoadmap);
 
+  List<CustomRoadmapNode> findAllByCustomRoadmapOrderByCustomSortOrderAsc(
+      CustomRoadmap customRoadmap);
+
+  // customSortOrder >= targetOrder 인 노드 목록 (ADD 시 기존 노드 밀기용)
+  List<CustomRoadmapNode> findAllByCustomRoadmapAndCustomSortOrderGreaterThanEqual(
+      CustomRoadmap customRoadmap, Integer customSortOrder);
+
   Optional<CustomRoadmapNode> findByCustomRoadmapAndOriginalNode(
       CustomRoadmap customRoadmap, RoadmapNode originalNode);
 

@@ -2,6 +2,7 @@ package com.devpath.api.roadmap.dto;
 
 import com.devpath.domain.roadmap.entity.CustomRoadmap;
 import com.devpath.domain.roadmap.entity.CustomRoadmapNode;
+import com.devpath.domain.roadmap.entity.DisplayNodeStatus;
 import com.devpath.domain.roadmap.entity.NodeStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
@@ -110,7 +111,8 @@ public class MyRoadmapDto {
     public static DetailResponse from(
         CustomRoadmap customRoadmap,
         List<CustomRoadmapNode> nodes,
-        Map<Long, List<Long>> prerequisiteIdsByNodeId) {
+        Map<Long, List<Long>> prerequisiteIdsByNodeId,
+        Map<Long, NodeStatus> statusByNodeId) {
       return DetailResponse.builder()
           .customRoadmapId(customRoadmap.getId())
           .originalRoadmapId(customRoadmap.getOriginalRoadmap().getRoadmapId())
@@ -122,7 +124,9 @@ public class MyRoadmapDto {
                   .map(
                       node ->
                           NodeItem.from(
-                              node, prerequisiteIdsByNodeId.getOrDefault(node.getId(), List.of())))
+                              node,
+                              prerequisiteIdsByNodeId.getOrDefault(node.getId(), List.of()),
+                              statusByNodeId))
                   .toList())
           .build();
     }
@@ -144,8 +148,8 @@ public class MyRoadmapDto {
     @Schema(example = "1")
     private Integer sortOrder;
 
-    @Schema(example = "COMPLETED")
-    private NodeStatus status;
+    @Schema(example = "COMPLETED", description = "PENDING / IN_PROGRESS / COMPLETED / LOCKED")
+    private DisplayNodeStatus status;
 
     @Schema(description = "선행 커스텀 노드 ID 목록")
     private List<Long> prerequisiteCustomNodeIds;
@@ -165,7 +169,7 @@ public class MyRoadmapDto {
         Long originalNodeId,
         String title,
         Integer sortOrder,
-        NodeStatus status,
+        DisplayNodeStatus status,
         List<Long> prerequisiteCustomNodeIds,
         String content,
         List<String> subTopics,
@@ -181,17 +185,34 @@ public class MyRoadmapDto {
       this.branchGroup = branchGroup;
     }
 
-    public static NodeItem from(CustomRoadmapNode node, List<Long> prerequisiteCustomNodeIds) {
+    public static NodeItem from(
+        CustomRoadmapNode node,
+        List<Long> prerequisiteCustomNodeIds,
+        Map<Long, NodeStatus> statusByNodeId) {
       String raw = node.getOriginalNode().getSubTopics();
       List<String> chips = (raw != null && !raw.isBlank())
           ? Arrays.stream(raw.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList()
           : List.of();
+
+      DisplayNodeStatus displayStatus;
+      if (node.getStatus() == NodeStatus.COMPLETED) {
+        displayStatus = DisplayNodeStatus.COMPLETED;
+      } else if (node.getStatus() == NodeStatus.IN_PROGRESS) {
+        displayStatus = DisplayNodeStatus.IN_PROGRESS;
+      } else {
+        boolean isLocked = !prerequisiteCustomNodeIds.isEmpty()
+            && prerequisiteCustomNodeIds.stream().anyMatch(
+                prereqId -> statusByNodeId.getOrDefault(prereqId, NodeStatus.NOT_STARTED)
+                    != NodeStatus.COMPLETED);
+        displayStatus = isLocked ? DisplayNodeStatus.LOCKED : DisplayNodeStatus.PENDING;
+      }
+
       return NodeItem.builder()
           .customNodeId(node.getId())
           .originalNodeId(node.getOriginalNode().getNodeId())
           .title(node.getOriginalNode().getTitle())
-          .sortOrder(node.getOriginalNode().getSortOrder())
-          .status(node.getStatus())
+          .sortOrder(node.getCustomSortOrder())
+          .status(displayStatus)
           .prerequisiteCustomNodeIds(prerequisiteCustomNodeIds)
           .content(node.getOriginalNode().getContent())
           .subTopics(chips)

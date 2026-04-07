@@ -8408,16 +8408,17 @@ WHERE u.email = 'learner@devpath.com'
       WHERE cr.user_id = u.user_id AND cr.original_roadmap_id = r.roadmap_id
   );
 
-INSERT INTO custom_roadmap_nodes (custom_roadmap_id, original_node_id, status, started_at, completed_at)
+INSERT INTO custom_roadmap_nodes (custom_roadmap_id, original_node_id, status, custom_sort_order, started_at, completed_at)
 SELECT cr.custom_roadmap_id,
        rn.node_id,
        CASE
-           WHEN rn.sort_order = 1 THEN 'COMPLETED'
-           WHEN rn.sort_order = 2 THEN 'IN_PROGRESS'
+           WHEN rn.sort_order <= 2 THEN 'COMPLETED'
+           WHEN rn.sort_order = 3  THEN 'IN_PROGRESS'
            ELSE 'NOT_STARTED'
        END,
-       CASE WHEN rn.sort_order <= 2 THEN TIMESTAMP '2026-03-28 10:00:00' ELSE NULL END,
-       CASE WHEN rn.sort_order = 1  THEN TIMESTAMP '2026-03-29 18:00:00' ELSE NULL END
+       rn.sort_order,
+       CASE WHEN rn.sort_order <= 3 THEN TIMESTAMP '2026-03-28 10:00:00' ELSE NULL END,
+       CASE WHEN rn.sort_order <= 2 THEN TIMESTAMP '2026-03-29 18:00:00' ELSE NULL END
 FROM custom_roadmaps cr
 JOIN users u ON u.user_id = cr.user_id
 JOIN roadmaps r ON r.roadmap_id = cr.original_roadmap_id
@@ -8429,3 +8430,119 @@ WHERE u.email = 'learner@devpath.com'
       WHERE crn.custom_roadmap_id = cr.custom_roadmap_id
         AND crn.original_node_id = rn.node_id
   );
+
+-- learner 커스텀 로드맵 순차 prerequisite 체인 (n+1번 노드는 n번 노드를 선행으로 가짐)
+INSERT INTO custom_node_prerequisites (custom_roadmap_id, custom_node_id, prerequisite_custom_node_id)
+SELECT cr.custom_roadmap_id, n_cur.custom_node_id, n_pre.custom_node_id
+FROM custom_roadmaps cr
+JOIN users u ON u.user_id = cr.user_id
+JOIN roadmaps r ON r.roadmap_id = cr.original_roadmap_id
+JOIN custom_roadmap_nodes n_cur ON n_cur.custom_roadmap_id = cr.custom_roadmap_id
+JOIN roadmap_nodes rn_cur ON rn_cur.node_id = n_cur.original_node_id
+JOIN roadmap_nodes rn_pre ON rn_pre.roadmap_id = r.roadmap_id AND rn_pre.sort_order = rn_cur.sort_order - 1
+JOIN custom_roadmap_nodes n_pre ON n_pre.custom_roadmap_id = cr.custom_roadmap_id AND n_pre.original_node_id = rn_pre.node_id
+WHERE u.email = 'learner@devpath.com'
+  AND r.title = 'Backend Master Roadmap'
+  AND rn_cur.sort_order > 1
+  AND rn_cur.title NOT LIKE '[TEST]%'
+  AND NOT EXISTS (
+      SELECT 1 FROM custom_node_prerequisites cnp
+      WHERE cnp.custom_roadmap_id = cr.custom_roadmap_id
+        AND cnp.custom_node_id = n_cur.custom_node_id
+        AND cnp.prerequisite_custom_node_id = n_pre.custom_node_id
+  );
+
+-- sort 1, 2 노드 NodeClearance 레코드 (CLEARED 상태)
+INSERT INTO node_clearances
+    (user_id, node_id, clearance_status, lesson_completion_rate, required_tags_satisfied,
+     missing_tag_count, lesson_completed, quiz_passed, assignment_passed, proof_eligible,
+     cleared_at, last_calculated_at, created_at, updated_at)
+SELECT u.user_id, rn.node_id,
+       'CLEARED', 1.00, TRUE, 0, TRUE, TRUE, TRUE, TRUE,
+       TIMESTAMP '2026-03-29 18:00:00',
+       TIMESTAMP '2026-03-29 18:00:00',
+       TIMESTAMP '2026-03-29 18:00:00',
+       TIMESTAMP '2026-03-29 18:00:00'
+FROM users u
+JOIN roadmaps r ON r.title = 'Backend Master Roadmap'
+JOIN roadmap_nodes rn ON rn.roadmap_id = r.roadmap_id AND rn.sort_order <= 2
+WHERE u.email = 'learner@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1 FROM node_clearances nc
+      WHERE nc.user_id = u.user_id AND nc.node_id = rn.node_id
+  );
+
+-- ============================================================
+-- [TEST DATA] 수정 제안(recommendation_changes) 테스트용 데이터
+-- 테스트 완료 후 아래 블록 전체 삭제 가능
+-- 포함 내용:
+--   1. ADD 테스트 전용 노드 (커스텀 로드맵에 미포함 상태)
+--   2. ADD 타입 제안: 위 테스트 노드를 커스텀 로드맵에 추가 제안
+--   3. DELETE 타입 제안: '메시지 큐 & MSA' 노드 삭제 제안
+-- ============================================================
+
+-- [TEST] ADD 테스트용 노드: 커스텀 로드맵에는 추가하지 않음 (ADD 제안 수락 시 삽입되는지 확인용)
+INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
+SELECT r.roadmap_id,
+       '[TEST] Kubernetes 기초',
+       '컨테이너 오케스트레이션 개념, Pod/Service/Deployment 리소스, kubectl 기본 명령어를 학습합니다.',
+       'PRACTICE', 8, 'Pod,Service,Deployment,kubectl,Namespace,ConfigMap', NULL
+FROM roadmaps r
+WHERE r.title = 'Backend Master Roadmap'
+  AND NOT EXISTS (
+      SELECT 1 FROM roadmap_nodes rn
+      WHERE rn.roadmap_id = r.roadmap_id AND rn.title = '[TEST] Kubernetes 기초'
+  );
+
+-- [TEST] ADD 타입 제안: learner@devpath.com 에게 '[TEST] Kubernetes 기초' 노드 추가 제안
+INSERT INTO recommendation_changes
+    (user_id, node_id, source_recommendation_id, reason, context_summary,
+     node_change_type, change_status, decision_status, suggested_at, created_at, updated_at)
+SELECT
+    u.user_id,
+    rn.node_id,
+    NULL,
+    'Docker & CI/CD를 완료했습니다. 컨테이너 오케스트레이션 단계로 넘어가는 것을 추천합니다.',
+    'tilCount=3, weaknessSignal=false, warningCount=0, historyCount=1',
+    'ADD',
+    'SUGGESTED',
+    'UNDECIDED',
+    TIMESTAMP '2026-04-07 09:00:00',
+    TIMESTAMP '2026-04-07 09:00:00',
+    TIMESTAMP '2026-04-07 09:00:00'
+FROM users u
+JOIN roadmap_nodes rn ON rn.title = '[TEST] Kubernetes 기초'
+WHERE u.email = 'learner@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1 FROM recommendation_changes rc
+      WHERE rc.user_id = u.user_id AND rc.node_id = rn.node_id AND rc.change_status = 'SUGGESTED'
+  );
+
+-- [TEST] DELETE 타입 제안: '메시지 큐 & MSA' 노드 삭제 제안 (커리큘럼에서 제거 권고)
+INSERT INTO recommendation_changes
+    (user_id, node_id, source_recommendation_id, reason, context_summary,
+     node_change_type, change_status, decision_status, suggested_at, created_at, updated_at)
+SELECT
+    u.user_id,
+    rn.node_id,
+    NULL,
+    '현재 학습 단계에서 MSA는 과도한 범위입니다. 핵심 스택 완료 후 다시 추가하는 것을 권장합니다.',
+    'tilCount=1, weaknessSignal=true, warningCount=2, historyCount=0',
+    'DELETE',
+    'SUGGESTED',
+    'UNDECIDED',
+    TIMESTAMP '2026-04-07 09:05:00',
+    TIMESTAMP '2026-04-07 09:05:00',
+    TIMESTAMP '2026-04-07 09:05:00'
+FROM users u
+JOIN roadmap_nodes rn ON rn.title = '메시지 큐 & MSA'
+JOIN roadmaps r ON r.roadmap_id = rn.roadmap_id AND r.title = 'Backend Master Roadmap'
+WHERE u.email = 'learner@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1 FROM recommendation_changes rc
+      WHERE rc.user_id = u.user_id AND rc.node_id = rn.node_id AND rc.change_status = 'SUGGESTED'
+  );
+
+-- ============================================================
+-- [TEST DATA END]
+-- ============================================================
