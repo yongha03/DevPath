@@ -8,6 +8,7 @@ import com.devpath.api.recommendation.dto.RecommendationChangeResponse;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
 import com.devpath.domain.learning.entity.automation.AutomationRuleStatus;
+import com.devpath.domain.learning.entity.recommendation.NodeChangeType;
 import com.devpath.domain.learning.entity.recommendation.RecommendationChange;
 import com.devpath.domain.learning.entity.recommendation.RecommendationChangeStatus;
 import com.devpath.domain.learning.entity.recommendation.RecommendationHistory;
@@ -15,6 +16,11 @@ import com.devpath.domain.learning.entity.recommendation.SupplementRecommendatio
 import com.devpath.domain.learning.repository.automation.LearningAutomationRuleRepository;
 import com.devpath.domain.learning.repository.recommendation.RecommendationChangeRepository;
 import com.devpath.domain.learning.repository.recommendation.RecommendationHistoryRepository;
+import com.devpath.domain.roadmap.entity.CustomRoadmap;
+import com.devpath.domain.roadmap.entity.CustomRoadmapNode;
+import com.devpath.domain.roadmap.entity.NodeStatus;
+import com.devpath.domain.roadmap.repository.CustomNodePrerequisiteRepository;
+import com.devpath.domain.roadmap.repository.CustomRoadmapNodeRepository;
 import com.devpath.domain.roadmap.repository.RoadmapRepository;
 import com.devpath.domain.user.entity.User;
 import com.devpath.domain.user.repository.UserRepository;
@@ -32,6 +38,8 @@ public class RecommendationChangeService {
     private final RecommendationHistoryRepository recommendationHistoryRepository;
     private final UserRepository userRepository;
     private final RoadmapRepository roadmapRepository;
+    private final CustomRoadmapNodeRepository customRoadmapNodeRepository;
+    private final CustomNodePrerequisiteRepository customNodePrerequisiteRepository;
     private final LearningAutomationRuleRepository learningAutomationRuleRepository;
     private final SupplementRecommendationService supplementRecommendationService;
     private final RecommendationHistoryService recommendationHistoryService;
@@ -100,6 +108,10 @@ public class RecommendationChangeService {
         }
 
         recommendationChange.apply();
+
+        if (recommendationChange.getNodeChangeType() == NodeChangeType.DELETE) {
+            deleteNodeFromCustomRoadmaps(recommendationChange.getRoadmapNode().getNodeId(), userId);
+        }
 
         if (recommendationChange.getSourceRecommendationId() != null) {
             supplementRecommendationService.approveRecommendation(userId, recommendationChange.getSourceRecommendationId());
@@ -217,6 +229,7 @@ public class RecommendationChangeService {
                     .sourceRecommendationId(supplementRecommendation.getId())
                     .reason(reason)
                     .contextSummary(contextSummary)
+                    .nodeChangeType(NodeChangeType.ADD)
                     .build()
             ));
     }
@@ -277,6 +290,35 @@ public class RecommendationChangeService {
             .orElse(requestedLimit);
     }
 
+    // DELETE 타입 변경 적용: 해당 유저의 커스텀 로드맵에서 노드 삭제 + prerequisites 정리 + 진행률 재계산
+    private void deleteNodeFromCustomRoadmaps(Long originalNodeId, Long userId) {
+        List<CustomRoadmapNode> targets =
+            customRoadmapNodeRepository.findAllByOriginalNodeIdAndUserId(originalNodeId, userId);
+
+        for (CustomRoadmapNode node : targets) {
+            CustomRoadmap roadmap = node.getCustomRoadmap();
+
+            // 삭제 전 남은 노드 기준으로 진행률 미리 계산
+            List<CustomRoadmapNode> allNodes =
+                customRoadmapNodeRepository.findAllByCustomRoadmap(roadmap);
+            long completedCount = allNodes.stream()
+                .filter(n -> !n.getId().equals(node.getId()))
+                .filter(n -> NodeStatus.COMPLETED == n.getStatus())
+                .count();
+            int remainingTotal = allNodes.size() - 1;
+            int newRate = remainingTotal == 0 ? 0 : (int) (completedCount * 100 / remainingTotal);
+
+            // prerequisites 양방향 정리
+            customNodePrerequisiteRepository.deleteAllByCustomNodeOrPrerequisiteCustomNode(node);
+
+            // 노드 삭제
+            customRoadmapNodeRepository.delete(node);
+
+            // 진행률 업데이트
+            roadmap.updateProgressRate(newRate);
+        }
+    }
+
     // 양의 정수 문자열을 파싱한다.
     private int parsePositiveInt(String value, int defaultValue) {
         try {
@@ -304,6 +346,7 @@ public class RecommendationChangeService {
             .nodeTitle(recommendationChange.getRoadmapNode().getTitle())
             .reason(recommendationChange.getReason())
             .contextSummary(recommendationChange.getContextSummary())
+            .nodeChangeType(recommendationChange.getNodeChangeType().name())
             .changeStatus(recommendationChange.getChangeStatus().name())
             .decisionStatus(recommendationChange.getDecisionStatus().name())
             .suggestedAt(recommendationChange.getSuggestedAt())

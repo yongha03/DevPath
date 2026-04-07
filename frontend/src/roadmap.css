@@ -1,0 +1,413 @@
+/* index.css에서 Pretendard, body font-family 이미 선언 */
+
+:root {
+  --header-height: 64px;
+}
+
+/* ── 헤더 ── */
+.app-header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--header-height);
+  z-index: 999;
+  background: #fff;
+  border-bottom: 1px solid #f3f4f6;
+}
+
+/* ── 메인 노드 박스 ── */
+.node-box {
+  position: relative;
+  z-index: 20;
+  background: white;
+  border: 2px solid #334155;
+  padding: 14px 20px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.95rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  width: 380px;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+}
+.node-box:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+  border-color: #00c471;
+}
+
+/* 노드 위아래 척추 연결선 */
+.node-box::before {
+  content: '';
+  position: absolute;
+  left: 50%; bottom: calc(100% + 1px);
+  width: 3px; height: 79px;
+  background: #cbd5e1;
+  transform: translateX(-50%);
+  z-index: 0;
+}
+.node-box::after {
+  content: '';
+  position: absolute;
+  left: 50%; top: calc(100% + 1px);
+  width: 3px; height: 79px;
+  background: #cbd5e1;
+  transform: translateX(-50%);
+  z-index: 0;
+}
+.node-first .node-box::before { display: none; }
+.node-last .node-box::after { display: none; }
+
+/* ── 노드 상태 색상 ── */
+.status-done    { background: #f0fdf4; border-color: #00c471; color: #166534; }
+.status-active  { background: #fefce8; border-color: #eab308; color: #854d0e; }
+.status-locked  { background: #f1f5f9; border-color: #cbd5e1; color: #94a3b8; }
+.status-locked:hover { transform: none; box-shadow: none; border-color: #cbd5e1; }
+
+/* ── 변경사항 노드 오버레이 ── */
+.node-change-add {
+  border: 3px dashed #3b82f6 !important;
+  background: #eff6ff !important;
+  animation: pulse-blue 2s infinite;
+}
+.node-change-modify {
+  border: 3px dashed #f59e0b !important;
+  background: #fef3c7 !important;
+  animation: pulse-orange 2s infinite;
+}
+.node-change-delete {
+  border: 3px dashed #ef4444 !important;
+  background: #fee2e2 !important;
+  opacity: 0.6;
+  animation: pulse-red 2s infinite;
+}
+
+@keyframes pulse-blue {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.6); }
+  50%       { box-shadow: 0 0 0 8px rgba(59, 130, 246, 0); }
+}
+@keyframes pulse-orange {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.6); }
+  50%       { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
+}
+@keyframes pulse-red {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.6); }
+  50%       { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+}
+
+/* ── Proof Card 배지 ── */
+.proof-card-wrapper {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  z-index: 15;
+  cursor: pointer;
+}
+.proof-card-wrapper.left  { right: 100%; flex-direction: row-reverse; }
+.proof-card-wrapper.right { left: 100%; }
+
+.proof-card-line {
+  width: 40px; height: 2px;
+  background: #00c471;
+}
+.proof-card-box {
+  background: #fff;
+  border: 2px solid #00c471;
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px; font-weight: 800;
+  color: #00c471;
+  display: flex; align-items: center; gap: 6px;
+  box-shadow: 0 4px 10px rgba(0, 196, 113, 0.15);
+  white-space: nowrap;
+  transition: transform 0.2s;
+}
+.proof-card-box:hover { transform: translateY(-2px); }
+
+/* ── Rule badge ── */
+.rule-badge {
+  position: absolute; top: -10px; right: 10px;
+  font-size: 0.7rem; padding: 2px 8px;
+  border-radius: 99px; font-weight: 800;
+  border: 1px solid; z-index: 30;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+.rule-all  { background: #ecfdf5; color: #166534; border-color: #00c471; }
+.rule-pick { background: #eff6ff; color: #1e40af; border-color: #3b82f6; }
+
+/* ── 노드 내부 요소 ── */
+.node-header      { display: flex; align-items: center; justify-content: space-between; width: 100%; }
+.node-title-group { display: flex; align-items: center; gap: 8px; font-size: 1.05rem; }
+.node-desc        { font-size: 0.75rem; font-weight: 500; opacity: 0.7; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.meta-tag         { background: rgba(0,0,0,0.06); padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: normal; }
+.node-meta        { display: flex; gap: 4px; margin-left: auto; }
+
+.progress-container  { width: 100%; display: flex; align-items: center; gap: 8px; margin-top: 6px; }
+.node-progress-bg    { flex: 1; height: 6px; background: rgba(0,0,0,0.1); border-radius: 99px; overflow: hidden; }
+.node-progress-bar   { height: 100%; background: #eab308; border-radius: 99px; }
+.progress-pct        { font-size: 10px; font-weight: 800; color: #b45309; white-space: nowrap; }
+
+/* ── 변경 라벨 배지 (노드 위) ── */
+.change-label-badge {
+  position: absolute; top: -28px; left: 50%; transform: translateX(-50%);
+  font-size: 0.75rem; font-weight: 700;
+  padding: 2px 12px; border-radius: 99px;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+  display: flex; align-items: center; gap: 4px;
+  white-space: nowrap;
+}
+
+/* ── 로드맵 행 레이아웃 ── */
+.roadmap-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 100%;
+  position: relative;
+  margin-bottom: 80px;
+}
+
+/* ── 가로 연결선 (spine → sub-group) ── */
+.connector {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  height: 2px; width: 40px; background: #cbd5e1;
+  z-index: 10; border-radius: 1px;
+}
+.connector.left  { right: 50%; margin-right: 190px; }
+.connector.right { left: 50%;  margin-left: 190px; }
+
+/* ── 서브노드 그룹 ── */
+.sub-group {
+  position: absolute; top: 50%; transform: translateY(-50%);
+  display: flex; flex-direction: column; gap: 12px;
+  z-index: 10;
+}
+.sub-group.right { left: 50%;  margin-left: 230px; align-items: flex-start; padding-left: 20px; }
+.sub-group.left  { right: 50%; margin-right: 230px; align-items: flex-end;   padding-right: 20px; }
+
+/* 서브그룹 수직 줄기 */
+.sub-group::before {
+  content: ''; position: absolute;
+  top: 18px; bottom: 18px; width: 2px;
+  background: #cbd5e1; border-radius: 1px;
+}
+.sub-group.right::before { left: 0; }
+.sub-group.left::before  { right: 0; }
+.sub-group:has(> .sub-row:only-child)::before { display: none; }
+
+/* 서브노드 행 */
+.sub-row {
+  display: flex; align-items: center; gap: 6px;
+  position: relative; height: 36px;
+}
+.sub-row::after {
+  content: ''; position: absolute;
+  top: 50%; transform: translateY(-50%);
+  width: 20px; height: 2px;
+  background: #cbd5e1; border-radius: 1px;
+}
+.sub-group.right .sub-row::after { left: -20px; }
+.sub-group.left  .sub-row::after { right: -20px; }
+
+/* ── 서브노드 칩 ── */
+.sub-node {
+  background: #fff; border: 1px solid #cbd5e1;
+  color: #475569; padding: 8px 14px;
+  font-size: 0.8rem; border-radius: 99px;
+  position: relative; display: inline-flex;
+  align-items: center; justify-content: center;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  transition: all 0.2s; cursor: pointer;
+  font-weight: 600; height: 36px;
+  box-sizing: border-box; z-index: 20;
+}
+.sub-node:hover  { transform: scale(1.05); border-color: #00c471; color: #00c471; background: #f0fdf4; }
+.sub-node.checked { background: #dcfce7; border-color: #00c471; color: #166534; }
+
+/* ── 변경사항 패널 ── */
+.changes-panel {
+  position: fixed; right: 0;
+  top: var(--header-height); bottom: 0;
+  width: 400px;
+  background: white;
+  border-left: 1px solid #e5e7eb;
+  box-shadow: -4px 0 24px rgba(0,0,0,0.08);
+  z-index: 100;
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+  display: flex; flex-direction: column;
+}
+.changes-panel.open { transform: translateX(0); }
+
+.tab-btn { flex: 1; padding: 12px; font-weight: bold; font-size: 14px; color: #64748b; border-bottom: 2px solid transparent; }
+.tab-btn.active { color: #00c471; border-bottom-color: #00c471; background: #f0fdf4; }
+.filter-chip { padding: 4px 10px; border-radius: 99px; font-size: 11px; font-weight: bold; border: 1px solid #e2e8f0; color: #64748b; cursor: pointer; }
+.filter-chip.active { background: #1e293b; color: white; border-color: #1e293b; }
+
+.change-item {
+  border-left: 4px solid transparent;
+  margin-bottom: 8px; background: white;
+  border-radius: 8px; border: 1px solid #e2e8f0;
+  padding: 12px; cursor: pointer;
+}
+.change-item:hover { background: #f8fafc; }
+.change-item.new      { border-left-color: #3b82f6; }
+.change-item.modified { border-left-color: #f59e0b; }
+.change-item.delete   { border-left-color: #ef4444; }
+
+/* ── 노드 카운트 배지 ── */
+.node-count-wrap {
+  display: inline-flex; align-items: stretch;
+  gap: 1px; border-radius: 6px; overflow: hidden;
+  background: #e5e7eb;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.04);
+}
+.node-count-card {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 2px; padding: 5px 10px;
+  background: white; min-width: 42px;
+}
+.node-count-card.total { background: linear-gradient(135deg, #00c471 0%, #00e887 100%); }
+.node-count-card.done  { background: linear-gradient(135deg, #3b82f6 0%, #60a5fa 100%); }
+.node-count-label  { font-size: 8px; font-weight: 800; color: #64748b; line-height: 1; }
+.node-count-number { font-size: 17px; font-weight: 900; line-height: 1; color: #0f172a; }
+.node-count-card.total .node-count-label,
+.node-count-card.total .node-count-number,
+.node-count-card.done  .node-count-label,
+.node-count-card.done  .node-count-number { color: white; }
+
+/* ── 아코디언 ── */
+.info-accordion { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
+.info-accordion.open { max-height: 800px; transition: max-height 0.5s ease-in; }
+.chevron { transition: transform 0.3s; }
+.chevron.rotate { transform: rotate(180deg); }
+
+/* ── 스크롤바 ── */
+.custom-scrollbar::-webkit-scrollbar { width: 6px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 3px; }
+
+/* ── 배지 펄스 ── */
+@keyframes badge-pulse {
+  0%, 100% { transform: scale(1); }
+  50%       { transform: scale(1.1); }
+}
+.badge-pulse { animation: badge-pulse 2s infinite; }
+
+/* ── 사이드 드로어 ── */
+.side-drawer {
+  position: fixed;
+  right: 0;
+  top: var(--header-height);
+  height: calc(100vh - var(--header-height));
+  width: 500px;
+  background: white;
+  box-shadow: -4px 0 32px rgba(0,0,0,0.12);
+  z-index: 200;
+  transform: translateX(100%);
+  transition: transform 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  border-left: 1px solid #e5e7eb;
+}
+.side-drawer.open { transform: translateX(0); }
+
+.drawer-overlay {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  top: var(--header-height);
+  background: rgba(0,0,0,0.3);
+  z-index: 150;
+  backdrop-filter: blur(2px);
+}
+
+/* ── 분기 트리 레이아웃 ── */
+.tree-branch-container {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  width: 100%;
+  position: relative;
+  /* 진입·출구 수직선은 인접 spine node의 ::after / ::before 가 담당하므로
+     container 자체 pseudo-element 없음 — 이중 생성 방지 */
+  margin-bottom: 80px;
+}
+
+/* 가지 열 */
+.tree-branch {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 80px;
+  flex: 1;
+  max-width: 460px;
+  position: relative;
+  padding: 16px 12px 16px;
+}
+
+/* 가지 내부 수직 연결선 (노드가 2개 이상일 때만) */
+.tree-branch::before {
+  content: '';
+  position: absolute;
+  /* 첫 노드 중심 ~ 마지막 노드 중심 연결 */
+  top: calc(16px + 56px);      /* padding-top + 노드 반높이 */
+  bottom: calc(16px + 56px);
+  left: 50%;
+  width: 3px;
+  background: #cbd5e1;
+  transform: translateX(-50%);
+  z-index: 0;
+}
+.tree-branch:has(.roadmap-row:only-child)::before { display: none; }
+
+/* 분기 내 노드의 spine 수직선(::before/::after) 숨김 */
+.tree-branch .roadmap-row .node-box::before,
+.tree-branch .roadmap-row .node-box::after { display: none; }
+
+/* 중앙 분기점 ─ 수평선으로 spine 중심 ↔ 각 가지 연결 */
+/* 왼쪽 가지: 가지 오른쪽 끝(=center)에서 container 중앙으로 */
+.tree-branch.branch-left::after {
+  content: '';
+  position: absolute;
+  top: calc(16px + 56px);      /* 첫 노드 수직 중심 */
+  right: -3px;
+  width: 50%;
+  height: 3px;
+  background: #cbd5e1;
+  z-index: 1;
+}
+/* 오른쪽 가지: container 중앙에서 가지 왼쪽 끝으로 */
+.tree-branch.branch-right::after {
+  content: '';
+  position: absolute;
+  top: calc(16px + 56px);
+  left: -3px;
+  width: 50%;
+  height: 3px;
+  background: #cbd5e1;
+  z-index: 1;
+}
+
+/* 분기 구분선 (가운데 수직 기둥) */
+.branch-divider {
+  width: 3px;
+  background: #cbd5e1;
+  margin: 0;
+  border-radius: 0;
+  /* 높이는 두 가지 중 더 큰 쪽에 맞춤 */
+  align-self: stretch;
+}
+
+/* ── 헤더 네비게이션 ── */
+.header-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 40px;
+  white-space: nowrap;
+}

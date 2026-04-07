@@ -31,6 +31,9 @@ public class RecommendationChangeResponse {
         @Schema(description = "Context summary", example = "tilCount=4, weaknessSignal=true, warningCount=2, historyCount=3")
         private String contextSummary;
 
+        @Schema(description = "Change type (ADD / MODIFY / DELETE)", example = "DELETE")
+        private String nodeChangeType;
+
         @Schema(description = "Change status", example = "SUGGESTED")
         private String changeStatus;
 

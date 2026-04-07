@@ -1,6 +1,13 @@
 import { readStoredAuthSession } from './auth-session'
 import type { AuthLoginRequest, AuthSignUpRequest, AuthTokenResponse } from '../types/auth'
 import type { ApiResponse, HomeOverview } from '../types/home'
+import type {
+  RoadmapDetail,
+  MyRoadmapSummary,
+  RecommendationChange,
+  RecommendationChangeHistory,
+  ProofCardSummary,
+} from '../types/roadmap'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') ?? ''
 
@@ -50,6 +57,39 @@ export const homeApi = {
       method: 'GET',
       signal,
     })
+  },
+}
+
+export const roadmapApi = {
+  getMyRoadmaps(signal?: AbortSignal) {
+    const session = readStoredAuthSession()
+    const query = session?.userId ? `?userId=${session.userId}` : ''
+    return request<{ roadmaps: MyRoadmapSummary[] }>(`/api/my-roadmaps${query}`, { method: 'GET', signal }, { auth: true })
+  },
+  getMyRoadmapDetail(customRoadmapId: number, signal?: AbortSignal) {
+    const session = readStoredAuthSession()
+    const query = session?.userId ? `?userId=${session.userId}` : ''
+    return request<RoadmapDetail>(`/api/my-roadmaps/${customRoadmapId}${query}`, { method: 'GET', signal }, { auth: true })
+  },
+  copyRoadmap(originalRoadmapId: number) {
+    const session = readStoredAuthSession()
+    const query = session?.userId ? `?userId=${session.userId}` : ''
+    return request<{ customRoadmapId: number }>(`/api/my-roadmaps/${originalRoadmapId}${query}`, { method: 'POST' }, { auth: true })
+  },
+  getPendingChanges(signal?: AbortSignal) {
+    return request<RecommendationChange[]>('/api/me/recommendation-changes', { method: 'GET', signal }, { auth: true })
+  },
+  getChangeHistories(signal?: AbortSignal) {
+    return request<RecommendationChangeHistory[]>('/api/me/recommendation-changes/histories', { method: 'GET', signal }, { auth: true })
+  },
+  applyChange(changeId: number) {
+    return request<RecommendationChange>(`/api/me/recommendation-changes/${changeId}/apply`, { method: 'POST' }, { auth: true })
+  },
+  ignoreChange(changeId: number) {
+    return request<RecommendationChange>(`/api/me/recommendation-changes/${changeId}/ignore`, { method: 'POST' }, { auth: true })
+  },
+  getProofCards(signal?: AbortSignal) {
+    return request<ProofCardSummary[]>('/api/me/proof-cards', { method: 'GET', signal }, { auth: true })
   },
 }
 

@@ -5,6 +5,7 @@ import com.devpath.domain.roadmap.entity.CustomRoadmapNode;
 import com.devpath.domain.roadmap.entity.NodeStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import lombok.AccessLevel;
@@ -149,6 +150,15 @@ public class MyRoadmapDto {
     @Schema(description = "선행 커스텀 노드 ID 목록")
     private List<Long> prerequisiteCustomNodeIds;
 
+    @Schema(description = "노드 설명")
+    private String content;
+
+    @Schema(description = "서브토픽 칩 목록")
+    private List<String> subTopics;
+
+    @Schema(description = "분기 그룹 (null=척추, 1=왼쪽, 2=오른쪽)")
+    private Integer branchGroup;
+
     @Builder
     private NodeItem(
         Long customNodeId,
@@ -156,16 +166,26 @@ public class MyRoadmapDto {
         String title,
         Integer sortOrder,
         NodeStatus status,
-        List<Long> prerequisiteCustomNodeIds) {
+        List<Long> prerequisiteCustomNodeIds,
+        String content,
+        List<String> subTopics,
+        Integer branchGroup) {
       this.customNodeId = customNodeId;
       this.originalNodeId = originalNodeId;
       this.title = title;
       this.sortOrder = sortOrder;
       this.status = status;
       this.prerequisiteCustomNodeIds = prerequisiteCustomNodeIds;
+      this.content = content;
+      this.subTopics = subTopics;
+      this.branchGroup = branchGroup;
     }
 
     public static NodeItem from(CustomRoadmapNode node, List<Long> prerequisiteCustomNodeIds) {
+      String raw = node.getOriginalNode().getSubTopics();
+      List<String> chips = (raw != null && !raw.isBlank())
+          ? Arrays.stream(raw.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList()
+          : List.of();
       return NodeItem.builder()
           .customNodeId(node.getId())
           .originalNodeId(node.getOriginalNode().getNodeId())
@@ -173,6 +193,9 @@ public class MyRoadmapDto {
           .sortOrder(node.getOriginalNode().getSortOrder())
           .status(node.getStatus())
           .prerequisiteCustomNodeIds(prerequisiteCustomNodeIds)
+          .content(node.getOriginalNode().getContent())
+          .subTopics(chips)
+          .branchGroup(node.getOriginalNode().getBranchGroup())
           .build();
     }
   }

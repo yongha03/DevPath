@@ -50,6 +50,10 @@ public class RecommendationChange {
     private String contextSummary;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "node_change_type", nullable = false, length = 10)
+    private NodeChangeType nodeChangeType;
+
+    @Enumerated(EnumType.STRING)
     @Column(name = "change_status", nullable = false, length = 30)
     private RecommendationChangeStatus changeStatus;
 
@@ -81,6 +85,7 @@ public class RecommendationChange {
         Long sourceRecommendationId,
         String reason,
         String contextSummary,
+        NodeChangeType nodeChangeType,
         RecommendationChangeStatus changeStatus,
         RecommendationDecisionStatus decisionStatus,
         LocalDateTime suggestedAt
@@ -90,6 +95,7 @@ public class RecommendationChange {
         this.sourceRecommendationId = sourceRecommendationId;
         this.reason = reason;
         this.contextSummary = contextSummary;
+        this.nodeChangeType = nodeChangeType == null ? NodeChangeType.ADD : nodeChangeType;
         this.changeStatus = changeStatus == null ? RecommendationChangeStatus.SUGGESTED : changeStatus;
         this.decisionStatus = decisionStatus == null ? RecommendationDecisionStatus.UNDECIDED : decisionStatus;
         this.suggestedAt = suggestedAt == null ? LocalDateTime.now() : suggestedAt;

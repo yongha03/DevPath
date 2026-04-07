@@ -44,6 +44,12 @@ public class RoadmapNode {
   @Column(name = "sort_order")
   private Integer sortOrder;
 
+  @Column(name = "sub_topics", columnDefinition = "TEXT")
+  private String subTopics;
+
+  @Column(name = "branch_group")
+  private Integer branchGroup;
+
   public void changeNodeType(String nodeType) {
     this.nodeType = nodeType;
   }
