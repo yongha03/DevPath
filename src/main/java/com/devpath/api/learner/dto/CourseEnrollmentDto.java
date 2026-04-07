@@ -2,6 +2,7 @@ package com.devpath.api.learner.dto;
 
 import com.devpath.domain.course.entity.CourseEnrollment;
 import com.devpath.domain.course.entity.EnrollmentStatus;
+import java.math.BigDecimal;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -52,6 +53,10 @@ public class CourseEnrollmentDto {
         private String courseTitle;
         private String instructorName;
         private String thumbnailUrl;
+        private BigDecimal price;
+        private BigDecimal originalPrice;
+        private String currency;
+        private Boolean hasCertificate;
         private EnrollmentStatus status;
         private Integer progressPercentage;
         private LocalDateTime enrolledAt;
@@ -65,6 +70,10 @@ public class CourseEnrollmentDto {
                     .courseTitle(enrollment.getCourse().getTitle())
                     .instructorName(enrollment.getCourse().getInstructor().getName())
                     .thumbnailUrl(enrollment.getCourse().getThumbnailUrl())
+                    .price(enrollment.getCourse().getPrice())
+                    .originalPrice(enrollment.getCourse().getOriginalPrice())
+                    .currency(enrollment.getCourse().getCurrency())
+                    .hasCertificate(enrollment.getCourse().getHasCertificate())
                     .status(enrollment.getStatus())
                     .progressPercentage(enrollment.getProgressPercentage())
                     .enrolledAt(enrollment.getEnrolledAt())

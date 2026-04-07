@@ -22,6 +22,20 @@ npm run dev
 
 `/api` 요청은 `http://localhost:8082` 으로 프록시되도록 설정해뒀습니다.
 
+## Docker Dev Hot Reload
+
+Use the dedicated development container when you want immediate frontend reflection without rebuilding the Nginx image every time.
+
+```bash
+docker compose up frontend-dev
+```
+
+- URL: `http://localhost:5173`
+- Frontend changes: reflected immediately through Vite dev server
+- Backend API proxy: `http://localhost:8082`
+
+Use `frontend` only for production-style static build testing on `http://localhost`.
+
 ## Build
 
 ```bash

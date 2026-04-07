@@ -135,6 +135,22 @@ public class UserProfile {
         this.phone = phone;
     }
 
+    public void updateLearnerProfile(
+            String bio,
+            String phone,
+            String profileImage,
+            String channelName,
+            String githubUrl,
+            String blogUrl
+    ) {
+        this.bio = bio;
+        this.phone = phone;
+        this.profileImage = profileImage;
+        this.channelName = channelName;
+        this.githubUrl = githubUrl;
+        this.blogUrl = blogUrl;
+    }
+
     public void changePublicVisibility(Boolean isPublic) {
         this.isPublic = Boolean.TRUE.equals(isPublic);
     }
