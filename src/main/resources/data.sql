@@ -6130,6 +6130,7 @@ INSERT INTO recommendation_changes (
     source_recommendation_id,
     reason,
     context_summary,
+    node_change_type,
     change_status,
     decision_status,
     suggested_at,
@@ -6144,6 +6145,7 @@ SELECT
     sr.recommendation_id,
     sr.reason,
     'tilCount=4, weaknessSignal=true, warningCount=2, historyCount=2',
+    'ADD',
     'SUGGESTED',
     'UNDECIDED',
     TIMESTAMP '2026-03-30 17:25:00',
@@ -6171,6 +6173,7 @@ INSERT INTO recommendation_changes (
     source_recommendation_id,
     reason,
     context_summary,
+    node_change_type,
     change_status,
     decision_status,
     suggested_at,
@@ -6185,6 +6188,7 @@ SELECT
     sr.recommendation_id,
     sr.reason,
     'tilCount=4, weaknessSignal=true, warningCount=2, historyCount=2',
+    'ADD',
     'SUGGESTED',
     'UNDECIDED',
     TIMESTAMP '2026-03-30 17:26:00',
@@ -6212,6 +6216,7 @@ INSERT INTO recommendation_changes (
     source_recommendation_id,
     reason,
     context_summary,
+    node_change_type,
     change_status,
     decision_status,
     suggested_at,
@@ -6226,6 +6231,7 @@ SELECT
     sr.recommendation_id,
     sr.reason,
     'tilCount=4, weaknessSignal=true, warningCount=2, historyCount=2',
+    'ADD',
     'SUGGESTED',
     'UNDECIDED',
     TIMESTAMP '2026-03-30 17:27:00',
@@ -6253,6 +6259,7 @@ INSERT INTO recommendation_changes (
     source_recommendation_id,
     reason,
     context_summary,
+    node_change_type,
     change_status,
     decision_status,
     suggested_at,
@@ -6267,6 +6274,7 @@ SELECT
     NULL,
     'Previously applied recommendation change sample.',
     'tilCount=2, weaknessSignal=true, warningCount=1, historyCount=0',
+    'ADD',
     'APPLIED',
     'APPLIED',
     TIMESTAMP '2026-03-28 17:00:00',
@@ -6291,6 +6299,7 @@ INSERT INTO recommendation_changes (
     source_recommendation_id,
     reason,
     context_summary,
+    node_change_type,
     change_status,
     decision_status,
     suggested_at,
@@ -6305,6 +6314,7 @@ SELECT
     NULL,
     'Previously ignored recommendation change sample.',
     'tilCount=1, weaknessSignal=false, warningCount=1, historyCount=1',
+    'ADD',
     'IGNORED',
     'IGNORED',
     TIMESTAMP '2026-03-29 18:00:00',
@@ -8040,3 +8050,382 @@ SELECT setval('project_role_id_seq', (SELECT COALESCE(MAX(id), 1) FROM project_r
 SELECT setval('mentoring_application_id_seq', (SELECT COALESCE(MAX(id), 1) FROM mentoring_application));
 SELECT setval('project_idea_post_id_seq', (SELECT COALESCE(MAX(id), 1) FROM project_idea_post));
 SELECT setval('project_proof_submission_id_seq', (SELECT COALESCE(MAX(id), 1) FROM project_proof_submission));
+
+-- ============================================================
+-- Backend Master Roadmap 노드 전면 교체 (기존 영문 노드 → 한국어 상세 노드)
+-- ============================================================
+
+-- Backend Master Roadmap 노드 삭제 전 모든 FK 의존 테이블 정리
+-- 완전한 FK 체인 순서 (가장 깊은 자식 → 부모 순)
+-- 1단계: quiz_answers (quiz_attempts, quiz_questions, quiz_question_options 참조)
+DELETE FROM quiz_answers
+WHERE attempt_id IN (
+    SELECT qa.attempt_id FROM quiz_attempts qa
+    WHERE qa.quiz_id IN (
+        SELECT quiz_id FROM quizzes
+        WHERE node_id IN (SELECT node_id FROM roadmap_nodes
+            WHERE roadmap_id = (SELECT roadmap_id FROM roadmaps WHERE title = 'Backend Master Roadmap'))
+    )
+);
+
+-- 2단계: quiz_question_options (quiz_questions 참조)
+DELETE FROM quiz_question_options
+WHERE question_id IN (
+    SELECT qq.question_id FROM quiz_questions qq
+    WHERE qq.quiz_id IN (
+        SELECT quiz_id FROM quizzes
+        WHERE node_id IN (SELECT node_id FROM roadmap_nodes
+            WHERE roadmap_id = (SELECT roadmap_id FROM roadmaps WHERE title = 'Backend Master Roadmap'))
+    )
+);
+
+-- 3단계: quiz_attempts (quizzes 참조)
+DELETE FROM quiz_attempts
+WHERE quiz_id IN (
+    SELECT quiz_id FROM quizzes
+    WHERE node_id IN (SELECT node_id FROM roadmap_nodes
+        WHERE roadmap_id = (SELECT roadmap_id FROM roadmaps WHERE title = 'Backend Master Roadmap'))
+);
+
+-- 4단계: quiz_questions (quizzes 참조)
+DELETE FROM quiz_questions
+WHERE quiz_id IN (
+    SELECT quiz_id FROM quizzes
+    WHERE node_id IN (SELECT node_id FROM roadmap_nodes
+        WHERE roadmap_id = (SELECT roadmap_id FROM roadmaps WHERE title = 'Backend Master Roadmap'))
+);
+
+-- 5단계: quizzes (roadmap_nodes 참조)
+DELETE FROM quizzes
+WHERE node_id IN (
+    SELECT node_id FROM roadmap_nodes
+    WHERE roadmap_id = (SELECT roadmap_id FROM roadmaps WHERE title = 'Backend Master Roadmap')
+);
+
+-- 6단계: assignment_submission_files (assignment_submissions 참조)
+DELETE FROM assignment_submission_files
+WHERE submission_id IN (
+    SELECT s.submission_id FROM assignment_submissions s
+    WHERE s.assignment_id IN (
+        SELECT assignment_id FROM assignments
+        WHERE node_id IN (SELECT node_id FROM roadmap_nodes
+            WHERE roadmap_id = (SELECT roadmap_id FROM roadmaps WHERE title = 'Backend Master Roadmap'))
+    )
+);
+
+-- 7단계: assignment_submissions (assignments 참조)
+DELETE FROM assignment_submissions
+WHERE assignment_id IN (
+    SELECT assignment_id FROM assignments
+    WHERE node_id IN (SELECT node_id FROM roadmap_nodes
+        WHERE roadmap_id = (SELECT roadmap_id FROM roadmaps WHERE title = 'Backend Master Roadmap'))
+);
+
+-- 8단계: assignment_rubrics (assignments 참조)
+DELETE FROM assignment_rubrics
+WHERE assignment_id IN (
+    SELECT assignment_id FROM assignments
+    WHERE node_id IN (SELECT node_id FROM roadmap_nodes
+        WHERE roadmap_id = (SELECT roadmap_id FROM roadmaps WHERE title = 'Backend Master Roadmap'))
+);
+
+-- 9단계: assignments (roadmap_nodes 참조)
+DELETE FROM assignments
+WHERE node_id IN (
+    SELECT node_id FROM roadmap_nodes
+    WHERE roadmap_id = (SELECT roadmap_id FROM roadmaps WHERE title = 'Backend Master Roadmap')
+);
+
+-- 10단계: certificate_download_histories (certificates 참조)
+DELETE FROM certificate_download_histories
+WHERE certificate_id IN (
+    SELECT c.certificate_id FROM certificates c
+    JOIN proof_cards pc ON pc.proof_card_id = c.proof_card_id
+    WHERE pc.node_id IN (
+        SELECT node_id FROM roadmap_nodes
+        WHERE roadmap_id = (SELECT roadmap_id FROM roadmaps WHERE title = 'Backend Master Roadmap')
+    )
+);
+
+-- 11단계: certificates (proof_cards 참조)
+DELETE FROM certificates
+WHERE proof_card_id IN (
+    SELECT pc.proof_card_id FROM proof_cards pc
+    WHERE pc.node_id IN (
+        SELECT node_id FROM roadmap_nodes
+        WHERE roadmap_id = (SELECT roadmap_id FROM roadmaps WHERE title = 'Backend Master Roadmap')
+    )
+);
+
+-- 12단계: proof_card_shares, proof_card_tags (proof_cards 참조)
+DELETE FROM proof_card_shares
+WHERE proof_card_id IN (
+    SELECT pc.proof_card_id FROM proof_cards pc
+    WHERE pc.node_id IN (
+        SELECT node_id FROM roadmap_nodes
+        WHERE roadmap_id = (SELECT roadmap_id FROM roadmaps WHERE title = 'Backend Master Roadmap')
+    )
+);
+
+DELETE FROM proof_card_tags
+WHERE proof_card_id IN (
+    SELECT pc.proof_card_id FROM proof_cards pc
+    WHERE pc.node_id IN (
+        SELECT node_id FROM roadmap_nodes
+        WHERE roadmap_id = (SELECT roadmap_id FROM roadmaps WHERE title = 'Backend Master Roadmap')
+    )
+);
+
+-- 13단계: proof_cards (roadmap_nodes, node_clearances 참조)
+DELETE FROM proof_cards
+WHERE node_id IN (
+    SELECT node_id FROM roadmap_nodes
+    WHERE roadmap_id = (SELECT roadmap_id FROM roadmaps WHERE title = 'Backend Master Roadmap')
+);
+
+-- 14단계: node_clearance_reasons (node_clearances 참조)
+DELETE FROM node_clearance_reasons
+WHERE node_clearance_id IN (
+    SELECT nc.node_clearance_id FROM node_clearances nc
+    WHERE nc.node_id IN (
+        SELECT node_id FROM roadmap_nodes
+        WHERE roadmap_id = (SELECT roadmap_id FROM roadmaps WHERE title = 'Backend Master Roadmap')
+    )
+);
+
+-- 15단계: node_clearances (roadmap_nodes 참조)
+DELETE FROM node_clearances
+WHERE node_id IN (
+    SELECT node_id FROM roadmap_nodes
+    WHERE roadmap_id = (SELECT roadmap_id FROM roadmaps WHERE title = 'Backend Master Roadmap')
+);
+
+-- 16단계: course_node_mappings (roadmap_nodes 참조)
+DELETE FROM course_node_mappings
+WHERE node_id IN (
+    SELECT node_id FROM roadmap_nodes
+    WHERE roadmap_id = (SELECT roadmap_id FROM roadmaps WHERE title = 'Backend Master Roadmap')
+);
+
+-- 17단계: recommendation_changes, recommendation_histories, risk_warnings, supplement_recommendations
+DELETE FROM recommendation_changes
+WHERE node_id IN (
+    SELECT node_id FROM roadmap_nodes
+    WHERE roadmap_id = (SELECT roadmap_id FROM roadmaps WHERE title = 'Backend Master Roadmap')
+);
+
+DELETE FROM recommendation_histories
+WHERE node_id IN (
+    SELECT node_id FROM roadmap_nodes
+    WHERE roadmap_id = (SELECT roadmap_id FROM roadmaps WHERE title = 'Backend Master Roadmap')
+);
+
+DELETE FROM risk_warnings
+WHERE node_id IN (
+    SELECT node_id FROM roadmap_nodes
+    WHERE roadmap_id = (SELECT roadmap_id FROM roadmaps WHERE title = 'Backend Master Roadmap')
+);
+
+DELETE FROM supplement_recommendations
+WHERE node_id IN (
+    SELECT node_id FROM roadmap_nodes
+    WHERE roadmap_id = (SELECT roadmap_id FROM roadmaps WHERE title = 'Backend Master Roadmap')
+);
+
+-- 18단계: node_completion_rules, node_recommendations, node_required_tags, prerequisites
+DELETE FROM node_completion_rules
+WHERE node_id IN (
+    SELECT node_id FROM roadmap_nodes
+    WHERE roadmap_id = (SELECT roadmap_id FROM roadmaps WHERE title = 'Backend Master Roadmap')
+);
+
+DELETE FROM node_recommendations
+WHERE node_id IN (
+    SELECT node_id FROM roadmap_nodes
+    WHERE roadmap_id = (SELECT roadmap_id FROM roadmaps WHERE title = 'Backend Master Roadmap')
+);
+
+DELETE FROM node_required_tags
+WHERE node_id IN (
+    SELECT node_id FROM roadmap_nodes
+    WHERE roadmap_id = (SELECT roadmap_id FROM roadmaps WHERE title = 'Backend Master Roadmap')
+);
+
+DELETE FROM prerequisites
+WHERE node_id IN (
+    SELECT node_id FROM roadmap_nodes
+    WHERE roadmap_id = (SELECT roadmap_id FROM roadmaps WHERE title = 'Backend Master Roadmap')
+) OR pre_node_id IN (
+    SELECT node_id FROM roadmap_nodes
+    WHERE roadmap_id = (SELECT roadmap_id FROM roadmaps WHERE title = 'Backend Master Roadmap')
+);
+
+-- 19단계: custom_node_prerequisites (custom_roadmap_nodes 참조)
+DELETE FROM custom_node_prerequisites
+WHERE custom_node_id IN (
+    SELECT crn.custom_node_id FROM custom_roadmap_nodes crn
+    WHERE crn.original_node_id IN (
+        SELECT node_id FROM roadmap_nodes
+        WHERE roadmap_id = (SELECT roadmap_id FROM roadmaps WHERE title = 'Backend Master Roadmap')
+    )
+) OR prerequisite_custom_node_id IN (
+    SELECT crn.custom_node_id FROM custom_roadmap_nodes crn
+    WHERE crn.original_node_id IN (
+        SELECT node_id FROM roadmap_nodes
+        WHERE roadmap_id = (SELECT roadmap_id FROM roadmaps WHERE title = 'Backend Master Roadmap')
+    )
+);
+
+-- 20단계: custom_roadmap_nodes (roadmap_nodes 참조)
+DELETE FROM custom_roadmap_nodes
+WHERE original_node_id IN (
+    SELECT node_id FROM roadmap_nodes
+    WHERE roadmap_id = (SELECT roadmap_id FROM roadmaps WHERE title = 'Backend Master Roadmap')
+);
+
+-- 21단계: custom_roadmaps (roadmaps 참조)
+DELETE FROM custom_roadmaps
+WHERE original_roadmap_id = (SELECT roadmap_id FROM roadmaps WHERE title = 'Backend Master Roadmap');
+
+-- 22단계: roadmap_nodes 삭제 (모든 자식 정리 완료)
+DELETE FROM roadmap_nodes
+WHERE roadmap_id = (SELECT roadmap_id FROM roadmaps WHERE title = 'Backend Master Roadmap');
+
+-- 척추 노드 (branch_group = NULL)
+INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
+SELECT r.roadmap_id, '인터넷 & 웹 기초',
+       'HTTP/HTTPS 동작 방식, DNS 조회 원리, 도메인과 호스팅 개념을 이해하고 브라우저가 서버와 통신하는 전체 흐름을 학습합니다.',
+       'CONCEPT', 1, 'HTTP/HTTPS,DNS 작동원리,도메인,호스팅,브라우저', NULL
+FROM roadmaps r WHERE r.title = 'Backend Master Roadmap';
+
+INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
+SELECT r.roadmap_id, 'OS & 터미널',
+       'Linux/Unix 운영체제 기본 명령어, 파일 시스템, 프로세스·스레드 관리, 메모리·I/O 관리 원리를 학습합니다.',
+       'CONCEPT', 2, 'Terminal 사용법,프로세스 관리,스레드와 동시성,메모리 관리,I/O 관리', NULL
+FROM roadmaps r WHERE r.title = 'Backend Master Roadmap';
+
+INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
+SELECT r.roadmap_id, 'Java 기초',
+       '변수/자료형, 제어문, 클래스·객체, 상속·다형성·캡슐화를 학습하고 Java로 기본 프로그램을 작성할 수 있습니다.',
+       'CONCEPT', 3, 'OOP,클래스와 객체,상속,인터페이스,제네릭,컬렉션 프레임워크', NULL
+FROM roadmaps r WHERE r.title = 'Backend Master Roadmap';
+
+INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
+SELECT r.roadmap_id, 'Git & 버전 관리',
+       'Git init/add/commit/branch/merge/rebase를 익히고 GitHub Pull Request 기반의 협업 워크플로우를 학습합니다.',
+       'PRACTICE', 4, 'Git 기초,브랜치 전략,GitFlow,Pull Request,코드 리뷰', NULL
+FROM roadmaps r WHERE r.title = 'Backend Master Roadmap';
+
+INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
+SELECT r.roadmap_id, 'RDB & SQL',
+       '관계형 데이터베이스 구조, 정규화, SELECT/JOIN/서브쿼리/집계함수를 학습하고 트랜잭션(ACID)의 원리를 이해합니다.',
+       'CONCEPT', 5, 'SQL CRUD,JOIN,서브쿼리,인덱스,트랜잭션,ACID,PostgreSQL', NULL
+FROM roadmaps r WHERE r.title = 'Backend Master Roadmap';
+
+INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
+SELECT r.roadmap_id, 'REST API 설계',
+       'REST 원칙, URI 명사형 설계, HTTP 메서드 활용, 상태코드 전략, Swagger(OpenAPI 3.0) 문서화를 학습합니다.',
+       'CONCEPT', 6, 'REST 원칙,URI 설계,HTTP 메서드,상태코드,Swagger,OpenAPI', NULL
+FROM roadmaps r WHERE r.title = 'Backend Master Roadmap';
+
+INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
+SELECT r.roadmap_id, 'Spring Boot & MVC',
+       'Auto-configuration, @Bean/@Component, DispatcherServlet, Controller-Service-Repository 3계층 구조를 학습합니다.',
+       'CONCEPT', 7, 'DI/IoC,@Bean,Auto-configuration,DispatcherServlet,3계층 구조', NULL
+FROM roadmaps r WHERE r.title = 'Backend Master Roadmap';
+
+INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
+SELECT r.roadmap_id, 'Spring Data JPA',
+       'Entity 설계, Repository 패턴, JPQL, FetchType(LAZY/EAGER), N+1 문제 해결 방법을 학습합니다.',
+       'CONCEPT', 8, 'Entity 매핑,Repository,JPQL,FetchType,N+1 해결,QueryDSL', NULL
+FROM roadmaps r WHERE r.title = 'Backend Master Roadmap';
+
+-- 분기 노드 (sort 9-10, 좌: Redis, 우: 테스트)
+INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
+SELECT r.roadmap_id, 'Redis 기초',
+       'Redis 자료구조(String/Hash/List/Set/ZSet), TTL 설정, Spring Cache(@Cacheable) 연동을 학습합니다.',
+       'PRACTICE', 9, 'String/Hash/List/Set/ZSet,TTL,Spring Cache,@Cacheable', 1
+FROM roadmaps r WHERE r.title = 'Backend Master Roadmap';
+
+INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
+SELECT r.roadmap_id, 'Redis 심화',
+       'Session 저장, JWT 블랙리스트 관리, Pub/Sub 메시지, 분산 락(Redisson)을 학습합니다.',
+       'PRACTICE', 10, 'Session 저장,JWT 블랙리스트,Pub/Sub,분산 락,Redisson', 1
+FROM roadmaps r WHERE r.title = 'Backend Master Roadmap';
+
+INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
+SELECT r.roadmap_id, 'JUnit5 & Mockito',
+       '@Test, @BeforeEach, Mock/Spy 객체, verify 검증을 활용한 단위 테스트 작성법을 학습합니다.',
+       'PRACTICE', 9, '@Test,@BeforeEach,Mock/Spy,verify,assertThat,BDD', 2
+FROM roadmaps r WHERE r.title = 'Backend Master Roadmap';
+
+INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
+SELECT r.roadmap_id, 'Spring Boot 테스트',
+       '@SpringBootTest, @WebMvcTest, MockMvc, TestRestTemplate를 활용한 통합 테스트 작성법을 학습합니다.',
+       'PRACTICE', 10, '@SpringBootTest,@WebMvcTest,MockMvc,TestRestTemplate,JaCoCo', 2
+FROM roadmaps r WHERE r.title = 'Backend Master Roadmap';
+
+-- 척추 뒷부분 (sort 11-15, branch_group = NULL)
+INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
+SELECT r.roadmap_id, 'Spring Security & JWT',
+       'SecurityFilterChain, Access/Refresh Token 구조, OncePerRequestFilter, OAuth2 소셜 로그인을 학습합니다.',
+       'CONCEPT', 11, 'SecurityFilterChain,JWT 구조,Access/Refresh Token,OAuth2,소셜 로그인', NULL
+FROM roadmaps r WHERE r.title = 'Backend Master Roadmap';
+
+INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
+SELECT r.roadmap_id, 'Docker & CI/CD',
+       'Dockerfile 작성, docker-compose 설정, GitHub Actions를 활용한 자동 빌드·테스트·배포 파이프라인을 구축합니다.',
+       'PRACTICE', 12, 'Dockerfile,docker-compose,GitHub Actions,CI/CD 파이프라인,AWS EC2', NULL
+FROM roadmaps r WHERE r.title = 'Backend Master Roadmap';
+
+INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
+SELECT r.roadmap_id, 'SOLID & 디자인패턴',
+       'SOLID 5원칙을 이해하고 GoF 디자인 패턴(Singleton/Factory/Strategy/Observer/Builder)을 코드에 적용합니다.',
+       'CONCEPT', 13, 'SRP,OCP,LSP,ISP,DIP,Singleton,Factory,Strategy,Observer', NULL
+FROM roadmaps r WHERE r.title = 'Backend Master Roadmap';
+
+INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
+SELECT r.roadmap_id, '웹 보안 기초',
+       'OWASP Top 10 취약점을 이해하고 XSS/CSRF/SQL Injection 방어, HTTPS/TLS 설정을 학습합니다.',
+       'CONCEPT', 14, 'OWASP Top 10,XSS,CSRF,SQL Injection,HTTPS/TLS,CORS,Rate Limiting', NULL
+FROM roadmaps r WHERE r.title = 'Backend Master Roadmap';
+
+INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
+SELECT r.roadmap_id, '메시지 큐 & MSA',
+       'Kafka Topic/Producer/Consumer와 MSA 서비스 분리 기준, API Gateway 패턴을 학습합니다.',
+       'CONCEPT', 15, 'Kafka,Topic/Partition,Producer/Consumer,MSA,API Gateway,서비스 분리', NULL
+FROM roadmaps r WHERE r.title = 'Backend Master Roadmap';
+
+-- learner@devpath.com 커스텀 로드맵 재생성
+INSERT INTO custom_roadmaps (user_id, original_roadmap_id, title, progress_rate, created_at, updated_at)
+SELECT u.user_id, r.roadmap_id, r.title, 0,
+       TIMESTAMP '2026-03-28 10:00:00', TIMESTAMP '2026-03-28 10:00:00'
+FROM users u
+JOIN roadmaps r ON r.title = 'Backend Master Roadmap'
+WHERE u.email = 'learner@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1 FROM custom_roadmaps cr
+      WHERE cr.user_id = u.user_id AND cr.original_roadmap_id = r.roadmap_id
+  );
+
+INSERT INTO custom_roadmap_nodes (custom_roadmap_id, original_node_id, status, started_at, completed_at)
+SELECT cr.custom_roadmap_id,
+       rn.node_id,
+       CASE
+           WHEN rn.sort_order = 1 THEN 'COMPLETED'
+           WHEN rn.sort_order = 2 THEN 'IN_PROGRESS'
+           ELSE 'NOT_STARTED'
+       END,
+       CASE WHEN rn.sort_order <= 2 THEN TIMESTAMP '2026-03-28 10:00:00' ELSE NULL END,
+       CASE WHEN rn.sort_order = 1  THEN TIMESTAMP '2026-03-29 18:00:00' ELSE NULL END
+FROM custom_roadmaps cr
+JOIN users u ON u.user_id = cr.user_id
+JOIN roadmaps r ON r.roadmap_id = cr.original_roadmap_id
+JOIN roadmap_nodes rn ON rn.roadmap_id = r.roadmap_id
+WHERE u.email = 'learner@devpath.com'
+  AND r.title = 'Backend Master Roadmap'
+  AND NOT EXISTS (
+      SELECT 1 FROM custom_roadmap_nodes crn
+      WHERE crn.custom_roadmap_id = cr.custom_roadmap_id
+        AND crn.original_node_id = rn.node_id
+  );

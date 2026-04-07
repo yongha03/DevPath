@@ -46,8 +46,8 @@ spring:
 
   jpa:
     hibernate:
-      # 엔티티 기준 스키마 반영
-      ddl-auto: update
+      # 엔티티 기준 스키마 재생성 (개발 단계)
+      ddl-auto: create
     show-sql: true
     defer-datasource-initialization: true
     properties:
