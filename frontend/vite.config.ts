@@ -39,6 +39,8 @@ export default defineConfig({
         instructorMentoring: resolve(__dirname, 'instructor-mentoring.html'),
         instructorMarketing: resolve(__dirname, 'instructor-marketing.html'),
         instructorReviews: resolve(__dirname, 'instructor-reviews.html'),
+        instructorProfile: resolve(__dirname, 'instructor-profile.html'),
+        instructorEditProfile: resolve(__dirname, 'instructor-edit-profile.html'),
         lectureList: resolve(__dirname, 'lecture-list.html'),
         courseDetail: resolve(__dirname, 'course-detail.html'),
         instructorChannel: resolve(__dirname, 'instructor-channel.html'),

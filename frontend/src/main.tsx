@@ -1,10 +1,4 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
 import App from './App.tsx'
+import { renderPage } from './render-page'
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
-)
+renderPage(<App />, { missingRootMessage: 'home root element was not found' })

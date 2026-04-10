@@ -1,7 +1,23 @@
 import type { AuthSession, AuthTokenClaims, AuthTokenResponse } from '../types/auth'
+import {
+  EXPIRED_AUTH_TOAST_MESSAGE,
+  LOGIN_SUCCESS_AUTH_TOAST_MESSAGE,
+  LOGOUT_AUTH_TOAST_MESSAGE,
+  queueAuthToast,
+  showAuthToast,
+} from './auth-toast'
 
 const AUTH_STORAGE_KEY = 'devpath.auth.session'
+const EXPIRY_SKEW_MS = 1000
+
+let expiryTimeoutId: number | null = null
+
 export const AUTH_SESSION_SYNC_EVENT = 'devpath:auth-session-sync'
+
+type AuthToastOptions = {
+  persistToast?: boolean
+  toastMessage?: string | null
+}
 
 function decodeBase64Url(value: string) {
   const normalized = value.replace(/-/g, '+').replace(/_/g, '/')
@@ -58,6 +74,19 @@ function notifyAuthSessionChanged() {
   window.dispatchEvent(new Event(AUTH_SESSION_SYNC_EVENT))
 }
 
+function emitAuthToast(message: string | null | undefined, options?: AuthToastOptions) {
+  if (!message) {
+    return
+  }
+
+  if (options?.persistToast) {
+    queueAuthToast(message)
+    return
+  }
+
+  showAuthToast(message)
+}
+
 function readFromStorage(storage: Storage): AuthSession | null {
   const raw = storage.getItem(AUTH_STORAGE_KEY)
 
@@ -73,9 +102,49 @@ function readFromStorage(storage: Storage): AuthSession | null {
   }
 }
 
+function clearExpiryTimer() {
+  if (expiryTimeoutId !== null) {
+    window.clearTimeout(expiryTimeoutId)
+    expiryTimeoutId = null
+  }
+}
+
+function getStoredSessionRaw() {
+  return readFromStorage(localStorage) ?? readFromStorage(sessionStorage)
+}
+
+function isSessionExpired(session: AuthSession, nowMs = Date.now()) {
+  if (!session.exp) {
+    return false
+  }
+
+  return session.exp * 1000 <= nowMs + EXPIRY_SKEW_MS
+}
+
+function scheduleSessionExpiry(session: AuthSession) {
+  clearExpiryTimer()
+
+  if (!session.exp) {
+    return
+  }
+
+  const expiresAtMs = session.exp * 1000
+  const delayMs = expiresAtMs - Date.now() - EXPIRY_SKEW_MS
+
+  if (delayMs <= 0) {
+    expireStoredAuthSession({ reload: false })
+    return
+  }
+
+  expiryTimeoutId = window.setTimeout(() => {
+    expireStoredAuthSession({ reload: true })
+  }, delayMs)
+}
+
 export function persistAuthSession(
   response: AuthTokenResponse,
   remember: boolean,
+  options?: AuthToastOptions,
 ): AuthSession {
   const targetStorage = remember ? localStorage : sessionStorage
   const otherStorage = remember ? sessionStorage : localStorage
@@ -84,19 +153,61 @@ export function persistAuthSession(
 
   otherStorage.removeItem(AUTH_STORAGE_KEY)
   writeToStorage(targetStorage, session)
+  scheduleSessionExpiry(session)
   notifyAuthSessionChanged()
+  emitAuthToast(options?.toastMessage ?? LOGIN_SUCCESS_AUTH_TOAST_MESSAGE, options)
 
   return session
 }
 
 export function readStoredAuthSession(): AuthSession | null {
-  return readFromStorage(localStorage) ?? readFromStorage(sessionStorage)
+  const session = getStoredSessionRaw()
+
+  if (!session) {
+    clearExpiryTimer()
+    return null
+  }
+
+  if (isSessionExpired(session)) {
+    expireStoredAuthSession({ reload: false })
+    return null
+  }
+
+  scheduleSessionExpiry(session)
+  return session
 }
 
-export function clearStoredAuthSession() {
+export function clearStoredAuthSession(options?: AuthToastOptions) {
+  clearExpiryTimer()
   localStorage.removeItem(AUTH_STORAGE_KEY)
   sessionStorage.removeItem(AUTH_STORAGE_KEY)
   notifyAuthSessionChanged()
+  emitAuthToast(options?.toastMessage ?? LOGOUT_AUTH_TOAST_MESSAGE, options)
+}
+
+export function expireStoredAuthSession(options?: { reload?: boolean }) {
+  const { reload = true } = options ?? {}
+  const session = getStoredSessionRaw()
+
+  clearExpiryTimer()
+
+  if (!session) {
+    return
+  }
+
+  localStorage.removeItem(AUTH_STORAGE_KEY)
+  sessionStorage.removeItem(AUTH_STORAGE_KEY)
+  notifyAuthSessionChanged()
+
+  queueAuthToast(EXPIRED_AUTH_TOAST_MESSAGE)
+
+  if (!reload) {
+    showAuthToast(EXPIRED_AUTH_TOAST_MESSAGE)
+  }
+
+  if (reload) {
+    window.location.reload()
+  }
 }
 
 export function updateStoredAuthSession(patch: Partial<Pick<AuthSession, 'name'>>) {
@@ -113,6 +224,7 @@ export function updateStoredAuthSession(patch: Partial<Pick<AuthSession, 'name'>
 
   const targetStorage = session.storage === 'local' ? localStorage : sessionStorage
   writeToStorage(targetStorage, nextSession)
+  scheduleSessionExpiry(nextSession)
   notifyAuthSessionChanged()
 
   return nextSession
@@ -121,13 +233,13 @@ export function updateStoredAuthSession(patch: Partial<Pick<AuthSession, 'name'>
 export function getRoleLabel(role: string | null) {
   switch (role) {
     case 'ROLE_ADMIN':
-      return '관리자'
+      return '\uAD00\uB9AC\uC790'
     case 'ROLE_INSTRUCTOR':
-      return '강사'
+      return '\uAC15\uC0AC'
     case 'ROLE_LEARNER':
-      return '학습자'
+      return '\uD559\uC2B5\uC790'
     default:
-      return '사용자'
+      return '\uC0AC\uC6A9\uC790'
   }
 }
 

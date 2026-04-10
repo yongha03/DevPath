@@ -7,7 +7,9 @@ import {
 import type { AuthTokenResponse } from './types/auth'
 
 function OAuthRedirectApp() {
-  const [message, setMessage] = useState('소셜 로그인 결과를 처리하고 있습니다...')
+  const [message, setMessage] = useState(
+    '\uC18C\uC15C \uB85C\uADF8\uC778 \uACB0\uACFC\uB97C \uCC98\uB9AC\uD558\uACE0 \uC788\uC2B5\uB2C8\uB2E4...',
+  )
 
   useEffect(() => {
     const searchParams = new URLSearchParams(window.location.search)
@@ -16,7 +18,9 @@ function OAuthRedirectApp() {
     const tokenType = searchParams.get('tokenType') ?? 'Bearer'
 
     if (!accessToken || !refreshToken) {
-      setMessage('소셜 로그인 토큰을 받지 못했습니다. 다시 시도해 주세요.')
+      setMessage(
+        '\uC18C\uC15C \uB85C\uADF8\uC778 \uD1A0\uD070\uC744 \uBC1B\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4. \uB2E4\uC2DC \uC2DC\uB3C4\uD574 \uC8FC\uC138\uC694.',
+      )
       return
     }
 
@@ -24,11 +28,11 @@ function OAuthRedirectApp() {
       tokenType,
       accessToken,
       refreshToken,
-      name: 'OAuth 사용자',
+      name: 'OAuth \uC0AC\uC6A9\uC790',
     }
 
-    const session = persistAuthSession(response, true)
-    setMessage(`${getRoleLabel(session.role)} 계정으로 로그인되었습니다. 이동 중입니다...`)
+    const session = persistAuthSession(response, true, { persistToast: true })
+    setMessage(`${getRoleLabel(session.role)} \uACC4\uC815\uC73C\uB85C \uB85C\uADF8\uC778\uB418\uC5C8\uC2B5\uB2C8\uB2E4. \uC774\uB3D9 \uC911\uC785\uB2C8\uB2E4...`)
 
     window.setTimeout(() => {
       window.location.replace(getPostLoginRedirect(session.role))
@@ -41,7 +45,7 @@ function OAuthRedirectApp() {
         <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-green-50 text-[#00C471]">
           <i className="fas fa-circle-notch animate-spin text-2xl" />
         </div>
-        <h1 className="text-xl font-bold text-gray-900">DevPath 로그인</h1>
+        <h1 className="text-xl font-bold text-gray-900">DevPath {'\uB85C\uADF8\uC778'}</h1>
         <p className="mt-3 text-sm leading-6 text-gray-500">{message}</p>
       </div>
     </div>

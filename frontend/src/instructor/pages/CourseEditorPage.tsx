@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+﻿import { useEffect, useState } from 'react'
 import { ErrorCard, LoadingCard } from '../../account/ui'
 import { instructorCourseApi, userApi } from '../../lib/api'
 import type { LearningCourseDetail, LearningLesson, LearningSection } from '../../types/learning'
@@ -177,21 +177,30 @@ function apiTypeToLessonKind(value: string | null | undefined): LessonKind {
 function parseJobCard(raw: string): EditorJobCard {
   const card = createEmptyJobCard()
   const segments = raw.split(';').map((item) => item.trim())
+  const jobNamePrefixes = ['직무명:', '직무명', '吏곷Т紐?']
+  const englishNamePrefixes = ['영문명:', '영문명', '?곷Ц紐?']
+  const descriptionPrefixes = ['설명:', '?ㅻ챸:']
+  const keywordPrefixes = ['키워드:', '키워드', '?ㅼ썙??']
 
-  if (!segments.some((item) => item.startsWith('직무명:'))) {
+  if (!segments.some((item) => jobNamePrefixes.some((prefix) => item.startsWith(prefix)))) {
     card.description = raw
     return card
   }
 
   for (const segment of segments) {
-    if (segment.startsWith('직무명:')) {
-      card.name = segment.replace('직무명:', '').trim()
-    } else if (segment.startsWith('영문명:')) {
-      card.nameEn = segment.replace('영문명:', '').trim()
-    } else if (segment.startsWith('설명:')) {
-      card.description = segment.replace('설명:', '').trim()
-    } else if (segment.startsWith('키워드:')) {
-      card.keywords = segment.replace('키워드:', '').trim()
+    const jobNamePrefix = jobNamePrefixes.find((prefix) => segment.startsWith(prefix))
+    const englishNamePrefix = englishNamePrefixes.find((prefix) => segment.startsWith(prefix))
+    const descriptionPrefix = descriptionPrefixes.find((prefix) => segment.startsWith(prefix))
+    const keywordPrefix = keywordPrefixes.find((prefix) => segment.startsWith(prefix))
+
+    if (jobNamePrefix) {
+      card.name = segment.replace(jobNamePrefix, '').trim()
+    } else if (englishNamePrefix) {
+      card.nameEn = segment.replace(englishNamePrefix, '').trim()
+    } else if (descriptionPrefix) {
+      card.description = segment.replace(descriptionPrefix, '').trim()
+    } else if (keywordPrefix) {
+      card.keywords = segment.replace(keywordPrefix, '').trim()
     }
   }
 
@@ -703,45 +712,6 @@ export default function CourseEditorPage() {
     }
   }
 
-  async function prepareLessonForEditor(sectionLocalId: string, lessonLocalId: string) {
-    const section = sections.find((item) => item.localId === sectionLocalId)
-    const lesson = section?.lessons.find((item) => item.localId === lessonLocalId)
-
-    if (!lesson) {
-      setActionError('편집할 레슨을 찾을 수 없습니다.')
-      return null
-    }
-
-    if (lesson.lessonId) {
-      return {
-        lessonId: lesson.lessonId,
-        lessonTitle: lesson.title.trim() || '새 레슨',
-      }
-    }
-
-    setSaving(true)
-    setActionError(null)
-
-    try {
-      const persisted = await persistCourse()
-      const nextLessonId = persisted.lessonIdByLocalId[lessonLocalId]
-
-      if (!nextLessonId) {
-        throw new Error('레슨 저장이 완료되지 않아 편집기를 열 수 없습니다.')
-      }
-
-      return {
-        lessonId: nextLessonId,
-        lessonTitle: lesson.title.trim() || '새 레슨',
-      }
-    } catch (nextError) {
-      setActionError(nextError instanceof Error ? nextError.message : '레슨 저장 중 오류가 발생했습니다.')
-      return null
-    } finally {
-      setSaving(false)
-    }
-  }
-
   function handlePreview() {
     if (!courseId) {
       window.alert('미리보기 전에 먼저 저장해 주세요.')
@@ -937,7 +907,7 @@ export default function CourseEditorPage() {
                   <textarea
                     value={targetAudienceText}
                     onChange={(event) => setTargetAudienceText(event.target.value)}
-                    placeholder="- 이런 학습자에게 추천합니다."
+                    placeholder="- 이런 학습자에게 추천합니다"
                     className="h-24 w-full resize-none rounded-lg border border-gray-300 p-2.5 text-sm outline-none transition focus:border-emerald-500"
                   />
                 </div>
@@ -947,7 +917,7 @@ export default function CourseEditorPage() {
                   <textarea
                     value={prerequisitesText}
                     onChange={(event) => setPrerequisitesText(event.target.value)}
-                    placeholder="- 필요한 사전 지식을 적어 주세요."
+                    placeholder="- 필요한 사전 지식을 적어 주세요"
                     className="h-24 w-full resize-none rounded-lg border border-gray-300 p-2.5 text-sm outline-none transition focus:border-emerald-500"
                   />
                 </div>
@@ -959,7 +929,7 @@ export default function CourseEditorPage() {
             <h3 className="mb-4 flex items-center gap-2 border-b border-gray-100 pb-2 font-bold text-gray-900">
               <i className="fas fa-briefcase text-blue-500" /> 직무 연계 설정
               <span className="rounded bg-blue-100 px-2 py-0.5 text-[10px] font-normal text-blue-600">
-                수강생에게 이 강의가 어떤 직무에 연결되는지 보여줍니다.
+                수강생에게 이 강의가 어떤 직무와 연결되는지 보여줍니다.
               </span>
             </h3>
 
@@ -1090,36 +1060,21 @@ export default function CourseEditorPage() {
                             />
                             <button
                               type="button"
-                              onClick={async () => {
+                              onClick={() => {
                                 if (lesson.kind === 'lecture') {
                                   promptLessonVideo(section.localId, lesson.localId, lesson.videoUrl)
                                   return
                                 }
-                                const preparedLesson = await prepareLessonForEditor(section.localId, lesson.localId)
-                                if (!preparedLesson) {
-                                  return
-                                }
-
                                 const editorCourseId = getCourseIdFromUrl()
                                 const editorHref = buildLessonEditorHref(
                                   lesson.kind === 'quiz' ? 'quiz' : 'assignment',
                                   {
-                                    lessonId: preparedLesson.lessonId,
-                                    lessonTitle: preparedLesson.lessonTitle,
+                                    lessonTitle: lesson.title,
                                     courseId: editorCourseId,
                                   },
                                 )
 
                                 window.location.assign(editorHref)
-                                return
-
-                                if (lesson.kind === 'quiz') {
-                                  return
-                                }
-
-                                return
-
-                                window.alert('세부 편집기는 다음 단계에서 연결합니다.')
                               }}
                               className={`rounded px-3 py-1.5 text-xs font-bold transition ${meta.buttonTone}`}
                             >
@@ -1256,13 +1211,13 @@ export default function CourseEditorPage() {
 
             <div className="mt-4 rounded-lg border border-gray-100 bg-gray-50 px-3 py-3 text-xs leading-5 text-gray-500">
               {isNewCourse
-                ? '새 강의는 저장 후 courseId가 발급되고, 그 다음부터 미리보기와 상세 수정이 가능합니다.'
-                : '강의 저장 시 기본 정보, 메타데이터, 커리큘럼이 순서대로 백엔드 API에 동기화됩니다.'}
+                ? '새 강의는 먼저 저장해 courseId를 발급받은 뒤, 상세 설정과 미리보기를 사용할 수 있습니다.'
+                : '강의 저장 시 기본 정보, 메타데이터, 커리큘럼 순서대로 백엔드 API에 반영됩니다.'}
             </div>
 
             {loadedCourse?.status === 'IN_REVIEW' ? (
               <div className="mt-3 rounded-lg border border-blue-100 bg-blue-50 px-3 py-3 text-xs font-medium text-blue-700">
-                현재 이 강의는 심사 중입니다. 저장하면 선택한 상태값으로 다시 반영됩니다.
+                현재 이 강의는 심사 중입니다. 저장하면 선택한 공개 상태 값으로 다시 반영됩니다.
               </div>
             ) : null}
           </section>
@@ -1271,3 +1226,4 @@ export default function CourseEditorPage() {
     </div>
   )
 }
+

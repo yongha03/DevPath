@@ -1,16 +1,4 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
 import LectureListApp from './LectureListApp'
+import { renderPage } from './render-page'
 
-const rootElement = document.getElementById('root')
-
-if (!rootElement) {
-  throw new Error('lecture-list root element was not found')
-}
-
-createRoot(rootElement).render(
-  <StrictMode>
-    <LectureListApp />
-  </StrictMode>,
-)
+renderPage(<LectureListApp />, { missingRootMessage: 'lecture-list root element was not found' })

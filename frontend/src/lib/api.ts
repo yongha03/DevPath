@@ -70,7 +70,7 @@ import type {
   UserProfileUpdateRequest,
   WishlistCourse,
 } from '../types/learner'
-import { readStoredAuthSession } from './auth-session'
+import { expireStoredAuthSession, readStoredAuthSession } from './auth-session'
 import type {
   RoadmapDetail,
   MyRoadmapSummary,
@@ -171,6 +171,11 @@ async function request<T>(
     payload = (await response.json()) as ApiResponse<T>
   } catch {
     payload = null
+  }
+
+  if (options.auth && response.status === 401) {
+    expireStoredAuthSession({ reload: true })
+    throw new Error('세션이 만료되었습니다. 다시 로그인해 주세요.')
   }
 
   if (!response.ok || !payload?.success) {

@@ -3,6 +3,14 @@ import AuthModal, { type AuthView } from './components/AuthModal'
 import SiteHeader from './components/SiteHeader'
 import UserAvatar from './components/UserAvatar'
 import {
+  applyInstructorChannelCustomization,
+  buildMyInstructorEditProfileHref,
+  fallbackInstructorCareers,
+  readInstructorChannelCustomization,
+  type InstructorChannelListItem,
+  type InstructorChannelNoticeItem,
+} from './instructor-channel-customization'
+import {
   buildPlaylistSections,
   buildRatingFilterKey,
   buildReviewSummary,
@@ -85,6 +93,7 @@ function LoadingOverlay() {
 export default function InstructorChannelApp() {
   const instructorId = useMemo(() => readNumberSearchParam('instructorId') ?? 17, [])
   const [session, setSession] = useState(() => readStoredAuthSession())
+  const [customization, setCustomization] = useState(() => readInstructorChannelCustomization(instructorId))
   const [profileImage, setProfileImage] = useState<string | null>(null)
   const [authView, setAuthView] = useState<AuthView | null>(() => readAuthViewFromLocation())
   const [channelResponse, setChannelResponse] = useState<InstructorChannel | null>(null)
@@ -113,11 +122,29 @@ export default function InstructorChannelApp() {
   const [reviewSort, setReviewSort] = useState<ReviewSortKey>('latest')
   const [toastMessage, setToastMessage] = useState<string | null>(null)
 
-  const channel = useMemo(() => mergeInstructorChannel(channelResponse), [channelResponse])
+  const channel = useMemo(
+    () => applyInstructorChannelCustomization(mergeInstructorChannel(channelResponse), customization),
+    [channelResponse, customization],
+  )
   const playlistSections = useMemo(() => buildPlaylistSections(channel), [channel])
   const spotlightCourse = playlistSections[0]?.courses[0] ?? null
   const lectureCount = playlistSections.reduce((sum, section) => sum + section.courses.length, 0)
   const reviewSummary = useMemo(() => buildReviewSummary(reviews), [reviews])
+  const notices = useMemo<InstructorChannelNoticeItem[]>(
+    () => (customization?.notices.length ? customization.notices : fallbackNotices),
+    [customization],
+  )
+  const careers = useMemo<InstructorChannelListItem[]>(
+    () => (customization?.careers.length ? customization.careers : fallbackInstructorCareers),
+    [customization],
+  )
+  const bannerImageUrl =
+    customization?.bannerImageUrl.trim() ||
+    'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=2000&q=80'
+  const youtubeUrl = customization?.youtubeUrl.trim() || '#'
+  const isOwnChannel = session?.role === 'ROLE_INSTRUCTOR' && session.userId === channel.profile.instructorId
+  const editChannelHref = buildMyInstructorEditProfileHref(session)
+  const sessionDisplayName = session?.name ?? '나(사용자)'
 
   const filteredPlaylistSections = useMemo(() => {
     if (playlistFilter === 'all') return playlistSections
@@ -170,6 +197,10 @@ export default function InstructorChannelApp() {
   }, [])
 
   useEffect(() => {
+    setCustomization(readInstructorChannelCustomization(instructorId))
+  }, [instructorId])
+
+  useEffect(() => {
     syncAuthViewInLocation(authView)
   }, [authView])
 
@@ -196,7 +227,7 @@ export default function InstructorChannelApp() {
       } catch {
         if (cancelled) return
         setChannelResponse(null)
-        setChannelNotice('강사 채널 정보를 불러오지 못해 시안 기본값으로 표시합니다.')
+        setChannelNotice('강사 채널 정보를 불러오지 못해 기본 화면으로 표시합니다.')
       } finally {
         if (!cancelled) setLoadingChannel(false)
       }
@@ -243,14 +274,14 @@ export default function InstructorChannelApp() {
       if (subscribed) {
         await instructorSubscriptionApi.unsubscribe(channel.profile.instructorId)
         setSubscribed(false)
-        setToastMessage('팔로우를 취소했습니다.')
+        setToastMessage('구독을 취소했습니다.')
       } else {
         await instructorSubscriptionApi.subscribe(channel.profile.instructorId)
         setSubscribed(true)
-        setToastMessage('채널을 팔로우했습니다.')
+        setToastMessage('채널을 구독했습니다.')
       }
     } catch {
-      setToastMessage('팔로우 상태를 변경하지 못했습니다.')
+      setToastMessage('구독 상태를 변경하지 못했습니다.')
     } finally {
       setSubscriptionBusy(false)
     }
@@ -419,10 +450,14 @@ export default function InstructorChannelApp() {
 
         <ChannelHero
           channel={channel}
+          bannerImageUrl={bannerImageUrl}
+          youtubeUrl={youtubeUrl}
           lectureCount={lectureCount}
           reviewAverage={reviewSummary.average}
           subscribed={subscribed}
           subscriptionBusy={subscriptionBusy}
+          isOwnChannel={isOwnChannel}
+          editChannelHref={editChannelHref}
           activeTab={activeTab}
           tabs={channelTabs}
           onTabChange={setActiveTab}
@@ -431,7 +466,13 @@ export default function InstructorChannelApp() {
 
         <div className="mx-auto max-w-7xl px-6 py-8">
           <div className={activeTab === 'home' ? 'block animate-fade-in' : 'hidden'}>
-            <HomeTab channel={channel} spotlightCourse={spotlightCourse} onOpenCourse={handleOpenCourse} />
+            <HomeTab
+              channel={channel}
+              careers={careers}
+              notices={notices}
+              spotlightCourse={spotlightCourse}
+              onOpenCourse={handleOpenCourse}
+            />
           </div>
 
           <div className={activeTab === 'playlist' ? 'block animate-fade-in' : 'hidden'}>
@@ -494,7 +535,7 @@ export default function InstructorChannelApp() {
 
       <PostDetailModal
         post={selectedPost}
-        sessionName={session?.name ?? '나(사용자)'}
+        sessionName={sessionDisplayName}
         profileImage={profileImage}
         replyDraft={replyDraft}
         liked={selectedPost ? likedPostIds.includes(selectedPost.id) : false}
@@ -537,20 +578,28 @@ export default function InstructorChannelApp() {
 
 function ChannelHero({
   channel,
+  bannerImageUrl,
+  youtubeUrl,
   lectureCount,
   reviewAverage,
   subscribed,
   subscriptionBusy,
+  isOwnChannel,
+  editChannelHref,
   activeTab,
   tabs,
   onTabChange,
   onToggleSubscribe,
 }: {
   channel: ReturnType<typeof mergeInstructorChannel>
+  bannerImageUrl: string
+  youtubeUrl: string
   lectureCount: number
   reviewAverage: number
   subscribed: boolean
   subscriptionBusy: boolean
+  isOwnChannel: boolean
+  editChannelHref: string
   activeTab: InstructorChannelTabKey
   tabs: Array<[InstructorChannelTabKey, string]>
   onTabChange: (tab: InstructorChannelTabKey) => void
@@ -559,14 +608,10 @@ function ChannelHero({
   return (
     <div className="border-b border-gray-200 bg-white">
       <div className="relative h-48 w-full overflow-hidden bg-gradient-to-r from-slate-900 to-slate-800 md:h-64">
-        <img
-          src="https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=2000&q=80"
-          className="h-full w-full object-cover opacity-40"
-          alt="channel cover"
-        />
+        <img src={bannerImageUrl} className="h-full w-full object-cover opacity-40" alt="channel cover" />
         <div className="absolute bottom-4 right-6 flex gap-3">
           <a href={channel.externalLinks?.githubUrl ?? '#'} className="text-xl text-white/80 hover:text-white"><i className="fab fa-github" /></a>
-          <a href="#" className="text-xl text-white/80 hover:text-white"><i className="fab fa-youtube" /></a>
+          <a href={youtubeUrl} className="text-xl text-white/80 hover:text-white"><i className="fab fa-youtube" /></a>
           <a href={channel.externalLinks?.blogUrl ?? '#'} className="text-xl text-white/80 hover:text-white"><i className="fas fa-globe" /></a>
         </div>
       </div>
@@ -601,7 +646,18 @@ function ChannelHero({
             </div>
           </div>
 
-          <button
+          <div className="flex flex-col items-center gap-3 md:flex-row">
+            {isOwnChannel ? (
+              <a
+                href={editChannelHref}
+                className="mb-4 inline-flex items-center gap-2 rounded-full border border-gray-300 bg-white px-6 py-3 text-sm font-bold text-gray-700 transition hover:border-brand hover:text-brand md:mb-0"
+              >
+                <i className="fas fa-pen-to-square" />
+                <span>{'\uCC44\uB110 \uD3B8\uC9D1'}</span>
+              </a>
+            ) : null}
+
+            <button
             type="button"
             onClick={onToggleSubscribe}
             disabled={subscriptionBusy}
@@ -610,8 +666,9 @@ function ChannelHero({
             } disabled:opacity-70`}
           >
             <i className={subscribed ? 'fas fa-check' : 'far fa-bell'} />
-            <span>{subscribed ? '팔로우 중' : '팔로우'}</span>
-          </button>
+            <span>{subscribed ? '구독 중' : '구독'}</span>
+            </button>
+          </div>
         </div>
 
         <div className="flex gap-8 border-b border-gray-100 text-sm">
@@ -633,10 +690,14 @@ function ChannelHero({
 
 function HomeTab({
   channel,
+  careers,
+  notices,
   spotlightCourse,
   onOpenCourse,
 }: {
   channel: ReturnType<typeof mergeInstructorChannel>
+  careers: InstructorChannelListItem[]
+  notices: InstructorChannelNoticeItem[]
   spotlightCourse: ReturnType<typeof buildPlaylistSections>[number]['courses'][number] | null
   onOpenCourse: (courseId: number) => void
 }) {
@@ -679,16 +740,12 @@ function HomeTab({
           <div className="border-t border-gray-200 pt-6">
             <h3 className="mb-4 flex items-center gap-2 text-lg font-bold text-gray-900"><i className="fas fa-briefcase text-gray-600" /> 주요 경력</h3>
             <div className="space-y-3">
-              {[
-                ['현 스타트업 CTO', '기술 전략 수립 및 서비스 아키텍처 설계 총괄'],
-                ['대규모 백엔드 서비스 개발', '고트래픽 시스템 성능 최적화와 운영 경험'],
-                ['기업 실무 교육 다수 진행', '팀 단위 백엔드 역량 향상 교육 운영'],
-              ].map(([title, description]) => (
-                <div key={title} className="flex gap-4">
+              {careers.map((item) => (
+                <div key={item.id} className="flex gap-4">
                   <div className="mt-2 h-2 w-2 shrink-0 rounded-full bg-brand" />
                   <div>
-                    <p className="font-bold text-gray-900">{title}</p>
-                    <p className="text-sm text-gray-600">{description}</p>
+                    <p className="font-bold text-gray-900">{item.title}</p>
+                    <p className="text-sm text-gray-600">{item.description}</p>
                   </div>
                 </div>
               ))}
@@ -720,7 +777,7 @@ function HomeTab({
         <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
           <h3 className="mb-4 font-bold text-gray-900">최근 공지사항</h3>
           <div className="space-y-4">
-            {fallbackNotices.map((notice) => (
+            {notices.map((notice) => (
               <div key={notice.id} className="border-b border-gray-50 pb-3 last:border-0 last:pb-0">
                 {notice.isNew ? <span className="rounded bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-600">New</span> : null}
                 <p className="mt-1 cursor-pointer text-sm font-medium hover:text-brand">{notice.title}</p>

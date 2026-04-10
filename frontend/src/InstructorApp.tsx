@@ -174,7 +174,7 @@ export default function InstructorApp() {
     } catch {
       // Keep the client-side cleanup even if the server request fails.
     } finally {
-      clearStoredAuthSession()
+      clearStoredAuthSession({ persistToast: true })
       setSession(null)
       window.location.href = 'home.html'
     }

@@ -1,3 +1,4 @@
+import { sanitizeInstructorProfileImageUrl } from './instructor-channel-customization'
 import type { InstructorChannel, InstructorFeaturedCourse } from './types/instructor'
 
 export type InstructorChannelTabKey = 'home' | 'playlist' | 'community' | 'reviews'
@@ -74,11 +75,12 @@ export const fallbackInstructorChannel: InstructorChannel = {
   profile: {
     instructorId: 17,
     nickname: '김멘토 (CodeMaster)',
-    profileImageUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Felix',
-    headline: '복잡한 백엔드 기술도 쉽고 명확하게 전달합니다. 10년차 서버 개발자',
+    profileImageUrl: null,
+    headline: '복잡한 백엔드 개념을 실무 흐름에 맞춰 명확하게 설명합니다. 10년차 서버 개발자',
     isPublic: true,
   },
-  intro: '안녕하세요. 10년차 백엔드 개발자 김멘토입니다. 기본기와 실전 문제 해결을 연결해서 설명하는 방식으로 강의를 만들고 있습니다.',
+  intro:
+    '안녕하세요. 10년차 백엔드 개발자 김멘토입니다. 기초 개념부터 실전 문제 해결까지, 왜 이렇게 설계하는지 이해할 수 있도록 강의를 만들고 있습니다.',
   specialties: ['Java', 'Spring Boot', 'JPA', 'AWS', 'Kafka', 'Microservices'],
   externalLinks: {
     githubUrl: 'https://github.com/',
@@ -93,7 +95,7 @@ export const fallbackInstructorChannel: InstructorChannel = {
     },
     {
       courseId: 1002,
-      title: '스프링 부트 3.0 핵심 원리와 활용',
+      title: '스프링 부트 3.0 실전 서비스 구축',
       subtitle: '실무 서비스 구조로 배우는 스프링 부트',
       thumbnailUrl: 'https://images.unsplash.com/photo-1605379399642-870262d3d051?w=600&q=80',
     },
@@ -129,14 +131,15 @@ function featuredCourseToCard(course: InstructorFeaturedCourse, index: number): 
 }
 
 export function buildPlaylistSections(channel: InstructorChannel) {
-  const featuredCourses = (channel.featuredCourses.length ? channel.featuredCourses : fallbackInstructorChannel.featuredCourses)
-    .map(featuredCourseToCard)
+  const featuredCourses = (
+    channel.featuredCourses.length ? channel.featuredCourses : fallbackInstructorChannel.featuredCourses
+  ).map(featuredCourseToCard)
 
   const projectCourses: InstructorCourseCard[] = [
     {
       courseId: 2001,
-      title: '배달의민족 클론코딩: 주문부터 결제까지',
-      subtitle: '이론을 넘어 실제 서비스를 만들어보는 클론 코딩입니다.',
+      title: '배달 서비스 클론 코딩: 주문부터 결제까지',
+      subtitle: '도메인 중심으로 실제 서비스 흐름을 완성하는 프로젝트',
       thumbnailUrl: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?w=600&q=80',
       level: 'project',
       rating: 4.7,
@@ -145,8 +148,8 @@ export function buildPlaylistSections(channel: InstructorChannel) {
     },
     {
       courseId: 2002,
-      title: '당근마켓 클론코딩: 위치 기반 서비스의 이해',
-      subtitle: '도메인 설계와 API 흐름을 프로젝트로 익힙니다.',
+      title: '지도 앱 클론 코딩: 위치 기반 서비스의 이해',
+      subtitle: '화면 설계부터 API 흐름까지 프로젝트로 학습합니다.',
       thumbnailUrl: 'https://images.unsplash.com/photo-1616469829581-73993eb86b02?w=600&q=80',
       level: 'project',
       rating: 4.8,
@@ -160,14 +163,14 @@ export function buildPlaylistSections(channel: InstructorChannel) {
       id: 'roadmap',
       category: 'roadmap',
       emojiTitle: '☕ 자바 백엔드 마스터 로드맵',
-      description: '초보자부터 실무자까지, 자바 개발자의 정석 코스입니다.',
+      description: '초보자부터 실무자까지, 자바 개발자의 핵심 코스를 담았습니다.',
       courses: featuredCourses,
     },
     {
       id: 'project',
       category: 'project',
-      emojiTitle: '⚡ 실전 프로젝트 Series',
-      description: '이론을 넘어 실제 서비스를 만들어보는 클론 코딩입니다.',
+      emojiTitle: '🚀 실전 프로젝트 Series',
+      description: '실제 서비스 흐름을 끝까지 완성해 보는 프로젝트 중심 강의입니다.',
       courses: projectCourses,
     },
   ] satisfies InstructorPlaylistSection[]
@@ -178,8 +181,9 @@ export const fallbackCommunityPosts: CommunityPost[] = [
     id: 'post-1',
     category: 'notice',
     title: '2026 상반기 로드맵 업데이트 안내',
-    content: '안녕하세요 박강사입니다. 새해 백엔드 트렌드에 맞춰 강의 커리큘럼 일부를 리뉴얼할 예정입니다.',
-    author: '박강사',
+    content:
+      '안녕하세요, 김멘토입니다. 올해 백엔드 트렌드에 맞춰 강의 커리큘럼 일부를 리뉴얼할 예정입니다.',
+    author: '김멘토',
     authorSeed: 'Instructor',
     date: '2026.02.01',
     views: 450,
@@ -193,7 +197,7 @@ export const fallbackCommunityPosts: CommunityPost[] = [
     status: 'solved',
     title: '스레드 풀 설정에서 corePoolSize를 어떻게 잡아야 할까요?',
     content: '스레드 풀 설정에서 corePoolSize를 어떻게 잡아야 할까요? 실무 기준이 궁금합니다.',
-    author: '학습자A',
+    author: '학습러A',
     authorSeed: 'User1',
     date: '2026.02.17',
     views: 142,
@@ -202,17 +206,18 @@ export const fallbackCommunityPosts: CommunityPost[] = [
     replies: [
       {
         id: 'reply-1',
-        author: '박강사 (강사)',
+        author: '김멘토(강사)',
         seed: 'Instructor',
-        content: 'CPU bound 작업인지 IO bound 작업인지 먼저 분리해서 보시면 됩니다. 서버 특성과 병목 지점을 같이 확인하세요.',
+        content:
+          'CPU bound 작업인지 IO bound 작업인지 먼저 분리해서 보시면 됩니다. 서버 특성과 병목 지점을 같이 확인해 보세요.',
         date: '2026.02.17',
         mine: false,
       },
       {
         id: 'reply-2',
-        author: '학습자A',
+        author: '학습러A',
         seed: 'User1',
-        content: '설명 감사합니다. 병목부터 다시 체크해보겠습니다.',
+        content: '설명 감사합니다. 병목 구간부터 다시 체크해 보겠습니다.',
         date: '2026.02.17',
         mine: false,
       },
@@ -222,9 +227,9 @@ export const fallbackCommunityPosts: CommunityPost[] = [
     id: 'post-3',
     category: 'question',
     status: 'pending',
-    title: '강의 자료 다운로드가 안됩니다.',
+    title: '강의 자료 다운로드가 안 됩니다.',
     content: '5강 예제 파일 링크가 만료된 것 같습니다. 확인 부탁드립니다.',
-    author: '학습자B',
+    author: '학습러B',
     authorSeed: 'User2',
     date: '2026.02.18',
     views: 45,
@@ -236,8 +241,9 @@ export const fallbackCommunityPosts: CommunityPost[] = [
     id: 'post-4',
     category: 'info',
     title: '강사님 강의 듣고 스타트업 백엔드 합격했습니다',
-    content: '진짜 면접 질문이 유사해서 큰 도움이 됐습니다. 기술 면접에서 물어본 내용도 강의에서 많이 다뤘어요.',
-    author: '학습자C',
+    content:
+      '면접 질문이 실제로 유사해서 큰 도움이 됐습니다. 기술 면접에서 물어본 내용도 강의에서 많이 다뤄 주셨어요.',
+    author: '학습러C',
     authorSeed: 'User3',
     date: '2026.02.10',
     views: 890,
@@ -248,9 +254,9 @@ export const fallbackCommunityPosts: CommunityPost[] = [
   {
     id: 'post-5',
     category: 'chat',
-    title: '오늘도 강의 복습 갑니다',
-    content: '퇴근하고 매일 한 강씩 듣는 중입니다. 화이팅!',
-    author: '학습자D',
+    title: '오늘도 강의 복습 갑니다.',
+    content: '퇴근하고 매일 한 강의씩 듣는 중입니다. 파이팅!',
+    author: '학습러D',
     authorSeed: 'User4',
     date: '2026.02.16',
     views: 67,
@@ -268,8 +274,8 @@ export const fallbackInstructorReviews: InstructorReviewItem[] = [
     rating: 5,
     date: '2026.02.15',
     lectureKey: 'spring-boot',
-    lectureTitle: '스프링 부트 3.0 핵심 원리와 활용',
-    content: '실무에 바로 적용할 수 있는 내용이 많았습니다. 성능 최적화와 트러블슈팅 설명이 특히 좋았습니다.',
+    lectureTitle: '스프링 부트 3.0 실전 서비스 구축',
+    content: '실무에 바로 적용할 수 있는 내용이 많았습니다. 성능 최적화와 에러 핸들링 설명이 특히 좋았습니다.',
   },
   {
     id: 'review-2',
@@ -279,7 +285,7 @@ export const fallbackInstructorReviews: InstructorReviewItem[] = [
     date: '2026.02.14',
     lectureKey: 'java-basic',
     lectureTitle: '자바 프로그래밍 입문: 기초부터 탄탄하게',
-    content: '비전공자 출신인데 이 강의로 백엔드의 기초를 선명하게 잡았습니다. 다른 강의도 이어서 수강할 예정입니다.',
+    content: '비전공자 출신인데 이 강의로 백엔드의 기초를 확실히 잡았습니다. 다른 강의도 이어서 수강할 예정입니다.',
   },
   {
     id: 'review-3',
@@ -289,7 +295,7 @@ export const fallbackInstructorReviews: InstructorReviewItem[] = [
     date: '2026.02.13',
     lectureKey: 'jpa-real',
     lectureTitle: 'JPA 실전: 영속성 관리와 쿼리 최적화',
-    content: 'N+1, Fetch Join, JPQL 최적화처럼 실무에서 자주 만나는 문제들을 깊이 있게 다뤄줘서 만족도가 높았습니다.',
+    content: 'N+1, Fetch Join, JPQL 최적화 요청을 실무에서 자주 만나는 문제로 깊이 있게 설명해 주셔서 만족도가 높았습니다.',
   },
   {
     id: 'review-4',
@@ -299,7 +305,7 @@ export const fallbackInstructorReviews: InstructorReviewItem[] = [
     date: '2026.02.12',
     lectureKey: 'high-traffic',
     lectureTitle: '대용량 트래픽을 위한 Spring Boot 아키텍처',
-    content: '단순히 따라하는 것이 아니라 왜 이렇게 설계했는지 설명해줘서 프로젝트 응용에 도움이 됐습니다.',
+    content: '단순한 구현이 아니라 왜 이렇게 설계하는지 설명해 줘서 프로젝트 적용에 큰 도움이 됐습니다.',
   },
   {
     id: 'review-5',
@@ -309,14 +315,14 @@ export const fallbackInstructorReviews: InstructorReviewItem[] = [
     date: '2026.02.11',
     lectureKey: 'java-basic',
     lectureTitle: '자바 프로그래밍 입문: 기초부터 탄탄하게',
-    content: '자바 기초 잡기에 좋은 강의입니다. 후반부 예제 난이도만 조금 더 완만하면 더 좋을 것 같습니다.',
+    content: '자바 기초 잡기에 좋은 강의입니다. 후반부 예제 설명이 조금 더 길어도 좋을 것 같습니다.',
   },
 ]
 
 export const reviewLectureOptions = [
   { key: 'all', label: '전체 강의 보기' },
   { key: 'java-basic', label: '자바 프로그래밍 입문' },
-  { key: 'spring-boot', label: '스프링 부트 3.0 핵심' },
+  { key: 'spring-boot', label: '스프링 부트 3.0 실전' },
   { key: 'jpa-real', label: 'JPA 실전' },
   { key: 'high-traffic', label: '대용량 트래픽 아키텍처' },
 ] as const
@@ -330,6 +336,7 @@ export function mergeInstructorChannel(channel: InstructorChannel | null | undef
     profile: {
       ...fallbackInstructorChannel.profile,
       ...channel.profile,
+      profileImageUrl: sanitizeInstructorProfileImageUrl(channel.profile.profileImageUrl),
     },
     intro: channel.intro || fallbackInstructorChannel.intro,
     specialties: channel.specialties.length ? channel.specialties : fallbackInstructorChannel.specialties,

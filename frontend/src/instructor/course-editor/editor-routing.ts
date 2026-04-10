@@ -1,7 +1,7 @@
 export type EvaluationEditorKind = 'quiz' | 'assignment'
 
 type LessonEditorUrlOptions = {
-  lessonId: number
+  lessonId?: number | null
   lessonTitle?: string | null
   courseId?: number | null
 }
@@ -27,9 +27,11 @@ export function buildCourseEditorHref(courseId?: number | null) {
 
 export function buildLessonEditorHref(kind: EvaluationEditorKind, options: LessonEditorUrlOptions) {
   const pathname = kind === 'quiz' ? 'quiz-creator.html' : 'content-assignment-editor.html'
-  const searchParams = new URLSearchParams({
-    lessonId: String(options.lessonId),
-  })
+  const searchParams = new URLSearchParams()
+
+  if (options.lessonId && Number.isFinite(options.lessonId)) {
+    searchParams.set('lessonId', String(options.lessonId))
+  }
 
   if (options.lessonTitle?.trim()) {
     searchParams.set('lessonTitle', options.lessonTitle.trim())
@@ -39,7 +41,8 @@ export function buildLessonEditorHref(kind: EvaluationEditorKind, options: Lesso
     searchParams.set('courseId', String(options.courseId))
   }
 
-  return `${pathname}?${searchParams.toString()}`
+  const query = searchParams.toString()
+  return query ? `${pathname}?${query}` : pathname
 }
 
 export function readLessonEditorContextFromUrl(): LessonEditorContext {

@@ -1,10 +1,4 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
 import OAuthRedirectApp from './OAuthRedirectApp'
+import { renderPage } from './render-page'
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <OAuthRedirectApp />
-  </StrictMode>,
-)
+renderPage(<OAuthRedirectApp />, { missingRootMessage: 'oauth2-redirect root element was not found' })

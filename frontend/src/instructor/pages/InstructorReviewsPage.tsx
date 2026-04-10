@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ErrorCard, LoadingCard, formatDate } from '../../account/ui'
+import UserAvatar from '../../components/UserAvatar'
 import { instructorReviewApi } from '../../lib/api'
 import type { AuthSession } from '../../types/auth'
 import type {
@@ -638,10 +639,11 @@ export default function InstructorReviewsPage({ session }: { session: AuthSessio
                   <div className="mt-5 rounded-2xl bg-gray-50 p-4">
                     <div className="flex items-start gap-3">
                       <div className="flex flex-col items-center gap-1">
-                        <img
-                          src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"
-                          className="h-8 w-8 rounded-full border border-gray-200 bg-white shadow-sm"
-                          alt="Instructor avatar"
+                        <UserAvatar
+                          name={review.reply.authorName || session.name}
+                          imageUrl={null}
+                          className="h-8 w-8 bg-white shadow-sm"
+                          alt={review.reply.authorName || session.name}
                         />
                         <div className="my-1 h-full w-px bg-gray-200" />
                       </div>
@@ -668,10 +670,11 @@ export default function InstructorReviewsPage({ session }: { session: AuthSessio
                 {openReplyFormId === review.reviewId ? (
                   <div className="mt-4 rounded-2xl border border-gray-100 bg-gray-50 p-4">
                     <div className="flex items-start gap-3">
-                      <img
-                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"
-                        className="h-8 w-8 rounded-full border border-gray-200 bg-white"
-                        alt="Instructor avatar"
+                      <UserAvatar
+                        name={session.name}
+                        imageUrl={null}
+                        className="h-8 w-8 bg-white"
+                        alt={session.name}
                       />
                       <div className="flex-1">
                         <textarea

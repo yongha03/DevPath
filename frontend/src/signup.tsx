@@ -1,10 +1,4 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
 import SignupApp from './SignupApp'
+import { renderPage } from './render-page'
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <SignupApp />
-  </StrictMode>,
-)
+renderPage(<SignupApp />, { missingRootMessage: 'signup root element was not found' })

@@ -1,10 +1,4 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
 import CourseEditorApp from './CourseEditorApp'
+import { renderPage } from './render-page'
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <CourseEditorApp />
-  </StrictMode>,
-)
+renderPage(<CourseEditorApp />, { missingRootMessage: 'course-editor root element was not found' })

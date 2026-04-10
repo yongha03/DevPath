@@ -1,11 +1,5 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
 import './roadmap-hub.css'
 import RoadmapHubApp from './RoadmapHubApp'
+import { renderPage } from './render-page'
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <RoadmapHubApp />
-  </StrictMode>,
-)
+renderPage(<RoadmapHubApp />, { missingRootMessage: 'roadmap-hub root element was not found' })

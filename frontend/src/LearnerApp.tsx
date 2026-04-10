@@ -121,7 +121,7 @@ export default function LearnerApp() {
     } catch {
       // Keep the client session cleanup even if the API call fails.
     } finally {
-      clearStoredAuthSession()
+      clearStoredAuthSession({ persistToast: true })
       setSession(null)
       window.location.href = 'home.html'
     }

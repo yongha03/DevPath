@@ -161,6 +161,7 @@ function App() {
     } finally {
       clearStoredAuthSession()
       setSession(null)
+      setProfileImage(null)
     }
   }
 

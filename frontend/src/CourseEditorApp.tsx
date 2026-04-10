@@ -135,7 +135,7 @@ export default function CourseEditorApp() {
     } catch {
       // Keep local cleanup even if the server logout request fails.
     } finally {
-      clearStoredAuthSession()
+      clearStoredAuthSession({ persistToast: true })
       setSession(null)
       window.location.href = 'home.html'
     }

@@ -1,14 +1,710 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="ko">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DevPath - 과제 생성 및 자동 채점 설정</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-    <script type="module" src="/src/content-assignment-editor.tsx"></script>
-  </head>
-  <body>
-    <div id="root"></div>
-  </body>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        body { font-family: 'Pretendard', sans-serif; background-color: #F8F9FA; }
+        .text-primary { color: #00C471; }
+        .bg-primary { background-color: #00C471; }
+        
+        /* 커스텀 슬라이더 스타일 */
+        .toggle-checkbox:checked { right: 0; border-color: #00C471; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #00C471; }
+        
+        /* 스크롤바 */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #CBD5E1; border-radius: 3px; }
+
+        /* 토스트 애니메이션 */
+        @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes fadeOut {
+            from { opacity: 1; }
+            to { opacity: 0; }
+        }
+        .toast { animation: slideInRight 0.3s ease-out forwards; }
+        .toast.hide { animation: fadeOut 0.3s ease-out forwards; }
+
+        /* 루브릭 아이템 애니메이션 */
+        .rubric-item { transition: all 0.3s ease; }
+        
+        /* 비활성화 오버레이 */
+        .disabled-overlay { position: relative; pointer-events: none; opacity: 0.5; filter: grayscale(100%); transition: all 0.3s; }
+
+        /* =========================================================
+           ✅ 강사 대시보드 헤더/aside 이식 스타일 (추가됨)
+        ========================================================== */
+        .text-brand { color: #00C471; }
+        
+        :root{
+          --left-rail: 80px;
+          --logo-nudge: -54px;
+        }
+
+        .app-header{
+          position:fixed; top:0; left:var(--left-rail); right:0; height:64px;
+          z-index:999; background:#fff; border-bottom:1px solid #F3F4F6;
+        }
+        .app-header-rail{
+          position:fixed; top:0; left:0; width:var(--left-rail); height:64px;
+          background:#fff; border-bottom:1px solid #F3F4F6; z-index:998;
+        }
+
+        .app-shell{
+          height: 100vh;
+          overflow: hidden;
+        }
+
+        .app-main{
+          padding-top:64px;
+          height: 100vh;
+          display: flex;
+          overflow: hidden;
+        }
+
+        .header-active{
+          color:#00C471 !important;
+          border-bottom:2px solid #00C471;
+          padding-bottom: 4px;
+        }
+
+        .hide-scroll::-webkit-scrollbar{ display:none; }
+
+        /* ✅ ASIDE hover/active 애니메이션 */
+        .nav-item{
+          position: relative;
+          transform: translateZ(0);
+          will-change: transform, background-color, color, box-shadow;
+          display:flex; align-items:center; gap:12px;
+          padding:12px 16px; border-radius:12px;
+          font-size:14px; color:#6B7280; font-weight:500;
+          transition:all .2s;
+        }
+        .nav-item::before{
+          content:"";
+          position:absolute;
+          left:-6px;
+          top:10px;
+          bottom:10px;
+          width:3px;
+          border-radius:999px;
+          background:#00C471;
+          opacity:0;
+          transform: scaleY(.6);
+          transition: opacity .18s ease, transform .18s ease;
+        }
+        .nav-item:hover{
+          background: #F3F4F6;
+          color:#111827;
+          transform: translateY(-1px);
+          box-shadow: 0 6px 18px rgba(17,24,39,.06);
+        }
+        .nav-item i{
+          transition: transform .18s ease, color .18s ease;
+        }
+        .nav-item:hover i{
+          transform: translateX(1px);
+          color:#00C471;
+        }
+        .nav-item:hover::before{
+          opacity:1;
+          transform: scaleY(1);
+        }
+        .nav-item.active{
+          background-color:#E6F9F1;
+          color:#00C471;
+          font-weight:700;
+        }
+        .nav-item.active::before{
+          opacity:1;
+          transform: scaleY(1);
+        }
+        .nav-item:active{
+          transform: translateY(0px) scale(0.99);
+          box-shadow: none;
+        }
+        .nav-item:focus-visible{
+          outline: none;
+          box-shadow: 0 0 0 3px rgba(0,196,113,.20);
+        }
+        .nav-item:hover span{
+          transform: translateY(-1px);
+          transition: transform .18s ease;
+        }
+        .aside-section-title{
+          letter-spacing: .18em;
+        }
+    </style>
+</head>
+<body class="app-shell text-gray-800">
+
+    <div id="toastContainer" class="fixed top-20 right-8 z-[100] flex flex-col gap-2 pointer-events-none"></div>
+
+    <div data-devpath-site-header></div>
+    <header class="app-header hidden">
+        <div class="max-w-[1600px] mx-auto w-full h-full px-8 flex items-center gap-8">
+            <div class="w-60 hidden lg:flex items-center px-4" style="transform: translateX(var(--logo-nudge));">
+                <a href="home.html" class="flex items-center gap-2 text-xl font-bold text-gray-900 group">
+                    <i class="fas fa-code-branch text-brand group-hover:rotate-12 transition"></i>
+                    <span class="flex flex-col leading-tight -translate-y-1">
+                        <span>DevPath</span>
+                        <span class="text-[11px] font-extrabold text-gray-400 tracking-wide">Instructor Center</span>
+                    </span>
+                </a>
+            </div>
+
+            <div class="flex lg:hidden items-center">
+                <a href="home.html" class="flex items-center gap-2 text-xl font-bold text-gray-900 group">
+                    <i class="fas fa-code-branch text-brand group-hover:rotate-12 transition"></i>
+                    <span class="flex flex-col leading-tight -translate-y-1">
+                        <span>DevPath</span>
+                        <span class="text-[11px] font-extrabold text-gray-400 tracking-wide">Instructor Center</span>
+                    </span>
+                </a>
+            </div>
+
+            <div class="flex-1 flex items-center justify-center gap-10 text-sm font-bold text-gray-500">
+                <a href="roadmap-hub.html" class="hover:text-brand transition">로드맵</a>
+                <a href="lecture-list.html" class="hover:text-brand transition">강의</a>
+                <a href="lounge-dashboard.html" class="hover:text-brand transition">프로젝트</a>
+                <a href="community-list.html" class="hover:text-brand transition">커뮤니티</a>
+                <a href="job-matching.html" class="hover:text-brand transition">채용분석</a>
+            </div>
+
+            <div class="w-60 flex items-center justify-end gap-4">
+                <a
+                    href="instructor-dashboard.html"
+                    class="text-sm font-bold text-gray-500 hover:text-brand transition whitespace-nowrap header-active"
+                    style="transform: translateX(-375px);"
+                >
+                    강사 대시보드
+                </a>
+
+                <div
+                    class="flex items-center gap-2 cursor-pointer"
+                    style="transform: translateX(120px);"
+                    onclick="location.href='profile.html'"
+                >
+                    <span class="text-sm font-bold text-gray-700">김멘토</span>
+                    <img
+                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"
+                        class="w-9 h-9 rounded-full border border-gray-200 shadow-sm"
+                        alt="me"
+                    />
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="app-main flex">
+        <aside class="w-64 bg-white border-r border-gray-200 flex flex-col shrink-0 z-20">
+            <div class="pt-4"></div>
+            <nav class="flex-1 px-4 py-6 overflow-y-auto hide-scroll space-y-1">
+                <p class="px-2 text-[10px] font-extrabold text-gray-400 mb-2 uppercase tracking-widest aside-section-title">Overview</p>
+                <a href="instructor-dashboard.html" class="nav-item"><i class="fas fa-th-large w-5 text-center"></i> 대시보드</a>
+                <a href="course-management.html" class="nav-item active"><i class="fas fa-video w-5 text-center"></i> 강의 관리</a>
+                <a href="instructor-mentoring.html" class="nav-item"><i class="fas fa-users-cog w-5 text-center"></i> 멘토링 관리</a>
+                <a href="student-analytics.html" class="nav-item"><i class="fas fa-user-graduate w-5 text-center"></i> 수강생 & 분석</a>
+
+                <p class="px-2 text-[10px] font-extrabold text-gray-400 mb-2 mt-6 uppercase tracking-widest aside-section-title">Communication</p>
+                <a href="instructor-qna.html" class="nav-item flex justify-between">
+                    <div class="flex items-center gap-3">
+                        <i class="fas fa-question-circle w-5 text-center"></i> 질문 게시판
+                    </div>
+                    <span class="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">3</span>
+                </a>
+                <a href="instructor-reviews.html" class="nav-item"><i class="fas fa-star w-5 text-center"></i> 수강평 관리</a>
+
+                <p class="px-2 text-[10px] font-extrabold text-gray-400 mb-2 mt-6 uppercase tracking-widest aside-section-title">Management</p>
+                <a href="instructor-revenue.html" class="nav-item"><i class="fas fa-wallet w-5 text-center"></i> 정산 관리</a>
+                <a href="instructor-marketing.html" class="nav-item"><i class="fas fa-ad w-5 text-center"></i> 마케팅 관리</a>
+            </nav>
+        </aside>
+
+        <main class="flex-1 flex flex-col h-full relative overflow-hidden">
+            
+            <div class="h-16 bg-white border-b border-gray-200 flex justify-between items-center px-8 shrink-0 z-10 shadow-sm">
+                <div class="flex items-center gap-4">
+                    <button onclick="showToast('이전 페이지로 돌아갑니다.'); setTimeout(() => location.href='course-editor.html', 500);" class="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition"><i class="fas fa-arrow-left"></i></button>
+                    <div>
+                        <h1 class="text-lg font-extrabold text-gray-900">과제 만들기</h1>
+                        <p class="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded inline-block mt-0.5">섹션 1. 오리엔테이션 > 실습 과제</p>
+                    </div>
+                </div>
+                <button onclick="saveAssignment()" class="bg-primary text-white px-6 py-2.5 rounded-xl text-sm font-bold hover:bg-green-600 transition shadow-lg shadow-green-200 flex items-center gap-2">
+                    <i class="fas fa-save"></i> 저장 완료
+                </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto custom-scrollbar p-8 bg-[#F8F9FA]">
+                <div class="max-w-4xl mx-auto space-y-6 pb-20">
+                    
+                    <div class="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm">
+                        <label class="block text-sm font-extrabold text-gray-800 mb-2">과제 제목 <span class="text-red-500">*</span></label>
+                        <input type="text" id="taskTitle" class="w-full text-xl font-bold border-b-2 border-gray-200 focus:border-primary outline-none pb-2 mb-8 transition placeholder-gray-300" value="JDK 설치 및 환경변수 설정 인증하기" placeholder="과제 제목을 입력하세요.">
+                        
+                        <label class="block text-sm font-extrabold text-gray-800 mb-2">과제 가이드 (설명) <span class="text-red-500">*</span></label>
+                        <div class="border border-gray-200 rounded-xl overflow-hidden mb-8 focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition shadow-sm">
+                            <div class="bg-gray-50 border-b border-gray-200 p-2 flex gap-1 text-gray-600">
+                                <button onclick="insertFormat('**', '**')" class="w-8 h-8 flex items-center justify-center hover:bg-gray-200 rounded transition" title="굵게"><i class="fas fa-bold"></i></button>
+                                <button onclick="insertFormat('*', '*')" class="w-8 h-8 flex items-center justify-center hover:bg-gray-200 rounded transition" title="기울임"><i class="fas fa-italic"></i></button>
+                                <div class="w-px h-5 bg-gray-300 mx-1 my-auto"></div>
+                                <button onclick="insertFormat('- ', '')" class="w-8 h-8 flex items-center justify-center hover:bg-gray-200 rounded transition" title="목록"><i class="fas fa-list-ul"></i></button>
+                                <button onclick="insertFormat('`', '`')" class="w-8 h-8 flex items-center justify-center hover:bg-gray-200 rounded transition" title="인라인 코드"><i class="fas fa-code"></i></button>
+                                <button onclick="insertFormat('```\\n', '\\n```')" class="w-8 h-8 flex items-center justify-center hover:bg-gray-200 rounded transition" title="코드 블록"><i class="fas fa-file-code"></i></button>
+                            </div>
+                            <textarea id="taskDesc" class="w-full p-5 h-48 outline-none resize-y text-sm leading-relaxed custom-scrollbar bg-white" placeholder="학생들이 수행해야 할 과제 내용을 자세히 적어주세요 (Markdown 지원).">1. Oracle JDK 17 버전을 다운로드하고 설치하세요.
+2. 환경변수(Path) 설정을 완료한 뒤, CMD 창에서 `java -version`을 입력하세요.
+3. 출력된 결과를 캡처하여 이미지를 제출하세요.</textarea>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div>
+                                <label class="block text-xs font-extrabold text-gray-600 mb-2">참조 파일 첨부 <span class="font-normal text-gray-400">(선택)</span></label>
+                                <div id="dropZone" class="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer hover:bg-green-50 hover:border-primary transition group relative" onclick="document.getElementById('fileInput').click()">
+                                    <i class="fas fa-cloud-upload-alt text-2xl text-gray-400 group-hover:text-primary transition mb-2"></i>
+                                    <span class="text-sm font-bold text-gray-600 block group-hover:text-primary">클릭하거나 파일 드래그 앤 드롭</span>
+                                    <span class="text-[10px] text-gray-400 mt-1 block">PDF, ZIP, 이미지 (최대 50MB)</span>
+                                    <input type="file" id="fileInput" class="hidden" multiple onchange="handleFileSelect(this.files)">
+                                </div>
+                                <div id="fileList" class="mt-3 space-y-2 empty:hidden"></div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-extrabold text-gray-600 mb-2">학생 제출 허용 형식 <span class="text-red-500">*</span></label>
+                                <div class="space-y-3 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                    <label class="flex items-center gap-3 text-sm font-bold text-gray-700 cursor-pointer">
+                                        <input type="checkbox" checked class="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary accent-primary"> 텍스트/코드 직접 입력
+                                    </label>
+                                    <label class="flex items-center gap-3 text-sm font-bold text-gray-700 cursor-pointer">
+                                        <input type="checkbox" checked class="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary accent-primary"> 파일 업로드 (이미지, ZIP 등)
+                                    </label>
+                                    <label class="flex items-center gap-3 text-sm font-bold text-gray-700 cursor-pointer">
+                                        <input type="checkbox" class="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary accent-primary"> 외부 링크 (Github, Notion 등)
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl border border-gray-200 shadow-sm relative overflow-visible">
+                        
+                        <div class="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-2xl">
+                            <div>
+                                <h2 class="text-lg font-extrabold text-gray-900 flex items-center gap-2">
+                                    <i class="fas fa-robot text-primary"></i> 자동 채점 시스템 (AI 루브릭)
+                                </h2>
+                                <p class="text-xs text-gray-500 mt-1 font-medium">강사가 설정한 기준(키워드/OCR)에 따라 학생 제출물이 즉시 자동 채점됩니다.</p>
+                            </div>
+                            <div class="flex items-center gap-3 bg-white px-4 py-2 rounded-full shadow-sm border border-gray-200">
+                                <span class="text-xs font-bold text-gray-700" id="toggleStatusText">자동 채점 켜짐</span>
+                                <div class="relative inline-block w-10 align-middle select-none transition duration-200 ease-in">
+                                    <input type="checkbox" name="toggle" id="autoGradeToggle" class="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white border-4 appearance-none cursor-pointer outline-none transition-all duration-300 right-0 border-primary" checked onchange="toggleAutoGrading()"/>
+                                    <label for="autoGradeToggle" class="toggle-label block overflow-hidden h-6 rounded-full bg-primary cursor-pointer transition-all duration-300"></label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="rubricWrapper" class="p-6 transition-all duration-300">
+                            
+                            <div id="rubricContainer" class="space-y-4">
+                                <div class="rubric-item flex items-start gap-4 bg-white p-4 rounded-xl border border-gray-200 shadow-sm relative group">
+                                    <div class="w-8 h-8 bg-green-50 text-primary rounded-lg flex items-center justify-center font-black shrink-0 border border-green-100 index-badge mt-1">1</div>
+                                    <div class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4">
+                                        <div class="lg:col-span-5">
+                                            <label class="block text-[10px] font-extrabold text-gray-500 mb-1">평가 항목 내용</label>
+                                            <input type="text" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 focus:border-primary outline-none text-sm font-bold text-gray-800 transition" value="특정 라이브러리/버전 사용 여부">
+                                        </div>
+                                        <div class="lg:col-span-5">
+                                            <label class="block text-[10px] font-extrabold text-gray-500 mb-1 flex items-center gap-1">자동 검사 키워드 <i class="fas fa-info-circle text-gray-400" title="쉼표(,)로 구분하여 입력하세요"></i></label>
+                                            <input type="text" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 focus:border-primary outline-none text-sm font-bold text-gray-800 transition" value="JDK 17, openjdk 17">
+                                        </div>
+                                        <div class="lg:col-span-2">
+                                            <label class="block text-[10px] font-extrabold text-gray-500 mb-1">배점</label>
+                                            <div class="relative">
+                                                <input type="number" class="score-input w-full bg-gray-50 border border-gray-200 rounded-lg pl-3 pr-8 py-2 focus:border-primary outline-none text-sm font-black text-primary transition text-right" value="30" oninput="calcTotalScore()">
+                                                <span class="absolute right-3 top-2 text-xs text-gray-400 font-bold">점</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button onclick="removeRubric(this)" class="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition mt-1" title="항목 삭제"><i class="fas fa-trash-alt"></i></button>
+                                </div>
+
+                                <div class="rubric-item flex items-start gap-4 bg-white p-4 rounded-xl border border-gray-200 shadow-sm relative group">
+                                    <div class="w-8 h-8 bg-green-50 text-primary rounded-lg flex items-center justify-center font-black shrink-0 border border-green-100 index-badge mt-1">2</div>
+                                    <div class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4">
+                                        <div class="lg:col-span-5">
+                                            <label class="block text-[10px] font-extrabold text-gray-500 mb-1">평가 항목 내용</label>
+                                            <input type="text" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 focus:border-primary outline-none text-sm font-bold text-gray-800 transition" value="환경변수 설정 캡처 확인 (OCR)">
+                                        </div>
+                                        <div class="lg:col-span-5">
+                                            <label class="block text-[10px] font-extrabold text-gray-500 mb-1 flex items-center gap-1">자동 검사 키워드 <i class="fas fa-info-circle text-gray-400" title="이미지 제출 시 텍스트를 추출하여 검사합니다."></i></label>
+                                            <input type="text" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 focus:border-primary outline-none text-sm font-bold text-gray-800 transition" value="JAVA_HOME, Path">
+                                        </div>
+                                        <div class="lg:col-span-2">
+                                            <label class="block text-[10px] font-extrabold text-gray-500 mb-1">배점</label>
+                                            <div class="relative">
+                                                <input type="number" class="score-input w-full bg-gray-50 border border-gray-200 rounded-lg pl-3 pr-8 py-2 focus:border-primary outline-none text-sm font-black text-primary transition text-right" value="70" oninput="calcTotalScore()">
+                                                <span class="absolute right-3 top-2 text-xs text-gray-400 font-bold">점</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <button onclick="removeRubric(this)" class="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition mt-1" title="항목 삭제"><i class="fas fa-trash-alt"></i></button>
+                                </div>
+                            </div>
+
+                            <button onclick="addRubric()" class="w-full mt-4 py-3 border-2 border-dashed border-gray-300 bg-gray-50 rounded-xl text-gray-500 text-sm font-bold hover:border-primary hover:text-primary hover:bg-green-50 transition flex items-center justify-center gap-2">
+                                <i class="fas fa-plus"></i> 평가 기준 추가하기
+                            </button>
+
+                            <div id="aiReviewCard" class="mt-8 p-5 bg-white rounded-xl border border-gray-200 flex flex-col md:flex-row items-start md:items-center gap-4 transition-all duration-300 relative overflow-hidden">
+                                <div class="w-12 h-12 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center text-xl shrink-0 border border-blue-100 z-10" id="aiIconBg">
+                                    <i class="fas fa-magic"></i>
+                                </div>
+                                <div class="flex-1 z-10">
+                                    <div class="flex items-center gap-2 mb-1">
+                                        <h4 class="text-sm font-extrabold text-gray-900" id="aiTitle">AI 코드 리뷰어 (Beta)</h4>
+                                        <span class="bg-blue-100 text-blue-600 text-[9px] font-extrabold px-1.5 py-0.5 rounded uppercase">Premium</span>
+                                    </div>
+                                    <p class="text-xs text-gray-500 leading-relaxed font-medium">단순 키워드 매칭을 넘어, AI가 학생이 작성한 코드의 효율성, 가독성, 예외 처리 등을 분석하여 상세한 피드백 코멘트를 자동 생성합니다.</p>
+                                </div>
+                                <button id="aiToggleBtn" onclick="toggleAIReview(this)" class="shrink-0 px-5 py-2.5 bg-white border-2 border-blue-500 text-blue-600 text-xs font-bold rounded-xl hover:bg-blue-50 transition z-10 w-full md:w-auto">
+                                    활성화 켜기
+                                </button>
+                                <div id="aiActiveBg" class="absolute inset-0 bg-gradient-to-r from-blue-50 to-indigo-50 opacity-0 transition-opacity duration-300"></div>
+                            </div>
+
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-8 rounded-2xl border border-gray-200 shadow-sm grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div>
+                            <div class="flex justify-between items-end mb-2">
+                                <label class="block text-sm font-extrabold text-gray-800">총 배점 합계</label>
+                                <span class="text-[10px] text-gray-400 font-bold" id="scoreHelperText">루브릭 점수가 자동 합산됩니다.</span>
+                            </div>
+                            <div class="relative">
+                                <input type="number" id="totalScoreInput" class="w-full border border-gray-200 bg-gray-50 rounded-xl pl-4 pr-12 py-3 text-lg focus:border-primary outline-none font-black text-gray-900 transition text-right" value="100" readonly>
+                                <span class="absolute right-4 top-3.5 text-sm font-bold text-gray-500">점</span>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <div class="flex justify-between items-end mb-2">
+                                <label class="block text-sm font-extrabold text-gray-800">과제 이수 기준 (Pass 점수)</label>
+                                <span class="text-[10px] text-gray-400 font-bold">이 점수 이상이어야 '이수(Pass)' 처리됩니다.</span>
+                            </div>
+                            <div class="relative">
+                                <input type="number" id="passScoreInput" class="w-full border border-gray-200 rounded-xl pl-4 pr-16 py-3 text-lg focus:border-primary outline-none font-black text-primary transition text-right" value="80">
+                                <span class="absolute right-4 top-3.5 text-sm font-bold text-gray-500">점 이상</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <div id="successModal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 opacity-0 visibility-hidden transition-all duration-300 hidden">
+        <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm"></div>
+        <div class="bg-white w-full max-w-sm rounded-3xl shadow-2xl relative z-10 p-8 text-center transform scale-95 transition-transform duration-300" id="successModalContent">
+            <div class="w-16 h-16 bg-green-50 text-primary rounded-full flex items-center justify-center mx-auto mb-5 border border-green-100 shadow-sm">
+                <i class="fas fa-check text-3xl"></i>
+            </div>
+            <h3 class="text-xl font-extrabold text-gray-900 mb-2">저장 완료!</h3>
+            <p class="text-sm text-gray-500 mb-6 font-medium">과제 및 자동 채점 설정이 성공적으로 저장되었습니다.</p>
+            <button onclick="location.href='course-editor.html'" class="w-full py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-black transition shadow-md">
+                강의 편집기로 돌아가기
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // 🚀 UI 인터랙션 및 토스트 기능
+        // ==========================================
+        function showToast(msg) {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = 'toast bg-gray-900/90 backdrop-blur-sm text-white px-5 py-3 rounded-xl shadow-xl flex items-center gap-3 text-sm font-bold border border-gray-700';
+            toast.innerHTML = `<i class="fas fa-info-circle text-primary"></i> <span>${msg}</span>`;
+            
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add('hide');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // ==========================================
+        // 🚀 텍스트 에디터 기능
+        // ==========================================
+        function insertFormat(prefix, suffix) {
+            const textarea = document.getElementById('taskDesc');
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            const text = textarea.value;
+            const selectedText = text.substring(start, end);
+            
+            textarea.value = text.substring(0, start) + prefix + selectedText + suffix + text.substring(end);
+            textarea.focus();
+            textarea.selectionStart = start + prefix.length;
+            textarea.selectionEnd = end + prefix.length;
+            
+            showToast('마크다운 서식이 적용되었습니다.');
+        }
+
+        // ==========================================
+        // 🚀 파일 첨부 (Drag & Drop) 기능
+        // ==========================================
+        const dropZone = document.getElementById('dropZone');
+        const fileList = document.getElementById('fileList');
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('bg-green-50', 'border-primary');
+        });
+        dropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('bg-green-50', 'border-primary');
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('bg-green-50', 'border-primary');
+            if (e.dataTransfer.files.length) {
+                handleFileSelect(e.dataTransfer.files);
+            }
+        });
+
+        function handleFileSelect(files) {
+            Array.from(files).forEach(file => {
+                const item = document.createElement('div');
+                item.className = 'flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg shadow-sm';
+                item.innerHTML = `
+                    <div class="flex items-center gap-2 overflow-hidden">
+                        <i class="fas fa-file-alt text-gray-400"></i>
+                        <span class="text-xs font-bold text-gray-700 truncate">${file.name}</span>
+                        <span class="text-[10px] text-gray-400 shrink-0">(${(file.size / 1024 / 1024).toFixed(2)} MB)</span>
+                    </div>
+                    <button onclick="this.parentElement.remove(); showToast('첨부 파일이 삭제되었습니다.');" class="text-gray-400 hover:text-red-500 transition px-2"><i class="fas fa-times"></i></button>
+                `;
+                fileList.appendChild(item);
+            });
+            showToast(`${files.length}개의 파일이 첨부되었습니다.`);
+        }
+
+        // ==========================================
+        // 🚀 루브릭 (자동 채점) 동적 제어
+        // ==========================================
+        
+        // 1. 자동 채점 켜기/끄기
+        function toggleAutoGrading() {
+            const isChecked = document.getElementById('autoGradeToggle').checked;
+            const wrapper = document.getElementById('rubricWrapper');
+            const statusText = document.getElementById('toggleStatusText');
+            const totalInput = document.getElementById('totalScoreInput');
+            const passInput = document.getElementById('passScoreInput');
+            const helperText = document.getElementById('scoreHelperText');
+
+            if (isChecked) {
+                wrapper.classList.remove('disabled-overlay');
+                statusText.innerText = "자동 채점 켜짐";
+                statusText.classList.remove('text-gray-400');
+                totalInput.setAttribute('readonly', 'readonly');
+                totalInput.classList.add('bg-gray-50');
+                helperText.innerText = "루브릭 점수가 자동 합산됩니다.";
+                calcTotalScore();
+                showToast('자동 채점 기능이 활성화되었습니다.');
+            } else {
+                wrapper.classList.add('disabled-overlay');
+                statusText.innerText = "자동 채점 꺼짐";
+                statusText.classList.add('text-gray-400');
+                totalInput.removeAttribute('readonly');
+                totalInput.classList.remove('bg-gray-50');
+                helperText.innerText = "총 배점을 직접 입력하세요.";
+                showToast('자동 채점 기능이 비활성화되었습니다.');
+            }
+        }
+
+        // 2. 항목 추가
+        function addRubric() {
+            const container = document.getElementById('rubricContainer');
+            const nextIndex = container.children.length + 1;
+            
+            const item = document.createElement('div');
+            item.className = 'rubric-item flex items-start gap-4 bg-white p-4 rounded-xl border border-gray-200 shadow-sm relative group opacity-0 translate-y-4';
+            item.innerHTML = `
+                <div class="w-8 h-8 bg-green-50 text-primary rounded-lg flex items-center justify-center font-black shrink-0 border border-green-100 index-badge mt-1">${nextIndex}</div>
+                <div class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4">
+                    <div class="lg:col-span-5">
+                        <label class="block text-[10px] font-extrabold text-gray-500 mb-1">평가 항목 내용</label>
+                        <input type="text" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 focus:border-primary outline-none text-sm font-bold text-gray-800 transition" placeholder="예: 컴파일 에러 없음">
+                    </div>
+                    <div class="lg:col-span-5">
+                        <label class="block text-[10px] font-extrabold text-gray-500 mb-1 flex items-center gap-1">자동 검사 키워드 <i class="fas fa-info-circle text-gray-400" title="쉼표(,)로 구분하여 입력하세요"></i></label>
+                        <input type="text" class="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 focus:border-primary outline-none text-sm font-bold text-gray-800 transition" placeholder="검사할 키워드 입력">
+                    </div>
+                    <div class="lg:col-span-2">
+                        <label class="block text-[10px] font-extrabold text-gray-500 mb-1">배점</label>
+                        <div class="relative">
+                            <input type="number" class="score-input w-full bg-gray-50 border border-gray-200 rounded-lg pl-3 pr-8 py-2 focus:border-primary outline-none text-sm font-black text-primary transition text-right" value="0" oninput="calcTotalScore()">
+                            <span class="absolute right-3 top-2 text-xs text-gray-400 font-bold">점</span>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="removeRubric(this)" class="w-8 h-8 flex items-center justify-center text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition mt-1" title="항목 삭제"><i class="fas fa-trash-alt"></i></button>
+            `;
+            
+            container.appendChild(item);
+            
+            // Trigger animation
+            setTimeout(() => {
+                item.classList.remove('opacity-0', 'translate-y-4');
+            }, 10);
+            
+            showToast('새로운 평가 기준이 추가되었습니다.');
+        }
+
+        // 3. 항목 삭제 및 번호 재정렬
+        function removeRubric(btn) {
+            const item = btn.closest('.rubric-item');
+            const container = document.getElementById('rubricContainer');
+            
+            if(container.children.length === 1) {
+                showToast('최소 1개의 평가 기준이 필요합니다.');
+                return;
+            }
+
+            // Animate out
+            item.style.opacity = '0';
+            item.style.transform = 'translateY(-10px)';
+            
+            setTimeout(() => {
+                item.remove();
+                // 번호 재정렬
+                const badges = container.querySelectorAll('.index-badge');
+                badges.forEach((badge, idx) => {
+                    badge.innerText = idx + 1;
+                });
+                calcTotalScore();
+                showToast('평가 기준이 삭제되었습니다.');
+            }, 300);
+        }
+
+        // 4. 점수 자동 합산 (이수 기준점수 자동조정 포함)
+        function calcTotalScore() {
+            if(!document.getElementById('autoGradeToggle').checked) return;
+            
+            const inputs = document.querySelectorAll('.score-input');
+            let total = 0;
+            inputs.forEach(input => {
+                const val = parseInt(input.value) || 0;
+                total += val;
+            });
+            document.getElementById('totalScoreInput').value = total;
+
+            // 통과 점수가 총점보다 높으면 자동으로 맞춰줌
+            const passInput = document.getElementById('passScoreInput');
+            if(parseInt(passInput.value) > total) {
+                passInput.value = total;
+            }
+        }
+
+        // ==========================================
+        // 🚀 AI 코드 리뷰어 활성화 토글
+        // ==========================================
+        let isAiActive = false;
+        function toggleAIReview(btn) {
+            isAiActive = !isAiActive;
+            const bg = document.getElementById('aiActiveBg');
+            const iconBg = document.getElementById('aiIconBg');
+            const title = document.getElementById('aiTitle');
+
+            if(isAiActive) {
+                btn.innerText = "활성화 됨";
+                btn.className = "shrink-0 px-5 py-2.5 bg-blue-600 text-white text-xs font-bold rounded-xl shadow-lg shadow-blue-200 transition z-10 w-full md:w-auto";
+                bg.classList.remove('opacity-0');
+                bg.classList.add('opacity-100');
+                iconBg.classList.replace('bg-blue-50', 'bg-blue-600');
+                iconBg.classList.replace('text-blue-500', 'text-white');
+                title.classList.replace('text-gray-900', 'text-blue-900');
+                showToast('✨ AI 코드 리뷰어가 활성화되었습니다!');
+            } else {
+                btn.innerText = "활성화 켜기";
+                btn.className = "shrink-0 px-5 py-2.5 bg-white border-2 border-blue-500 text-blue-600 text-xs font-bold rounded-xl hover:bg-blue-50 transition z-10 w-full md:w-auto";
+                bg.classList.remove('opacity-100');
+                bg.classList.add('opacity-0');
+                iconBg.classList.replace('bg-blue-600', 'bg-blue-50');
+                iconBg.classList.replace('text-white', 'text-blue-500');
+                title.classList.replace('text-blue-900', 'text-gray-900');
+                showToast('AI 코드 리뷰어가 비활성화되었습니다.');
+            }
+        }
+
+        // ==========================================
+        // 🚀 저장 및 밸리데이션 로직
+        // ==========================================
+        function saveAssignment() {
+            const title = document.getElementById('taskTitle').value.trim();
+            const totalScore = parseInt(document.getElementById('totalScoreInput').value);
+            const passScore = parseInt(document.getElementById('passScoreInput').value);
+
+            if(!title) {
+                alert('과제 제목을 입력해주세요.');
+                document.getElementById('taskTitle').focus();
+                return;
+            }
+
+            if(passScore > totalScore) {
+                alert('이수 기준 점수는 총 배점보다 클 수 없습니다.');
+                document.getElementById('passScoreInput').focus();
+                return;
+            }
+
+            // 모달 표시
+            const modal = document.getElementById('successModal');
+            const content = document.getElementById('successModalContent');
+            
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0', 'visibility-hidden');
+                content.classList.remove('scale-95');
+                content.classList.add('scale-100');
+            }, 10);
+        }
+    </script>
+    <script src="/static-site-header.js"></script>
+    <script>
+        (function preserveCourseEditorContext() {
+            const courseId = new URLSearchParams(window.location.search).get('courseId');
+            if (!courseId) {
+                return;
+            }
+
+            const editorHref = `course-editor.html?courseId=${encodeURIComponent(courseId)}`;
+
+            document.querySelectorAll('a[href="course-editor.html"]').forEach((link) => {
+                link.setAttribute('href', editorHref);
+            });
+
+            document.querySelectorAll('[onclick]').forEach((element) => {
+                const handler = element.getAttribute('onclick');
+                if (!handler || !handler.includes('course-editor.html')) {
+                    return;
+                }
+
+                element.setAttribute('onclick', handler.replaceAll('course-editor.html', editorHref));
+            });
+        })();
+    </script>
+</body>
 </html>

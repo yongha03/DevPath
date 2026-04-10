@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { buildMyInstructorProfileHref } from '../instructor-channel-customization'
 import { accountNavItems, type AccountPageKey } from '../lib/account-navigation'
 import type { AuthSession } from '../types/auth'
 import UserAvatar from './UserAvatar'
@@ -18,6 +19,19 @@ export default function AccountUserMenu({
 }: AccountUserMenuProps) {
   const [open, setOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement | null>(null)
+  const currentFileName = window.location.pathname.split('/').pop() ?? ''
+  const instructorChannelActive =
+    currentFileName === 'instructor-profile.html' || currentFileName === 'instructor-channel.html'
+  const instructorMenuItem =
+    session.role === 'ROLE_INSTRUCTOR'
+      ? {
+          key: 'instructor-channel',
+          href: buildMyInstructorProfileHref(session),
+          shortLabel: '내 채널',
+          description: '강사 프로필과 채널 홈으로 이동합니다.',
+          icon: 'fas fa-circle-play',
+        }
+      : null
 
   useEffect(() => {
     if (!open) {
@@ -85,6 +99,27 @@ export default function AccountUserMenu({
           </div>
 
           <div className="grid gap-1 p-2">
+            {instructorMenuItem ? (
+              <a
+                href={instructorMenuItem.href}
+                onClick={() => setOpen(false)}
+                className={`flex items-start gap-3 rounded-2xl px-4 py-3 transition ${
+                  instructorChannelActive ? 'bg-emerald-50 text-emerald-700' : 'hover:bg-gray-50'
+                }`}
+              >
+                <div
+                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${
+                    instructorChannelActive ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-100 text-gray-500'
+                  }`}
+                >
+                  <i className={instructorMenuItem.icon} />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-sm font-bold text-gray-900">{instructorMenuItem.shortLabel}</div>
+                  <div className="mt-0.5 text-xs leading-5 text-gray-500">{instructorMenuItem.description}</div>
+                </div>
+              </a>
+            ) : null}
             {accountNavItems.map((item) => {
               const active = currentPageKey === item.key
 
@@ -125,7 +160,7 @@ export default function AccountUserMenu({
               <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gray-100 text-gray-500">
                 <i className="fas fa-arrow-right-from-bracket" />
               </div>
-              로그아웃
+              {'\uB85C\uADF8\uC544\uC6C3'}
             </button>
           </div>
         </div>

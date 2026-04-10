@@ -1,10 +1,4 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
 import QuizCreatorApp from './QuizCreatorApp'
+import { renderPage } from './render-page'
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <QuizCreatorApp />
-  </StrictMode>,
-)
+renderPage(<QuizCreatorApp />, { missingRootMessage: 'quiz-creator root element was not found' })

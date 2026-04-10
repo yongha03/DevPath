@@ -1,10 +1,6 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
 import ContentAssignmentEditorApp from './ContentAssignmentEditorApp'
+import { renderPage } from './render-page'
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <ContentAssignmentEditorApp />
-  </StrictMode>,
-)
+renderPage(<ContentAssignmentEditorApp />, {
+  missingRootMessage: 'content-assignment-editor root element was not found',
+})

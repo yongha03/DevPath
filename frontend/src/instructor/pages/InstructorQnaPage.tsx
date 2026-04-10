@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import UserAvatar from '../../components/UserAvatar'
 import type { AuthSession } from '../../types/auth'
 import { instructorQnaApi } from '../../lib/api'
 import type { InstructorQnaInboxItem, InstructorQnaTemplate, InstructorQnaTimeline } from '../../types/instructor'
@@ -471,7 +472,12 @@ export default function InstructorQnaPage({ session }: { session: AuthSession })
                   <div className="mt-6 rounded-[28px] border border-green-200 bg-white p-6 shadow-sm lg:p-8">
                     <div className="mb-5 flex items-center justify-between border-b border-gray-100 pb-4">
                       <div className="flex items-center gap-3">
-                        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Instructor" className="h-10 w-10 rounded-full border border-gray-200 shadow-sm" alt={session.name} />
+                        <UserAvatar
+                          name={session.name}
+                          imageUrl={null}
+                          className="h-10 w-10 shadow-sm"
+                          alt={session.name}
+                        />
                         <div>
                           <p className="text-sm font-extrabold text-gray-900">{session.name}</p>
                           <p className="mt-1 text-[10px] font-bold text-gray-400">답변 완료</p>
