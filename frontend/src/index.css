@@ -364,6 +364,8 @@ body,
   padding-top: 64px;
   background: #f8f9fa;
   overflow-anchor: none;
+  scrollbar-gutter: stable;
+  overscroll-behavior-y: contain;
 }
 
 .nav-item {

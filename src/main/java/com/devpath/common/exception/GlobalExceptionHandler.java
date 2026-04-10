@@ -15,6 +15,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @Slf4j
 @RestControllerAdvice
@@ -118,6 +119,14 @@ public class GlobalExceptionHandler {
             ? ErrorCode.CUSTOM_ROADMAP_ALREADY_EXISTS
             : ErrorCode.DUPLICATE_RESOURCE;
 
+    return ResponseEntity.status(errorCode.getStatus())
+        .body(ApiResponse.error(errorCode.name(), errorCode.getMessage()));
+  }
+
+  @ExceptionHandler(NoResourceFoundException.class)
+  public ResponseEntity<ApiResponse<Void>> handleNoResourceFoundException(
+      NoResourceFoundException e) {
+    ErrorCode errorCode = ErrorCode.RESOURCE_NOT_FOUND;
     return ResponseEntity.status(errorCode.getStatus())
         .body(ApiResponse.error(errorCode.name(), errorCode.getMessage()));
   }

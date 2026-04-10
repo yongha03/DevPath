@@ -57,6 +57,12 @@ public class Quiz {
     @Column(name = "total_score", nullable = false)
     private Integer totalScore;
 
+    @Column(name = "pass_score")
+    private Integer passScore;
+
+    @Column(name = "time_limit_minutes")
+    private Integer timeLimitMinutes;
+
     // 프론트나 학습자에게 공개 가능한 퀴즈인지 여부를 나타낸다.
     @Column(name = "is_published", nullable = false)
     private Boolean isPublished = false;
@@ -98,6 +104,8 @@ public class Quiz {
             String description,
             QuizType quizType,
             Integer totalScore,
+            Integer passScore,
+            Integer timeLimitMinutes,
             Boolean isPublished,
             Boolean isActive,
             Boolean exposeAnswer,
@@ -110,6 +118,8 @@ public class Quiz {
         this.description = description;
         this.quizType = quizType == null ? QuizType.MANUAL : quizType;
         this.totalScore = totalScore == null ? 0 : totalScore;
+        this.passScore = passScore;
+        this.timeLimitMinutes = timeLimitMinutes;
         this.isPublished = isPublished == null ? false : isPublished;
         this.isActive = isActive == null ? true : isActive;
         this.exposeAnswer = exposeAnswer == null ? false : exposeAnswer;
@@ -124,10 +134,23 @@ public class Quiz {
 
     // 제목, 설명, 유형, 총점을 한 번에 수정하는 비즈니스 메서드다.
     public void updateInfo(String title, String description, QuizType quizType, Integer totalScore) {
+        updateInfo(title, description, quizType, totalScore, this.passScore, this.timeLimitMinutes);
+    }
+
+    public void updateInfo(
+            String title,
+            String description,
+            QuizType quizType,
+            Integer totalScore,
+            Integer passScore,
+            Integer timeLimitMinutes
+    ) {
         this.title = title;
         this.description = description;
         this.quizType = quizType;
         this.totalScore = totalScore;
+        this.passScore = passScore;
+        this.timeLimitMinutes = timeLimitMinutes;
     }
 
     // 퀴즈를 공개 상태로 전환한다.

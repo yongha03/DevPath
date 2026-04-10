@@ -81,6 +81,9 @@ public class Assignment {
     @Column(name = "total_score", nullable = false)
     private Integer totalScore;
 
+    @Column(name = "pass_score")
+    private Integer passScore;
+
     // 과제가 학습자에게 공개된 상태인지 여부를 저장한다.
     @Column(name = "is_published", nullable = false)
     private Boolean isPublished = false;
@@ -93,6 +96,21 @@ public class Assignment {
     @Column(name = "allow_late_submission", nullable = false)
     private Boolean allowLateSubmission = false;
 
+    @Column(name = "auto_grade_enabled")
+    private Boolean autoGradeEnabled;
+
+    @Column(name = "ai_review_enabled")
+    private Boolean aiReviewEnabled;
+
+    @Column(name = "allow_text_submission")
+    private Boolean allowTextSubmission;
+
+    @Column(name = "allow_file_submission")
+    private Boolean allowFileSubmission;
+
+    @Column(name = "allow_url_submission")
+    private Boolean allowUrlSubmission;
+
     // 실제 삭제 대신 논리 삭제를 적용하기 위한 플래그다.
     @Column(name = "is_deleted", nullable = false)
     private Boolean isDeleted = false;
@@ -100,6 +118,9 @@ public class Assignment {
     // 한 과제는 여러 루브릭 항목을 가질 수 있으며 과제 삭제 시 루브릭도 함께 정리된다.
     @OneToMany(mappedBy = "assignment", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Rubric> rubrics = new ArrayList<>();
+
+    @OneToMany(mappedBy = "assignment", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<AssignmentReferenceFile> referenceFiles = new ArrayList<>();
 
     // 생성 시각을 자동 저장한다.
     @CreationTimestamp
@@ -124,11 +145,18 @@ public class Assignment {
             Boolean lintRequired,
             String submissionRuleDescription,
             Integer totalScore,
+            Integer passScore,
             Boolean isPublished,
             Boolean isActive,
             Boolean allowLateSubmission,
+            Boolean autoGradeEnabled,
+            Boolean aiReviewEnabled,
+            Boolean allowTextSubmission,
+            Boolean allowFileSubmission,
+            Boolean allowUrlSubmission,
             Boolean isDeleted,
-            List<Rubric> rubrics
+            List<Rubric> rubrics,
+            List<AssignmentReferenceFile> referenceFiles
     ) {
         this.roadmapNode = roadmapNode;
         this.title = title;
@@ -141,14 +169,25 @@ public class Assignment {
         this.lintRequired = lintRequired == null ? false : lintRequired;
         this.submissionRuleDescription = submissionRuleDescription;
         this.totalScore = totalScore == null ? 0 : totalScore;
+        this.passScore = passScore;
         this.isPublished = isPublished == null ? false : isPublished;
         this.isActive = isActive == null ? true : isActive;
         this.allowLateSubmission = allowLateSubmission == null ? false : allowLateSubmission;
+        this.autoGradeEnabled = autoGradeEnabled;
+        this.aiReviewEnabled = aiReviewEnabled;
+        this.allowTextSubmission = allowTextSubmission;
+        this.allowFileSubmission = allowFileSubmission;
+        this.allowUrlSubmission = allowUrlSubmission;
         this.isDeleted = isDeleted == null ? false : isDeleted;
         this.rubrics = new ArrayList<>();
+        this.referenceFiles = new ArrayList<>();
 
         if (rubrics != null) {
             rubrics.forEach(this::addRubric);
+        }
+
+        if (referenceFiles != null) {
+            referenceFiles.forEach(this::addReferenceFile);
         }
     }
 
@@ -184,6 +223,22 @@ public class Assignment {
         this.allowLateSubmission = allowLateSubmission;
     }
 
+    public void updateEditorSettings(
+            Integer passScore,
+            Boolean autoGradeEnabled,
+            Boolean aiReviewEnabled,
+            Boolean allowTextSubmission,
+            Boolean allowFileSubmission,
+            Boolean allowUrlSubmission
+    ) {
+        this.passScore = passScore;
+        this.autoGradeEnabled = autoGradeEnabled;
+        this.aiReviewEnabled = aiReviewEnabled;
+        this.allowTextSubmission = allowTextSubmission;
+        this.allowFileSubmission = allowFileSubmission;
+        this.allowUrlSubmission = allowUrlSubmission;
+    }
+
     // 과제를 공개 상태로 전환한다.
     public void publish() {
         this.isPublished = true;
@@ -215,5 +270,10 @@ public class Assignment {
     public void addRubric(Rubric rubric) {
         this.rubrics.add(rubric);
         rubric.assignAssignment(this);
+    }
+
+    public void addReferenceFile(AssignmentReferenceFile referenceFile) {
+        this.referenceFiles.add(referenceFile);
+        referenceFile.assignAssignment(this);
     }
 }

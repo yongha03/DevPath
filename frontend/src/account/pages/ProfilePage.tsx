@@ -1,11 +1,11 @@
 import { useEffect, useState, type FormEvent, type KeyboardEvent } from 'react'
-import { userApi } from '../../lib/api'
 import UserAvatar from '../../components/UserAvatar'
 import { updateStoredAuthSession } from '../../lib/auth-session'
+import { userApi } from '../../lib/api'
 import { notifyProfileUpdated } from '../../lib/profile-sync'
 import { LearnerContentRow, LearnerPageShell, MyMenuSidebar } from '../template'
-import type { TechTag, UserProfile, UserProfileUpdateRequest } from '../../types/learner'
 import type { AuthSession } from '../../types/auth'
+import type { TechTag, UserProfile, UserProfileUpdateRequest } from '../../types/learner'
 
 type ProfileFormState = {
   name: string
@@ -68,7 +68,7 @@ export default function ProfilePage({ session }: { session: AuthSession }) {
           setOfficialTags(tagResponse)
         }
       } catch {
-        // 원본 프로필 화면을 유지하기 위해 API 실패 시 기본 데이터를 사용합니다.
+        // 프로필 화면이 비어 보이지 않게 API 실패 시 기본 데이터를 사용합니다.
       }
     }
 
@@ -177,8 +177,8 @@ export default function ProfilePage({ session }: { session: AuthSession }) {
               </div>
 
               <div className="flex-1 space-y-6">
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                  <div>
+                <div className="grid grid-cols-1 gap-6">
+                  <div className="max-w-[210px]">
                     <label className="mb-2 block text-sm font-bold text-gray-700">이름</label>
                     <input
                       type="text"
@@ -187,24 +187,16 @@ export default function ProfilePage({ session }: { session: AuthSession }) {
                       onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
                     />
                   </div>
-                  <div>
-                    <label className="mb-2 block text-sm font-bold text-gray-700">닉네임</label>
-                    <input
-                      type="text"
-                      className="input-field"
-                      value={form.channelName}
-                      onChange={(event) => setForm((current) => ({ ...current, channelName: event.target.value }))}
-                    />
-                  </div>
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-bold text-gray-700">한 줄 소개</label>
-                  <input
-                    type="text"
-                    className="input-field"
+                  <label className="mb-2 block text-sm font-bold text-gray-700">자기 소개</label>
+                  <textarea
+                    className="input-field min-h-36 resize-y"
+                    rows={5}
                     value={form.bio}
                     onChange={(event) => setForm((current) => ({ ...current, bio: event.target.value }))}
+                    placeholder="나를 간단히 소개해 주세요"
                   />
                 </div>
 
@@ -237,7 +229,7 @@ export default function ProfilePage({ session }: { session: AuthSession }) {
                     value={tagQuery}
                     onChange={(event) => setTagQuery(event.target.value)}
                     onKeyDown={handleTagInputKeyDown}
-                    placeholder="기술 스택을 입력하고 엔터를 누르세요 (ex: React, Docker)"
+                    placeholder="기술 스택을 입력하고 엔터를 눌러요 (ex: React, Docker)"
                   />
                 </div>
 
@@ -255,14 +247,14 @@ export default function ProfilePage({ session }: { session: AuthSession }) {
                   </div>
                   <div>
                     <label className="mb-2 block text-sm font-bold text-gray-700">
-                      <i className="fas fa-globe text-gray-400" /> 블로그/포트폴리오
+                      <i className="fas fa-globe text-gray-400" /> 블로그 포트폴리오
                     </label>
                     <input
                       type="text"
                       className="input-field"
                       value={form.blogUrl}
                       onChange={(event) => setForm((current) => ({ ...current, blogUrl: event.target.value }))}
-                      placeholder="URL을 입력해주세요"
+                      placeholder="URL을 입력해 주세요"
                     />
                   </div>
                 </div>

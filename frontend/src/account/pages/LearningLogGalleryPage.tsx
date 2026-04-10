@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { certificateApi, proofCardApi } from '../../lib/api'
 import { LearnerContentRow, LearnerPageShell, MyMenuSidebar } from '../template'
 import { downloadBase64File } from '../ui'
@@ -57,7 +57,6 @@ function formatShortDate(value: string | null | undefined) {
   }
 
   const date = new Date(value)
-
   return `${date.getFullYear()}. ${String(date.getMonth() + 1).padStart(2, '0')}. ${String(date.getDate()).padStart(2, '0')}`
 }
 
@@ -92,14 +91,16 @@ function cardTheme(type: ProofCardViewItem['type']) {
         icon: 'fab fa-java',
         action: 'bg-primary hover:bg-green-600',
         marker: 'marker:text-primary text-primary',
+        scoreLabel: 'AI 코드 리뷰 통과',
       }
     case 'cs':
       return {
         front: 'from-slate-700 to-slate-900',
-        badge: 'CS 전공지식',
+        badge: 'CS 공통지식',
         icon: 'fas fa-server',
         action: 'bg-blue-600 hover:bg-blue-700',
         marker: 'marker:text-blue-500 text-blue-400',
+        scoreLabel: '단답 퀴즈 통과',
       }
     case 'framework':
       return {
@@ -108,6 +109,7 @@ function cardTheme(type: ProofCardViewItem['type']) {
         icon: 'fas fa-leaf',
         action: 'bg-green-600 hover:bg-green-700',
         marker: 'marker:text-green-500 text-green-400',
+        scoreLabel: '실전 프로젝트 통과',
       }
     default:
       return {
@@ -116,6 +118,7 @@ function cardTheme(type: ProofCardViewItem['type']) {
         icon: 'fas fa-code',
         action: 'bg-primary hover:bg-green-600',
         marker: 'marker:text-primary text-primary',
+        scoreLabel: '성취 평가 통과',
       }
   }
 }
@@ -123,18 +126,20 @@ function cardTheme(type: ProofCardViewItem['type']) {
 export default function LearningLogGalleryPage() {
   const [items, setItems] = useState<ProofCardViewItem[]>(fallbackItems)
   const [details, setDetails] = useState<Record<number, ProofCardDetail>>({})
-  const [flippedIds, setFlippedIds] = useState<number[]>([])
   const [filterOpen, setFilterOpen] = useState(false)
   const [certificateOpen, setCertificateOpen] = useState(false)
   const [categoryFilter, setCategoryFilter] = useState<'all' | 'backend' | 'framework' | 'language' | 'cs'>('all')
   const [sortOrder, setSortOrder] = useState<'latest' | 'score'>('latest')
   const [selectedCard, setSelectedCard] = useState<ProofCardViewItem | null>(null)
   const [message, setMessage] = useState('')
+  const prefetchedDetailIds = useRef<Set<number>>(new Set())
 
   useEffect(() => {
+    const controller = new AbortController()
+
     async function load() {
       try {
-        const response = await proofCardApi.getGallery()
+        const response = await proofCardApi.getGallery(controller.signal)
 
         if (response.length) {
           setItems(
@@ -146,12 +151,70 @@ export default function LearningLogGalleryPage() {
           )
         }
       } catch {
-        // 원본 Proof Card 화면을 유지하기 위해 API 실패 시 기본 데이터를 사용합니다.
+        // API 실패 시에도 기본 카드 목록으로 화면을 유지합니다.
       }
     }
 
     void load()
+
+    return () => {
+      controller.abort()
+    }
   }, [])
+
+  useEffect(() => {
+    const pendingItems = items.filter(
+      (item) => !details[item.proofCardId] && !prefetchedDetailIds.current.has(item.proofCardId),
+    )
+
+    if (!pendingItems.length) {
+      return
+    }
+
+    const controller = new AbortController()
+    let cancelled = false
+
+    pendingItems.forEach((item) => {
+      prefetchedDetailIds.current.add(item.proofCardId)
+    })
+
+    async function loadDetails() {
+      const results = await Promise.allSettled(
+        pendingItems.map(async (item) => ({
+          proofCardId: item.proofCardId,
+          detail: await proofCardApi.getCard(item.proofCardId, controller.signal),
+        })),
+      )
+
+      if (cancelled) {
+        return
+      }
+
+      setDetails((current) => {
+        const next = { ...current }
+        let changed = false
+
+        results.forEach((result, index) => {
+          if (result.status === 'fulfilled') {
+            next[result.value.proofCardId] = result.value.detail
+            changed = true
+            return
+          }
+
+          prefetchedDetailIds.current.delete(pendingItems[index].proofCardId)
+        })
+
+        return changed ? next : current
+      })
+    }
+
+    void loadDetails()
+
+    return () => {
+      cancelled = true
+      controller.abort()
+    }
+  }, [details, items])
 
   const visibleCards = useMemo(() => {
     const filtered = items.filter((item) => categoryFilter === 'all' || item.type === categoryFilter)
@@ -165,21 +228,8 @@ export default function LearningLogGalleryPage() {
     })
   }, [categoryFilter, items, sortOrder])
 
-  async function handleFlip(card: ProofCardViewItem) {
-    setFlippedIds((current) =>
-      current.includes(card.proofCardId)
-        ? current.filter((proofCardId) => proofCardId !== card.proofCardId)
-        : [...current, card.proofCardId],
-    )
-
-    if (!details[card.proofCardId]) {
-      try {
-        const detail = await proofCardApi.getCard(card.proofCardId)
-        setDetails((current) => ({ ...current, [card.proofCardId]: detail }))
-      } catch {
-        // 상세 내용은 카드 템플릿의 기본 태그 목록으로 대체합니다.
-      }
-    }
+  function handleFlip(cardElement: HTMLDivElement) {
+    cardElement.classList.toggle('flipped')
   }
 
   async function handleDownloadCertificate(card: ProofCardViewItem) {
@@ -207,7 +257,7 @@ export default function LearningLogGalleryPage() {
             <div>
               <h1 className="mb-2 text-3xl font-bold text-gray-900">나의 증명 카드 (Proof Cards)</h1>
               <p className="text-gray-500">
-                완료한 <span className="font-bold text-brand">부모 노드(Module)</span>에 대한 인증서입니다.
+                완료한 <span className="font-bold text-brand">부모 노드(Module)</span>에 대한 인증 카드입니다.
               </p>
             </div>
             <div className="flex gap-2">
@@ -226,18 +276,17 @@ export default function LearningLogGalleryPage() {
             {visibleCards.map((item) => {
               const theme = cardTheme(item.type)
               const detail = details[item.proofCardId]
-              const flipped = flippedIds.includes(item.proofCardId)
               const detailTags = detail?.tags.length ? detail.tags : item.tags
 
               return (
                 <div
                   key={item.proofCardId}
-                  className={`group perspective card-item h-[420px] w-full cursor-pointer ${flipped ? 'flipped' : ''}`}
-                  onClick={() => void handleFlip(item)}
+                  className="group perspective card-item mx-auto h-[388px] w-full max-w-[352px] cursor-pointer"
+                  onClick={(event) => handleFlip(event.currentTarget)}
                 >
                   <div className="card-inner relative rounded-2xl shadow-xl">
                     <div className="card-front flex flex-col border border-gray-200 bg-white">
-                      <div className={`relative flex h-44 flex-col justify-between bg-gradient-to-br ${theme.front} p-6`}>
+                      <div className={`relative flex h-40 flex-col justify-between bg-gradient-to-br ${theme.front} p-5`}>
                         <div className="flex items-start justify-between">
                           <span className="rounded border border-white/10 bg-white/20 px-2 py-1 text-[10px] font-bold tracking-wider text-white backdrop-blur">
                             {theme.badge}
@@ -249,14 +298,14 @@ export default function LearningLogGalleryPage() {
                           <p className="mt-1 text-xs font-medium text-white/80">Verified</p>
                         </div>
                       </div>
-                      <div className="flex flex-1 flex-col justify-between bg-white p-6">
+                      <div className="flex flex-1 flex-col justify-between bg-white p-5">
                         <div>
                           <p className="mb-2 text-xs font-bold text-gray-400 uppercase">학습 완료일</p>
                           <p className="text-sm font-bold text-gray-800">{formatShortDate(item.issuedAt)}</p>
                         </div>
                         <div className="mt-2 border-t border-gray-100 pt-4">
                           <div className="flex items-center justify-between">
-                            <span className="text-xs font-medium text-gray-500">AI 코드 리뷰 통과</span>
+                            <span className="text-xs font-medium text-gray-500">{theme.scoreLabel}</span>
                             <span className="text-2xl font-bold text-gray-900">
                               {item.score} <span className="text-xs font-normal text-gray-400">/ 100</span>
                             </span>
@@ -270,15 +319,13 @@ export default function LearningLogGalleryPage() {
                       </div>
                     </div>
 
-                    <div className="card-back flex flex-col border border-gray-700 bg-gray-900 p-7 text-white">
+                    <div className="card-back flex flex-col border border-gray-700 bg-gray-900 p-5 text-white">
                       <div className="mb-4 border-b border-gray-700 pb-3">
                         <h3 className="text-lg font-bold text-white">{detail?.title ?? item.title}</h3>
                         <p className="mt-1 text-xs text-gray-400">{detail?.description ?? item.nodeTitle}</p>
                       </div>
                       <div className="custom-scrollbar flex-1 overflow-y-auto pr-2">
-                        <p className={`mb-2 text-[10px] font-bold tracking-wider uppercase ${theme.marker}`}>
-                          포함된 핵심 개념
-                        </p>
+                        <p className={`mb-2 text-[10px] font-bold tracking-wider uppercase ${theme.marker}`}>포함된 핵심 개념</p>
                         <ul className={`list-inside list-disc space-y-2 text-sm text-gray-300 ${theme.marker}`}>
                           {detailTags.map((tag) => (
                             <li key={`${item.proofCardId}-${tag.tagId}`}>{tag.tagName}</li>
@@ -378,22 +425,22 @@ export default function LearningLogGalleryPage() {
               </div>
 
               <h1 className="mb-2 text-4xl font-bold tracking-wide text-gray-900" style={{ fontFamily: "'Noto Serif KR', serif" }}>
-                수 료 증
+                수료 증명
               </h1>
               <p className="mb-10 text-sm tracking-[0.2em] text-gray-500 uppercase" style={{ fontFamily: "'Noto Serif KR', serif" }}>
                 CERTIFICATE OF COMPLETION
               </p>
 
-              <p className="mb-2 italic text-gray-500">위 사람은 DevPath에서 제공하는</p>
+              <p className="mb-2 italic text-gray-500">아래 사람은 DevPath에서 제공하는</p>
               <h3 className="text-brand mb-2 text-2xl font-bold">{selectedCard?.title ?? '과정명'}</h3>
               <p className="mb-4 italic text-gray-500">
-                과정을 성실히 수행하고, 소정의 평가 기준을 통과하였으므로
+                과정을 성실히 수행하고, 지정된 평가 기준을 통과하였으므로
                 <br />
-                이 증서를 수여합니다.
+                본 증명서를 수여합니다.
               </p>
 
               <h2 className="mt-6 mb-8 inline-block border-b border-gray-300 px-10 pb-2 text-3xl font-bold text-gray-800">
-                나(사용자)
+                학습자
               </h2>
 
               <div className="mb-12 flex justify-center gap-12 text-sm text-gray-600">

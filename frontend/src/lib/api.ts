@@ -77,6 +77,13 @@ import type {
   RecommendationChange,
   RecommendationChangeHistory,
 } from '../types/roadmap'
+import type {
+  GenerateInstructorQuizRequest,
+  InstructorAssignmentEditor,
+  InstructorQuizEditor,
+  SaveInstructorAssignmentEditorRequest,
+  SaveInstructorQuizEditorRequest,
+} from '../types/instructor-evaluation'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') ?? ''
 
@@ -890,6 +897,53 @@ export const instructorCourseApi = {
       `/api/instructor/lessons/${lessonId}/materials`,
       {
         method: 'POST',
+        body: JSON.stringify(payload),
+      },
+      { auth: true },
+    )
+  },
+}
+
+export const instructorLessonEvaluationApi = {
+  getQuizEditor(lessonId: number, signal?: AbortSignal) {
+    return request<InstructorQuizEditor>(
+      `/api/instructor/lessons/${lessonId}/quiz-editor`,
+      { method: 'GET', signal },
+      { auth: true },
+    )
+  },
+  saveQuizEditor(lessonId: number, payload: SaveInstructorQuizEditorRequest) {
+    return request<InstructorQuizEditor>(
+      `/api/instructor/lessons/${lessonId}/quiz-editor`,
+      {
+        method: 'PUT',
+        body: JSON.stringify(payload),
+      },
+      { auth: true },
+    )
+  },
+  generateQuizDraft(lessonId: number, payload: GenerateInstructorQuizRequest) {
+    return request<InstructorQuizEditor>(
+      `/api/instructor/lessons/${lessonId}/quiz-editor/generate`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+      { auth: true },
+    )
+  },
+  getAssignmentEditor(lessonId: number, signal?: AbortSignal) {
+    return request<InstructorAssignmentEditor>(
+      `/api/instructor/lessons/${lessonId}/assignment-editor`,
+      { method: 'GET', signal },
+      { auth: true },
+    )
+  },
+  saveAssignmentEditor(lessonId: number, payload: SaveInstructorAssignmentEditorRequest) {
+    return request<InstructorAssignmentEditor>(
+      `/api/instructor/lessons/${lessonId}/assignment-editor`,
+      {
+        method: 'PUT',
         body: JSON.stringify(payload),
       },
       { auth: true },

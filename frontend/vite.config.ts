@@ -3,7 +3,8 @@ import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
-const backendTarget = 'http://localhost:8082'
+const backendTarget =
+  process.env.VITE_BACKEND_TARGET?.trim() || 'http://localhost:8082'
 
 const proxyToBackend = {
   target: backendTarget,
@@ -33,6 +34,8 @@ export default defineConfig({
         courseManagement: resolve(__dirname, 'course-management.html'),
         instructorCourseDetail: resolve(__dirname, 'instructor-course-detail.html'),
         courseEditor: resolve(__dirname, 'course-editor.html'),
+        quizCreator: resolve(__dirname, 'quiz-creator.html'),
+        contentAssignmentEditor: resolve(__dirname, 'content-assignment-editor.html'),
         instructorMentoring: resolve(__dirname, 'instructor-mentoring.html'),
         instructorMarketing: resolve(__dirname, 'instructor-marketing.html'),
         instructorReviews: resolve(__dirname, 'instructor-reviews.html'),

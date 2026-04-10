@@ -53,4 +53,10 @@ public class RoadmapNode {
   public void changeNodeType(String nodeType) {
     this.nodeType = nodeType;
   }
+
+  public void updateInfo(String title, String content, String nodeType) {
+    this.title = title;
+    this.content = content;
+    this.nodeType = nodeType;
+  }
 }
