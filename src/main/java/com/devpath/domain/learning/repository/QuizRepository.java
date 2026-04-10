@@ -12,6 +12,8 @@ public interface QuizRepository extends JpaRepository<Quiz, Long> {
 
     Optional<Quiz> findByIdAndIsDeletedFalse(Long id);
 
+    Optional<Quiz> findFirstByRoadmapNodeNodeIdAndIsDeletedFalseOrderByCreatedAtDesc(Long nodeId);
+
     @Query("""
         select q
         from Quiz q

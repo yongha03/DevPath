@@ -1,5 +1,6 @@
 package com.devpath.domain.course.entity;
 
+import com.devpath.domain.roadmap.entity.RoadmapNode;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -67,6 +68,14 @@ public class Lesson {
   @Column(name = "sort_order")
   private Integer orderIndex;
 
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "quiz_node_id")
+  private RoadmapNode quizRoadmapNode;
+
+  @ManyToOne(fetch = FetchType.LAZY)
+  @JoinColumn(name = "assignment_node_id")
+  private RoadmapNode assignmentRoadmapNode;
+
   public void updateInfo(
       String title,
       String description,
@@ -118,5 +127,13 @@ public class Lesson {
 
   public void changeOrderIndex(Integer orderIndex) {
     this.orderIndex = orderIndex;
+  }
+
+  public void linkQuizRoadmapNode(RoadmapNode quizRoadmapNode) {
+    this.quizRoadmapNode = quizRoadmapNode;
+  }
+
+  public void linkAssignmentRoadmapNode(RoadmapNode assignmentRoadmapNode) {
+    this.assignmentRoadmapNode = assignmentRoadmapNode;
   }
 }

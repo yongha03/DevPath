@@ -12,6 +12,8 @@ public interface AssignmentRepository extends JpaRepository<Assignment, Long> {
 
     Optional<Assignment> findByIdAndIsDeletedFalse(Long id);
 
+    Optional<Assignment> findFirstByRoadmapNodeNodeIdAndIsDeletedFalseOrderByCreatedAtDesc(Long nodeId);
+
     @Query("""
         select a
         from Assignment a

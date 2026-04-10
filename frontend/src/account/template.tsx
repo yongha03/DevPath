@@ -19,7 +19,7 @@ const myMenuItems: Array<{
 
 export function LearnerPageShell({ children }: { children: ReactNode }) {
   return (
-    <main className="app-main flex-1 overflow-y-auto bg-[#F8F9FA]">
+    <main className="app-main flex-1 overflow-y-scroll bg-[#F8F9FA]">
       <div className="mx-auto w-full max-w-[1600px] px-8 pt-8 pb-12">{children}</div>
     </main>
   )

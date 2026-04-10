@@ -3,6 +3,7 @@ import { ErrorCard, LoadingCard } from '../../account/ui'
 import { instructorCourseApi, userApi } from '../../lib/api'
 import type { LearningCourseDetail, LearningLesson, LearningSection } from '../../types/learning'
 import type { TechTag } from '../../types/learner'
+import { buildLessonEditorHref } from '../course-editor/editor-routing'
 
 type PersistedCourseStatus = 'DRAFT' | 'IN_REVIEW' | 'PUBLISHED'
 type LessonKind = 'lecture' | 'quiz' | 'assignment'
@@ -507,6 +508,7 @@ export default function CourseEditorPage() {
   async function syncCurriculum(activeCourseId: number, nextSections: PreparedSection[]) {
     const existingSectionMap = new Map((loadedCourse?.sections ?? []).map((section) => [section.sectionId, section] as const))
     const retainedSectionIds = new Set<number>()
+    const lessonIdByLocalId: Record<string, number> = {}
 
     for (let sectionIndex = 0; sectionIndex < nextSections.length; sectionIndex += 1) {
       const section = nextSections[sectionIndex]
@@ -563,6 +565,7 @@ export default function CourseEditorPage() {
         }
 
         orderedLessonIds.push(persistedLessonId)
+        lessonIdByLocalId[lesson.localId] = persistedLessonId
       }
 
       for (const lessonId of existingLessonIds) {
@@ -587,6 +590,8 @@ export default function CourseEditorPage() {
         await instructorCourseApi.deleteSection(sectionIdValue)
       }
     }
+
+    return lessonIdByLocalId
   }
 
   async function persistCourse(nextStatus?: PersistedCourseStatus) {
@@ -653,10 +658,15 @@ export default function CourseEditorPage() {
       })
     }
 
-    await syncCurriculum(activeCourseId, preparedSections)
+    const lessonIdByLocalId = await syncCurriculum(activeCourseId, preparedSections)
     const statusToApply = nextStatus ?? status
     await instructorCourseApi.updateCourseStatus(activeCourseId, statusToApply)
     setStatus(statusToApply)
+
+    return {
+      courseId: activeCourseId,
+      lessonIdByLocalId,
+    }
   }
 
   async function handleSave() {
@@ -688,6 +698,45 @@ export default function CourseEditorPage() {
       window.location.href = 'course-management.html'
     } catch (nextError) {
       setActionError(nextError instanceof Error ? nextError.message : '심사 요청에 실패했습니다.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function prepareLessonForEditor(sectionLocalId: string, lessonLocalId: string) {
+    const section = sections.find((item) => item.localId === sectionLocalId)
+    const lesson = section?.lessons.find((item) => item.localId === lessonLocalId)
+
+    if (!lesson) {
+      setActionError('편집할 레슨을 찾을 수 없습니다.')
+      return null
+    }
+
+    if (lesson.lessonId) {
+      return {
+        lessonId: lesson.lessonId,
+        lessonTitle: lesson.title.trim() || '새 레슨',
+      }
+    }
+
+    setSaving(true)
+    setActionError(null)
+
+    try {
+      const persisted = await persistCourse()
+      const nextLessonId = persisted.lessonIdByLocalId[lessonLocalId]
+
+      if (!nextLessonId) {
+        throw new Error('레슨 저장이 완료되지 않아 편집기를 열 수 없습니다.')
+      }
+
+      return {
+        lessonId: nextLessonId,
+        lessonTitle: lesson.title.trim() || '새 레슨',
+      }
+    } catch (nextError) {
+      setActionError(nextError instanceof Error ? nextError.message : '레슨 저장 중 오류가 발생했습니다.')
+      return null
     } finally {
       setSaving(false)
     }
@@ -1041,11 +1090,34 @@ export default function CourseEditorPage() {
                             />
                             <button
                               type="button"
-                              onClick={() => {
+                              onClick={async () => {
                                 if (lesson.kind === 'lecture') {
                                   promptLessonVideo(section.localId, lesson.localId, lesson.videoUrl)
                                   return
                                 }
+                                const preparedLesson = await prepareLessonForEditor(section.localId, lesson.localId)
+                                if (!preparedLesson) {
+                                  return
+                                }
+
+                                const editorCourseId = getCourseIdFromUrl()
+                                const editorHref = buildLessonEditorHref(
+                                  lesson.kind === 'quiz' ? 'quiz' : 'assignment',
+                                  {
+                                    lessonId: preparedLesson.lessonId,
+                                    lessonTitle: preparedLesson.lessonTitle,
+                                    courseId: editorCourseId,
+                                  },
+                                )
+
+                                window.location.assign(editorHref)
+                                return
+
+                                if (lesson.kind === 'quiz') {
+                                  return
+                                }
+
+                                return
 
                                 window.alert('세부 편집기는 다음 단계에서 연결합니다.')
                               }}
