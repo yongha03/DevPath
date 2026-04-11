@@ -97,6 +97,8 @@ export interface InstructorQnaAnswer {
   answerId: number
   questionId: number
   instructorId: number
+  authorName?: string | null
+  authorProfileImage?: string | null
   content: string
   createdAt: string | null
   updatedAt: string | null

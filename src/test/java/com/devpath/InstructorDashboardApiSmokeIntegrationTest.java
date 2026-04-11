@@ -30,12 +30,17 @@ class InstructorDashboardApiSmokeIntegrationTest {
   @Autowired private JdbcTemplate jdbcTemplate;
 
   private Long instructorId;
+  private Long answeredQuestionId;
 
   @BeforeEach
   void setUp() {
     instructorId =
         jdbcTemplate.queryForObject(
             "select user_id from users where email = ?", Long.class, "instructor@devpath.com");
+    answeredQuestionId =
+        jdbcTemplate.queryForObject(
+            "select question_id from qna_questions where qna_status = 'ANSWERED' order by created_at desc limit 1",
+            Long.class);
   }
 
   @Test
@@ -65,7 +70,24 @@ class InstructorDashboardApiSmokeIntegrationTest {
 
   @Test
   void qnaInboxEndpointLoads() throws Exception {
-    performOk("/api/instructor/qna-inbox?status=UNANSWERED");
+    mockMvc
+        .perform(get("/api/instructor/qna-inbox?status=UNANSWERED").with(authentication(instructorAuthentication())))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data[0].title").exists())
+        .andExpect(jsonPath("$.data[0].content").exists());
+  }
+
+  @Test
+  void qnaTimelineEndpointLoads() throws Exception {
+    mockMvc
+        .perform(
+            get("/api/instructor/qna-inbox/" + answeredQuestionId + "/timeline")
+                .with(authentication(instructorAuthentication())))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.question.title").exists())
+        .andExpect(jsonPath("$.data.publishedAnswer.authorName").exists());
   }
 
   @Test

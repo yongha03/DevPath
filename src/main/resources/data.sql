@@ -1095,9 +1095,9 @@ WHERE c.title = 'Spring Boot Intro'
 
 INSERT INTO qna_question_templates
     (template_type, name, description, guide_example, sort_order, is_active, created_at, updated_at)
-SELECT 'DEBUGGING', 'Debugging question',
-       'Use this template when you need help identifying the root cause of an error or failure.',
-       'Explain the error message, when it happens, and what you already checked before asking.',
+SELECT 'DEBUGGING', '디버깅 질문',
+       '오류나 장애의 원인을 파악하고 싶을 때 사용하는 질문 템플릿입니다.',
+       '에러 메시지, 발생 시점, 이미 확인한 내용을 함께 적어주면 빠르게 원인을 좁힐 수 있습니다.',
        1, TRUE, NOW(), NOW()
 WHERE NOT EXISTS (
     SELECT 1
@@ -1107,9 +1107,9 @@ WHERE NOT EXISTS (
 
 INSERT INTO qna_question_templates
     (template_type, name, description, guide_example, sort_order, is_active, created_at, updated_at)
-SELECT 'IMPLEMENTATION', 'Implementation question',
-       'Use this template when you are building a feature and need guidance on structure or approach.',
-       'Describe the feature you are trying to build, the current design, and the exact part that blocks you.',
+SELECT 'IMPLEMENTATION', '구현 질문',
+       '기능을 구현하는 과정에서 구조나 접근 방식에 대한 도움이 필요할 때 사용하는 템플릿입니다.',
+       '만들고 싶은 기능, 현재 설계, 막히는 지점을 구체적으로 적어주세요.',
        2, TRUE, NOW(), NOW()
 WHERE NOT EXISTS (
     SELECT 1
@@ -1119,9 +1119,9 @@ WHERE NOT EXISTS (
 
 INSERT INTO qna_question_templates
     (template_type, name, description, guide_example, sort_order, is_active, created_at, updated_at)
-SELECT 'CODE_REVIEW', 'Code review question',
-       'Use this template when you want feedback on code quality, readability, or tradeoffs.',
-       'Share the relevant code, the expected behavior, and what kind of feedback you want most.',
+SELECT 'CODE_REVIEW', '코드 리뷰 질문',
+       '코드 품질, 가독성, 트레이드오프에 대한 피드백이 필요할 때 사용하는 템플릿입니다.',
+       '관련 코드, 기대 동작, 어떤 피드백이 가장 필요한지 함께 적어주세요.',
        3, TRUE, NOW(), NOW()
 WHERE NOT EXISTS (
     SELECT 1
@@ -1131,9 +1131,9 @@ WHERE NOT EXISTS (
 
 INSERT INTO qna_question_templates
     (template_type, name, description, guide_example, sort_order, is_active, created_at, updated_at)
-SELECT 'CAREER', 'Career question',
-       'Use this template when you need advice on learning path, portfolio direction, or role preparation.',
-       'Explain your current level, target role, and the decision you are trying to make next.',
+SELECT 'CAREER', '커리어 질문',
+       '학습 방향, 포트폴리오, 직무 준비에 대한 조언이 필요할 때 사용하는 템플릿입니다.',
+       '현재 수준, 목표 직무, 다음에 결정하려는 내용을 함께 적어주세요.',
        4, TRUE, NOW(), NOW()
 WHERE NOT EXISTS (
     SELECT 1
@@ -1143,9 +1143,9 @@ WHERE NOT EXISTS (
 
 INSERT INTO qna_question_templates
     (template_type, name, description, guide_example, sort_order, is_active, created_at, updated_at)
-SELECT 'STUDY', 'Study question',
-       'Use this template when you want help planning what to study next or how to review effectively.',
-       'Describe the topic, what you already understand, and what kind of study plan you want.',
+SELECT 'STUDY', '학습 질문',
+       '다음 학습 계획이나 복습 방법이 필요할 때 사용하는 템플릿입니다.',
+       '현재 공부 중인 주제, 이미 이해한 내용, 원하는 학습 계획을 적어주세요.',
        5, TRUE, NOW(), NOW()
 WHERE NOT EXISTS (
     SELECT 1
@@ -1155,9 +1155,9 @@ WHERE NOT EXISTS (
 
 INSERT INTO qna_question_templates
     (template_type, name, description, guide_example, sort_order, is_active, created_at, updated_at)
-SELECT 'PROJECT', 'Project question',
-       'Use this template when you need help scoping, structuring, or improving a project idea or build.',
-       'Explain the project goal, current progress, and the specific decision or risk you want reviewed.',
+SELECT 'PROJECT', '프로젝트 질문',
+       '프로젝트 범위 설정, 구조 설계, 개선 방향이 필요할 때 사용하는 템플릿입니다.',
+       '프로젝트 목표, 현재 진행 상황, 검토받고 싶은 결정 포인트를 적어주세요.',
        6, TRUE, NOW(), NOW()
 WHERE NOT EXISTS (
     SELECT 1
@@ -1288,14 +1288,14 @@ INSERT INTO qna_questions (
     course_id, lecture_timestamp, qna_status, view_count, is_deleted, created_at, updated_at
 )
 SELECT u.user_id, 'DEBUGGING', 'EASY',
-       'BeanCreationException during startup',
-       'Spring Boot startup fails with BeanCreationException. Which bean should I inspect first and how do I narrow the cause?',
+       'BeanCreationException이 발생할 때 어디부터 확인해야 하나요?',
+       '스프링 부트를 실행하면 BeanCreationException이 발생합니다. 어떤 빈부터 확인해야 하고, 원인을 빠르게 좁히는 순서가 궁금합니다.',
        NULL, c.course_id, NULL, 'ANSWERED', 3, FALSE, '2026-02-05 00:00:00', '2026-02-06 00:00:00'
 FROM users u, courses c
 WHERE u.email = 'learner@devpath.com'
   AND c.title = 'Spring Boot Intro'
   AND NOT EXISTS (
-      SELECT 1 FROM qna_questions q WHERE q.title = 'BeanCreationException during startup'
+      SELECT 1 FROM qna_questions q WHERE q.title = 'BeanCreationException이 발생할 때 어디부터 확인해야 하나요?'
   );
 
 INSERT INTO qna_questions (
@@ -1303,24 +1303,39 @@ INSERT INTO qna_questions (
     course_id, lecture_timestamp, qna_status, view_count, is_deleted, created_at, updated_at
 )
 SELECT u.user_id, 'IMPLEMENTATION', 'MEDIUM',
-       'How to avoid JPA infinite recursion',
-       'My entity graph loops when I serialize it to JSON. What is the safest way to stop recursive references?',
+       'JPA 무한 참조를 안전하게 끊는 방법이 궁금합니다',
+       '엔티티를 JSON으로 직렬화하면 양방향 연관관계 때문에 순환 참조가 발생합니다. 가장 안전하게 막는 방법이 무엇인가요?',
        NULL, c.course_id, '00:12:44', 'UNANSWERED', 5, FALSE, '2026-02-08 00:00:00', '2026-02-09 00:00:00'
 FROM users u, courses c
 WHERE u.email = 'learner@devpath.com'
   AND c.title = 'JPA Practical Design'
   AND NOT EXISTS (
-      SELECT 1 FROM qna_questions q WHERE q.title = 'How to avoid JPA infinite recursion'
+      SELECT 1 FROM qna_questions q WHERE q.title = 'JPA 무한 참조를 안전하게 끊는 방법이 궁금합니다'
+  );
+
+INSERT INTO qna_questions (
+    user_id, template_type, difficulty, title, content, adopted_answer_id,
+    course_id, lecture_timestamp, qna_status, view_count, is_deleted, created_at, updated_at
+)
+SELECT u.user_id, 'DEBUGGING', 'MEDIUM',
+       'application.yml 설정이 반영되지 않는 이유가 궁금합니다',
+       'application.yml에서 값을 바꿨는데 실행하면 이전 설정처럼 동작합니다. 프로필 우선순위나 환경 변수 때문에 덮어써지는 상황을 어떻게 확인하면 좋을까요?',
+       NULL, c.course_id, '00:04:12', 'UNANSWERED', 2, FALSE, '2026-02-09 10:00:00', '2026-02-09 10:00:00'
+FROM users u, courses c
+WHERE u.email = 'learner@devpath.com'
+  AND c.title = 'Spring Boot Intro'
+  AND NOT EXISTS (
+      SELECT 1 FROM qna_questions q WHERE q.title = 'application.yml 설정이 반영되지 않는 이유가 궁금합니다'
   );
 
 INSERT INTO qna_answers (
     question_id, user_id, content, is_adopted, is_deleted, created_at, updated_at
 )
 SELECT q.question_id, iu.user_id,
-       'Start from the root cause in the stack trace, then check configuration classes, component scanning, and constructor dependencies.',
+       '스택 트레이스에서 가장 아래쪽 원인 메시지부터 확인한 뒤, 설정 클래스, 컴포넌트 스캔 범위, 생성자 의존성을 순서대로 점검해보세요.',
        FALSE, FALSE, '2026-02-06 09:00:00', '2026-02-06 09:00:00'
 FROM qna_questions q, users iu
-WHERE q.title = 'BeanCreationException during startup'
+WHERE q.title = 'BeanCreationException이 발생할 때 어디부터 확인해야 하나요?'
   AND iu.email = 'instructor@devpath.com'
   AND NOT EXISTS (
       SELECT 1 FROM qna_answers a WHERE a.question_id = q.question_id AND a.is_deleted = FALSE
@@ -1330,10 +1345,10 @@ INSERT INTO qna_answer_draft (
     question_id, instructor_id, draft_content, is_deleted, saved_at, updated_at
 )
 SELECT q.question_id, iu.user_id,
-       'Prefer response DTOs for API output, and use reference annotations only when you must serialize the entity graph directly.',
+       'API 응답은 DTO로 분리하고, 꼭 엔티티를 직접 직렬화해야 할 때만 참조 관련 어노테이션을 제한적으로 사용하는 방식이 가장 안전합니다.',
        FALSE, '2026-02-09 00:00:00', '2026-02-09 00:00:00'
 FROM qna_questions q, users iu
-WHERE q.title = 'How to avoid JPA infinite recursion'
+WHERE q.title = 'JPA 무한 참조를 안전하게 끊는 방법이 궁금합니다'
   AND iu.email = 'instructor@devpath.com'
   AND NOT EXISTS (
       SELECT 1 FROM qna_answer_draft d
@@ -1343,27 +1358,40 @@ WHERE q.title = 'How to avoid JPA infinite recursion'
 INSERT INTO qna_template (
     instructor_id, title, content, is_deleted, created_at, updated_at
 )
-SELECT iu.user_id, 'Debugging startup errors',
-       'Check stack trace order, configuration classes, environment variables, and recent dependency changes first.',
+SELECT iu.user_id, '시작 오류 점검 순서',
+       '스택 트레이스 순서, 설정 클래스, 환경 변수, 최근 변경한 의존성을 먼저 점검해보세요.',
        FALSE, '2026-01-10 00:00:00', '2026-01-10 00:00:00'
 FROM users iu
 WHERE iu.email = 'instructor@devpath.com'
   AND NOT EXISTS (
       SELECT 1 FROM qna_template qt
-      WHERE qt.instructor_id = iu.user_id AND qt.title = 'Debugging startup errors'
+      WHERE qt.instructor_id = iu.user_id AND qt.title = '시작 오류 점검 순서'
   );
 
 INSERT INTO qna_template (
     instructor_id, title, content, is_deleted, created_at, updated_at
 )
-SELECT iu.user_id, 'N+1 review checklist',
-       'Compare repository query count, fetch strategy, and entity graph usage before changing domain structure.',
+SELECT iu.user_id, '직렬화 및 연관관계 점검 체크리스트',
+       '도메인 구조를 바꾸기 전에 쿼리 수, fetch 전략, 엔티티 그래프 사용 여부를 먼저 비교해보세요.',
        FALSE, '2026-01-10 00:00:00', '2026-01-10 00:00:00'
 FROM users iu
 WHERE iu.email = 'instructor@devpath.com'
   AND NOT EXISTS (
       SELECT 1 FROM qna_template qt
-      WHERE qt.instructor_id = iu.user_id AND qt.title = 'N+1 review checklist'
+      WHERE qt.instructor_id = iu.user_id AND qt.title = '직렬화 및 연관관계 점검 체크리스트'
+  );
+
+INSERT INTO qna_template (
+    instructor_id, title, content, is_deleted, created_at, updated_at
+)
+SELECT iu.user_id, '코드 리뷰형 답변',
+       '문제 코드와 기대 결과를 기준으로 원인, 수정 포인트, 다시 확인할 항목을 순서대로 정리해보세요.',
+       FALSE, '2026-01-11 00:00:00', '2026-01-11 00:00:00'
+FROM users iu
+WHERE iu.email = 'instructor@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1 FROM qna_template qt
+      WHERE qt.instructor_id = iu.user_id AND qt.title = '코드 리뷰형 답변'
   );
 
 -- [B-03] instructor_post / instructor_comment / likes

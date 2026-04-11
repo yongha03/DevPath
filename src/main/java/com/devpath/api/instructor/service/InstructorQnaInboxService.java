@@ -23,6 +23,8 @@ import com.devpath.domain.qna.entity.Question;
 import com.devpath.domain.qna.repository.AnswerRepository;
 import com.devpath.domain.qna.repository.QuestionRepository;
 import com.devpath.domain.user.entity.User;
+import com.devpath.domain.user.entity.UserProfile;
+import com.devpath.domain.user.repository.UserProfileRepository;
 import com.devpath.domain.user.repository.UserRepository;
 import java.util.Map;
 import java.util.List;
@@ -39,6 +41,7 @@ public class InstructorQnaInboxService {
     private final QuestionRepository questionRepository;
     private final AnswerRepository answerRepository;
     private final UserRepository userRepository;
+    private final UserProfileRepository userProfileRepository;
     private final CourseRepository courseRepository;
     private final QnaAnswerDraftRepository draftRepository;
     private final QnaTemplateRepository templateRepository;
@@ -119,7 +122,11 @@ public class InstructorQnaInboxService {
 
         question.markAsAnswered();
 
-        return QnaAnswerResponse.from(saved);
+        return QnaAnswerResponse.from(
+                saved,
+                getInstructorDisplayName(saved.getUser().getId()),
+                getInstructorProfileImage(saved.getUser().getId())
+        );
     }
 
     public QnaAnswerResponse updateAnswer(Long questionId, Long answerId, Long instructorId, QnaAnswerRequest request) {
@@ -138,7 +145,11 @@ public class InstructorQnaInboxService {
         draftRepository.findByQuestionIdAndInstructorIdAndIsDeletedFalse(questionId, instructorId)
                 .ifPresent(QnaAnswerDraft::deleteDraft);
 
-        return QnaAnswerResponse.from(answer);
+        return QnaAnswerResponse.from(
+                answer,
+                getInstructorDisplayName(answer.getUser().getId()),
+                getInstructorProfileImage(answer.getUser().getId())
+        );
     }
 
     @Transactional(readOnly = true)
@@ -146,7 +157,11 @@ public class InstructorQnaInboxService {
         Question question = getManagedQuestion(questionId, instructorId);
 
         QnaAnswerResponse publishedAnswer = answerRepository.findFirstByQuestionIdAndIsDeletedFalse(questionId)
-                .map(QnaAnswerResponse::from)
+                .map(answer -> QnaAnswerResponse.from(
+                        answer,
+                        getInstructorDisplayName(answer.getUser().getId()),
+                        getInstructorProfileImage(answer.getUser().getId())
+                ))
                 .orElse(null);
 
         QnaDraftResponse draft = draftRepository
@@ -237,6 +252,18 @@ public class InstructorQnaInboxService {
 
         return courseRepository.findById(courseId)
                 .map(Course::getTitle)
+                .orElse(null);
+    }
+
+    private String getInstructorDisplayName(Long instructorId) {
+        return userRepository.findById(instructorId)
+                .map(User::getName)
+                .orElse("강사");
+    }
+
+    private String getInstructorProfileImage(Long instructorId) {
+        return userProfileRepository.findByUserId(instructorId)
+                .map(UserProfile::getDisplayProfileImage)
                 .orElse(null);
     }
 }

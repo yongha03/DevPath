@@ -1,27 +1,189 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import MarkdownContent from '../../components/MarkdownContent'
 import UserAvatar from '../../components/UserAvatar'
+import {
+  readInstructorChannelCustomization,
+  sanitizeInstructorProfileImageUrl,
+} from '../../instructor-channel-customization'
+import { instructorQnaApi, userApi } from '../../lib/api'
 import type { AuthSession } from '../../types/auth'
-import { instructorQnaApi } from '../../lib/api'
-import type { InstructorQnaInboxItem, InstructorQnaTemplate, InstructorQnaTimeline } from '../../types/instructor'
+import type {
+  InstructorQnaInboxItem,
+  InstructorQnaTemplate,
+  InstructorQnaTimeline,
+} from '../../types/instructor'
+import type { UserProfile } from '../../types/learner'
 
-type QuestionStatus = 'pending' | 'answered'
+type QuestionStatusFilter = 'pending' | 'answered'
+type TemplateKey = 'classic' | 'steps' | 'codeReview'
+type ToastState = {
+  message: string
+  tone: 'info' | 'success'
+} | null
 
-const templates = {
-  classic: `핵심 요약\n- 질문의 핵심을 먼저 정리합니다.\n\n이유\n- 동작 원인과 배경을 설명합니다.\n\n예시 / 주의\n- 짧은 예시 코드나 주의 포인트를 함께 남깁니다.`,
-  steps: `해결 순서\n1) 현재 상태 확인\n2) 설정값 점검\n3) 재현 로그 확인\n4) 수정 적용\n5) 결과 재검증`,
-  code: `추천 코드\n\`\`\`java\n// example\n\`\`\`\n\n설명\n- 왜 이 방식이 안전한지\n- 어디까지 적용해야 하는지`,
+const recommendedTemplates: Record<
+  TemplateKey,
+  { title: string; description: string; content: string }
+> = {
+  classic: {
+    title: '핵심 정리 + 원인 + 예시',
+    description: '개념형 질문에 바로 붙일 수 있는 기본 답변 구조입니다.',
+    content: `## 먼저 결론부터 말씀드리면
+
+- 질문하신 현상은 **원인 후보를 좁혀가며 확인**하면 빠르게 해결할 수 있습니다.
+
+## 왜 이런 문제가 생기나요?
+
+- 현재 로그나 증상을 보면 핵심 원인은 보통 **설정 누락 / 의존성 충돌 / 잘못된 직렬화 구조** 중 하나입니다.
+
+## 이렇게 확인해보세요
+
+1. 에러 로그의 가장 아래 원인 메시지를 먼저 확인합니다.
+2. 최근에 바꾼 설정 파일이나 애노테이션을 다시 점검합니다.
+3. 그래도 재현되면 관련 코드와 로그를 함께 정리해서 다시 남겨주세요.`,
+  },
+  steps: {
+    title: '단계별 해결 순서',
+    description: '설치, 환경 변수, 설정 오류처럼 순서가 중요한 질문에 적합합니다.',
+    content: `## 점검 순서
+
+1. 현재 사용 중인 버전과 실행 환경을 먼저 확인합니다.
+2. 설정 파일 경로와 값이 실제로 반영되는지 확인합니다.
+3. 실행 로그에서 실패 지점을 다시 확인합니다.
+4. 한 번에 하나씩 수정하면서 결과를 비교합니다.
+
+> 여기까지 해도 해결되지 않으면 현재 설정 파일과 로그 일부를 함께 공유해주세요.`,
+  },
+  codeReview: {
+    title: '코드 리뷰형 답변',
+    description: '코드 조각과 함께 개선 포인트를 안내할 때 쓰기 좋습니다.',
+    content: `## 추천 방향
+
+- 지금 구조에서는 **응답 전용 DTO를 분리**하는 방식이 가장 안전합니다.
+
+\`\`\`java
+public record QuestionResponse(
+    Long id,
+    String title,
+    String content
+) {}
+\`\`\`
+
+## 이유
+
+- 엔티티를 그대로 직렬화하면 연관관계 때문에 예기치 않은 필드가 함께 나갈 수 있습니다.
+- DTO를 쓰면 필요한 데이터만 명확하게 제어할 수 있습니다.`,
+  },
 }
 
-function relativeTime(value: string | null) {
+const legacyTextMap: Record<string, string> = {
+  'Spring Boot Intro': '스프링 부트 입문',
+  'JPA Practical Design': 'JPA 실전 설계',
+  'Learner Kim': '김수강',
+  'Learner Park': '박수강',
+  'Learner Lee': '이수강',
+  'Instructor Hong': '홍멘토',
+  'Hong Backend Lab': '홍 백엔드 연구소',
+  'BeanCreationException during startup': 'BeanCreationException이 발생할 때 어디부터 확인해야 하나요?',
+  'Spring Boot startup fails with BeanCreationException. Which bean should I inspect first and how do I narrow the cause?':
+    '스프링 부트를 실행하면 BeanCreationException이 발생합니다. 어떤 빈부터 확인해야 하고, 원인을 빠르게 좁히는 순서가 궁금합니다.',
+  'How to avoid JPA infinite recursion': 'JPA 무한 참조를 안전하게 끊는 방법이 궁금합니다',
+  'My entity graph loops when I serialize it to JSON. What is the safest way to stop recursive references?':
+    '엔티티를 JSON으로 직렬화하면 양방향 연관관계 때문에 순환 참조가 발생합니다. 가장 안전하게 막는 방법이 무엇인가요?',
+  'Start from the root cause in the stack trace, then check configuration classes, component scanning, and constructor dependencies.':
+    '스택 트레이스에서 가장 아래쪽 원인 메시지부터 확인한 뒤, 설정 클래스, 컴포넌트 스캔 범위, 생성자 의존성을 순서대로 점검해보세요.',
+  'Prefer response DTOs for API output, and use reference annotations only when you must serialize the entity graph directly.':
+    'API 응답은 DTO로 분리하고, 꼭 엔티티를 직접 직렬화해야 할 때만 참조 관련 어노테이션을 제한적으로 사용하는 방식이 가장 안전합니다.',
+  'Debugging startup errors': '시작 오류 점검 순서',
+  'Check stack trace order, configuration classes, environment variables, and recent dependency changes first.':
+    '스택 트레이스 순서, 설정 클래스, 환경 변수, 최근 변경한 의존성을 먼저 점검해보세요.',
+  'N+1 review checklist': '직렬화 및 연관관계 점검 체크리스트',
+  'Compare repository query count, fetch strategy, and entity graph usage before changing domain structure.':
+    '도메인 구조를 바꾸기 전에 쿼리 수, fetch 전략, 엔티티 그래프 사용 여부를 먼저 비교해보세요.',
+}
+
+function normalizeLegacyText(value: string | null | undefined) {
   if (!value) {
-    return '방금 전'
+    return value ?? null
   }
+
+  return legacyTextMap[value] ?? value
+}
+
+function normalizeQuestion(question: InstructorQnaInboxItem): InstructorQnaInboxItem {
+  return {
+    ...question,
+    courseTitle: normalizeLegacyText(question.courseTitle),
+    learnerName: normalizeLegacyText(question.learnerName),
+    title: normalizeLegacyText(question.title) ?? question.title,
+    content: normalizeLegacyText(question.content) ?? question.content,
+  }
+}
+
+function normalizeTemplate(template: InstructorQnaTemplate): InstructorQnaTemplate {
+  return {
+    ...template,
+    title: normalizeLegacyText(template.title) ?? template.title,
+    content: normalizeLegacyText(template.content) ?? template.content,
+  }
+}
+
+function normalizeTimeline(timeline: InstructorQnaTimeline): InstructorQnaTimeline {
+  return {
+    ...timeline,
+    question: normalizeQuestion(timeline.question),
+    publishedAnswer: timeline.publishedAnswer
+      ? {
+          ...timeline.publishedAnswer,
+          authorName: normalizeLegacyText(timeline.publishedAnswer.authorName) ?? timeline.publishedAnswer.authorName,
+          content: normalizeLegacyText(timeline.publishedAnswer.content) ?? timeline.publishedAnswer.content,
+        }
+      : null,
+    draft: timeline.draft
+      ? {
+          ...timeline.draft,
+          draftContent: normalizeLegacyText(timeline.draft.draftContent) ?? timeline.draft.draftContent,
+        }
+      : null,
+    lectureTitle: normalizeLegacyText(timeline.lectureTitle),
+  }
+}
+
+function formatRelativeTime(value: string | null) {
+  if (!value) return '방금 전'
 
   const diffMinutes = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 60000))
   if (diffMinutes < 1) return '방금 전'
   if (diffMinutes < 60) return `${diffMinutes}분 전`
   if (diffMinutes < 1440) return `${Math.floor(diffMinutes / 60)}시간 전`
   return `${Math.floor(diffMinutes / 1440)}일 전`
+}
+
+function buildQuestionSearchText(question: InstructorQnaInboxItem) {
+  return [
+    question.title,
+    question.content,
+    question.learnerName,
+    question.courseTitle,
+    question.lectureTimestamp,
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+}
+
+function buildLearnerAvatarSeed(question: InstructorQnaInboxItem) {
+  return (question.learnerName ?? question.learnerAvatarSeed ?? String(question.questionId)).replace(/\s+/g, '-')
+}
+
+function buildStatusBadgeClasses(status: string) {
+  return status === 'UNANSWERED'
+    ? 'border border-orange-200 bg-orange-50 text-orange-700'
+    : 'border border-green-200 bg-green-50 text-green-700'
+}
+
+function buildStatusLabel(status: string) {
+  return status === 'UNANSWERED' ? '미답변' : '답변 완료'
 }
 
 function Modal({
@@ -36,14 +198,21 @@ function Modal({
   children: React.ReactNode
 }) {
   return (
-    <div className="fixed inset-0 z-[2400] flex items-center justify-center bg-black/60 px-4">
-      <div className="w-full max-w-[560px] overflow-hidden rounded-[28px] bg-white shadow-2xl">
+    <div className="fixed inset-0 z-[2400] flex items-center justify-center bg-black/60 px-4 py-6" onClick={onClose}>
+      <div
+        className="w-full max-w-[560px] overflow-hidden rounded-[28px] bg-white shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
         <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50 px-6 py-4">
           <h3 className="flex items-center gap-2 text-lg font-extrabold text-gray-900">
-            <i className={`${icon} text-brand`} /> {title}
+            <i className={`${icon} text-[#00c471]`} /> {title}
           </h3>
-          <button type="button" onClick={onClose} className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white">
-            <i className="fas fa-times text-gray-400" />
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-400"
+          >
+            <i className="fas fa-times" />
           </button>
         </div>
         {children}
@@ -55,22 +224,24 @@ function Modal({
 export default function InstructorQnaPage({ session }: { session: AuthSession }) {
   const [questions, setQuestions] = useState<InstructorQnaInboxItem[]>([])
   const [timeline, setTimeline] = useState<InstructorQnaTimeline | null>(null)
-  const [statusFilter, setStatusFilter] = useState<QuestionStatus>('pending')
+  const [statusFilter, setStatusFilter] = useState<QuestionStatusFilter>('pending')
   const [search, setSearch] = useState('')
-  const [lectureFilter, setLectureFilter] = useState('all')
+  const [courseFilter, setCourseFilter] = useState('all')
   const [sortFilter, setSortFilter] = useState<'latest' | 'oldest'>('latest')
   const [selectedId, setSelectedId] = useState<number | null>(null)
   const [draftText, setDraftText] = useState('')
   const [quickReplies, setQuickReplies] = useState<InstructorQnaTemplate[]>([])
-  const [toast, setToast] = useState<string | null>(null)
-  const [templateOpen, setTemplateOpen] = useState(false)
   const [quickOpen, setQuickOpen] = useState(false)
-  const [editingId, setEditingId] = useState<number | null>(null)
+  const [templateOpen, setTemplateOpen] = useState(false)
+  const [editingQuickId, setEditingQuickId] = useState<number | null>(null)
   const [quickTitle, setQuickTitle] = useState('')
   const [quickBody, setQuickBody] = useState('')
+  const [toast, setToast] = useState<ToastState>(null)
   const [loading, setLoading] = useState(true)
   const [timelineLoading, setTimelineLoading] = useState(false)
   const [editingAnswer, setEditingAnswer] = useState(false)
+  const [profile, setProfile] = useState<UserProfile | null>(null)
+  const editorRef = useRef<HTMLTextAreaElement | null>(null)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -82,12 +253,12 @@ export default function InstructorQnaPage({ session }: { session: AuthSession })
       instructorQnaApi.getTemplates(controller.signal),
     ])
       .then(([nextQuestions, nextTemplates]) => {
-        setQuestions(nextQuestions)
-        setQuickReplies(nextTemplates)
+        setQuestions(nextQuestions.map(normalizeQuestion))
+        setQuickReplies(nextTemplates.map(normalizeTemplate))
       })
       .catch((error: Error) => {
         if (!controller.signal.aborted) {
-          setToast(error.message)
+          setToast({ message: error.message, tone: 'info' })
         }
       })
       .finally(() => {
@@ -99,18 +270,28 @@ export default function InstructorQnaPage({ session }: { session: AuthSession })
     return () => controller.abort()
   }, [statusFilter])
 
+  useEffect(() => {
+    const controller = new AbortController()
+
+    userApi
+      .getMyProfile(controller.signal)
+      .then((nextProfile) => setProfile(nextProfile))
+      .catch(() => {})
+
+    return () => controller.abort()
+  }, [])
+
   const visibleQuestions = [...questions]
     .filter((question) => {
-      if (lectureFilter !== 'all' && String(question.courseId) !== lectureFilter) {
+      if (courseFilter !== 'all' && String(question.courseId) !== courseFilter) {
         return false
       }
 
-      if (search.trim()) {
-        const haystack = `${question.title} ${question.content} ${question.learnerName ?? ''} ${question.courseTitle ?? ''}`.toLowerCase()
-        return haystack.includes(search.trim().toLowerCase())
+      if (!search.trim()) {
+        return true
       }
 
-      return true
+      return buildQuestionSearchText(question).includes(search.trim().toLowerCase())
     })
     .sort((left, right) =>
       sortFilter === 'latest'
@@ -138,12 +319,15 @@ export default function InstructorQnaPage({ session }: { session: AuthSession })
     instructorQnaApi
       .getTimeline(selectedId, controller.signal)
       .then((nextTimeline) => {
-        setTimeline(nextTimeline)
-        setDraftText(nextTimeline.draft?.draftContent ?? nextTimeline.publishedAnswer?.content ?? '')
+        const normalizedTimeline = normalizeTimeline(nextTimeline)
+        setTimeline(normalizedTimeline)
+        setDraftText(
+          normalizedTimeline.draft?.draftContent ?? normalizedTimeline.publishedAnswer?.content ?? '',
+        )
       })
       .catch((error: Error) => {
         if (!controller.signal.aborted) {
-          setToast(error.message)
+          setToast({ message: error.message, tone: 'info' })
         }
       })
       .finally(() => {
@@ -156,20 +340,177 @@ export default function InstructorQnaPage({ session }: { session: AuthSession })
   }, [selectedId])
 
   useEffect(() => {
-    if (!toast) return
+    if (!toast) {
+      return
+    }
+
     const timeoutId = window.setTimeout(() => setToast(null), 3000)
     return () => window.clearTimeout(timeoutId)
   }, [toast])
 
-  const current = timeline?.question ?? visibleQuestions.find((question) => question.questionId === selectedId) ?? null
+  const current =
+    timeline?.question ?? visibleQuestions.find((question) => question.questionId === selectedId) ?? null
+  const customization = readInstructorChannelCustomization(session.userId)
+  const instructorDisplayName =
+    customization?.displayName?.trim() ||
+    profile?.channelName?.trim() ||
+    profile?.name?.trim() ||
+    timeline?.publishedAnswer?.authorName?.trim() ||
+    session.name ||
+    '강사'
+  const instructorProfileImage =
+    sanitizeInstructorProfileImageUrl(customization?.profileImageUrl) ??
+    sanitizeInstructorProfileImageUrl(profile?.profileImage) ??
+    sanitizeInstructorProfileImageUrl(timeline?.publishedAnswer?.authorProfileImage) ??
+    null
   const showAnswerForm = current ? current.status === 'UNANSWERED' || editingAnswer : false
+  const courseOptions = Array.from(
+    new Map(
+      questions
+        .filter((question) => question.courseId !== null)
+        .map((question) => [
+          String(question.courseId),
+          question.courseTitle ?? `강의 #${question.courseId}`,
+        ]),
+    ).entries(),
+  )
 
-  function appendReply(value: string) {
-    if (!current) {
+  function focusEditorSelection(start: number, end: number) {
+    window.requestAnimationFrame(() => {
+      if (!editorRef.current) {
+        return
+      }
+
+      editorRef.current.focus()
+      editorRef.current.setSelectionRange(start, end)
+    })
+  }
+
+  function replaceEditorSelection(
+    builder: (selectedText: string) => { text: string; selectionStart: number; selectionEnd: number },
+  ) {
+    if (!editorRef.current) {
       return
     }
 
-    setDraftText((existing) => (existing.trim() ? `${existing.trimEnd()}\n\n${value}` : value))
+    const textarea = editorRef.current
+    const currentValue = textarea.value
+    const selectionStart = textarea.selectionStart
+    const selectionEnd = textarea.selectionEnd
+    const selectedText = currentValue.slice(selectionStart, selectionEnd)
+    const insertion = builder(selectedText)
+    const nextValue =
+      currentValue.slice(0, selectionStart) + insertion.text + currentValue.slice(selectionEnd)
+
+    setDraftText(nextValue)
+    focusEditorSelection(
+      selectionStart + insertion.selectionStart,
+      selectionStart + insertion.selectionEnd,
+    )
+  }
+
+  function appendReply(value: string) {
+    setDraftText((currentDraft) =>
+      currentDraft.trim() ? `${currentDraft.trimEnd()}\n\n${value}` : value,
+    )
+
+    window.requestAnimationFrame(() => {
+      editorRef.current?.focus()
+      const nextLength = (editorRef.current?.value ?? value).length
+      editorRef.current?.setSelectionRange(nextLength, nextLength)
+    })
+  }
+
+  function applyMarkdown(action: TemplateKey | 'heading' | 'bold' | 'italic' | 'link' | 'code' | 'image') {
+    if (!showAnswerForm) {
+      return
+    }
+
+    if (action === 'classic' || action === 'steps' || action === 'codeReview') {
+      appendReply(recommendedTemplates[action].content)
+      return
+    }
+
+    if (action === 'link') {
+      const href = window.prompt('링크 주소를 입력하세요.', 'https://')
+      if (!href) {
+        return
+      }
+
+      replaceEditorSelection((selectedText) => {
+        const label = selectedText || '링크 텍스트'
+        return {
+          text: `[${label}](${href})`,
+          selectionStart: 1,
+          selectionEnd: 1 + label.length,
+        }
+      })
+      return
+    }
+
+    if (action === 'image') {
+      const src = window.prompt('이미지 주소를 입력하세요.', 'https://')
+      if (!src) {
+        return
+      }
+
+      const alt = window.prompt('이미지 설명을 입력하세요.', '이미지 설명')
+      if (alt === null) {
+        return
+      }
+
+      replaceEditorSelection(() => ({
+        text: `![${alt}](${src})`,
+        selectionStart: 2,
+        selectionEnd: 2 + alt.length,
+      }))
+      return
+    }
+
+    replaceEditorSelection((selectedText) => {
+      if (action === 'heading') {
+        const label = selectedText || '제목을 입력하세요'
+        return {
+          text: `## ${label}`,
+          selectionStart: 3,
+          selectionEnd: 3 + label.length,
+        }
+      }
+
+      if (action === 'bold') {
+        const label = selectedText || '강조할 문구'
+        return {
+          text: `**${label}**`,
+          selectionStart: 2,
+          selectionEnd: 2 + label.length,
+        }
+      }
+
+      if (action === 'italic') {
+        const label = selectedText || '기울임 문구'
+        return {
+          text: `*${label}*`,
+          selectionStart: 1,
+          selectionEnd: 1 + label.length,
+        }
+      }
+
+      const label = selectedText || '코드를 입력하세요'
+
+      if (selectedText.includes('\n') || !selectedText) {
+        return {
+          text: `\`\`\`\n${label}\n\`\`\``,
+          selectionStart: 4,
+          selectionEnd: 4 + label.length,
+        }
+      }
+
+      return {
+        text: `\`${label}\``,
+        selectionStart: 1,
+        selectionEnd: 1 + label.length,
+      }
+    })
   }
 
   async function saveDraft() {
@@ -177,8 +518,23 @@ export default function InstructorQnaPage({ session }: { session: AuthSession })
       return
     }
 
-    await instructorQnaApi.saveDraft(current.questionId, draftText)
-    setToast('임시 저장되었습니다.')
+    try {
+      const savedDraft = await instructorQnaApi.saveDraft(current.questionId, draftText)
+      setTimeline((existing) =>
+        existing
+          ? normalizeTimeline({
+              ...existing,
+              draft: savedDraft,
+            })
+          : existing,
+      )
+      setToast({ message: '답변 초안을 저장했습니다.', tone: 'success' })
+    } catch (error) {
+      setToast({
+        message: error instanceof Error ? error.message : '초안 저장에 실패했습니다.',
+        tone: 'info',
+      })
+    }
   }
 
   async function submitAnswer() {
@@ -188,13 +544,18 @@ export default function InstructorQnaPage({ session }: { session: AuthSession })
 
     const content = draftText.trim()
     if (!content) {
-      window.alert('답변 내용을 입력해 주세요.')
+      window.alert('답변 내용을 입력해주세요.')
+      editorRef.current?.focus()
       return
     }
 
     try {
       if (timeline?.publishedAnswer) {
-        await instructorQnaApi.updateAnswer(current.questionId, timeline.publishedAnswer.answerId, content)
+        await instructorQnaApi.updateAnswer(
+          current.questionId,
+          timeline.publishedAnswer.answerId,
+          content,
+        )
       } else {
         await instructorQnaApi.createAnswer(current.questionId, content)
       }
@@ -203,18 +564,23 @@ export default function InstructorQnaPage({ session }: { session: AuthSession })
         instructorQnaApi.getInbox(statusFilter === 'pending' ? 'UNANSWERED' : 'ANSWERED'),
         instructorQnaApi.getTimeline(current.questionId),
       ])
-      setQuestions(nextQuestions)
-      setTimeline(nextTimeline)
-      setDraftText(nextTimeline.publishedAnswer?.content ?? '')
+      const normalizedTimeline = normalizeTimeline(nextTimeline)
+
+      setQuestions(nextQuestions.map(normalizeQuestion))
+      setTimeline(normalizedTimeline)
+      setDraftText(normalizedTimeline.publishedAnswer?.content ?? normalizedTimeline.draft?.draftContent ?? '')
       setEditingAnswer(false)
-      setToast('답변이 등록되었습니다.')
+      setToast({ message: '답변을 등록했습니다.', tone: 'success' })
     } catch (error) {
-      setToast(error instanceof Error ? error.message : '답변 저장에 실패했습니다.')
+      setToast({
+        message: error instanceof Error ? error.message : '답변 저장에 실패했습니다.',
+        tone: 'info',
+      })
     }
   }
 
   function openQuickModal(reply?: InstructorQnaTemplate) {
-    setEditingId(reply?.id ?? null)
+    setEditingQuickId(reply?.id ?? null)
     setQuickTitle(reply?.title ?? '')
     setQuickBody(reply?.content ?? '')
     setQuickOpen(true)
@@ -222,73 +588,93 @@ export default function InstructorQnaPage({ session }: { session: AuthSession })
 
   async function saveQuickReply() {
     if (!quickTitle.trim() || !quickBody.trim()) {
-      window.alert('제목과 내용을 모두 입력해 주세요.')
+      window.alert('제목과 내용을 모두 입력해주세요.')
       return
     }
 
     try {
-      const saved = editingId
-        ? await instructorQnaApi.updateTemplate(editingId, { title: quickTitle.trim(), content: quickBody.trim() })
-        : await instructorQnaApi.createTemplate({ title: quickTitle.trim(), content: quickBody.trim() })
+      const savedReply = editingQuickId
+        ? await instructorQnaApi.updateTemplate(editingQuickId, {
+            title: quickTitle.trim(),
+            content: quickBody.trim(),
+          })
+        : await instructorQnaApi.createTemplate({
+            title: quickTitle.trim(),
+            content: quickBody.trim(),
+          })
+      const normalizedReply = normalizeTemplate(savedReply)
 
-      setQuickReplies((state) =>
-        editingId ? state.map((reply) => (reply.id === editingId ? saved : reply)) : [...state, saved],
+      setQuickReplies((currentReplies) =>
+        editingQuickId
+          ? currentReplies.map((reply) => (reply.id === editingQuickId ? normalizedReply : reply))
+          : [...currentReplies, normalizedReply],
       )
       setQuickOpen(false)
-      setToast('빠른 답변이 저장되었습니다.')
+      setToast({ message: '빠른 답변을 저장했습니다.', tone: 'success' })
     } catch (error) {
-      setToast(error instanceof Error ? error.message : '템플릿 저장에 실패했습니다.')
+      setToast({
+        message: error instanceof Error ? error.message : '빠른 답변 저장에 실패했습니다.',
+        tone: 'info',
+      })
     }
   }
 
   async function deleteQuickReply(replyId: number) {
-    if (!window.confirm('이 템플릿을 삭제할까요?')) return
+    if (!window.confirm('이 빠른 답변을 삭제할까요?')) {
+      return
+    }
 
     try {
       await instructorQnaApi.deleteTemplate(replyId)
-      setQuickReplies((state) => state.filter((reply) => reply.id !== replyId))
+      setQuickReplies((currentReplies) => currentReplies.filter((reply) => reply.id !== replyId))
+      setToast({ message: '빠른 답변을 삭제했습니다.', tone: 'success' })
     } catch (error) {
-      setToast(error instanceof Error ? error.message : '템플릿 삭제에 실패했습니다.')
+      setToast({
+        message: error instanceof Error ? error.message : '빠른 답변 삭제에 실패했습니다.',
+        tone: 'info',
+      })
     }
   }
 
-  const courseOptions = Array.from(
-    new Map(
-      questions
-        .filter((question) => question.courseId !== null)
-        .map((question) => [String(question.courseId), question.courseTitle ?? `강의 #${question.courseId}`]),
-    ).entries(),
-  )
-
   return (
-    <div className="min-h-[calc(100vh-64px)] bg-[#F8F9FA]">
+    <div className="min-h-[calc(100vh-64px)] bg-[#f3f4f6]">
       {toast ? (
-        <div className="pointer-events-none fixed top-24 left-1/2 z-[9999] -translate-x-1/2 rounded-full border border-gray-700 bg-gray-800 px-6 py-3 text-sm font-bold text-white shadow-2xl">
-          <i className="fas fa-info-circle mr-2 text-brand" /> {toast}
+        <div
+          className={`pointer-events-none fixed top-24 left-1/2 z-[9999] -translate-x-1/2 rounded-full px-6 py-3 text-sm font-bold text-white shadow-2xl ${
+            toast.tone === 'success' ? 'bg-[#00c471]' : 'bg-gray-800'
+          }`}
+        >
+          <i className={`mr-2 ${toast.tone === 'success' ? 'fas fa-check-circle' : 'fas fa-info-circle'}`} />
+          {toast.message}
         </div>
       ) : null}
 
-      <div className="flex min-h-[calc(100vh-64px)]">
-        <section className="hidden w-[400px] shrink-0 flex-col border-r border-gray-200 bg-white xl:flex">
+      <div className="flex min-h-[calc(100vh-64px)] flex-col xl:flex-row">
+        <section className="w-full shrink-0 border-r border-gray-200 bg-white xl:w-[390px]">
           <div className="border-b border-gray-100 p-6">
             <div className="mb-5 flex items-center justify-between">
-              <h2 className="text-xl font-extrabold text-gray-900">수강생 Q&A</h2>
-              <span className="rounded-full border border-orange-200 bg-orange-50 px-2 py-1 text-[10px] font-extrabold text-orange-700">
+              <h2 className="text-xl font-black text-gray-900">수강생 Q&amp;A</h2>
+              <span className="rounded-full border border-orange-200 bg-orange-50 px-2.5 py-1 text-[11px] font-extrabold text-orange-700">
                 미답변 {questions.filter((question) => question.status === 'UNANSWERED').length}건
               </span>
             </div>
+
             <div className="space-y-3">
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-2.5 text-xs font-bold outline-none focus:border-brand"
-                placeholder="제목, 이름, 내용 검색"
-              />
+              <div className="relative">
+                <i className="fas fa-search pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-sm text-gray-400" />
+                <input
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  className="h-11 w-full rounded-xl border border-gray-200 bg-gray-50 pl-10 pr-4 text-xs font-semibold text-gray-700 outline-none transition focus:border-[#00c471]"
+                  placeholder="제목, 작성자, 내용으로 검색"
+                />
+              </div>
+
               <div className="grid grid-cols-2 gap-2">
                 <select
-                  value={lectureFilter}
-                  onChange={(event) => setLectureFilter(event.target.value)}
-                  className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-xs font-bold outline-none focus:border-brand"
+                  value={courseFilter}
+                  onChange={(event) => setCourseFilter(event.target.value)}
+                  className="h-11 rounded-xl border border-gray-200 bg-gray-50 px-3 text-xs font-semibold text-gray-700 outline-none transition focus:border-[#00c471]"
                 >
                   <option value="all">전체 강의</option>
                   {courseOptions.map(([value, label]) => (
@@ -297,16 +683,18 @@ export default function InstructorQnaPage({ session }: { session: AuthSession })
                     </option>
                   ))}
                 </select>
+
                 <select
                   value={sortFilter}
                   onChange={(event) => setSortFilter(event.target.value as 'latest' | 'oldest')}
-                  className="rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-xs font-bold outline-none focus:border-brand"
+                  className="h-11 rounded-xl border border-gray-200 bg-gray-50 px-3 text-xs font-semibold text-gray-700 outline-none transition focus:border-[#00c471]"
                 >
-                  <option value="latest">최신순</option>
-                  <option value="oldest">오래된순</option>
+                  <option value="latest">최신순 정렬</option>
+                  <option value="oldest">오래된 순 정렬</option>
                 </select>
               </div>
-              <div className="flex gap-2 pt-2">
+
+              <div className="flex gap-2 pt-1">
                 {[
                   ['pending', '미답변'],
                   ['answered', '답변 완료'],
@@ -314,9 +702,11 @@ export default function InstructorQnaPage({ session }: { session: AuthSession })
                   <button
                     key={key}
                     type="button"
-                    onClick={() => setStatusFilter(key as QuestionStatus)}
-                    className={`flex-1 rounded-xl border py-2 text-xs font-bold ${
-                      statusFilter === key ? 'border-gray-200 bg-white text-gray-900 shadow-sm' : 'border-transparent text-gray-500'
+                    onClick={() => setStatusFilter(key as QuestionStatusFilter)}
+                    className={`flex h-10 flex-1 items-center justify-center rounded-xl border text-xs font-bold transition ${
+                      statusFilter === key
+                        ? 'border-gray-900 bg-gray-900 text-white'
+                        : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
                     }`}
                   >
                     {label}
@@ -325,298 +715,467 @@ export default function InstructorQnaPage({ session }: { session: AuthSession })
               </div>
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto bg-[#F8F9FA] p-4">
+
+          <div className="max-h-[calc(100vh-240px)] overflow-y-auto bg-[#f8f9fa] p-4 xl:max-h-[calc(100vh-64px-176px)]">
             {loading ? (
-              <div className="rounded-xl border border-gray-200 bg-white p-4 text-xs font-bold text-gray-400">목록을 불러오는 중입니다.</div>
-            ) : (
+              <div className="rounded-2xl border border-gray-200 bg-white p-5 text-sm font-semibold text-gray-400">
+                질문 목록을 불러오는 중입니다.
+              </div>
+            ) : visibleQuestions.length > 0 ? (
               visibleQuestions.map((question) => (
                 <button
                   key={question.questionId}
                   type="button"
                   onClick={() => setSelectedId(question.questionId)}
-                  className={`mb-3 w-full rounded-xl border p-4 text-left ${
-                    selectedId === question.questionId ? 'border-brand bg-green-50 shadow-sm' : 'border-gray-200 bg-white'
+                  className={`mb-3 w-full rounded-2xl border border-l-4 p-4 text-left transition ${
+                    selectedId === question.questionId
+                      ? 'border-[#00c471] border-l-[#00c471] bg-[#f0fdf4] shadow-[0_6px_18px_rgba(0,196,113,0.08)]'
+                      : 'border-gray-200 border-l-transparent bg-white hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-[0_8px_18px_rgba(15,23,42,0.06)]'
                   }`}
                 >
                   <div className="mb-2 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <img
-                        src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${question.learnerAvatarSeed ?? question.learnerName ?? question.questionId}`}
-                        className="h-6 w-6 rounded-full border border-gray-200 bg-white"
+                        src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(buildLearnerAvatarSeed(question))}`}
                         alt={question.learnerName ?? '수강생'}
+                        className="h-7 w-7 rounded-full border border-gray-200 bg-white"
                       />
                       <span className="text-xs font-bold text-gray-900">{question.learnerName ?? '수강생'}</span>
                     </div>
-                    <span className="text-[10px] font-bold text-gray-400">{relativeTime(question.createdAt)}</span>
+                    <span className="text-[11px] font-semibold text-gray-400">
+                      {formatRelativeTime(question.createdAt)}
+                    </span>
                   </div>
-                  <h4 className="mb-1.5 line-clamp-1 text-sm font-extrabold text-gray-900">{question.title}</h4>
-                  <p className="mb-3 line-clamp-2 text-xs leading-relaxed text-gray-500">{question.content}</p>
-                  <div className="flex items-center justify-between">
-                    <span className="rounded border border-gray-200 bg-gray-100 px-2 py-0.5 text-[9px] font-bold text-gray-600">
+
+                  <h3 className="mb-1.5 line-clamp-1 text-sm font-extrabold text-gray-900">
+                    {question.title}
+                  </h3>
+                  <p className="mb-3 line-clamp-2 text-xs leading-relaxed text-gray-500">
+                    {question.content}
+                  </p>
+
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="rounded-md border border-gray-200 bg-gray-100 px-2 py-1 text-[10px] font-bold text-gray-600">
                       {question.courseTitle ?? '공통'}
                     </span>
                     <span
-                      className={`rounded-full px-2 py-1 text-[10px] font-extrabold ${
-                        question.status === 'UNANSWERED'
-                          ? 'border border-orange-200 bg-orange-50 text-orange-700'
-                          : 'border border-green-200 bg-green-50 text-green-700'
-                      }`}
+                      className={`rounded-full px-2.5 py-1 text-[10px] font-extrabold ${buildStatusBadgeClasses(question.status)}`}
                     >
-                      {question.status === 'UNANSWERED' ? '미답변' : '답변 완료'}
+                      {buildStatusLabel(question.status)}
                     </span>
                   </div>
                 </button>
               ))
+            ) : (
+              <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-6 text-center text-sm font-semibold text-gray-400">
+                조건에 맞는 질문이 없습니다.
+              </div>
             )}
           </div>
         </section>
 
-        {current ? (
-          <section className="flex min-w-0 flex-1 flex-col">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 bg-white px-8 py-4 shadow-sm">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-lg border border-gray-200 bg-gray-100 px-3 py-1.5 text-xs font-bold text-gray-600">
-                  {current.courseTitle ?? '공통'}
-                </span>
-                {timeline?.lectureTitle ? (
-                  <>
-                    <i className="fas fa-chevron-right text-[10px] text-gray-300" />
-                    <span className="rounded-lg border border-gray-200 bg-gray-100 px-3 py-1.5 text-xs font-bold text-gray-600">
-                      {timeline.lectureTitle}
+        <section className="flex min-w-0 flex-1 flex-col overflow-hidden bg-[#f8f9fa]">
+          {current ? (
+            <>
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 bg-white px-6 py-4 shadow-sm lg:px-8">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-lg border border-gray-200 bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600">
+                    {current.courseTitle ?? '공통 질문'}
+                  </span>
+                  <i className="fas fa-chevron-right text-[10px] text-gray-300" />
+                  <span className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600">
+                    <i className="fas fa-play-circle text-gray-400" />
+                    {current.lectureTimestamp ? '영상 구간 질문' : '일반 질문'}
+                  </span>
+                  {current.lectureTimestamp ? (
+                    <span className="flex items-center gap-1.5 rounded-lg border border-green-200 bg-green-50 px-3 py-1.5 text-xs font-bold text-[#00c471]">
+                      <i className="fas fa-clock" />
+                      {current.lectureTimestamp}
                     </span>
-                  </>
-                ) : null}
-                {timeline?.lectureTimestamp ? (
-                  <span className="rounded-lg border border-green-200 bg-green-50 px-3 py-1.5 text-xs font-bold text-brand">{timeline.lectureTimestamp}</span>
-                ) : null}
-              </div>
-              <button
-                type="button"
-                onClick={() => window.alert('학습 플레이어 링크는 다음 단계에서 연결합니다.')}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold text-gray-500 shadow-sm hover:text-brand"
-              >
-                <i className="fas fa-external-link-alt mr-1" /> 강의 화면 보기
-              </button>
-            </div>
-
-            <div className="flex flex-1 flex-col xl:flex-row">
-              <div className="flex-1 overflow-y-auto p-6 lg:p-8">
-                <div className="rounded-[28px] border border-gray-200 bg-white p-6 shadow-sm lg:p-8">
-                  <div className="mb-5 flex items-center justify-between border-b border-gray-100 pb-5">
-                    <div className="flex items-center gap-4">
-                      <img
-                        src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${current.learnerAvatarSeed ?? current.learnerName ?? current.questionId}`}
-                        className="h-11 w-11 rounded-full border border-gray-200 bg-gray-50 shadow-sm"
-                        alt={current.learnerName ?? '수강생'}
-                      />
-                      <div>
-                        <p className="text-sm font-extrabold text-gray-900">{current.learnerName ?? '수강생'}</p>
-                        <p className="mt-1 text-[11px] font-bold text-gray-400">{relativeTime(current.createdAt)}</p>
-                      </div>
-                    </div>
-                    <span
-                      className={`rounded-full px-3 py-1.5 text-xs font-extrabold ${
-                        current.status === 'UNANSWERED'
-                          ? 'border border-orange-200 bg-orange-50 text-orange-700'
-                          : 'border border-green-200 bg-green-50 text-green-700'
-                      }`}
-                    >
-                      {current.status === 'UNANSWERED' ? '미답변' : '답변 완료'}
-                    </span>
-                  </div>
-                  <h3 className="mb-4 text-lg font-black text-gray-900 lg:text-xl">{current.title}</h3>
-                  <div className="whitespace-pre-line rounded-xl border border-gray-100 bg-gray-50 p-5 text-sm leading-relaxed font-medium text-gray-700">
-                    {current.content}
-                  </div>
+                  ) : null}
                 </div>
 
-                {timelineLoading ? (
-                  <div className="mt-6 rounded-[28px] border border-gray-200 bg-white p-6 text-sm text-gray-400 shadow-sm">답변 데이터를 불러오는 중입니다.</div>
-                ) : showAnswerForm ? (
-                  <div className="mt-6 overflow-hidden rounded-[28px] border border-gray-200 bg-white shadow-sm">
-                    <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 px-4 py-3">
-                      <div className="text-sm text-gray-500">
-                        <i className="fas fa-code mr-2" /> 마크다운 지원
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-[11px] font-bold text-gray-400">{draftText.length} / 1000</span>
-                        <button
-                          type="button"
-                          onClick={() => setTemplateOpen(true)}
-                          className="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-extrabold text-gray-700 shadow-sm hover:text-brand"
-                        >
-                          템플릿 사용
-                        </button>
-                      </div>
-                    </div>
-                    <textarea
-                      value={draftText}
-                      onChange={(event) => setDraftText(event.target.value)}
-                      maxLength={1000}
-                      placeholder="명확한 답변을 작성해 주세요."
-                      className="h-56 w-full resize-none p-6 text-sm leading-relaxed text-gray-800 outline-none"
-                    />
-                    <div className="flex items-center justify-between border-t border-gray-100 p-4">
-                      <div className="text-[11px] font-bold text-gray-400">저장 후 언제든 다시 수정할 수 있습니다.</div>
-                      <div className="flex gap-2">
-                        <button type="button" onClick={saveDraft} className="rounded-xl bg-gray-100 px-5 py-2.5 text-xs font-extrabold text-gray-600">
-                          초안 저장
-                        </button>
-                        <button type="button" onClick={submitAnswer} className="rounded-xl bg-brand px-8 py-2.5 text-xs font-extrabold text-white shadow-md">
-                          {timeline?.publishedAnswer ? '답변 수정' : '답변 등록'}
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="mt-6 rounded-[28px] border border-green-200 bg-white p-6 shadow-sm lg:p-8">
-                    <div className="mb-5 flex items-center justify-between border-b border-gray-100 pb-4">
-                      <div className="flex items-center gap-3">
-                        <UserAvatar
-                          name={session.name}
-                          imageUrl={null}
-                          className="h-10 w-10 shadow-sm"
-                          alt={session.name}
+                <button
+                  type="button"
+                  onClick={() =>
+                    setToast({
+                      message: current.lectureTimestamp
+                        ? `${current.lectureTimestamp} 구간 연결은 다음 단계에서 마무리하겠습니다.`
+                        : '강의 화면 연결은 다음 단계에서 마무리하겠습니다.',
+                      tone: 'info',
+                    })
+                  }
+                  className="flex h-9 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-500 shadow-sm transition hover:bg-gray-50 hover:text-[#00c471]"
+                >
+                  <i className="fas fa-external-link-alt" />
+                  강의 화면 보기
+                </button>
+              </div>
+
+              <div className="flex flex-1 flex-col overflow-hidden xl:flex-row">
+                <div className="flex-1 overflow-y-auto p-6 lg:p-8">
+                  <div className="rounded-[28px] border border-gray-200 bg-white p-6 shadow-sm lg:p-8">
+                    <div className="mb-5 flex items-center justify-between border-b border-gray-100 pb-5">
+                      <div className="flex items-center gap-4">
+                        <img
+                          src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(buildLearnerAvatarSeed(current))}`}
+                          alt={current.learnerName ?? '수강생'}
+                          className="h-11 w-11 rounded-full border border-gray-200 bg-gray-50 shadow-sm"
                         />
                         <div>
-                          <p className="text-sm font-extrabold text-gray-900">{session.name}</p>
-                          <p className="mt-1 text-[10px] font-bold text-gray-400">답변 완료</p>
+                          <p className="flex items-center gap-2 text-sm font-bold text-gray-900">
+                            {current.learnerName ?? '수강생'}
+                            <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-500">
+                              수강생
+                            </span>
+                          </p>
+                          <p className="mt-1 text-[11px] font-medium text-gray-400">
+                            {current.lectureTimestamp
+                              ? `영상 구간 ${current.lectureTimestamp} · ${formatRelativeTime(current.createdAt)}`
+                              : formatRelativeTime(current.createdAt)}
+                          </p>
                         </div>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setEditingAnswer(true)}
-                        className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-bold text-gray-500"
-                      >
-                        수정
-                      </button>
-                    </div>
-                    <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed font-medium text-gray-700">
-                      {timeline?.publishedAnswer?.content}
-                    </pre>
-                  </div>
-                )}
-              </div>
 
-              <aside className="w-full shrink-0 border-l border-gray-200 bg-white xl:w-[320px]">
-                <div className="border-b border-gray-100 bg-gray-50/50 p-5">
-                  <h3 className="text-sm font-extrabold text-gray-900">
-                    <i className="fas fa-bolt mr-2 text-yellow-500" /> 빠른 답변
-                  </h3>
-                </div>
-                <div className="space-y-6 p-5">
-                  <div>
-                    <h4 className="mb-3 text-[10px] font-extrabold tracking-wider text-gray-400 uppercase">추천 템플릿</h4>
-                    {(['classic', 'steps', 'code'] as Array<keyof typeof templates>).map((key) => (
-                      <button
-                        key={key}
-                        type="button"
-                        onClick={() => appendReply(templates[key])}
-                        className="mb-2 flex w-full items-start justify-between rounded-xl border border-gray-200 bg-white p-3.5 text-left hover:bg-gray-50"
+                      <span
+                        className={`rounded-full px-3 py-1.5 text-xs font-extrabold ${buildStatusBadgeClasses(current.status)}`}
                       >
-                        <div>
-                          <div className="text-[13px] font-black text-gray-900">
-                            {key === 'classic' ? '핵심 요약 템플릿' : key === 'steps' ? '문제 해결 순서' : '코드 예시 템플릿'}
-                          </div>
-                          <div className="mt-1 text-[11px] font-semibold text-gray-500">
-                            {key === 'classic' ? '질문 설명 + 이유 + 예시' : key === 'steps' ? '점검 순서를 단계별로 안내' : '코드와 설명을 함께 전달'}
+                        {buildStatusLabel(current.status)}
+                      </span>
+                    </div>
+
+                    <h3 className="mb-4 text-lg font-black text-gray-900 lg:text-xl">{current.title}</h3>
+                    <div className="rounded-2xl border border-gray-100 bg-gray-50 p-5">
+                      <MarkdownContent content={current.content} />
+                    </div>
+                  </div>
+                  {timelineLoading ? (
+                    <div className="mt-6 rounded-[28px] border border-gray-200 bg-white p-6 text-sm font-semibold text-gray-400 shadow-sm">
+                      답변 정보를 불러오는 중입니다.
+                    </div>
+                  ) : showAnswerForm ? (
+                    <div className="mt-6 overflow-hidden rounded-[28px] border border-gray-200 bg-white shadow-sm">
+                      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 bg-gray-50 px-4 py-3">
+                        <div className="flex items-center gap-1 text-sm text-gray-500">
+                          {[
+                            ['heading', 'fas fa-heading', '제목'],
+                            ['bold', 'fas fa-bold', '굵게'],
+                            ['italic', 'fas fa-italic', '기울임'],
+                          ].map(([key, icon, label]) => (
+                            <button
+                              key={key}
+                              type="button"
+                              onClick={() =>
+                                applyMarkdown(key as 'heading' | 'bold' | 'italic')
+                              }
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition hover:bg-white hover:text-gray-900"
+                              title={label}
+                            >
+                              <i className={icon} />
+                            </button>
+                          ))}
+                          <div className="mx-1 h-4 w-px bg-gray-300" />
+                          {[
+                            ['link', 'fas fa-link', '링크'],
+                            ['code', 'fas fa-code', '코드'],
+                            ['image', 'fas fa-image', '이미지'],
+                          ].map(([key, icon, label]) => (
+                            <button
+                              key={key}
+                              type="button"
+                              onClick={() => applyMarkdown(key as 'link' | 'code' | 'image')}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 transition hover:bg-white hover:text-gray-900"
+                              title={label}
+                            >
+                              <i className={icon} />
+                            </button>
+                          ))}
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          <span className="text-[11px] font-semibold text-gray-400">
+                            {draftText.length} / 1000
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => setTemplateOpen(true)}
+                            className="flex h-9 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-700 shadow-sm transition hover:border-[#00c471] hover:text-[#00c471]"
+                          >
+                            <i className="fas fa-magic text-[#00c471]" />
+                            템플릿 사용
+                          </button>
+                        </div>
+                      </div>
+
+                      <textarea
+                        ref={editorRef}
+                        value={draftText}
+                        onChange={(event) => setDraftText(event.target.value)}
+                        maxLength={1000}
+                        className="h-56 w-full resize-none bg-white px-6 py-6 text-sm leading-relaxed text-gray-800 outline-none"
+                        placeholder={
+                          '수강생에게 격려의 말과 해결책을 함께 담아 답변해주세요.\n(오른쪽 빠른 답변 카드나 상단 마크다운 버튼을 바로 사용할 수 있습니다.)'
+                        }
+                      />
+
+                      <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-100 bg-white px-4 py-4">
+                        <div className="flex items-center gap-2 text-[11px] font-medium text-gray-400">
+                          <i className="fas fa-info-circle text-gray-300" />
+                          Markdown 문법을 지원합니다.
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={saveDraft}
+                            className="h-11 rounded-xl bg-gray-100 px-5 text-xs font-bold text-gray-600 transition hover:bg-gray-200"
+                          >
+                            임시저장
+                          </button>
+                          <button
+                            type="button"
+                            onClick={submitAnswer}
+                            className="flex h-11 items-center gap-2 rounded-xl bg-[#00c471] px-7 text-xs font-bold text-white shadow-md transition hover:bg-[#00b366]"
+                          >
+                            <i className="fas fa-paper-plane" />
+                            {timeline?.publishedAnswer ? '답변 수정' : '답변 등록'}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-6 rounded-[28px] border border-green-200 bg-white p-6 shadow-sm lg:p-8">
+                      <div className="mb-5 flex items-center justify-between border-b border-gray-100 pb-4">
+                        <div className="flex items-center gap-3">
+                          <UserAvatar
+                            name={instructorDisplayName}
+                            imageUrl={instructorProfileImage}
+                            className="h-10 w-10 shadow-sm"
+                            alt={instructorDisplayName}
+                          />
+                          <div>
+                            <p className="flex items-center gap-2 text-sm font-bold text-gray-900">
+                              {instructorDisplayName}
+                              <span className="rounded bg-[#00c471] px-1.5 py-0.5 text-[9px] font-semibold text-white">
+                                강사
+                              </span>
+                            </p>
+                            <p className="mt-1 text-[10px] font-semibold text-gray-400">
+                              답변 완료
+                            </p>
                           </div>
                         </div>
-                        <i className="fas fa-plus-circle mt-1 text-lg text-gray-300" />
-                      </button>
-                    ))}
+                        <button
+                          type="button"
+                          onClick={() => setEditingAnswer(true)}
+                          className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-1.5 text-xs font-semibold text-gray-500 transition hover:text-[#00c471]"
+                        >
+                          <i className="fas fa-edit mr-1" />
+                          수정
+                        </button>
+                      </div>
+
+                      <MarkdownContent content={timeline?.publishedAnswer?.content ?? ''} />
+                    </div>
+                  )}
+                </div>
+
+                <aside className="w-full shrink-0 border-l border-gray-200 bg-white xl:w-[320px]">
+                  <div className="border-b border-gray-100 bg-gray-50/50 p-5">
+                    <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900">
+                      <i className="fas fa-bolt text-yellow-500" />
+                      빠른 답변 도구
+                    </h3>
+                    <p className="mt-1 text-[11px] font-medium text-gray-500">
+                      자주 쓰는 문구와 템플릿을 한 번에 삽입할 수 있습니다.
+                    </p>
                   </div>
 
-                  <div>
-                    <div className="mb-3 flex items-center justify-between">
-                      <h4 className="text-[10px] font-extrabold tracking-wider text-gray-400 uppercase">저장한 빠른 답변</h4>
-                      <span className="rounded-md border border-gray-200 bg-gray-100 px-2 py-0.5 text-[10px] font-extrabold text-gray-600">{quickReplies.length}</span>
-                    </div>
-                    <div className="mb-3 space-y-2">
-                      {quickReplies.length > 0 ? (
-                        quickReplies.map((reply) => (
+                  <div className="space-y-6 p-5">
+                    <div>
+                      <h4 className="mb-3 px-1 text-[10px] font-extrabold uppercase tracking-[0.18em] text-gray-400">
+                        추천 템플릿
+                      </h4>
+                      <div className="space-y-2">
+                        {(Object.keys(recommendedTemplates) as TemplateKey[]).map((key) => (
                           <button
-                            key={reply.id}
+                            key={key}
                             type="button"
-                            onClick={() => appendReply(reply.content)}
-                            className="group w-full rounded-xl border border-gray-200 bg-white p-3.5 text-left hover:border-brand hover:shadow-sm"
+                            onClick={() => applyMarkdown(key)}
+                            className="flex w-full items-start justify-between gap-3 rounded-2xl border border-gray-200 bg-white p-3.5 text-left transition hover:-translate-y-0.5 hover:border-gray-300 hover:bg-gray-50 hover:shadow-[0_10px_18px_rgba(15,23,42,0.05)]"
                           >
-                            <div className="flex items-start justify-between gap-2">
-                              <div className="line-clamp-1 flex-1 text-xs font-extrabold text-gray-900">{reply.title}</div>
-                              <div className="flex gap-1 opacity-0 transition group-hover:opacity-100">
-                                <button
-                                  type="button"
-                                  onClick={(event) => {
-                                    event.stopPropagation()
-                                    openQuickModal(reply)
-                                  }}
-                                  className="flex h-6 w-6 items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-500"
-                                >
-                                  <i className="fas fa-pen text-[10px]" />
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={(event) => {
-                                    event.stopPropagation()
-                                    deleteQuickReply(reply.id)
-                                  }}
-                                  className="flex h-6 w-6 items-center justify-center rounded border border-red-100 bg-red-50 text-red-500"
-                                >
-                                  <i className="fas fa-trash text-[10px]" />
-                                </button>
+                            <div>
+                              <div className="text-[13px] font-black text-gray-900">
+                                {recommendedTemplates[key].title}
+                              </div>
+                              <div className="mt-1 text-[11px] font-medium leading-5 text-gray-500">
+                                {recommendedTemplates[key].description}
                               </div>
                             </div>
-                            <div className="mt-1 line-clamp-2 text-[11px] leading-relaxed font-medium text-gray-500">{reply.content}</div>
+                            <i className="fas fa-plus-circle mt-1 text-lg text-gray-300" />
                           </button>
-                        ))
-                      ) : (
-                        <div className="rounded-xl border border-dashed border-gray-300 bg-white p-4 text-center text-[11px] font-bold text-gray-400">
-                          저장한 답변 템플릿이 없습니다.
-                        </div>
-                      )}
+                        ))}
+                      </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => openQuickModal()}
-                      className="w-full rounded-xl border border-dashed border-gray-300 py-2.5 text-xs font-extrabold text-gray-500 hover:border-brand hover:bg-green-50 hover:text-brand"
-                    >
-                      빠른 답변 추가하기
-                    </button>
+
+                    <div>
+                      <div className="mb-3 flex items-center justify-between px-1">
+                        <h4 className="text-[10px] font-extrabold uppercase tracking-[0.18em] text-gray-400">
+                          저장한 빠른 답변
+                        </h4>
+                        <span className="rounded-md border border-gray-200 bg-gray-100 px-2 py-0.5 text-[10px] font-extrabold text-gray-600">
+                          {quickReplies.length}
+                        </span>
+                      </div>
+
+                      <div className="mb-3 space-y-2">
+                        {quickReplies.length > 0 ? (
+                          quickReplies.map((reply) => (
+                            <button
+                              key={reply.id}
+                              type="button"
+                              onClick={() => appendReply(reply.content)}
+                              className="group w-full rounded-2xl border border-gray-200 bg-white p-3.5 text-left transition hover:border-[#00c471] hover:shadow-sm"
+                            >
+                              <div className="flex items-start justify-between gap-2">
+                                <div className="line-clamp-1 flex-1 text-xs font-extrabold text-gray-900">
+                                  {reply.title}
+                                </div>
+                                <div className="flex gap-1 opacity-0 transition group-hover:opacity-100">
+                                  <button
+                                    type="button"
+                                    onClick={(event) => {
+                                      event.stopPropagation()
+                                      openQuickModal(reply)
+                                    }}
+                                    className="flex h-6 w-6 items-center justify-center rounded border border-gray-200 bg-gray-50 text-gray-500"
+                                    title="수정"
+                                  >
+                                    <i className="fas fa-pen text-[10px]" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={(event) => {
+                                      event.stopPropagation()
+                                      deleteQuickReply(reply.id)
+                                    }}
+                                    className="flex h-6 w-6 items-center justify-center rounded border border-red-100 bg-red-50 text-red-500"
+                                    title="삭제"
+                                  >
+                                    <i className="fas fa-trash text-[10px]" />
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="mt-1 line-clamp-2 text-[11px] leading-relaxed font-medium text-gray-500">
+                                {reply.content}
+                              </div>
+                            </button>
+                          ))
+                        ) : (
+                          <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-4 text-center text-[11px] font-semibold text-gray-400">
+                            저장된 빠른 답변이 없습니다.
+                          </div>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => openQuickModal()}
+                        className="w-full rounded-xl border border-dashed border-gray-300 py-2.5 text-xs font-bold text-gray-500 transition hover:border-[#00c471] hover:bg-green-50 hover:text-[#00c471]"
+                      >
+                        <i className="fas fa-plus mr-1" />
+                        빠른 답변 추가하기
+                      </button>
+                    </div>
+
+                    <div className="rounded-[24px] border border-blue-100 bg-blue-50 p-5">
+                      <h4 className="mb-3 flex items-center gap-2 text-xs font-bold text-blue-800">
+                        <i className="fas fa-check-double" />
+                        좋은 답변 체크리스트
+                      </h4>
+                      <ul className="space-y-2 text-[11px] font-medium text-blue-700">
+                        <li className="flex items-start gap-2">
+                          <i className="fas fa-check-circle mt-0.5 opacity-50" />
+                          결론을 먼저 말하고, 왜 그런지 바로 이어서 설명하기
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <i className="fas fa-check-circle mt-0.5 opacity-50" />
+                          공식 문서나 확인 포인트가 있으면 함께 안내하기
+                        </li>
+                        <li className="flex items-start gap-2">
+                          <i className="fas fa-check-circle mt-0.5 opacity-50" />
+                          코드 예시는 마크다운 코드 블록으로 정리하기
+                        </li>
+                      </ul>
+                    </div>
                   </div>
+                </aside>
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-1 items-center justify-center px-6 py-16">
+              <div className="max-w-md rounded-[28px] border border-dashed border-gray-300 bg-white px-8 py-10 text-center shadow-sm">
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-gray-100 text-gray-400">
+                  <i className="fas fa-inbox text-xl" />
                 </div>
-              </aside>
+                <h3 className="text-lg font-black text-gray-900">표시할 질문이 없습니다.</h3>
+                <p className="mt-2 text-sm leading-6 text-gray-500">
+                  왼쪽 목록에서 다른 필터를 선택하거나, 새 질문이 들어오면 여기서 바로 확인할 수 있습니다.
+                </p>
+              </div>
             </div>
-          </section>
-        ) : null}
+          )}
+        </section>
       </div>
 
       {quickOpen ? (
-        <Modal title="빠른 답변 저장" icon="fas fa-bookmark" onClose={() => setQuickOpen(false)}>
-          <div className="space-y-4 bg-[#F8F9FA] p-6">
-            <input
-              value={quickTitle}
-              onChange={(event) => setQuickTitle(event.target.value)}
-              maxLength={30}
-              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm font-bold outline-none focus:border-brand"
-              placeholder="템플릿 제목"
-            />
-            <textarea
-              value={quickBody}
-              onChange={(event) => setQuickBody(event.target.value)}
-              maxLength={1000}
-              className="h-48 w-full resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm font-medium outline-none focus:border-brand"
-              placeholder="버튼 클릭 시 본문에 들어갈 답변을 작성해 주세요."
-            />
+        <Modal title="저장한 빠른 답변 편집" icon="fas fa-bookmark" onClose={() => setQuickOpen(false)}>
+          <div className="space-y-5 bg-[#f8f9fa] p-6">
+            <div>
+              <label className="mb-2 block text-xs font-semibold text-gray-600">제목</label>
+              <input
+                value={quickTitle}
+                onChange={(event) => setQuickTitle(event.target.value)}
+                maxLength={30}
+                className="h-11 w-full rounded-xl border border-gray-200 px-4 text-sm font-medium outline-none focus:border-[#00c471]"
+                placeholder="예: JPA 순환 참조 답변"
+              />
+            </div>
+            <div>
+              <div className="mb-2 flex items-center justify-between">
+                <label className="block text-xs font-semibold text-gray-600">답변 내용</label>
+                <span className="text-[10px] font-bold text-gray-400">{quickBody.length} / 1000</span>
+              </div>
+              <textarea
+                value={quickBody}
+                onChange={(event) => setQuickBody(event.target.value)}
+                maxLength={1000}
+                className="h-48 w-full resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm leading-relaxed outline-none focus:border-[#00c471]"
+                placeholder="버튼 클릭 시 에디터에 그대로 삽입될 답변을 작성해주세요."
+              />
+            </div>
           </div>
+
           <div className="flex items-center justify-between border-t border-gray-100 bg-gray-50 px-5 py-4">
-            <button type="button" onClick={() => setQuickBody(draftText)} className="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-extrabold text-gray-600 shadow-sm">
-              현재 답변 가져오기
+            <button
+              type="button"
+              onClick={() => setQuickBody(draftText)}
+              className="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-bold text-gray-600 shadow-sm"
+            >
+              현재 에디터 내용 가져오기
             </button>
             <div className="flex gap-2">
-              <button type="button" onClick={() => setQuickOpen(false)} className="rounded-xl px-5 py-2.5 text-xs font-bold text-gray-500">
+              <button
+                type="button"
+                onClick={() => setQuickOpen(false)}
+                className="rounded-xl px-5 py-2.5 text-xs font-semibold text-gray-500"
+              >
                 취소
               </button>
-              <button type="button" onClick={saveQuickReply} className="rounded-xl bg-gray-900 px-6 py-2.5 text-xs font-extrabold text-white shadow-md">
+              <button
+                type="button"
+                onClick={saveQuickReply}
+                className="rounded-xl bg-gray-900 px-6 py-2.5 text-xs font-bold text-white shadow-md"
+              >
                 저장하기
               </button>
             </div>
@@ -626,23 +1185,21 @@ export default function InstructorQnaPage({ session }: { session: AuthSession })
 
       {templateOpen ? (
         <Modal title="답변 템플릿 선택" icon="fas fa-magic" onClose={() => setTemplateOpen(false)}>
-          <div className="space-y-3 bg-[#F8F9FA] p-6">
-            {(['classic', 'steps', 'code'] as Array<keyof typeof templates>).map((key) => (
+          <div className="space-y-3 bg-[#f8f9fa] p-6">
+            {(Object.keys(recommendedTemplates) as TemplateKey[]).map((key) => (
               <button
                 key={key}
                 type="button"
                 onClick={() => {
-                  appendReply(templates[key])
+                  appendReply(recommendedTemplates[key].content)
                   setTemplateOpen(false)
                 }}
-                className="flex w-full items-start justify-between gap-3 rounded-xl border border-gray-200 bg-white p-4 text-left hover:bg-gray-50"
+                className="flex w-full items-start justify-between gap-3 rounded-2xl border border-gray-200 bg-white p-4 text-left transition hover:bg-gray-50"
               >
                 <div>
-                  <div className="text-sm font-black text-gray-900">
-                    {key === 'classic' ? '핵심 요약 템플릿' : key === 'steps' ? '문제 해결 순서' : '코드 예시 템플릿'}
-                  </div>
+                  <div className="text-sm font-black text-gray-900">{recommendedTemplates[key].title}</div>
                   <div className="mt-1 text-xs font-medium text-gray-500">
-                    {key === 'classic' ? '질문 설명과 원인, 예시까지 빠르게 정리' : key === 'steps' ? '점검 항목을 단계별로 전달' : '코드와 설명을 함께 제공'}
+                    {recommendedTemplates[key].description}
                   </div>
                 </div>
                 <i className="fas fa-check-circle mt-1 text-xl text-gray-300" />
