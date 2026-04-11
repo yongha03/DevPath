@@ -180,7 +180,7 @@ public class LearnerCourseService {
         return CourseDetailResponse.InstructorInfo.builder()
                 .instructorId(course.getInstructorId())
                 .channelName(resolveChannelName(userProfile, course.getInstructor().getName()))
-                .profileImage(userProfile == null ? null : userProfile.getProfileImage())
+                .profileImage(userProfile == null ? null : userProfile.getDisplayProfileImage())
                 .headline(userProfile == null ? null : userProfile.getBio())
                 .specialties(specialties == null ? Collections.emptyList() : specialties)
                 .channelApiPath("/api/instructors/" + course.getInstructorId() + "/channel")

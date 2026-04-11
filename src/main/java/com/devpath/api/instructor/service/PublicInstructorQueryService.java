@@ -61,7 +61,7 @@ public class PublicInstructorQueryService {
     return InstructorPublicProfileDto.ProfileResponse.builder()
         .instructorId(userProfile.getUser().getId())
         .nickname(resolveDisplayName(userProfile))
-        .profileImageUrl(userProfile.getProfileImage())
+        .profileImageUrl(userProfile.getDisplayProfileImage())
         .headline(userProfile.getBio())
         .isPublic(userProfile.getIsPublic())
         .build();

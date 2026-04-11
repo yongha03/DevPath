@@ -85,9 +85,9 @@ INSERT INTO user_profiles (
 )
 SELECT
     u.user_id,
-    '/images/profiles/instructor-hong.png',
+    NULL,
     'Hong Backend Lab',
-    'Spring Boot?? ????????썹땟戮녹???????????⑥쥓???汝뷴젆?????關???꾨き??熬곥룊??????????????ル늉??????汝뷴젆??녷뉩??읂?????ル늉??筌?類?域뱀옓堉??????戮?Ĳ??',
+    'Spring Boot와 Security를 실전 중심으로 가르치는 강사입니다.',
     '010-0000-0001',
     'https://github.com/instructor-hong',
     'https://blog.devpath.com/hong',
@@ -116,9 +116,9 @@ INSERT INTO user_profiles (
 )
 SELECT
     u.user_id,
-    '/images/profiles/admin-park.png',
+    NULL,
     'DevPath Admin',
-    '?????밸븶????????棺堉?뤃????? ????⑤슢堉?繹먮냱踰 ?饔낅챷維??????쑩??????????????꿔꺂??????',
+    'DevPath 플랫폼 운영과 학습 경험 개선을 담당하고 있습니다.',
     '010-0000-0002',
     'https://github.com/admin-park',
     'https://blog.devpath.com/admin',
@@ -132,6 +132,32 @@ WHERE u.email = 'admin@devpath.com'
       FROM user_profiles up
       WHERE up.user_id = u.user_id
   );
+
+UPDATE user_profiles up
+SET
+    profile_image = NULL,
+    channel_name = 'Hong Backend Lab',
+    bio = 'Spring Boot와 Security를 실전 중심으로 가르치는 강사입니다.',
+    github_url = 'https://github.com/instructor-hong',
+    blog_url = 'https://blog.devpath.com/hong',
+    is_public = TRUE,
+    updated_at = NOW()
+FROM users u
+WHERE up.user_id = u.user_id
+  AND u.email = 'instructor@devpath.com';
+
+UPDATE user_profiles up
+SET
+    profile_image = NULL,
+    channel_name = 'DevPath Admin',
+    bio = 'DevPath 플랫폼 운영과 학습 경험 개선을 담당하고 있습니다.',
+    github_url = 'https://github.com/admin-park',
+    blog_url = 'https://blog.devpath.com/admin',
+    is_public = TRUE,
+    updated_at = NOW()
+FROM users u
+WHERE up.user_id = u.user_id
+  AND u.email = 'admin@devpath.com';
 
 INSERT INTO tags (name, category, is_official, is_deleted)
 SELECT 'Java', 'Backend', TRUE, FALSE

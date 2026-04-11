@@ -406,37 +406,50 @@ function App() {
             </button>
           </div>
 
-          <div
-            className="relative flex h-96 flex-1 items-center justify-center overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-xl"
-            data-aos="fade-left"
-          >
-            <div className="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px] opacity-50" />
-            <div className="relative w-full max-w-sm">
-              <div className="absolute top-10 left-1/2 h-20 w-1 -translate-x-1/2 bg-green-200" />
-              <div className="absolute top-[120px] left-1/2 h-1 w-32 -translate-x-1/2 bg-green-200" />
-              <div className="absolute top-[120px] left-[25%] h-10 w-1 bg-green-200" />
-              <div className="absolute top-[120px] right-[25%] h-10 w-1 bg-green-200" />
+          <div className="flex h-96 flex-1 items-center justify-center" data-aos="fade-left">
+            <div className="roadmap-preview-shell">
+              <div className="roadmap-preview-scene">
+                <svg
+                  className="roadmap-preview-lines"
+                  viewBox="0 0 280 332"
+                  fill="none"
+                  preserveAspectRatio="none"
+                  aria-hidden="true"
+                >
+                  <path
+                    className="roadmap-preview-line"
+                    d="M140 50V86M74 86H206M74 86V106M206 86V106M74 196V220M206 196V220M74 220H206M140 220V250"
+                  />
+                  <circle className="roadmap-preview-joint" cx="140" cy="86" r="4" />
+                  <circle className="roadmap-preview-joint" cx="140" cy="222" r="4" />
+                </svg>
 
-              <div className="relative z-10 flex flex-col items-center gap-8">
-                <div className="flex items-center gap-2 rounded-full bg-gray-900 px-6 py-3 text-sm font-bold text-white shadow-lg">
-                  <i className="fas fa-flag" /> 시작: 개발 기초
+                <div className="roadmap-preview-pill">
+                  <i className="fas fa-flag" />
+                  <span>시작: 개발 기초</span>
                 </div>
-                <div className="flex w-full justify-center gap-16">
-                  <div className="flex flex-col items-center">
-                    <div className="text-brand mb-2 flex h-12 w-12 items-center justify-center rounded-full border-2 border-[#00C471] bg-white text-xl shadow-md">
+
+                <div className="roadmap-preview-branches">
+                  <div className="roadmap-preview-card roadmap-preview-card--green">
+                    <div className="roadmap-preview-icon roadmap-preview-icon--green">
                       <i className="fab fa-html5" />
                     </div>
-                    <span className="text-xs font-bold text-gray-600">HTML/CSS</span>
+                    <p className="roadmap-preview-title">HTML/CSS</p>
                   </div>
-                  <div className="flex flex-col items-center">
-                    <div className="mb-2 flex h-12 w-12 items-center justify-center rounded-full border-2 border-blue-500 bg-white text-xl text-blue-500 shadow-md">
+                  <div className="roadmap-preview-card roadmap-preview-card--blue">
+                    <div className="roadmap-preview-icon roadmap-preview-icon--blue">
                       <i className="fab fa-js" />
                     </div>
-                    <span className="text-xs font-bold text-gray-600">JavaScript</span>
+                    <p className="roadmap-preview-title">JavaScript</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-5 py-3 text-sm text-gray-500 shadow-md">
-                  <i className="fas fa-lock text-gray-300" /> 다음 단계: 프레임워크
+
+                <div className="roadmap-preview-next">
+                  <div className="roadmap-preview-next-badge">
+                    <i className="fas fa-lock" />
+                    <span>잠금</span>
+                  </div>
+                  <p className="roadmap-preview-next-title">프레임워크</p>
                 </div>
               </div>
             </div>

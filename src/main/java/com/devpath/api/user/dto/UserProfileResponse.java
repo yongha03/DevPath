@@ -27,7 +27,7 @@ public record UserProfileResponse(
         user.getRole().name(),
         profile == null ? null : profile.getBio(),
         profile == null ? null : profile.getPhone(),
-        profile == null ? null : profile.getProfileImage(),
+        profile == null ? null : profile.getDisplayProfileImage(),
         profile == null ? null : profile.getChannelName(),
         profile == null ? null : profile.getGithubUrl(),
         profile == null ? null : profile.getBlogUrl(),

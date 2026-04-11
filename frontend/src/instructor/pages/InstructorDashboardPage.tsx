@@ -19,6 +19,19 @@ import type {
 
 type DashboardTabKey = 'learning' | 'mentoring'
 
+const EMPTY_REVIEW_SUMMARY: InstructorReviewSummary = {
+  totalReviews: 0,
+  averageRating: 0,
+  unansweredCount: 0,
+  ratingDistribution: {},
+}
+
+const EMPTY_MENTORING_BOARD: InstructorMentoringBoard = {
+  projects: [],
+  requests: [],
+  ongoingProjects: [],
+}
+
 function DashboardTabButton({
   active,
   onClick,
@@ -207,6 +220,7 @@ export default function InstructorDashboardPage({ session }: { session: AuthSess
   const [mentoringBoard, setMentoringBoard] = useState<InstructorMentoringBoard | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [loadWarning, setLoadWarning] = useState<string | null>(null)
   const [notificationOpen, setNotificationOpen] = useState(false)
   const [tasks, setTasks] = useState([false, false])
   const notificationRef = useRef<HTMLDivElement | null>(null)
@@ -242,8 +256,9 @@ export default function InstructorDashboardPage({ session }: { session: AuthSess
 
     setLoading(true)
     setError(null)
+    setLoadWarning(null)
 
-    Promise.all([
+    Promise.allSettled([
       instructorNotificationApi.getAll(controller.signal),
       instructorCourseApi.getCourses(controller.signal),
       instructorReviewApi.getSummary(controller.signal),
@@ -252,21 +267,40 @@ export default function InstructorDashboardPage({ session }: { session: AuthSess
       instructorRevenueApi.getSummary(controller.signal),
       instructorMentoringApi.getBoard(controller.signal),
     ])
-      .then(([nextNotifications, nextCourses, nextReviewSummary, nextReviews, nextQna, nextRevenue, nextMentoringBoard]) => {
-        setNotifications(nextNotifications)
-        setCourses(nextCourses)
-        setReviewSummary(nextReviewSummary)
-        setReviews(nextReviews)
-        setUnansweredQnaCount(nextQna.length)
-        setNetRevenue(nextRevenue.netRevenue)
-        setMentoringBoard(nextMentoringBoard)
-      })
-      .catch((nextError: Error) => {
+      .then((results) => {
         if (controller.signal.aborted) {
           return
         }
 
-        setError(nextError.message)
+        const failures = results.filter((result) => result.status === 'rejected')
+
+        if (failures.length === results.length) {
+          const firstError = failures[0]
+          setError(firstError.reason instanceof Error ? firstError.reason.message : '강사 대시보드 데이터를 불러오지 못했습니다.')
+          return
+        }
+
+        const [
+          notificationsResult,
+          coursesResult,
+          reviewSummaryResult,
+          reviewsResult,
+          qnaResult,
+          revenueResult,
+          mentoringBoardResult,
+        ] = results
+
+        setNotifications(notificationsResult.status === 'fulfilled' ? notificationsResult.value : [])
+        setCourses(coursesResult.status === 'fulfilled' ? coursesResult.value : [])
+        setReviewSummary(reviewSummaryResult.status === 'fulfilled' ? reviewSummaryResult.value : EMPTY_REVIEW_SUMMARY)
+        setReviews(reviewsResult.status === 'fulfilled' ? reviewsResult.value : [])
+        setUnansweredQnaCount(qnaResult.status === 'fulfilled' ? qnaResult.value.length : 0)
+        setNetRevenue(revenueResult.status === 'fulfilled' ? revenueResult.value.netRevenue : 0)
+        setMentoringBoard(mentoringBoardResult.status === 'fulfilled' ? mentoringBoardResult.value : EMPTY_MENTORING_BOARD)
+
+        if (failures.length > 0) {
+          setLoadWarning('일부 강사 대시보드 데이터만 불러왔습니다. 잠시 후 다시 새로고침해 주세요.')
+        }
       })
       .finally(() => {
         if (!controller.signal.aborted) {
@@ -415,6 +449,12 @@ export default function InstructorDashboardPage({ session }: { session: AuthSess
       </header>
 
       <div className="flex-1 p-6">
+        {loadWarning ? (
+          <div className="mb-5 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-800">
+            {loadWarning}
+          </div>
+        ) : null}
+
         {activeTab === 'learning' ? (
           <div>
             <div className="mb-5 grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">

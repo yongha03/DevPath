@@ -17,6 +17,7 @@ spring:
   sql:
     init:
       mode: never
+      schema-locations: classpath:h2-compat.sql
 
   security:
     oauth2:

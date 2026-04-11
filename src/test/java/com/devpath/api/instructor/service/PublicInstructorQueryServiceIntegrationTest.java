@@ -228,6 +228,37 @@ class PublicInstructorQueryServiceIntegrationTest {
   }
 
   @Test
+  @DisplayName("레거시 기본 프로필 이미지 경로는 공개 응답에서 숨긴다")
+  void getPublicProfileHidesLegacySeedProfileImage() {
+    User legacyInstructor =
+        userRepository.save(
+            User.builder()
+                .email("legacy-instructor@devpath.com")
+                .password("encoded-password")
+                .name("Legacy Instructor")
+                .role(UserRole.ROLE_INSTRUCTOR)
+                .build());
+
+    userProfileRepository.save(
+        UserProfile.builder()
+            .user(legacyInstructor)
+            .profileImage("/images/profiles/legacy-instructor.png")
+            .channelName("Legacy Backend Lab")
+            .bio("Legacy seed profile")
+            .githubUrl("https://github.com/legacy-instructor")
+            .blogUrl("https://blog.devpath.com/legacy-instructor")
+            .isPublic(true)
+            .build());
+
+    flushAndClear();
+
+    InstructorPublicProfileDto.ProfileResponse response =
+        publicInstructorQueryService.getPublicProfile(legacyInstructor.getId());
+
+    assertThat(response.getProfileImageUrl()).isNull();
+  }
+
+  @Test
   @DisplayName("비공개 프로필과 비강사 계정은 공개 API에서 조회할 수 없다")
   void getPublicProfileRejectsHiddenOrNonInstructorAccounts() {
     assertThatThrownBy(() -> publicInstructorQueryService.getPublicProfile(privateInstructorId))

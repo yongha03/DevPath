@@ -27,12 +27,32 @@ class BaselineSeedDataIntegrationTest {
     assertThat(count("roadmaps")).isGreaterThanOrEqualTo(2);
     assertThat(count("roadmap_nodes")).isGreaterThanOrEqualTo(6);
     assertThat(count("tags")).isGreaterThanOrEqualTo(10);
-    assertThat(count("node_required_tags")).isGreaterThanOrEqualTo(6);
     assertThat(count("course_tag_maps")).isGreaterThanOrEqualTo(5);
     assertThat(count("course_announcements")).isGreaterThanOrEqualTo(2);
+    assertThat(count("qna_questions")).isGreaterThanOrEqualTo(2);
+    assertThat(count("instructor_notification")).isGreaterThanOrEqualTo(2);
+  }
+
+  @Test
+  void seededProfilesUseReadableBioAndDefaultAvatarFallback() {
+    assertThat(profileField("instructor@devpath.com", "bio"))
+        .isEqualTo("Spring Boot와 Security를 실전 중심으로 가르치는 강사입니다.");
+    assertThat(profileField("admin@devpath.com", "bio"))
+        .isEqualTo("DevPath 플랫폼 운영과 학습 경험 개선을 담당하고 있습니다.");
+    assertThat(profileField("instructor@devpath.com", "profile_image")).isNull();
+    assertThat(profileField("admin@devpath.com", "profile_image")).isNull();
   }
 
   private Integer count(String tableName) {
     return jdbcTemplate.queryForObject("select count(*) from " + tableName, Integer.class);
+  }
+
+  private String profileField(String email, String columnName) {
+    return jdbcTemplate.queryForObject(
+        "select "
+            + columnName
+            + " from user_profiles up join users u on u.user_id = up.user_id where u.email = ?",
+        String.class,
+        email);
   }
 }

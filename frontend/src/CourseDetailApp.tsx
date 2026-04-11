@@ -35,6 +35,9 @@ type TabKey = 'info' | 'news' | 'reviews' | 'qna'
 type ReviewFilterKey = 'all' | 'five' | 'fourPlus'
 type ReviewSortKey = 'latest' | 'ratingDesc' | 'ratingAsc'
 
+const APP_HEADER_HEIGHT_PX = 64
+const STUDENT_PREVIEW_BANNER_HEIGHT_PX = 44
+
 function readNumberSearchParam(name: string) {
   const value = new URLSearchParams(window.location.search).get(name)
   const parsed = value ? Number(value) : NaN
@@ -44,6 +47,31 @@ function readNumberSearchParam(name: string) {
 function readAuthViewFromLocation(): AuthView | null {
   const value = new URLSearchParams(window.location.search).get('auth')
   return value === 'login' || value === 'signup' ? value : null
+}
+
+function readStudentPreviewFromLocation() {
+  return new URLSearchParams(window.location.search).get('preview') === 'student'
+}
+
+function readStudentPreviewReturnHref(courseId: number | null) {
+  const fallbackHref = courseId ? `course-editor.html?courseId=${courseId}` : 'course-editor.html'
+  const value = new URLSearchParams(window.location.search).get('returnTo')
+
+  if (!value) {
+    return fallbackHref
+  }
+
+  try {
+    const nextUrl = new URL(value, window.location.origin)
+
+    if (nextUrl.origin !== window.location.origin) {
+      return fallbackHref
+    }
+
+    return `${nextUrl.pathname}${nextUrl.search}${nextUrl.hash}`
+  } catch {
+    return fallbackHref
+  }
 }
 
 function syncAuthViewInLocation(view: AuthView | null) {
@@ -97,6 +125,8 @@ function LoadingOverlay() {
 
 export default function CourseDetailApp() {
   const courseId = useMemo(() => readNumberSearchParam('courseId'), [])
+  const isStudentPreview = useMemo(() => readStudentPreviewFromLocation(), [])
+  const studentPreviewReturnHref = useMemo(() => readStudentPreviewReturnHref(courseId), [courseId])
   const [session, setSession] = useState(() => readStoredAuthSession())
   const [profileImage, setProfileImage] = useState<string | null>(null)
   const [authView, setAuthView] = useState<AuthView | null>(() => readAuthViewFromLocation())
@@ -138,6 +168,11 @@ export default function CourseDetailApp() {
   const jobCards = useMemo(() => buildCourseJobCards(displayCourse), [displayCourse])
   const newsCards = useMemo(() => buildCourseNewsCards(displayCourse), [displayCourse])
   const reviewStats = useMemo(() => buildReviewStats(reviews), [reviews])
+  const headerOffsetTop = isStudentPreview ? STUDENT_PREVIEW_BANNER_HEIGHT_PX : 0
+  const stickyTabOffsetTop = APP_HEADER_HEIGHT_PX + headerOffsetTop
+  const appMainStyle = headerOffsetTop
+    ? { paddingTop: `${APP_HEADER_HEIGHT_PX + headerOffsetTop}px` }
+    : undefined
 
   const visibleReviews = useMemo(() => {
     const filtered = reviews
@@ -446,16 +481,37 @@ export default function CourseDetailApp() {
     setToastMessage('댓글이 등록되었습니다.')
   }
 
+  function handleExitStudentPreview() {
+    window.location.assign(studentPreviewReturnHref)
+  }
+
   return (
     <div className="min-h-screen bg-white text-gray-800">
+      {isStudentPreview ? (
+        <div className="fixed top-0 left-0 right-0 z-[1200] flex min-h-[44px] flex-wrap items-center justify-center gap-2 bg-gray-800 px-4 py-2 text-center text-sm font-bold text-white shadow-lg">
+          <span className="inline-flex items-center gap-2">
+            <i className="fas fa-eye" />
+            현재 '학생 시점' 미리보기 중입니다.
+          </span>
+          <button
+            type="button"
+            onClick={handleExitStudentPreview}
+            className="rounded-full border border-white/30 bg-white/10 px-3 py-1 text-xs font-bold text-white transition hover:bg-white/20"
+          >
+            미리보기 종료 (돌아가기)
+          </button>
+        </div>
+      ) : null}
+
       <SiteHeader
         session={session}
         profileImage={profileImage}
         onLogout={handleLogout}
         onLoginClick={() => openAuthModal('login')}
+        offsetTopPx={headerOffsetTop}
       />
 
-      <div className="app-main bg-white">
+      <div className="app-main bg-white" style={appMainStyle}>
         {courseNotice ? (
           <div className="border-b border-amber-100 bg-amber-50 px-6 py-3 text-center text-sm font-semibold text-amber-700">
             {courseNotice}
@@ -542,7 +598,7 @@ export default function CourseDetailApp() {
 
         <section className="container mx-auto flex flex-col gap-12 px-6 py-12 lg:px-20 md:flex-row">
           <div className="flex-1">
-            <div className="sticky top-[64px] z-10 mb-8 flex border-b border-gray-200 bg-white">
+            <div className="sticky z-10 mb-8 flex border-b border-gray-200 bg-white" style={{ top: `${stickyTabOffsetTop}px` }}>
               <button
                 type="button"
                 onClick={() => startTransition(() => setActiveTab('info'))}

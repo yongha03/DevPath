@@ -230,7 +230,7 @@ public class InstructorCourseQueryService {
         return CourseDetailResponse.InstructorInfo.builder()
                 .instructorId(instructorId)
                 .channelName(resolveChannelName(userProfile))
-                .profileImage(userProfile == null ? null : userProfile.getProfileImage())
+                .profileImage(userProfile == null ? null : userProfile.getDisplayProfileImage())
                 .headline(userProfile == null ? null : userProfile.getBio())
                 .specialties(specialties == null ? Collections.emptyList() : specialties)
                 .channelApiPath("/api/instructors/" + instructorId + "/channel")

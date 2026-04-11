@@ -43,6 +43,7 @@ spring:
     init:
       # 시작 시 SQL 실행
       mode: always
+      encoding: UTF-8
 
   jpa:
     hibernate:

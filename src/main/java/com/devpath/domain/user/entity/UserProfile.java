@@ -24,6 +24,8 @@ import org.hibernate.annotations.UpdateTimestamp;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class UserProfile {
 
+    private static final String LEGACY_DEFAULT_PROFILE_PREFIX = "/images/profiles/";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "profile_id")
@@ -82,7 +84,7 @@ public class UserProfile {
             Boolean isPublic
     ) {
         this.user = user;
-        this.profileImage = profileImage;
+        this.profileImage = normalizeProfileImage(profileImage);
         this.channelName = channelName;
         this.bio = bio;
         this.channelDescription = channelDescription;
@@ -102,7 +104,7 @@ public class UserProfile {
             String blogUrl
     ) {
         this.bio = bio;
-        this.profileImage = profileImage;
+        this.profileImage = normalizeProfileImage(profileImage);
         this.channelName = channelName;
         this.githubUrl = githubUrl;
         this.blogUrl = blogUrl;
@@ -116,7 +118,7 @@ public class UserProfile {
             String blogUrl
     ) {
         this.bio = introduction;
-        this.profileImage = profileImage;
+        this.profileImage = normalizeProfileImage(profileImage);
         this.githubUrl = githubUrl;
         this.blogUrl = blogUrl;
     }
@@ -145,7 +147,7 @@ public class UserProfile {
     ) {
         this.bio = bio;
         this.phone = phone;
-        this.profileImage = profileImage;
+        this.profileImage = normalizeProfileImage(profileImage);
         this.channelName = channelName;
         this.githubUrl = githubUrl;
         this.blogUrl = blogUrl;
@@ -153,5 +155,24 @@ public class UserProfile {
 
     public void changePublicVisibility(Boolean isPublic) {
         this.isPublic = Boolean.TRUE.equals(isPublic);
+    }
+
+    public String getDisplayProfileImage() {
+        String normalized = normalizeProfileImage(profileImage);
+
+        if (normalized == null || normalized.startsWith(LEGACY_DEFAULT_PROFILE_PREFIX)) {
+            return null;
+        }
+
+        return normalized;
+    }
+
+    private static String normalizeProfileImage(String profileImage) {
+        if (profileImage == null) {
+            return null;
+        }
+
+        String normalized = profileImage.trim();
+        return normalized.isEmpty() ? null : normalized;
     }
 }

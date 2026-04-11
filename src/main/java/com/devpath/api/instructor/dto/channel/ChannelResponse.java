@@ -29,7 +29,7 @@ public class ChannelResponse {
                 .channelName(userProfile.getChannelName())
                 .channelDescription(userProfile.getBio())
                 .introduction(userProfile.getBio())
-                .profileImageUrl(userProfile.getProfileImage())
+                .profileImageUrl(userProfile.getDisplayProfileImage())
                 .expertiseList(List.of())
                 .externalLinks(links)
                 .build();

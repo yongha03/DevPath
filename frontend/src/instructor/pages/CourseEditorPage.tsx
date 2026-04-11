@@ -58,6 +58,17 @@ type PreparedSection = {
   lessons: PreparedLesson[]
 }
 
+type SaveToastState = {
+  message: string
+  persistent: boolean
+}
+
+const SAVE_TOAST_DURATION_MS = 2200
+const INSTRUCTOR_HEADER_HEIGHT_PX = 64
+const EDITOR_ACTION_BUTTONS_STICKY_TOP_PX = INSTRUCTOR_HEADER_HEIGHT_PX + 8
+const EDITOR_ACTION_BUTTONS_STACK_SPACE_PX = 72
+const EDITOR_SIDE_CARD_STICKY_TOP_PX = EDITOR_ACTION_BUTTONS_STICKY_TOP_PX + EDITOR_ACTION_BUTTONS_STACK_SPACE_PX
+
 const lessonKindMeta: Record<
   LessonKind,
   {
@@ -301,6 +312,8 @@ export default function CourseEditorPage() {
   const [courseId, setCourseId] = useState<number | null>(() => getCourseIdFromUrl())
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [saveToast, setSaveToast] = useState<SaveToastState | null>(null)
+  const [showFloatingActionButtons, setShowFloatingActionButtons] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
   const [loadedCourse, setLoadedCourse] = useState<LearningCourseDetail | null>(null)
@@ -386,6 +399,43 @@ export default function CourseEditorPage() {
 
     return () => controller.abort()
   }, [courseId])
+
+  useEffect(() => {
+    if (!saveToast || saveToast.persistent) {
+      return
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setSaveToast(null)
+    }, SAVE_TOAST_DURATION_MS)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [saveToast])
+
+  useEffect(() => {
+    const updateFloatingActionButtons = () => {
+      const actionButtonsSentinel = document.getElementById('course-editor-action-buttons-sentinel')
+
+      if (!actionButtonsSentinel) {
+        return
+      }
+
+      setShowFloatingActionButtons(
+        actionButtonsSentinel.getBoundingClientRect().top <= EDITOR_ACTION_BUTTONS_STICKY_TOP_PX,
+      )
+    }
+
+    updateFloatingActionButtons()
+    window.addEventListener('scroll', updateFloatingActionButtons, { passive: true })
+    window.addEventListener('resize', updateFloatingActionButtons)
+
+    return () => {
+      window.removeEventListener('scroll', updateFloatingActionButtons)
+      window.removeEventListener('resize', updateFloatingActionButtons)
+    }
+  }, [])
 
   function rememberCourseId(nextCourseId: number) {
     setCourseId(nextCourseId)
@@ -681,12 +731,13 @@ export default function CourseEditorPage() {
   async function handleSave() {
     setSaving(true)
     setActionError(null)
+    setSaveToast({ message: '저장 중입니다...', persistent: true })
 
     try {
       await persistCourse()
-      window.alert('강의가 저장되었습니다.')
-      window.location.href = 'course-management.html'
+      setSaveToast({ message: '저장되었습니다.', persistent: false })
     } catch (nextError) {
+      setSaveToast(null)
       setActionError(nextError instanceof Error ? nextError.message : '강의를 저장하지 못했습니다.')
     } finally {
       setSaving(false)
@@ -718,7 +769,12 @@ export default function CourseEditorPage() {
       return
     }
 
-    window.open(`course-detail.html?courseId=${courseId}`, '_blank', 'noopener,noreferrer')
+    const previewUrl = new URL('course-detail.html', window.location.href)
+    previewUrl.searchParams.set('courseId', String(courseId))
+    previewUrl.searchParams.set('preview', 'student')
+    previewUrl.searchParams.set('returnTo', `${window.location.pathname}${window.location.search}${window.location.hash}`)
+
+    window.open(previewUrl.toString(), '_blank', 'noopener,noreferrer')
   }
 
   function promptThumbnailUrl() {
@@ -760,10 +816,42 @@ export default function CourseEditorPage() {
 
   const statusChip = getStatusChip(status)
   const isNewCourse = !courseId
+  const actionButtonsFloatingStyle = { top: `${EDITOR_ACTION_BUTTONS_STICKY_TOP_PX}px` }
+  const sideCardStickyStyle = { top: `${EDITOR_SIDE_CARD_STICKY_TOP_PX}px` }
+
+  function renderActionButtons(containerClassName: string) {
+    return (
+      <div className={containerClassName}>
+        <button
+          type="button"
+          onClick={handlePreview}
+          className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-gray-600 transition hover:bg-gray-50"
+        >
+          <i className="fas fa-eye" /> 미리보기
+        </button>
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={saving}
+          className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-gray-600 shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {saving ? '저장 중...' : '저장하기'}
+        </button>
+        <button
+          type="button"
+          onClick={handleRequestReview}
+          disabled={saving}
+          className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-[0_10px_15px_-3px_rgba(37,99,235,0.2)] transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          <i className="fas fa-paper-plane" /> 심사 요청하기
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className="p-8">
-      <div className="sticky top-0 z-10 mb-6 flex flex-col gap-4 bg-[#F3F4F6] py-2 xl:flex-row xl:items-center xl:justify-between">
+      <div className="mb-6 flex flex-col gap-4 bg-[#F3F4F6] py-2 xl:flex-row xl:items-start xl:justify-between">
         <div className="flex items-center gap-4">
           <button
             type="button"
@@ -778,32 +866,16 @@ export default function CourseEditorPage() {
           </div>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={handlePreview}
-            className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-gray-600 transition hover:bg-gray-50"
-          >
-            <i className="fas fa-eye" /> 미리보기
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving}
-            className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-bold text-gray-600 shadow-sm transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {saving ? '저장 중...' : '저장하기'}
-          </button>
-          <button
-            type="button"
-            onClick={handleRequestReview}
-            disabled={saving}
-            className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white shadow-[0_10px_15px_-3px_rgba(37,99,235,0.2)] transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            <i className="fas fa-paper-plane" /> 심사 요청하기
-          </button>
-        </div>
+        {renderActionButtons('flex flex-wrap gap-2 xl:justify-end')}
       </div>
+
+      <div id="course-editor-action-buttons-sentinel" className="h-px w-full" />
+
+      {showFloatingActionButtons ? (
+        <div className="pointer-events-none fixed left-8 right-8 z-30" style={actionButtonsFloatingStyle}>
+          {renderActionButtons('pointer-events-auto ml-auto flex w-fit max-w-full flex-wrap justify-end gap-2')}
+        </div>
+      ) : null}
 
       {actionError ? (
         <div className="mb-6 rounded-xl border border-rose-100 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700">
@@ -1149,7 +1221,7 @@ export default function CourseEditorPage() {
         </div>
 
         <div className="space-y-6">
-          <section className="sticky top-6 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
+          <section className="sticky rounded-xl border border-gray-200 bg-white p-6 shadow-sm" style={sideCardStickyStyle}>
             <h3 className="mb-4 flex items-center gap-2 text-sm font-bold text-gray-900">
               <i className="fas fa-photo-video text-gray-400" /> 미디어 설정
             </h3>
@@ -1223,6 +1295,19 @@ export default function CourseEditorPage() {
           </section>
         </div>
       </div>
+
+      {saveToast ? (
+        <div className="pointer-events-none fixed top-20 left-1/2 z-[1000] -translate-x-1/2">
+          <div
+            role="status"
+            aria-live="polite"
+            className="rounded-xl border border-gray-700 bg-gray-900/90 px-5 py-3 text-sm font-bold text-white shadow-xl backdrop-blur-sm"
+          >
+            <i className="fas fa-info-circle mr-2 text-[#00C471]" />
+            {saveToast.message}
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

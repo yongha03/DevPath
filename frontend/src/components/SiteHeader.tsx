@@ -38,9 +38,16 @@ type SiteHeaderProps = {
   profileImage?: string | null
   onLogout?: () => Promise<void> | void
   onLoginClick?: () => void
+  offsetTopPx?: number
 }
 
-export default function SiteHeader({ session, profileImage, onLogout, onLoginClick }: SiteHeaderProps) {
+export default function SiteHeader({
+  session,
+  profileImage,
+  onLogout,
+  onLoginClick,
+  offsetTopPx = 0,
+}: SiteHeaderProps) {
   const showInstructorDashboard = session?.role === 'ROLE_INSTRUCTOR'
   const instructorHeaderLinks = showInstructorDashboard
     ? [{ href: 'instructor-dashboard.html', label: '\uAC15\uC0AC \uB300\uC2DC\uBCF4\uB4DC' }]
@@ -65,12 +72,14 @@ export default function SiteHeader({ session, profileImage, onLogout, onLoginCli
     gap: `${siteHeaderTuning.instructorLinkGapPx}px`,
   }
   const userStyle = getMoveStyle(siteHeaderTuning.userGroup)
+  const railStyle: CSSProperties = { top: `${offsetTopPx}px` }
+  const headerStyle: CSSProperties = { top: `${offsetTopPx}px` }
 
   return (
     <>
-      <div className="app-header-rail" />
+      <div className="app-header-rail" style={railStyle} />
 
-      <nav className="app-header">
+      <nav className="app-header" style={headerStyle}>
         <div className="mx-auto flex h-full w-full items-center" style={containerStyle}>
           <div className="hidden items-center px-4 lg:flex" style={brandSlotStyle}>
             <a
