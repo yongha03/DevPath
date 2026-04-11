@@ -12,7 +12,11 @@ public class SettlementResponse {
 
     private Long settlementId;
     private Long instructorId;
+    private Long courseId;
+    private Long grossAmount;
+    private Long feeAmount;
     private Long amount;
+    private LocalDateTime purchasedAt;
     private String status;
     private LocalDateTime settledAt;
 
@@ -20,7 +24,11 @@ public class SettlementResponse {
         return SettlementResponse.builder()
                 .settlementId(settlement.getId())
                 .instructorId(settlement.getInstructorId())
+                .courseId(settlement.getCourseId())
+                .grossAmount(settlement.getGrossAmount())
+                .feeAmount(settlement.getFeeAmount())
                 .amount(settlement.getAmount())
+                .purchasedAt(settlement.getPurchasedAt())
                 .status(settlement.getStatus() == null ? null : settlement.getStatus().name())
                 .settledAt(settlement.getSettledAt())
                 .build();

@@ -12,6 +12,9 @@ import java.time.LocalDateTime;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class CouponCreateRequest {
 
+    @NotBlank
+    private String couponTitle;
+
     private Long targetCourseId;
 
     @NotBlank

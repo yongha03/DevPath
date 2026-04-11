@@ -54,6 +54,7 @@ public class InstructorMarketingService {
         Coupon coupon = Coupon.builder()
                 .instructorId(instructorId)
                 .couponCode(generateCouponCode())
+                .couponTitle(request.getCouponTitle())
                 .discountType(normalizeDiscountType(request.getDiscountType()))
                 .discountValue(request.getDiscountValue())
                 .targetCourseId(request.getTargetCourseId())
@@ -102,6 +103,7 @@ public class InstructorMarketingService {
         return couponRepository.findByInstructorIdAndIsDeletedFalse(instructorId).stream()
                 .map(coupon -> new CouponListResponse(
                         coupon.getId(),
+                        coupon.getCouponTitle(),
                         coupon.getTargetCourseId(),
                         coupon.getTargetCourseId() == null
                                 ? "전체 강의"

@@ -176,9 +176,28 @@ export interface InstructorReviewTemplate {
 
 export interface InstructorRevenueTransaction {
   settlementId: number
-  amount: number
+  courseId: number | null
+  courseTitle: string
+  grossAmount: number
+  feeAmount: number
+  netAmount: number
+  purchasedAt: string | null
   settledAt: string | null
   status: string
+}
+
+export interface InstructorRevenueMonthlyItem {
+  key: string
+  label: string
+  amount: number
+  current: boolean
+}
+
+export interface InstructorRevenueCourseBreakdownItem {
+  courseId: number | null
+  courseTitle: string
+  amount: number
+  percentage: number
 }
 
 export interface InstructorRevenueSummary {
@@ -191,19 +210,26 @@ export interface InstructorRevenueSummary {
   completedSettlementCount: number
   pendingSettlementAmount: number
   heldSettlementAmount: number
+  monthlyTrend: InstructorRevenueMonthlyItem[]
+  courseBreakdown: InstructorRevenueCourseBreakdownItem[]
   recentTransactions: InstructorRevenueTransaction[]
 }
 
 export interface InstructorSettlementItem {
   settlementId: number
   instructorId: number
+  courseId: number | null
+  grossAmount: number
+  feeAmount: number
   amount: number
+  purchasedAt: string | null
   status: string
   settledAt: string | null
 }
 
 export interface InstructorCouponItem {
   id: number
+  couponTitle: string
   targetCourseId: number | null
   targetCourseTitle: string
   couponCode: string

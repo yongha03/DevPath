@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 
 public record CouponListResponse(
         Long id,
+        String couponTitle,
         Long targetCourseId,
         String targetCourseTitle,
         String couponCode,

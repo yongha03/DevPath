@@ -30,6 +30,9 @@ public class Coupon {
     @Column(unique = true, nullable = false)
     private String couponCode;
 
+    @Column(nullable = false)
+    private String couponTitle;
+
     private String discountType;
 
     private Long discountValue;

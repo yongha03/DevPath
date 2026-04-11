@@ -612,6 +612,49 @@ WHERE u.email = 'instructor@devpath.com'
       WHERE title = 'JPA Practical Design'
   );
 
+INSERT INTO courses (
+    instructor_id,
+    title,
+    subtitle,
+    description,
+    thumbnail_url,
+    intro_video_url,
+    video_asset_key,
+    duration_seconds,
+    price,
+    original_price,
+    currency,
+    difficulty_level,
+    language,
+    has_certificate,
+    status,
+    published_at
+)
+SELECT
+    u.user_id,
+    'React Dashboard Sprint',
+    'Build analytics dashboards with React',
+    'Frontend course focused on React dashboard layouts, reusable widgets, and product-ready charts.',
+    '/images/courses/react-dashboard.png',
+    '/videos/trailers/react-dashboard.mp4',
+    'assets/courses/trailers/react-dashboard.mp4',
+    88,
+    79000,
+    109000,
+    'KRW',
+    'INTERMEDIATE',
+    'ko',
+    TRUE,
+    'PUBLISHED',
+    NOW()
+FROM users u
+WHERE u.email = 'instructor@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM courses
+      WHERE title = 'React Dashboard Sprint'
+  );
+
 INSERT INTO course_prerequisites (course_id, prerequisite)
 SELECT c.course_id, 'Java syntax basics'
 FROM courses c
@@ -1392,16 +1435,28 @@ WHERE ic.content = 'The weekly QnA slot is useful. Please share the agenda early
 
 -- [B-04] coupon / promotion / conversion_stat
 INSERT INTO coupon (
-    instructor_id, coupon_code, discount_type, discount_value, target_course_id,
+    instructor_id, coupon_code, coupon_title, discount_type, discount_value, target_course_id,
     max_usage_count, usage_count, expires_at, is_deleted, created_at
 )
-SELECT iu.user_id, 'BSPRING10', 'RATE', 10, c.course_id,
-       100, 0, '2026-12-31 23:59:59', FALSE, '2026-02-15 00:00:00'
+SELECT iu.user_id, 'HELLO2026', '새해 맞이 할인', 'RATE', 30, NULL,
+       100, 45, '2026-05-31 23:59:59', FALSE, '2026-04-01 09:00:00'
+FROM users iu
+WHERE iu.email = 'instructor@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1 FROM coupon cp WHERE cp.coupon_code = 'HELLO2026'
+  );
+
+INSERT INTO coupon (
+    instructor_id, coupon_code, coupon_title, discount_type, discount_value, target_course_id,
+    max_usage_count, usage_count, expires_at, is_deleted, created_at
+)
+SELECT iu.user_id, 'JAVA_LAUNCH', '자바 실전 과정 기념', 'AMOUNT', 15000, c.course_id,
+       200, 82, '2026-06-15 23:59:59', FALSE, '2026-04-05 10:30:00'
 FROM users iu, courses c
 WHERE iu.email = 'instructor@devpath.com'
-  AND c.title = 'Spring Boot Intro'
+  AND c.title = 'JPA Practical Design'
   AND NOT EXISTS (
-      SELECT 1 FROM coupon cp WHERE cp.coupon_code = 'BSPRING10'
+      SELECT 1 FROM coupon cp WHERE cp.coupon_code = 'JAVA_LAUNCH'
   );
 
 INSERT INTO promotion (
@@ -1409,8 +1464,8 @@ INSERT INTO promotion (
     is_active, is_deleted, created_at
 )
 SELECT iu.user_id, c.course_id, 'TIME_SALE', 15,
-       '2026-02-20 00:00:00', '2026-02-28 23:59:59',
-       TRUE, FALSE, '2026-02-20 00:00:00'
+       '2026-04-12 00:00:00', '2026-04-30 23:59:59',
+       TRUE, FALSE, '2026-04-12 00:00:00'
 FROM users iu, courses c
 WHERE iu.email = 'instructor@devpath.com'
   AND c.title = 'Spring Boot Intro'
@@ -1455,33 +1510,156 @@ WHERE iu.email = 'instructor@devpath.com'
 
 -- [B-05] refund_request / refund_review / settlement / settlement_hold
 INSERT INTO settlement (
-    instructor_id, amount, status, is_deleted, settled_at, created_at
+    instructor_id, course_id, gross_amount, fee_amount, amount,
+    status, is_deleted, purchased_at, settled_at, created_at
 )
-SELECT iu.user_id, 250000, 'PENDING', FALSE, NULL, '2026-02-25 00:00:00'
-FROM users iu
+SELECT iu.user_id, c.course_id, 99000, 19800, 79200,
+       'COMPLETED', FALSE, '2025-08-14 14:20:00', '2025-08-21 11:00:00', '2025-08-21 11:00:00'
+FROM users iu, courses c
 WHERE iu.email = 'instructor@devpath.com'
+  AND c.title = 'Spring Boot Intro'
   AND NOT EXISTS (
       SELECT 1 FROM settlement s
-      WHERE s.instructor_id = iu.user_id AND s.amount = 250000 AND s.status = 'PENDING'
+      WHERE s.instructor_id = iu.user_id
+        AND s.course_id = c.course_id
+        AND s.purchased_at = '2025-08-14 14:20:00'
   );
 
 INSERT INTO settlement (
-    instructor_id, amount, status, is_deleted, settled_at, created_at
+    instructor_id, course_id, gross_amount, fee_amount, amount,
+    status, is_deleted, purchased_at, settled_at, created_at
 )
-SELECT iu.user_id, 50000, 'HELD', FALSE, NULL, '2026-02-24 00:00:00'
-FROM users iu
+SELECT iu.user_id, c.course_id, 79000, 15800, 63200,
+       'COMPLETED', FALSE, '2025-09-02 10:05:00', '2025-09-09 14:00:00', '2025-09-09 14:00:00'
+FROM users iu, courses c
 WHERE iu.email = 'instructor@devpath.com'
+  AND c.title = 'React Dashboard Sprint'
   AND NOT EXISTS (
       SELECT 1 FROM settlement s
-      WHERE s.instructor_id = iu.user_id AND s.amount = 50000 AND s.status = 'HELD'
+      WHERE s.instructor_id = iu.user_id
+        AND s.course_id = c.course_id
+        AND s.purchased_at = '2025-09-02 10:05:00'
+  );
+
+INSERT INTO settlement (
+    instructor_id, course_id, gross_amount, fee_amount, amount,
+    status, is_deleted, purchased_at, settled_at, created_at
+)
+SELECT iu.user_id, c.course_id, 129000, 25800, 103200,
+       'COMPLETED', FALSE, '2025-10-11 16:40:00', '2025-10-18 10:30:00', '2025-10-18 10:30:00'
+FROM users iu, courses c
+WHERE iu.email = 'instructor@devpath.com'
+  AND c.title = 'JPA Practical Design'
+  AND NOT EXISTS (
+      SELECT 1 FROM settlement s
+      WHERE s.instructor_id = iu.user_id
+        AND s.course_id = c.course_id
+        AND s.purchased_at = '2025-10-11 16:40:00'
+  );
+
+INSERT INTO settlement (
+    instructor_id, course_id, gross_amount, fee_amount, amount,
+    status, is_deleted, purchased_at, settled_at, created_at
+)
+SELECT iu.user_id, c.course_id, 99000, 19800, 79200,
+       'COMPLETED', FALSE, '2025-11-23 11:15:00', '2025-11-30 15:00:00', '2025-11-30 15:00:00'
+FROM users iu, courses c
+WHERE iu.email = 'instructor@devpath.com'
+  AND c.title = 'Spring Boot Intro'
+  AND NOT EXISTS (
+      SELECT 1 FROM settlement s
+      WHERE s.instructor_id = iu.user_id
+        AND s.course_id = c.course_id
+        AND s.purchased_at = '2025-11-23 11:15:00'
+  );
+
+INSERT INTO settlement (
+    instructor_id, course_id, gross_amount, fee_amount, amount,
+    status, is_deleted, purchased_at, settled_at, created_at
+)
+SELECT iu.user_id, c.course_id, 99000, 19800, 79200,
+       'COMPLETED', FALSE, '2025-12-18 09:45:00', '2025-12-25 13:20:00', '2025-12-25 13:20:00'
+FROM users iu, courses c
+WHERE iu.email = 'instructor@devpath.com'
+  AND c.title = 'Spring Boot Intro'
+  AND NOT EXISTS (
+      SELECT 1 FROM settlement s
+      WHERE s.instructor_id = iu.user_id
+        AND s.course_id = c.course_id
+        AND s.purchased_at = '2025-12-18 09:45:00'
+  );
+
+INSERT INTO settlement (
+    instructor_id, course_id, gross_amount, fee_amount, amount,
+    status, is_deleted, purchased_at, settled_at, created_at
+)
+SELECT iu.user_id, c.course_id, 99000, 19800, 79200,
+       'COMPLETED', FALSE, '2026-01-20 09:45:00', '2026-01-27 18:30:00', '2026-01-27 18:30:00'
+FROM users iu, courses c
+WHERE iu.email = 'instructor@devpath.com'
+  AND c.title = 'Spring Boot Intro'
+  AND NOT EXISTS (
+      SELECT 1 FROM settlement s
+      WHERE s.instructor_id = iu.user_id
+        AND s.course_id = c.course_id
+        AND s.purchased_at = '2026-01-20 09:45:00'
+  );
+
+INSERT INTO settlement (
+    instructor_id, course_id, gross_amount, fee_amount, amount,
+    status, is_deleted, purchased_at, settled_at, created_at
+)
+SELECT iu.user_id, c.course_id, 129000, 25800, 103200,
+       'PENDING', FALSE, '2026-01-29 14:30:00', NULL, '2026-01-29 14:30:00'
+FROM users iu, courses c
+WHERE iu.email = 'instructor@devpath.com'
+  AND c.title = 'JPA Practical Design'
+  AND NOT EXISTS (
+      SELECT 1 FROM settlement s
+      WHERE s.instructor_id = iu.user_id
+        AND s.course_id = c.course_id
+        AND s.purchased_at = '2026-01-29 14:30:00'
+  );
+
+INSERT INTO settlement (
+    instructor_id, course_id, gross_amount, fee_amount, amount,
+    status, is_deleted, purchased_at, settled_at, created_at
+)
+SELECT iu.user_id, c.course_id, 79000, 15800, 63200,
+       'PENDING', FALSE, '2026-01-29 12:15:00', NULL, '2026-01-29 12:15:00'
+FROM users iu, courses c
+WHERE iu.email = 'instructor@devpath.com'
+  AND c.title = 'React Dashboard Sprint'
+  AND NOT EXISTS (
+      SELECT 1 FROM settlement s
+      WHERE s.instructor_id = iu.user_id
+        AND s.course_id = c.course_id
+        AND s.purchased_at = '2026-01-29 12:15:00'
+  );
+
+INSERT INTO settlement (
+    instructor_id, course_id, gross_amount, fee_amount, amount,
+    status, is_deleted, purchased_at, settled_at, created_at
+)
+SELECT iu.user_id, c.course_id, 99000, 19800, 79200,
+       'HELD', FALSE, '2026-01-27 18:10:00', NULL, '2026-01-27 18:10:00'
+FROM users iu, courses c
+WHERE iu.email = 'instructor@devpath.com'
+  AND c.title = 'Spring Boot Intro'
+  AND NOT EXISTS (
+      SELECT 1 FROM settlement s
+      WHERE s.instructor_id = iu.user_id
+        AND s.course_id = c.course_id
+        AND s.purchased_at = '2026-01-27 18:10:00'
   );
 
 INSERT INTO settlement_hold (
     settlement_id, admin_id, reason, held_at
 )
-SELECT s.id, au.user_id, 'Refund dispute review in progress', '2026-02-24 10:00:00'
+SELECT s.id, au.user_id, 'Refund dispute review in progress', '2026-01-28 10:00:00'
 FROM settlement s, users au
 WHERE s.status = 'HELD'
+  AND s.purchased_at = '2026-01-27 18:10:00'
   AND au.email = 'admin@devpath.com'
   AND NOT EXISTS (
       SELECT 1 FROM settlement_hold sh WHERE sh.settlement_id = s.id

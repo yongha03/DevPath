@@ -39,6 +39,18 @@ public class Settlement {
     @Column(nullable = false)
     private Long amount;
 
+    @Column(nullable = false)
+    private Long grossAmount;
+
+    @Column(nullable = false)
+    private Long feeAmount;
+
+    @Column(nullable = false)
+    private Long courseId;
+
+    @Column(nullable = false)
+    private LocalDateTime purchasedAt;
+
     @Enumerated(EnumType.STRING)
     @Builder.Default
     @Column(nullable = false, length = 20)

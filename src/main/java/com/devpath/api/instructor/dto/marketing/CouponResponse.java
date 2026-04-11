@@ -13,6 +13,7 @@ public class CouponResponse {
     private Long id;
     private Long instructorId;
     private String couponCode;
+    private String couponTitle;
     private String discountType;
     private Long discountValue;
     private Long targetCourseId;
@@ -24,6 +25,7 @@ public class CouponResponse {
                 .id(coupon.getId())
                 .instructorId(coupon.getInstructorId())
                 .couponCode(coupon.getCouponCode())
+                .couponTitle(coupon.getCouponTitle())
                 .discountType(coupon.getDiscountType())
                 .discountValue(coupon.getDiscountValue())
                 .targetCourseId(coupon.getTargetCourseId())

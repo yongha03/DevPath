@@ -65,7 +65,36 @@ class InstructorDashboardApiSmokeIntegrationTest {
 
   @Test
   void revenueEndpointLoads() throws Exception {
-    performOk("/api/instructor/revenues");
+    mockMvc
+        .perform(get("/api/instructor/revenues").with(authentication(instructorAuthentication())))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.monthlyTrend[0].key").exists())
+        .andExpect(jsonPath("$.data.courseBreakdown[0].courseTitle").exists())
+        .andExpect(jsonPath("$.data.recentTransactions[0].grossAmount").isNumber())
+        .andExpect(jsonPath("$.data.recentTransactions[0].netAmount").isNumber())
+        .andExpect(jsonPath("$.data.recentTransactions[0].courseTitle").exists());
+  }
+
+  @Test
+  void marketingCouponsEndpointLoads() throws Exception {
+    mockMvc
+        .perform(get("/api/instructor/marketing/coupons").with(authentication(instructorAuthentication())))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data[0].couponTitle").exists())
+        .andExpect(jsonPath("$.data[0].couponCode").exists())
+        .andExpect(jsonPath("$.data[0].targetCourseTitle").exists());
+  }
+
+  @Test
+  void marketingPromotionsEndpointLoads() throws Exception {
+    mockMvc
+        .perform(get("/api/instructor/marketing/promotions").with(authentication(instructorAuthentication())))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data[0].courseTitle").exists())
+        .andExpect(jsonPath("$.data[0].promotionType").exists());
   }
 
   @Test

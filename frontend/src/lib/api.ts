@@ -21,6 +21,7 @@ import type {
   InstructorQnaTemplate,
   InstructorQnaTimeline,
   InstructorRevenueSummary,
+  InstructorRevenueTransaction,
   InstructorReviewHelpful,
   InstructorReviewListItem,
   InstructorReviewReply,
@@ -89,6 +90,109 @@ const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') ?? ''
 
 type RequestOptions = {
   auth?: boolean
+}
+
+function toNumber(value: unknown, fallback = 0) {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
+function toStringOrNull(value: unknown) {
+  return typeof value === 'string' ? value : null
+}
+
+function formatRevenueMonthLabel(value: string) {
+  const [, month] = value.split('-')
+  const parsedMonth = Number(month)
+
+  if (!Number.isFinite(parsedMonth)) {
+    return value
+  }
+
+  return `${parsedMonth}월`
+}
+
+function normalizeRevenueTransaction(raw: unknown): InstructorRevenueTransaction {
+  const record = (raw ?? {}) as Record<string, unknown>
+  const settlementId = toNumber(record.settlementId ?? record.id)
+  const courseId = record.courseId === null || record.courseId === undefined
+    ? null
+    : toNumber(record.courseId)
+  const legacyAmount = toNumber(record.amount)
+  const grossAmount = toNumber(record.grossAmount, legacyAmount)
+  const feeAmount = toNumber(record.feeAmount, Math.max(grossAmount - legacyAmount, 0))
+  const netAmount = toNumber(record.netAmount, legacyAmount)
+  const courseTitle = typeof record.courseTitle === 'string' && record.courseTitle.trim().length > 0
+    ? record.courseTitle
+    : courseId !== null
+      ? `강의 #${courseId}`
+      : `정산 #${settlementId}`
+
+  return {
+    settlementId,
+    courseId,
+    courseTitle,
+    grossAmount,
+    feeAmount,
+    netAmount,
+    purchasedAt: toStringOrNull(record.purchasedAt),
+    settledAt: toStringOrNull(record.settledAt),
+    status: typeof record.status === 'string' ? record.status : 'PENDING',
+  }
+}
+
+function normalizeRevenueSummary(raw: unknown): InstructorRevenueSummary {
+  const record = (raw ?? {}) as Record<string, unknown>
+  const monthlyTrend = Array.isArray(record.monthlyTrend)
+    ? record.monthlyTrend.map((item) => {
+      const monthlyRecord = (item ?? {}) as Record<string, unknown>
+      const key = typeof monthlyRecord.key === 'string' ? monthlyRecord.key : ''
+
+      return {
+        key,
+        label: typeof monthlyRecord.label === 'string' ? monthlyRecord.label : formatRevenueMonthLabel(key),
+        amount: toNumber(monthlyRecord.amount),
+        current: Boolean(monthlyRecord.current),
+      }
+    })
+    : []
+  const courseBreakdown = Array.isArray(record.courseBreakdown)
+    ? record.courseBreakdown.map((item) => {
+      const breakdownRecord = (item ?? {}) as Record<string, unknown>
+      const courseId = breakdownRecord.courseId === null || breakdownRecord.courseId === undefined
+        ? null
+        : toNumber(breakdownRecord.courseId)
+
+      return {
+        courseId,
+        courseTitle: typeof breakdownRecord.courseTitle === 'string' && breakdownRecord.courseTitle.trim().length > 0
+          ? breakdownRecord.courseTitle
+          : courseId !== null
+            ? `강의 #${courseId}`
+            : '미분류 강의',
+        amount: toNumber(breakdownRecord.amount),
+        percentage: toNumber(breakdownRecord.percentage),
+      }
+    })
+    : []
+  const recentTransactions = Array.isArray(record.recentTransactions)
+    ? record.recentTransactions.map(normalizeRevenueTransaction)
+    : []
+
+  return {
+    totalRevenue: toNumber(record.totalRevenue),
+    monthlyRevenue: toNumber(record.monthlyRevenue),
+    platformFeeRate: toNumber(record.platformFeeRate, 0.2),
+    netRevenue: toNumber(record.netRevenue),
+    pendingSettlementCount: toNumber(record.pendingSettlementCount),
+    heldSettlementCount: toNumber(record.heldSettlementCount),
+    completedSettlementCount: toNumber(record.completedSettlementCount),
+    pendingSettlementAmount: toNumber(record.pendingSettlementAmount),
+    heldSettlementAmount: toNumber(record.heldSettlementAmount),
+    monthlyTrend,
+    courseBreakdown,
+    recentTransactions,
+  }
 }
 
 function buildQueryString(params: Record<string, string | number | boolean | null | undefined>) {
@@ -1203,11 +1307,11 @@ export const instructorReviewApi = {
 
 export const instructorRevenueApi = {
   getSummary(signal?: AbortSignal) {
-    return request<InstructorRevenueSummary>(
+    return request<unknown>(
       '/api/instructor/revenues',
       { method: 'GET', signal },
       { auth: true },
-    )
+    ).then(normalizeRevenueSummary)
   },
   getSettlements(signal?: AbortSignal) {
     return request<InstructorSettlementItem[]>(
@@ -1241,6 +1345,7 @@ export const instructorMarketingApi = {
     )
   },
   createCoupon(payload: {
+    couponTitle: string
     targetCourseId?: number | null
     discountType: string
     discountValue: number
