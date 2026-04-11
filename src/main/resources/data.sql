@@ -1176,8 +1176,8 @@ INSERT INTO review (
     course_id, learner_id, rating, content, status, is_hidden, is_deleted, issue_tags_raw, created_at, updated_at
 )
 SELECT c.course_id, u.user_id, 5,
-       'Examples were practical and the explanation flow was very clear.',
-       'ANSWERED', FALSE, FALSE, 'clear-examples,good-pacing',
+       '예제가 실무에 바로 연결돼서 좋았고, 설명 흐름도 자연스러워서 끝까지 집중해서 들을 수 있었습니다.',
+       'ANSWERED', FALSE, FALSE, '설명_자세해요,예제가_실전적이에요',
        '2026-02-10 10:00:00', '2026-02-10 10:00:00'
 FROM users u, courses c
 WHERE u.email = 'learner@devpath.com'
@@ -1191,8 +1191,8 @@ INSERT INTO review (
     course_id, learner_id, rating, content, status, is_hidden, is_deleted, issue_tags_raw, created_at, updated_at
 )
 SELECT c.course_id, u.user_id, 3,
-       'The topic itself is useful, but I needed slower pacing around entity mapping and fetch strategy.',
-       'UNANSWERED', FALSE, FALSE, 'too-fast,needs-more-diagrams',
+       '주제 자체는 정말 유용했지만 엔티티 매핑과 fetch 전략 부분은 조금 더 천천히 설명해주셨으면 좋겠습니다.',
+       'UNANSWERED', FALSE, FALSE, '조금_빨라요,도식이_더_필요해요',
        '2026-02-12 14:00:00', '2026-02-12 14:00:00'
 FROM users u, courses c
 WHERE u.email = 'learner@devpath.com'
@@ -1206,7 +1206,7 @@ INSERT INTO review_reply (
     review_id, instructor_id, content, is_deleted, created_at, updated_at
 )
 SELECT r.id, iu.user_id,
-       'Thanks for the feedback. I will add more mapping diagrams and a slower walkthrough in the next update.',
+       '좋은 피드백 감사합니다. 다음 업데이트에서 매핑 다이어그램을 더 보강하고 해당 구간은 조금 더 천천히 설명하겠습니다.',
        FALSE, '2026-02-10 12:00:00', '2026-02-10 12:00:00'
 FROM review r, users iu, courses c
 WHERE iu.email = 'instructor@devpath.com'
@@ -1220,7 +1220,7 @@ INSERT INTO review_report (
     review_id, reporter_id, reason, is_resolved, resolved_by, resolved_at, created_at, updated_at
 )
 SELECT r.id, au.user_id,
-       'Contains vague wording and should be reviewed before public exposure.',
+       '표현이 다소 모호해 공개 노출 전에 한 번 더 확인이 필요합니다.',
        FALSE, NULL, NULL, '2026-02-13 09:00:00', '2026-02-13 09:00:00'
 FROM review r, users au, courses c
 WHERE au.email = 'admin@devpath.com'
@@ -1233,27 +1233,53 @@ WHERE au.email = 'admin@devpath.com'
 INSERT INTO review_template (
     instructor_id, title, content, is_deleted, created_at, updated_at
 )
-SELECT iu.user_id, 'Thanks and follow-up',
-       'Thanks for leaving a detailed review. I will reflect your feedback in the next revision.',
+SELECT iu.user_id, '감사 인사',
+       '정성스러운 리뷰 남겨주셔서 감사합니다. 남겨주신 의견은 다음 개정에 바로 반영하겠습니다.',
        FALSE, '2026-02-01 00:00:00', '2026-02-01 00:00:00'
 FROM users iu
 WHERE iu.email = 'instructor@devpath.com'
   AND NOT EXISTS (
       SELECT 1 FROM review_template rt
-      WHERE rt.instructor_id = iu.user_id AND rt.title = 'Thanks and follow-up'
+      WHERE rt.instructor_id = iu.user_id AND rt.title = '감사 인사'
   );
 
 INSERT INTO review_template (
     instructor_id, title, content, is_deleted, created_at, updated_at
 )
-SELECT iu.user_id, 'Issue acknowledged',
-       'I reproduced the issue and added it to the revision queue. I will update the course notes as well.',
+SELECT iu.user_id, '사과 및 개선 약속',
+       '불편을 드려 죄송합니다. 말씀해주신 내용을 확인했고, 강의 개정 목록에 반영해 보충 자료와 함께 정리하겠습니다.',
        FALSE, '2026-02-02 00:00:00', '2026-02-02 00:00:00'
 FROM users iu
 WHERE iu.email = 'instructor@devpath.com'
   AND NOT EXISTS (
       SELECT 1 FROM review_template rt
-      WHERE rt.instructor_id = iu.user_id AND rt.title = 'Issue acknowledged'
+      WHERE rt.instructor_id = iu.user_id AND rt.title = '사과 및 개선 약속'
+  );
+
+INSERT INTO review_template (
+    instructor_id, title, content, is_deleted, created_at, updated_at
+)
+SELECT iu.user_id, '학습 가이드 제안',
+       '해당 구간이 어렵게 느껴지셨다면 이전 섹션의 보충 강의와 함께 다시 보시면 이해가 훨씬 쉬워집니다. 필요한 자료도 추가로 보완하겠습니다.',
+       FALSE, '2026-02-03 00:00:00', '2026-02-03 00:00:00'
+FROM users iu
+WHERE iu.email = 'instructor@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1 FROM review_template rt
+      WHERE rt.instructor_id = iu.user_id AND rt.title = '학습 가이드 제안'
+  );
+
+INSERT INTO review_template (
+    instructor_id, title, content, is_deleted, created_at, updated_at
+)
+SELECT iu.user_id, '만족 리뷰 답글',
+       '좋게 봐주셔서 감사합니다. 앞으로도 실무에 바로 연결되는 예제와 설명으로 더 만족스러운 강의를 만들어가겠습니다.',
+       FALSE, '2026-02-04 00:00:00', '2026-02-04 00:00:00'
+FROM users iu
+WHERE iu.email = 'instructor@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1 FROM review_template rt
+      WHERE rt.instructor_id = iu.user_id AND rt.title = '만족 리뷰 답글'
   );
 
 -- [B-02] qna_questions / qna_answers / qna_answer_draft / qna_template
@@ -1966,6 +1992,21 @@ WHERE NOT EXISTS (
     FROM users
     WHERE email = 'learner3@devpath.com'
 );
+
+INSERT INTO review (
+    course_id, learner_id, rating, content, status, is_hidden, is_deleted, issue_tags_raw, created_at, updated_at
+)
+SELECT c.course_id, u.user_id, 2,
+       '중반 이후부터 설명 속도가 빨라져서 따라가기 어려웠습니다. 초보자 기준으로 한 번 더 짚어주는 보충 설명이나 요약 자료가 있으면 좋겠습니다.',
+       'UNANSWERED', FALSE, FALSE, '속도가_빨라요,초보자에겐_어려워요',
+       '2026-02-15 19:30:00', '2026-02-15 19:30:00'
+FROM users u, courses c
+WHERE u.email = 'learner2@devpath.com'
+  AND c.title = 'Spring Boot Intro'
+  AND NOT EXISTS (
+      SELECT 1 FROM review r
+      WHERE r.course_id = c.course_id AND r.learner_id = u.user_id
+  );
 
 -- ========================================
 -- C SECTION STUDY

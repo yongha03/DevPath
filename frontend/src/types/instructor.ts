@@ -131,6 +131,7 @@ export interface InstructorQnaTemplate {
 export interface InstructorReviewReply {
   replyId: number
   authorName: string
+  authorProfileImage: string | null
   content: string
   createdAt: string | null
   updatedAt: string | null

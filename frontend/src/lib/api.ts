@@ -215,13 +215,15 @@ function mapReviewReply(raw: {
   replyId?: number
   id?: number
   authorName?: string
+  authorProfileImage?: string | null
   content: string
   createdAt: string | null
   updatedAt: string | null
 }): InstructorReviewReply {
   return {
     replyId: raw.replyId ?? raw.id ?? 0,
-    authorName: raw.authorName ?? 'Instructor',
+    authorName: raw.authorName ?? '강사',
+    authorProfileImage: raw.authorProfileImage ?? null,
     content: raw.content,
     createdAt: raw.createdAt,
     updatedAt: raw.updatedAt,

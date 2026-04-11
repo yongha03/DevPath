@@ -20,6 +20,7 @@ public record InstructorReviewListResponse(
     public record ReplyInfo(
             Long replyId,
             String authorName,
+            String authorProfileImage,
             String content,
             LocalDateTime createdAt,
             LocalDateTime updatedAt
