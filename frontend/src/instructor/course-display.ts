@@ -108,10 +108,6 @@ export function normalizeInstructorCourseTitle(title: string | null | undefined)
   return COURSE_TITLE_LABELS[title] ?? title
 }
 
-export function isInternalTestCourseTitle(title: string | null | undefined) {
-  return (title ?? '').startsWith('[A-CASE-')
-}
-
 export function normalizeInstructorCourseStatus(status: string | null | undefined) {
   switch (status) {
     case 'PUBLISHED':
@@ -207,7 +203,6 @@ export function buildInstructorCourseOptions(
     if (
       course.courseId === null ||
       course.courseId === undefined ||
-      isInternalTestCourseTitle(course.title) ||
       (statusSet.size > 0 && !statusSet.has(course.status ?? ''))
     ) {
       return

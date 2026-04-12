@@ -158,10 +158,6 @@ function buildCourseTags(course: InstructorCourseListItem) {
   return [...new Set((course.tags ?? []).map((tag) => tag.trim()).filter(Boolean))].slice(0, 3)
 }
 
-function isInternalTestCourse(title: string) {
-  return title.startsWith('[A-CASE-')
-}
-
 function toCourseCardModel(course: InstructorCourseListItem): CourseCardModel {
   const reviewCount = Number(course.reviewCount ?? 0)
 
@@ -534,7 +530,6 @@ export default function CourseManagementPage() {
         displayPendingQuestionLabel: `${formatCount(pendingCount)}건`,
       }
     })
-    .filter((course) => !isInternalTestCourse(course.title))
 
   const categoryOptions = getUniqueValues(courseCards, 'displayCategory')
   const levelOptions = getUniqueValues(courseCards, 'displayLevel')
