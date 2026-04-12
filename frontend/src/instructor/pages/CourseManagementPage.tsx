@@ -17,8 +17,16 @@ import type {
 
 type CourseStatus = 'published' | 'review' | 'draft'
 type CourseFilter = 'all' | 'published' | 'draft'
-type FeaturedSlot = 'published' | 'review' | 'draft'
 type MetricTone = 'purple' | 'blue' | 'green' | 'yellow'
+type QuickViewFilter =
+  | 'default'
+  | 'latest'
+  | 'oldest'
+  | 'published-only'
+  | 'review-only'
+  | 'draft-only'
+  | 'rating-desc'
+  | 'students-desc'
 
 type CourseCardModel = InstructorCourseListItem & {
   displayStatus: CourseStatus
@@ -33,16 +41,11 @@ type CourseCardModel = InstructorCourseListItem & {
   displayReviewCountLabel: string
   displayStudentCountLabel: string
   displayProgressLabel: string
+  displayTags: string[]
   displayPendingQuestionCount: number
   displayPendingQuestionLabel: string
   displayDraftProgress: number
   displayDraftMessage: string
-}
-
-const FEATURED_COURSE_TITLES: Record<FeaturedSlot, string> = {
-  published: 'Spring Boot Intro',
-  review: '스프링 부트 3.0 완전 정복',
-  draft: '제목 없는 강의 (초안)',
 }
 
 const ANNOUNCEMENT_TITLE_LABELS: Record<string, string> = {
@@ -127,6 +130,15 @@ function formatCount(value: number) {
   return value.toLocaleString('ko-KR')
 }
 
+function getCourseSortTimestamp(course: CourseCardModel) {
+  const publishedAt = course.publishedAt ? new Date(course.publishedAt).getTime() : Number.NaN
+  if (Number.isFinite(publishedAt)) {
+    return publishedAt
+  }
+
+  return course.courseId
+}
+
 function getUniqueValues(courses: CourseCardModel[], key: 'displayCategory' | 'displayLevel') {
   return [...new Set(courses.map((course) => course[key]).filter(Boolean))].sort()
 }
@@ -139,6 +151,14 @@ function handleThumbnailError(event: SyntheticEvent<HTMLImageElement>) {
 
   target.dataset.fallbackApplied = 'true'
   target.src = DEFAULT_INSTRUCTOR_COURSE_THUMBNAIL
+}
+
+function buildCourseTags(course: InstructorCourseListItem) {
+  return [...new Set((course.tags ?? []).map((tag) => tag.trim()).filter(Boolean))].slice(0, 3)
+}
+
+function isInternalTestCourse(title: string) {
+  return title.startsWith('[A-CASE-')
 }
 
 function toCourseCardModel(course: InstructorCourseListItem): CourseCardModel {
@@ -158,6 +178,7 @@ function toCourseCardModel(course: InstructorCourseListItem): CourseCardModel {
     displayReviewCountLabel: formatCount(reviewCount),
     displayStudentCountLabel: `${formatCount(course.studentCount)}명`,
     displayProgressLabel: `${course.averageProgressPercent.toFixed(0)}%`,
+    displayTags: buildCourseTags(course),
     displayPendingQuestionCount: Number(course.pendingQuestionCount ?? 0),
     displayPendingQuestionLabel: `${formatCount(course.pendingQuestionCount)}건`,
     displayDraftProgress: buildDraftProgress(course),
@@ -165,37 +186,20 @@ function toCourseCardModel(course: InstructorCourseListItem): CourseCardModel {
   }
 }
 
-function isExactFeaturedCourse(course: CourseCardModel, slot: FeaturedSlot) {
-  const expectedTitle = FEATURED_COURSE_TITLES[slot]
-  return course.title === expectedTitle || course.displayTitle === expectedTitle
-}
+function CourseHashTags({ tags }: { tags: string[] }) {
+  if (tags.length === 0) {
+    return null
+  }
 
-function buildFeaturedCourses(courses: CourseCardModel[]) {
-  const picks = new Map<FeaturedSlot, CourseCardModel>()
-
-  ;(['published', 'review', 'draft'] as FeaturedSlot[]).forEach((slot) => {
-    const exact = courses.find((course) => isExactFeaturedCourse(course, slot))
-    const fallback = courses.find((course) => {
-      if (slot === 'published') {
-        return course.displayStatus === 'published'
-      }
-
-      if (slot === 'review') {
-        return course.displayStatus === 'review'
-      }
-
-      return course.displayStatus === 'draft'
-    })
-
-    const selected = exact ?? fallback
-    if (selected) {
-      picks.set(slot, selected)
-    }
-  })
-
-  return (['published', 'review', 'draft'] as FeaturedSlot[])
-    .map((slot) => picks.get(slot))
-    .filter((course): course is CourseCardModel => Boolean(course))
+  return (
+    <div className="mb-2.5 flex flex-wrap gap-1.5">
+      {tags.map((tag, index) => (
+        <span key={`${tag}-${index}`} className={index === 0 ? 'hash-tag hash-tag-brand' : 'hash-tag'}>
+          {tag}
+        </span>
+      ))}
+    </div>
+  )
 }
 
 function MetricCard(_: {
@@ -236,7 +240,7 @@ function PublishedCourseCard(_: {
   const { course, onOpenNotice } = _
 
   return (
-    <article className="rounded-[16px] border border-gray-200 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.02)] transition hover:-translate-y-[1px] hover:border-gray-300 hover:shadow-[0_4px_12px_rgba(17,24,39,0.04)]">
+    <article className="course-item rounded-[16px] border border-gray-200 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.02)] transition hover:-translate-y-[1px] hover:border-gray-300 hover:shadow-[0_4px_12px_rgba(17,24,39,0.04)]">
       <div className="flex flex-col gap-4 md:flex-row md:items-start">
         <div className="relative h-[100px] w-full shrink-0 overflow-hidden rounded-[10px] bg-gray-100 md:w-[160px]">
           <img
@@ -265,6 +269,7 @@ function PublishedCourseCard(_: {
               <h3 className="truncate text-base font-bold text-gray-900 transition hover:text-emerald-500">
                 {course.displayTitle}
               </h3>
+              <CourseHashTags tags={course.displayTags} />
             </div>
 
             <div className="flex gap-1">
@@ -341,7 +346,7 @@ function ReviewCourseCard(_: { course: CourseCardModel }) {
   const { course } = _
 
   return (
-    <article className="rounded-[16px] border border-gray-200 bg-gray-50/30 p-4 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+    <article className="course-item rounded-[16px] border border-gray-200 bg-gray-50/30 p-4 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
       <div className="flex flex-col gap-4 md:flex-row md:items-start">
         <div className="flex h-[100px] w-full shrink-0 items-center justify-center rounded-[10px] border border-gray-200 bg-gray-100 md:w-[160px]">
           <i className="fas fa-search text-2xl text-gray-300" />
@@ -360,6 +365,7 @@ function ReviewCourseCard(_: { course: CourseCardModel }) {
                 </span>
               </div>
               <h3 className="truncate text-base font-bold text-gray-900">{course.displayTitle}</h3>
+              <CourseHashTags tags={course.displayTags} />
             </div>
           </div>
 
@@ -396,7 +402,7 @@ function DraftCourseCard(_: { course: CourseCardModel }) {
   const { course } = _
 
   return (
-    <article className="rounded-[16px] border border-gray-200 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+    <article className="course-item rounded-[16px] border border-gray-200 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
       <div className="flex flex-col gap-4 md:flex-row md:items-start">
         <div className="flex h-[100px] w-full shrink-0 items-center justify-center rounded-[10px] border border-gray-200 bg-gray-50 md:w-[160px]">
           <i className="fas fa-pen text-2xl text-gray-300" />
@@ -415,6 +421,7 @@ function DraftCourseCard(_: { course: CourseCardModel }) {
                 </span>
               </div>
               <h3 className="truncate text-base font-bold text-gray-500">{course.displayTitle}</h3>
+              <CourseHashTags tags={course.displayTags} />
             </div>
 
             <button
@@ -461,6 +468,7 @@ export default function CourseManagementPage() {
   const [filterStatus, setFilterStatus] = useState<CourseFilter>('all')
   const [filterCategory, setFilterCategory] = useState('all')
   const [filterLevel, setFilterLevel] = useState('all')
+  const [quickViewFilter, setQuickViewFilter] = useState<QuickViewFilter>('default')
   const [pendingOnly, setPendingOnly] = useState(false)
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
@@ -500,12 +508,11 @@ export default function CourseManagementPage() {
 
   const courseCards = courses
     .map(toCourseCardModel)
-    .filter((course) => !course.title.startsWith('[A-CASE-]'))
+    .filter((course) => !isInternalTestCourse(course.title))
 
-  const featuredCourses = buildFeaturedCourses(courseCards)
-  const categoryOptions = getUniqueValues(featuredCourses, 'displayCategory')
-  const levelOptions = getUniqueValues(featuredCourses, 'displayLevel')
-  const selectedCourse = featuredCourses.find((course) => course.courseId === noticeModalCourseId) ?? null
+  const categoryOptions = getUniqueValues(courseCards, 'displayCategory')
+  const levelOptions = getUniqueValues(courseCards, 'displayLevel')
+  const selectedCourse = courseCards.find((course) => course.courseId === noticeModalCourseId) ?? null
 
   const totalStudents = courseCards.reduce((sum, course) => sum + course.studentCount, 0)
   const totalPendingQuestions = courseCards.reduce(
@@ -529,39 +536,76 @@ export default function CourseManagementPage() {
     filterStatus !== 'all' ||
     filterCategory !== 'all' ||
     filterLevel !== 'all' ||
+    quickViewFilter !== 'default' ||
     pendingOnly ||
     search.trim() !== ''
 
-  const visibleCourses = featuredCourses.filter((course) => {
-    if (filterStatus === 'published' && course.displayStatus !== 'published') {
-      return false
-    }
+  const visibleCourses = courseCards
+    .filter((course) => {
+      if (filterStatus === 'published' && course.displayStatus !== 'published') {
+        return false
+      }
 
-    if (filterStatus === 'draft' && course.displayStatus === 'published') {
-      return false
-    }
+      if (filterStatus === 'draft' && course.displayStatus === 'published') {
+        return false
+      }
 
-    if (filterCategory !== 'all' && course.displayCategory !== filterCategory) {
-      return false
-    }
+      if (filterCategory !== 'all' && course.displayCategory !== filterCategory) {
+        return false
+      }
 
-    if (filterLevel !== 'all' && course.displayLevel !== filterLevel) {
-      return false
-    }
+      if (filterLevel !== 'all' && course.displayLevel !== filterLevel) {
+        return false
+      }
 
-    if (pendingOnly && course.displayPendingQuestionCount === 0) {
-      return false
-    }
+      if (pendingOnly && course.displayPendingQuestionCount === 0) {
+        return false
+      }
 
-    if (!search.trim()) {
-      return true
-    }
+      if (quickViewFilter === 'published-only' && course.displayStatus !== 'published') {
+        return false
+      }
 
-    const keyword = search.trim().toLowerCase()
-    return `${course.displayTitle} ${course.displayCategory} ${course.displayLevel}`
-      .toLowerCase()
-      .includes(keyword)
-  })
+      if (quickViewFilter === 'review-only' && course.displayStatus !== 'review') {
+        return false
+      }
+
+      if (quickViewFilter === 'draft-only' && course.displayStatus !== 'draft') {
+        return false
+      }
+
+      if (!search.trim()) {
+        return true
+      }
+
+      const keyword = search.trim().toLowerCase()
+      return `${course.displayTitle} ${course.displayCategory} ${course.displayLevel}`
+        .toLowerCase()
+        .includes(keyword)
+    })
+    .sort((left, right) => {
+      if (quickViewFilter === 'latest') {
+        return getCourseSortTimestamp(right) - getCourseSortTimestamp(left)
+      }
+
+      if (quickViewFilter === 'oldest') {
+        return getCourseSortTimestamp(left) - getCourseSortTimestamp(right)
+      }
+
+      if (quickViewFilter === 'rating-desc') {
+        return (
+          right.averageRating - left.averageRating ||
+          Number(right.reviewCount ?? 0) - Number(left.reviewCount ?? 0) ||
+          right.courseId - left.courseId
+        )
+      }
+
+      if (quickViewFilter === 'students-desc') {
+        return right.studentCount - left.studentCount || right.courseId - left.courseId
+      }
+
+      return right.courseId - left.courseId
+    })
 
   async function openNoticeModal(courseId: number) {
     setNoticeModalCourseId(courseId)
@@ -593,6 +637,7 @@ export default function CourseManagementPage() {
     setFilterStatus('all')
     setFilterCategory('all')
     setFilterLevel('all')
+    setQuickViewFilter('default')
     setPendingOnly(false)
     setSearch('')
   }
@@ -780,15 +825,35 @@ export default function CourseManagementPage() {
             ) : null}
           </div>
 
-          <div className="relative w-full lg:w-64">
-            <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400" />
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              type="text"
-              placeholder="강의명 검색..."
-              className="h-[34px] w-full rounded-[10px] border border-gray-200 bg-white py-0 pl-8 pr-4 text-[12px] font-medium leading-none text-gray-700 outline-none transition focus:border-emerald-500 focus:shadow-[0_0_0_3px_rgba(16,185,129,0.1)]"
-            />
+          <div className="flex w-full flex-col gap-2 sm:flex-row lg:w-auto">
+            <div className="relative sm:w-[180px]">
+              <select
+                value={quickViewFilter}
+                onChange={(event) => setQuickViewFilter(event.target.value as QuickViewFilter)}
+                className="h-[34px] w-full appearance-none rounded-[10px] border border-gray-200 bg-white pl-[14px] pr-9 text-[12px] font-semibold leading-none text-gray-700 outline-none transition hover:border-gray-300 hover:bg-gray-50"
+              >
+                <option value="default">빠른 필터</option>
+                <option value="latest">최신순</option>
+                <option value="oldest">오래된순</option>
+                <option value="published-only">공개된 것만</option>
+                <option value="review-only">심사 중만</option>
+                <option value="draft-only">작성 중만</option>
+                <option value="rating-desc">평점 높은순</option>
+                <option value="students-desc">수강생 많은순</option>
+              </select>
+              <i className="fas fa-chevron-down pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-400" />
+            </div>
+
+            <div className="relative w-full lg:w-64">
+              <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400" />
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                type="text"
+                placeholder="강의명 검색..."
+                className="h-[34px] w-full rounded-[10px] border border-gray-200 bg-white py-0 pl-8 pr-4 text-[12px] font-medium leading-none text-gray-700 outline-none transition focus:border-emerald-500 focus:shadow-[0_0_0_3px_rgba(16,185,129,0.1)]"
+              />
+            </div>
           </div>
         </div>
 

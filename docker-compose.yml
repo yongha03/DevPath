@@ -17,7 +17,7 @@ services:
     restart: always
 
   frontend-dev:
-    image: node:22-alpine
+    image: node:20-bookworm-slim
     container_name: devpath-frontend-dev
     working_dir: /app
     command: sh /app/scripts/frontend-dev.sh

@@ -239,6 +239,14 @@ WHERE NOT EXISTS (
     WHERE name = 'TypeScript'
 );
 
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'Python', 'AI', TRUE, FALSE
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM tags
+    WHERE name = 'Python'
+);
+
 INSERT INTO roadmaps (creator_id, title, description, is_official, is_public, is_deleted, created_at)
 SELECT
     u.user_id,
@@ -1028,6 +1036,114 @@ SELECT c.course_id, t.tag_id, 3
 FROM courses c, tags t
 WHERE c.title = 'JPA Practical Design'
   AND t.name = 'JPA'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM course_tag_maps ctm
+      WHERE ctm.course_id = c.course_id
+        AND ctm.tag_id = t.tag_id
+  );
+
+INSERT INTO course_tag_maps (course_id, tag_id, proficiency_level)
+SELECT c.course_id, t.tag_id, 3
+FROM courses c, tags t
+WHERE c.title = 'JPA Practical Design'
+  AND t.name = 'Java'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM course_tag_maps ctm
+      WHERE ctm.course_id = c.course_id
+        AND ctm.tag_id = t.tag_id
+  );
+
+INSERT INTO course_tag_maps (course_id, tag_id, proficiency_level)
+SELECT c.course_id, t.tag_id, 3
+FROM courses c, tags t
+WHERE c.title = 'JPA Practical Design'
+  AND t.name = 'PostgreSQL'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM course_tag_maps ctm
+      WHERE ctm.course_id = c.course_id
+        AND ctm.tag_id = t.tag_id
+  );
+
+INSERT INTO course_tag_maps (course_id, tag_id, proficiency_level)
+SELECT c.course_id, t.tag_id, 3
+FROM courses c, tags t
+WHERE c.title = 'React Dashboard Sprint'
+  AND t.name = 'React'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM course_tag_maps ctm
+      WHERE ctm.course_id = c.course_id
+        AND ctm.tag_id = t.tag_id
+  );
+
+INSERT INTO course_tag_maps (course_id, tag_id, proficiency_level)
+SELECT c.course_id, t.tag_id, 3
+FROM courses c, tags t
+WHERE c.title = 'React Dashboard Sprint'
+  AND t.name = 'TypeScript'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM course_tag_maps ctm
+      WHERE ctm.course_id = c.course_id
+        AND ctm.tag_id = t.tag_id
+  );
+
+INSERT INTO course_tag_maps (course_id, tag_id, proficiency_level)
+SELECT c.course_id, t.tag_id, 3
+FROM courses c, tags t
+WHERE c.title = '스프링 부트 3.0 완전 정복'
+  AND t.name = 'Spring Boot'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM course_tag_maps ctm
+      WHERE ctm.course_id = c.course_id
+        AND ctm.tag_id = t.tag_id
+  );
+
+INSERT INTO course_tag_maps (course_id, tag_id, proficiency_level)
+SELECT c.course_id, t.tag_id, 3
+FROM courses c, tags t
+WHERE c.title = '스프링 부트 3.0 완전 정복'
+  AND t.name = 'Java'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM course_tag_maps ctm
+      WHERE ctm.course_id = c.course_id
+        AND ctm.tag_id = t.tag_id
+  );
+
+INSERT INTO course_tag_maps (course_id, tag_id, proficiency_level)
+SELECT c.course_id, t.tag_id, 3
+FROM courses c, tags t
+WHERE c.title = '스프링 부트 3.0 완전 정복'
+  AND t.name = 'Spring Security'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM course_tag_maps ctm
+      WHERE ctm.course_id = c.course_id
+        AND ctm.tag_id = t.tag_id
+  );
+
+INSERT INTO course_tag_maps (course_id, tag_id, proficiency_level)
+SELECT c.course_id, t.tag_id, 3
+FROM courses c, tags t
+WHERE c.title = '제목 없는 강의 (초안)'
+  AND t.name = 'Java'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM course_tag_maps ctm
+      WHERE ctm.course_id = c.course_id
+        AND ctm.tag_id = t.tag_id
+  );
+
+INSERT INTO course_tag_maps (course_id, tag_id, proficiency_level)
+SELECT c.course_id, t.tag_id, 3
+FROM courses c, tags t
+WHERE c.title = '제목 없는 강의 (초안)'
+  AND t.name = 'Spring Boot'
   AND NOT EXISTS (
       SELECT 1
       FROM course_tag_maps ctm
@@ -4116,7 +4232,7 @@ WHERE c.title = 'JPA Practical Design'
 -- A-CASE NODE CLEARANCE BRANCHES
 -- ========================================
 INSERT INTO tags (name, category, is_official, is_deleted)
-SELECT 'A_CASE_TAG_JAVA', 'BACKEND', TRUE, FALSE
+SELECT 'A_CASE_TAG_JAVA', 'BACKEND', FALSE, FALSE
 WHERE NOT EXISTS (
     SELECT 1
     FROM tags
@@ -4124,7 +4240,7 @@ WHERE NOT EXISTS (
 );
 
 INSERT INTO tags (name, category, is_official, is_deleted)
-SELECT 'A_CASE_TAG_SPRING', 'BACKEND', TRUE, FALSE
+SELECT 'A_CASE_TAG_SPRING', 'BACKEND', FALSE, FALSE
 WHERE NOT EXISTS (
     SELECT 1
     FROM tags
@@ -4132,12 +4248,16 @@ WHERE NOT EXISTS (
 );
 
 INSERT INTO tags (name, category, is_official, is_deleted)
-SELECT 'A_CASE_TAG_DB', 'BACKEND', TRUE, FALSE
+SELECT 'A_CASE_TAG_DB', 'BACKEND', FALSE, FALSE
 WHERE NOT EXISTS (
     SELECT 1
     FROM tags
     WHERE name = 'A_CASE_TAG_DB'
 );
+
+UPDATE tags
+SET is_official = FALSE
+WHERE name IN ('A_CASE_TAG_JAVA', 'A_CASE_TAG_SPRING', 'A_CASE_TAG_DB');
 
 INSERT INTO user_tech_stacks (user_id, tag_id)
 SELECT u.user_id, t.tag_id
@@ -4527,6 +4647,66 @@ WHERE title = '[A-CASE-B] Tag Missing Course';
 UPDATE courses
 SET thumbnail_url = 'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=1200&q=80'
 WHERE title = '[A-CASE-C] Quiz Fail Course';
+
+INSERT INTO course_tag_maps (course_id, tag_id, proficiency_level)
+SELECT c.course_id, t.tag_id, 3
+FROM courses c, tags t
+WHERE c.title = '[A-CASE-A] Node Clearance Course'
+  AND t.name = 'A_CASE_TAG_JAVA'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM course_tag_maps ctm
+      WHERE ctm.course_id = c.course_id
+        AND ctm.tag_id = t.tag_id
+  );
+
+INSERT INTO course_tag_maps (course_id, tag_id, proficiency_level)
+SELECT c.course_id, t.tag_id, 3
+FROM courses c, tags t
+WHERE c.title = '[A-CASE-A] Node Clearance Course'
+  AND t.name = 'A_CASE_TAG_SPRING'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM course_tag_maps ctm
+      WHERE ctm.course_id = c.course_id
+        AND ctm.tag_id = t.tag_id
+  );
+
+INSERT INTO course_tag_maps (course_id, tag_id, proficiency_level)
+SELECT c.course_id, t.tag_id, 3
+FROM courses c, tags t
+WHERE c.title = '[A-CASE-B] Tag Missing Course'
+  AND t.name = 'A_CASE_TAG_JAVA'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM course_tag_maps ctm
+      WHERE ctm.course_id = c.course_id
+        AND ctm.tag_id = t.tag_id
+  );
+
+INSERT INTO course_tag_maps (course_id, tag_id, proficiency_level)
+SELECT c.course_id, t.tag_id, 3
+FROM courses c, tags t
+WHERE c.title = '[A-CASE-C] Quiz Fail Course'
+  AND t.name = 'A_CASE_TAG_JAVA'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM course_tag_maps ctm
+      WHERE ctm.course_id = c.course_id
+        AND ctm.tag_id = t.tag_id
+  );
+
+INSERT INTO course_tag_maps (course_id, tag_id, proficiency_level)
+SELECT c.course_id, t.tag_id, 3
+FROM courses c, tags t
+WHERE c.title = '[A-CASE-C] Quiz Fail Course'
+  AND t.name = 'A_CASE_TAG_SPRING'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM course_tag_maps ctm
+      WHERE ctm.course_id = c.course_id
+        AND ctm.tag_id = t.tag_id
+  );
 
 INSERT INTO course_sections (course_id, title, description, sort_order, is_published)
 SELECT

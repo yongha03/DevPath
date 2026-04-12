@@ -26,8 +26,73 @@ const COURSE_THUMBNAIL_FALLBACKS: Record<string, string> = {
     'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=1200&q=80',
 }
 
-const BACKEND_CATEGORY_SET = new Set(['Spring Boot', 'Java', 'JPA', 'Spring Security', 'JWT'])
-const FRONTEND_CATEGORY_SET = new Set(['React', 'TypeScript', 'Chart.js', 'Frontend'])
+const CATEGORY_LABELS: Record<string, string> = {
+  BACKEND: '백엔드',
+  FRONTEND: '프론트엔드',
+  AI: '인공지능',
+  DATABASE: '데이터베이스',
+  DEVOPS: '데브옵스',
+  FULLSTACK: '풀스택',
+  GENERAL: '일반',
+  ETC: '기타',
+}
+
+function normalizeInstructorCategoryKey(value: string | null | undefined) {
+  if (!value) {
+    return null
+  }
+
+  const normalized = value.trim().toUpperCase().replace(/[\s/_-]+/g, '')
+
+  switch (normalized) {
+    case 'BACKEND':
+    case 'SERVER':
+    case '백엔드':
+      return 'BACKEND'
+    case 'FRONTEND':
+    case 'CLIENT':
+    case '프론트엔드':
+      return 'FRONTEND'
+    case 'AI':
+    case 'AIDATA':
+    case 'ARTIFICIALINTELLIGENCE':
+    case 'MACHINELEARNING':
+    case '인공지능':
+      return 'AI'
+    case 'DATABASE':
+    case 'DB':
+    case '데이터베이스':
+      return 'DATABASE'
+    case 'DEVOPS':
+    case '데브옵스':
+      return 'DEVOPS'
+    case 'FULLSTACK':
+    case '풀스택':
+      return 'FULLSTACK'
+    case 'GENERAL':
+    case '일반':
+      return 'GENERAL'
+    case 'ETC':
+    case '기타':
+      return 'ETC'
+    default:
+      return null
+  }
+}
+
+function inferInstructorCategoryKeyFromTitle(courseTitle?: string | null) {
+  const normalizedTitle = normalizeInstructorCourseTitle(courseTitle)
+
+  if (normalizedTitle.includes('리액트')) {
+    return 'FRONTEND'
+  }
+
+  if (normalizedTitle.includes('자바') || normalizedTitle.includes('JPA') || normalizedTitle.includes('스프링')) {
+    return 'BACKEND'
+  }
+
+  return null
+}
 
 export function normalizeInstructorCourseTitle(title: string | null | undefined) {
   if (!title) {
@@ -70,46 +135,38 @@ export function normalizeInstructorCategoryLabel(
   value: string | null | undefined,
   courseTitle?: string | null,
 ) {
-  const normalizedTitle = normalizeInstructorCourseTitle(courseTitle)
+  const categoryKey = normalizeInstructorCategoryKey(value) ?? inferInstructorCategoryKeyFromTitle(courseTitle)
 
-  if (normalizedTitle.includes('리액트')) {
-    return '프론트엔드'
-  }
-
-  if (normalizedTitle.includes('자바') || normalizedTitle.includes('JPA') || normalizedTitle.includes('스프링')) {
-    return '백엔드'
+  if (categoryKey) {
+    return CATEGORY_LABELS[categoryKey]
   }
 
   if (!value || value === 'General') {
-    return '일반'
+    return CATEGORY_LABELS.GENERAL
   }
 
-  if (BACKEND_CATEGORY_SET.has(value)) {
-    return '백엔드'
-  }
-
-  if (FRONTEND_CATEGORY_SET.has(value)) {
-    return '프론트엔드'
-  }
-
-  return value
+  return CATEGORY_LABELS.ETC
 }
 
 export function getInstructorCategoryChipLabel(
   value: string | null | undefined,
   courseTitle?: string | null,
 ) {
-  const normalizedCategory = normalizeInstructorCategoryLabel(value, courseTitle)
+  const categoryKey = normalizeInstructorCategoryKey(value) ?? inferInstructorCategoryKeyFromTitle(courseTitle)
 
-  if (normalizedCategory === '백엔드') {
-    return 'BACKEND'
+  if (categoryKey === 'FULLSTACK') {
+    return 'FULL STACK'
   }
 
-  if (normalizedCategory === '프론트엔드') {
-    return 'FRONTEND'
+  if (categoryKey) {
+    return categoryKey
   }
 
-  return normalizedCategory.toUpperCase()
+  if (!value || value === 'General') {
+    return 'GENERAL'
+  }
+
+  return 'ETC'
 }
 
 export function resolveInstructorCourseThumbnailUrl(

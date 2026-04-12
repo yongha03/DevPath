@@ -28,10 +28,14 @@ import com.devpath.domain.user.entity.UserProfile;
 import com.devpath.domain.user.repository.UserProfileRepository;
 import com.devpath.domain.user.repository.UserRepository;
 import com.devpath.domain.user.repository.UserTechStackRepository;
+import java.util.Comparator;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -45,6 +49,7 @@ public class InstructorCourseQueryService {
 
     private static final String DEFAULT_COURSE_THUMBNAIL =
             "https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=1200&q=80";
+    private static final String DEFAULT_COURSE_CATEGORY = "General";
 
     private static final Map<String, String> COURSE_THUMBNAIL_FALLBACKS = Map.ofEntries(
             Map.entry(
@@ -112,7 +117,8 @@ public class InstructorCourseQueryService {
                 .map(course -> {
                     List<CourseEnrollment> enrollments = enrollmentsByCourseId.getOrDefault(course.getCourseId(), List.of());
                     List<Review> reviews = reviewsByCourseId.getOrDefault(course.getCourseId(), List.of());
-                    List<String> tags = courseTagMapRepository.findTagNamesByCourseId(course.getCourseId());
+                    List<CourseTagMap> tagMaps = courseTagMapRepository.findAllByCourseCourseId(course.getCourseId());
+                    List<String> tags = buildCourseTagNames(tagMaps);
                     List<Lesson> lessons = lessonRepository.findAllBySectionCourseCourseId(course.getCourseId());
 
                     double averageProgressPercent = enrollments.stream()
@@ -133,7 +139,7 @@ public class InstructorCourseQueryService {
                             course.getCourseId(),
                             course.getTitle(),
                             course.getStatus() == null ? null : course.getStatus().name(),
-                            tags.isEmpty() ? "General" : tags.get(0),
+                            resolveCourseCategoryLabel(tagMaps),
                             course.getDifficultyLevel() == null ? "-" : course.getDifficultyLevel().name(),
                             course.getDurationSeconds(),
                             (long) lessons.size(),
@@ -146,7 +152,8 @@ public class InstructorCourseQueryService {
                             (long) reviews.size(),
                             round(averageRating),
                             resolveCourseThumbnailUrl(course),
-                            course.getPublishedAt()
+                            course.getPublishedAt(),
+                            tags
                     );
                 })
                 .toList();
@@ -347,6 +354,76 @@ public class InstructorCourseQueryService {
                         .sortOrder(material.getDisplayOrder())
                         .build())
                 .toList();
+    }
+
+    private List<String> buildCourseTagNames(List<CourseTagMap> tagMaps) {
+        return tagMaps.stream()
+                .map(CourseTagMap::getTag)
+                .filter(Objects::nonNull)
+                .map(tag -> normalizeBlank(tag.getName()))
+                .filter(Objects::nonNull)
+                .distinct()
+                .sorted()
+                .toList();
+    }
+
+    private String resolveCourseCategoryLabel(List<CourseTagMap> tagMaps) {
+        Map<String, Long> categoryCounts = tagMaps.stream()
+                .map(CourseTagMap::getTag)
+                .filter(Objects::nonNull)
+                .map(tag -> normalizeCourseCategory(tag.getCategory()))
+                .filter(Objects::nonNull)
+                .collect(Collectors.groupingBy(Function.identity(), LinkedHashMap::new, Collectors.counting()));
+
+        if (categoryCounts.isEmpty()) {
+            return DEFAULT_COURSE_CATEGORY;
+        }
+
+        return categoryCounts.entrySet().stream()
+                .sorted(
+                        Comparator.<Map.Entry<String, Long>>comparingLong(Map.Entry::getValue).reversed()
+                                .thenComparingInt(entry -> getCourseCategoryPriority(entry.getKey()))
+                                .thenComparing(Map.Entry::getKey)
+                )
+                .map(Map.Entry::getKey)
+                .findFirst()
+                .orElse(DEFAULT_COURSE_CATEGORY);
+    }
+
+    private String normalizeCourseCategory(String value) {
+        String normalized = normalizeBlank(value);
+
+        if (normalized == null) {
+            return null;
+        }
+
+        String categoryKey = normalized
+                .toUpperCase(Locale.ROOT)
+                .replaceAll("[\\s/_-]+", "");
+
+        return switch (categoryKey) {
+            case "BACKEND", "SERVER", "백엔드" -> "Backend";
+            case "FRONTEND", "CLIENT", "프론트엔드" -> "Frontend";
+            case "AI", "AIDATA", "ARTIFICIALINTELLIGENCE", "MACHINELEARNING", "인공지능" -> "AI";
+            case "DATABASE", "DB", "데이터베이스" -> "Database";
+            case "DEVOPS", "데브옵스" -> "DevOps";
+            case "FULLSTACK", "풀스택" -> "FullStack";
+            case "GENERAL", "일반" -> DEFAULT_COURSE_CATEGORY;
+            default -> null;
+        };
+    }
+
+    private int getCourseCategoryPriority(String category) {
+        return switch (category) {
+            case "Backend" -> 1;
+            case "Frontend" -> 2;
+            case "AI" -> 3;
+            case "Database" -> 4;
+            case "DevOps" -> 5;
+            case "FullStack" -> 6;
+            case DEFAULT_COURSE_CATEGORY -> 7;
+            default -> 99;
+        };
     }
 
     private double round(double value) {
