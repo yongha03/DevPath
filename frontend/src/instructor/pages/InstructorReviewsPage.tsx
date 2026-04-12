@@ -1,118 +1,113 @@
 import { useEffect, useState } from 'react'
-import { ErrorCard, LoadingCard, formatDate } from '../../account/ui'
+import { ErrorCard, LoadingCard, formatDate, formatNumber } from '../../account/ui'
 import UserAvatar from '../../components/UserAvatar'
-import { instructorReviewApi } from '../../lib/api'
+import {
+  buildInstructorCourseOptions,
+  normalizeInstructorCourseTitle,
+} from '../../instructor/course-display'
+import { instructorCourseApi, instructorReviewApi, userApi } from '../../lib/api'
 import type { AuthSession } from '../../types/auth'
 import type {
+  InstructorCourseListItem,
   InstructorReviewHelpful,
   InstructorReviewListItem,
   InstructorReviewSummary,
   InstructorReviewTemplate,
 } from '../../types/instructor'
+import type { UserProfile } from '../../types/learner'
 
 type ReviewTabKey = 'all' | 'unreplied' | 'low'
-type TemplateOption = {
-  key: string
-  title: string
-  description: string
-  content: string
+type TemplateOption = { key: string; title: string; description: string; content: string }
+
+const legacyReviewContent: Record<string, string> = {
+  'Examples were practical and the explanation flow was very clear.':
+    '예제가 실무와 바로 연결돼서 좋았고, 설명 흐름도 자연스러워서 끝까지 집중해서 들을 수 있었습니다.',
+  'The topic itself is useful, but I needed slower pacing around entity mapping and fetch strategy.':
+    '주제 자체는 유용했지만 엔티티 매핑과 fetch 전략 부분은 조금 더 천천히 설명해주셨으면 좋겠습니다.',
+  'Thanks for the feedback. I will add more mapping diagrams and a slower walkthrough in the next update.':
+    '좋은 피드백 감사합니다. 다음 업데이트에서 매핑 다이어그램을 더 보강하고 해당 구간은 조금 더 천천히 설명하겠습니다.',
 }
 
-const fallbackReplyTemplates: TemplateOption[] = [
+const legacyTemplateTitle: Record<string, string> = {
+  'Thanks and follow-up': '감사 인사',
+  'Issue acknowledged': '사과 및 개선 약속',
+}
+
+const legacyTemplateContent: Record<string, string> = {
+  'Thanks for leaving a detailed review. I will reflect your feedback in the next revision.':
+    '정성스러운 리뷰 남겨주셔서 감사합니다. 남겨주신 의견은 다음 개정에 바로 반영하겠습니다.',
+  'I reproduced the issue and added it to the revision queue. I will update the course notes as well.':
+    '불편을 드려 죄송합니다. 말씀해주신 내용을 확인했고, 강의 개정 목록에 반영해 보충 자료와 함께 정리하겠습니다.',
+}
+
+const legacyTags: Record<string, string> = {
+  'clear-examples': '설명_자세해요',
+  'good-pacing': '예제가_실전적이에요',
+  'too-fast': '조금_빨라요',
+  'needs-more-diagrams': '도식이_더_필요해요',
+  'urgent-follow-up': '빠른_확인_필요',
+  'follow-up': '후속_답변_필요',
+}
+
+const negativeTags = new Set([
+  '조금_빨라요',
+  '도식이_더_필요해요',
+  '속도가_빨라요',
+  '초보자에겐_어려워요',
+  '보충_자료가_필요해요',
+  '빠른_확인_필요',
+  '후속_답변_필요',
+  '설명이_조금_빨라요',
+])
+
+const fallbackTemplates: TemplateOption[] = [
   {
     key: 'thanks',
     title: '감사 인사',
-    description: '소중한 수강평에 감사 인사를 남깁니다.',
-    content: '소중한 수강평 감사합니다. 완강까지 꾸준히 학습하실 수 있도록 계속 보완하겠습니다.',
+    description: '정성스러운 리뷰에 감사의 말을 전합니다.',
+    content: '정성스럽게 리뷰 남겨주셔서 감사합니다. 남겨주신 의견 덕분에 강의 보완 방향을 더 명확하게 잡을 수 있었습니다.',
   },
   {
     key: 'apology',
     title: '사과 및 개선 약속',
-    description: '불편을 겪은 수강생에게 빠르게 응답합니다.',
-    content: '불편을 드려 죄송합니다. 말씀해주신 내용은 바로 확인해서 개선하겠습니다.',
+    description: '불편했던 부분에 빠르게 공감하고 개선 계획을 전합니다.',
+    content: '불편을 드려 죄송합니다. 말씀해주신 내용을 바로 확인했고, 다음 개정에서 더 이해하기 쉽게 보완하겠습니다.',
   },
   {
     key: 'guide',
     title: '학습 가이드 제안',
-    description: '다음 학습 흐름이나 보충 자료를 안내합니다.',
-    content: '어려움을 느끼셨다면 해당 구간의 보충 자료와 이전 섹션을 함께 복습해보시는 것을 권장드립니다.',
+    description: '복습 순서나 보충 자료를 함께 안내하는 답변입니다.',
+    content: '해당 구간이 어렵게 느껴지셨다면 이전 섹션의 보충 강의와 함께 다시 보시면 이해가 훨씬 쉬워집니다. 필요한 자료도 추가로 보완하겠습니다.',
   },
   {
     key: 'review',
-    title: '만족 리뷰 응답',
-    description: '긍정적인 리뷰에 따뜻하게 응답합니다.',
-    content: '도움이 되셨다니 다행입니다. 더 좋은 강의 경험을 드릴 수 있도록 계속 업데이트하겠습니다.',
+    title: '만족 리뷰 답글',
+    description: '만족한 수강생에게 따뜻하게 답변합니다.',
+    content: '좋게 봐주셔서 감사합니다. 앞으로도 실무에 바로 연결되는 예제와 설명으로 더 만족스러운 강의를 만들어가겠습니다.',
   },
 ]
 
-function StarRow({ rating }: { rating: number }) {
-  const fullStars = Math.floor(rating)
-  const hasHalfStar = rating % 1 !== 0
-
-  return (
-    <div className="flex text-xs text-yellow-400">
-      {Array.from({ length: 5 }).map((_, index) => {
-        if (index < fullStars) {
-          return <i key={index} className="fas fa-star" />
-        }
-
-        if (index === fullStars && hasHalfStar) {
-          return <i key={index} className="fas fa-star-half-alt" />
-        }
-
-        return <i key={index} className="far fa-star" />
-      })}
-    </div>
-  )
+function t(value: string | null | undefined, dict: Record<string, string>) {
+  if (!value) return ''
+  return dict[value] ?? value
 }
 
-function toneClass(tone: 'orange' | 'red' | 'gray' | 'green' | 'blue') {
-  switch (tone) {
-    case 'orange':
-      return 'border-orange-200 bg-orange-100 text-orange-600'
-    case 'red':
-      return 'border-red-100 bg-red-50 text-red-600'
-    case 'green':
-      return 'border-green-100 bg-green-50 text-green-700'
-    case 'blue':
-      return 'border-blue-100 bg-blue-50 text-blue-700'
-    default:
-      return 'border-gray-200 bg-gray-100 text-gray-500'
-  }
+function normalizeTag(tag: string) {
+  const next = tag.trim()
+  return next ? legacyTags[next] ?? next : ''
 }
 
-function sortReviews(reviews: InstructorReviewListItem[], sort: string) {
-  const next = [...reviews]
+function formatTag(tag: string) {
+  return `#${normalizeTag(tag).replace(/\s+/g, '_')}`
+}
 
-  next.sort((left, right) => {
-    const leftTime = new Date(left.createdAt ?? 0).getTime()
-    const rightTime = new Date(right.createdAt ?? 0).getTime()
-
-    if (sort === 'oldest') {
-      return leftTime - rightTime
-    }
-
-    if (sort === 'high') {
-      return right.rating - left.rating
-    }
-
-    if (sort === 'low') {
-      return left.rating - right.rating
-    }
-
-    return rightTime - leftTime
-  })
-
-  return next
+function isNegativeTag(tag: string) {
+  return negativeTags.has(normalizeTag(tag))
 }
 
 function relativeDateLabel(value: string | null) {
-  if (!value) {
-    return '날짜 없음'
-  }
-
+  if (!value) return '날짜 정보 없음'
   const diffMinutes = Math.max(0, Math.floor((Date.now() - new Date(value).getTime()) / 60000))
-
   if (diffMinutes < 1) return '방금 전'
   if (diffMinutes < 60) return `${diffMinutes}분 전`
   if (diffMinutes < 1440) return `${Math.floor(diffMinutes / 60)}시간 전`
@@ -120,70 +115,57 @@ function relativeDateLabel(value: string | null) {
   return formatDate(value)
 }
 
-function getIssueMeta(review: InstructorReviewListItem) {
-  if (review.reply) {
-    return {
-      tone: 'gray' as const,
-      label: '답변완료',
-      status: 'replied' as const,
-      icon: 'fa-check',
-    }
-  }
+function sortReviews(reviews: InstructorReviewListItem[], sort: string) {
+  return [...reviews].sort((left, right) => {
+    const leftTime = new Date(left.createdAt ?? 0).getTime()
+    const rightTime = new Date(right.createdAt ?? 0).getTime()
+    if (sort === 'oldest') return leftTime - rightTime
+    if (sort === 'high') return right.rating - left.rating
+    if (sort === 'low') return left.rating - right.rating
+    return rightTime - leftTime
+  })
+}
 
-  if (review.status === 'UNSATISFIED' || review.rating <= 2) {
-    return {
-      tone: 'red' as const,
-      label: '불만족',
-      status: 'unreplied' as const,
-      icon: 'fa-exclamation-triangle',
-    }
+function normalizeReview(review: InstructorReviewListItem): InstructorReviewListItem {
+  const learnerNameMap: Record<string, string> = {
+    Learner: '수강생',
+    'Learner Park': '박수강',
+    'Learner Lee': '이수강',
   }
 
   return {
-    tone: 'orange' as const,
-    label: '미답변',
-    status: 'unreplied' as const,
-    icon: 'fa-exclamation-circle',
+    ...review,
+    courseTitle: normalizeInstructorCourseTitle(review.courseTitle),
+    learnerName: learnerNameMap[review.learnerName] ?? review.learnerName,
+    content: t(review.content, legacyReviewContent),
+    issueTags: review.issueTags.map(normalizeTag).filter(Boolean),
+    reply: review.reply
+      ? {
+          ...review.reply,
+          authorName: review.reply.authorName && review.reply.authorName !== 'Instructor' ? review.reply.authorName : '강사',
+          content: t(review.reply.content, legacyReviewContent),
+        }
+      : null,
   }
 }
 
 function buildKeywordTags(reviews: InstructorReviewListItem[]) {
   const counts = new Map<string, number>()
-
-  reviews.forEach((review) => {
-    review.issueTags.forEach((tag) => {
-      const normalized = tag.trim()
-      if (!normalized) {
-        return
-      }
-
-      counts.set(normalized, (counts.get(normalized) ?? 0) + 1)
-    })
-  })
-
-  if (counts.size === 0) {
-    const unansweredCount = reviews.filter((review) => !review.reply).length
-    const lowRatingCount = reviews.filter((review) => review.rating <= 3).length
-    const fallback = []
-
-    if (unansweredCount > 0) {
-      fallback.push({ label: `#답글_대기 (${unansweredCount})`, issue: true })
-    }
-
-    if (lowRatingCount > 0) {
-      fallback.push({ label: `#저평점 (${lowRatingCount})`, issue: true })
-    }
-
-    return fallback
-  }
-
+  reviews.forEach((review) => review.issueTags.forEach((tag) => counts.set(tag, (counts.get(tag) ?? 0) + 1)))
   return [...counts.entries()]
     .sort((left, right) => right[1] - left[1])
     .slice(0, 6)
-    .map(([label, count]) => ({
-      label: `#${label.replace(/\s+/g, '_')} (${count})`,
-      issue: true,
-    }))
+    .map(([tag, count]) => ({ label: `#${tag} (${count})`, issue: isNegativeTag(tag) }))
+}
+
+function getIssueMeta(review: InstructorReviewListItem) {
+  if (review.reply) {
+    return { badge: '답변 완료', badgeTone: 'border-gray-200 bg-gray-100 text-gray-500', borderTone: 'border-l-[#00C471]', icon: 'fa-check' }
+  }
+  if (review.rating <= 2) {
+    return { badge: '불만족', badgeTone: 'border-red-100 bg-red-50 text-red-600', borderTone: 'border-l-red-400', icon: 'fa-exclamation-triangle' }
+  }
+  return { badge: '미답변', badgeTone: 'border-orange-200 bg-orange-100 text-orange-600', borderTone: 'border-l-orange-400', icon: 'fa-exclamation-circle' }
 }
 
 async function fetchReviewData(signal?: AbortSignal) {
@@ -197,9 +179,11 @@ async function fetchReviewData(signal?: AbortSignal) {
 
 export default function InstructorReviewsPage({ session }: { session: AuthSession }) {
   const [reviews, setReviews] = useState<InstructorReviewListItem[]>([])
+  const [courseCatalog, setCourseCatalog] = useState<InstructorCourseListItem[]>([])
   const [summary, setSummary] = useState<InstructorReviewSummary | null>(null)
   const [helpful, setHelpful] = useState<InstructorReviewHelpful | null>(null)
   const [templates, setTemplates] = useState<InstructorReviewTemplate[]>([])
+  const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [currentTab, setCurrentTab] = useState<ReviewTabKey>('all')
@@ -208,138 +192,56 @@ export default function InstructorReviewsPage({ session }: { session: AuthSessio
   const [starFilter, setStarFilter] = useState('all')
   const [search, setSearch] = useState('')
   const [openReplyFormId, setOpenReplyFormId] = useState<number | null>(null)
+  const [replyDrafts, setReplyDrafts] = useState<Record<number, string>>({})
   const [templateModalOpen, setTemplateModalOpen] = useState(false)
   const [activeReplyTargetId, setActiveReplyTargetId] = useState<number | null>(null)
-  const [replyDrafts, setReplyDrafts] = useState<Record<number, string>>({})
+  const [visibleLimit, setVisibleLimit] = useState(6)
 
   useEffect(() => {
     const controller = new AbortController()
-
     setLoading(true)
     setError(null)
-
-    fetchReviewData(controller.signal)
-      .then(([nextReviews, nextSummary, nextHelpful, nextTemplates]) => {
-        setReviews(nextReviews)
+    Promise.all([
+      fetchReviewData(controller.signal),
+      userApi.getMyProfile(controller.signal).catch(() => null),
+      instructorCourseApi.getCourses(controller.signal).catch(() => []),
+    ])
+      .then(([[nextReviews, nextSummary, nextHelpful, nextTemplates], nextProfile, nextCourses]) => {
+        setReviews(nextReviews.map(normalizeReview))
         setSummary(nextSummary)
         setHelpful(nextHelpful)
         setTemplates(nextTemplates)
+        setProfile(nextProfile)
+        setCourseCatalog(nextCourses)
       })
       .catch((nextError: Error) => {
-        if (controller.signal.aborted) {
-          return
-        }
-
-        setError(nextError.message)
+        if (!controller.signal.aborted) setError(nextError.message)
       })
       .finally(() => {
-        if (!controller.signal.aborted) {
-          setLoading(false)
-        }
+        if (!controller.signal.aborted) setLoading(false)
       })
-
     return () => controller.abort()
   }, [])
 
+  useEffect(() => {
+    setVisibleLimit(6)
+  }, [currentTab, courseFilter, sortFilter, starFilter, search])
+
   async function refreshReviewData() {
     const [nextReviews, nextSummary, nextHelpful, nextTemplates] = await fetchReviewData()
-    setReviews(nextReviews)
+    setReviews(nextReviews.map(normalizeReview))
     setSummary(nextSummary)
     setHelpful(nextHelpful)
     setTemplates(nextTemplates)
   }
 
-  const filteredReviews = sortReviews(
-    reviews.filter((review) => {
-      const issueMeta = getIssueMeta(review)
-
-      if (courseFilter !== 'all' && String(review.courseId) !== courseFilter) {
-        return false
-      }
-
-      if (currentTab === 'unreplied' && issueMeta.status !== 'unreplied') {
-        return false
-      }
-
-      if (currentTab === 'low' && review.rating > 3) {
-        return false
-      }
-
-      if (starFilter === '5' && review.rating !== 5) {
-        return false
-      }
-
-      if (starFilter === '4' && review.rating < 4) {
-        return false
-      }
-
-      if (starFilter === '3' && review.rating > 3) {
-        return false
-      }
-
-      if (search.trim()) {
-        const searchText = `${review.courseTitle} ${review.learnerName} ${review.content} ${review.issueTags.join(' ')}`.toLowerCase()
-        if (!searchText.includes(search.trim().toLowerCase())) {
-          return false
-        }
-      }
-
-      return true
-    }),
-    sortFilter,
-  )
-
-  const courseOptions = Array.from(
-    new Map(reviews.map((review) => [String(review.courseId), review.courseTitle])).entries(),
-  )
-  const keywordTags = buildKeywordTags(reviews)
-  const totalReviewCount = summary?.totalReviews ?? reviews.length
-  const unansweredCount = helpful?.unansweredCount ?? reviews.filter((review) => !review.reply).length
-  const lowRatingCount = reviews.filter((review) => review.rating <= 3).length
-  const ratingRows = [5, 4, 3, 2, 1].map((stars) => {
-    const count = Number(summary?.ratingDistribution?.[String(stars)] ?? 0)
-    const percent = totalReviewCount > 0 ? Math.round((count / totalReviewCount) * 100) : 0
-
-    return {
-      stars,
-      percent,
-      tone:
-        stars === 5
-          ? 'bg-green-500'
-          : stars === 4
-            ? 'bg-green-400'
-            : stars === 3
-              ? 'bg-yellow-400'
-              : stars === 2
-                ? 'bg-orange-400'
-                : 'bg-red-400',
-      active: stars >= 4,
-    }
-  })
-  const templateOptions: TemplateOption[] =
-    templates.length > 0
-      ? templates.map((template) => ({
-          key: String(template.id),
-          title: template.title,
-          description: template.content.length > 60 ? `${template.content.slice(0, 60)}...` : template.content,
-          content: template.content,
-        }))
-      : fallbackReplyTemplates
-
-  function setUnrepliedFilter() {
-    setCurrentTab('unreplied')
+  function updateDraft(reviewId: number, value: string) {
+    setReplyDrafts((current) => ({ ...current, [reviewId]: value }))
   }
 
   function toggleReplyForm(review: InstructorReviewListItem) {
     setOpenReplyFormId((current) => (current === review.reviewId ? null : review.reviewId))
-    setReplyDrafts((current) => ({
-      ...current,
-      [review.reviewId]: current[review.reviewId] ?? review.reply?.content ?? '',
-    }))
-  }
-
-  function updateDraft(reviewId: number, value: string) {
-    setReplyDrafts((current) => ({ ...current, [reviewId]: value }))
+    setReplyDrafts((current) => ({ ...current, [review.reviewId]: current[review.reviewId] ?? review.reply?.content ?? '' }))
   }
 
   function openTemplateModal(reviewId: number) {
@@ -348,15 +250,10 @@ export default function InstructorReviewsPage({ session }: { session: AuthSessio
   }
 
   function insertTemplate(template: TemplateOption) {
-    if (!activeReplyTargetId) {
-      return
-    }
-
+    if (!activeReplyTargetId) return
     setReplyDrafts((current) => ({
       ...current,
-      [activeReplyTargetId]: current[activeReplyTargetId]
-        ? `${current[activeReplyTargetId].trimEnd()}\n\n${template.content}`
-        : template.content,
+      [activeReplyTargetId]: current[activeReplyTargetId] ? `${current[activeReplyTargetId].trimEnd()}\n\n${template.content}` : template.content,
     }))
     setTemplateModalOpen(false)
   }
@@ -364,41 +261,25 @@ export default function InstructorReviewsPage({ session }: { session: AuthSessio
   async function submitReply(reviewId: number) {
     const review = reviews.find((item) => item.reviewId === reviewId)
     const draft = replyDrafts[reviewId]?.trim()
-
-    if (!review) {
-      return
-    }
-
+    if (!review) return
     if (!draft) {
-      window.alert('답글 내용을 입력해 주세요.')
+      window.alert('답변 내용을 입력해주세요.')
       return
     }
-
     try {
-      if (review.reply) {
-        await instructorReviewApi.updateReply(reviewId, review.reply.replyId, draft)
-      } else {
-        await instructorReviewApi.createReply(reviewId, draft)
-      }
-
+      if (review.reply) await instructorReviewApi.updateReply(reviewId, review.reply.replyId, draft)
+      else await instructorReviewApi.createReply(reviewId, draft)
       await refreshReviewData()
       setOpenReplyFormId(null)
     } catch (nextError) {
-      window.alert(nextError instanceof Error ? nextError.message : '답글 저장에 실패했습니다.')
+      window.alert(nextError instanceof Error ? nextError.message : '답변 저장에 실패했습니다.')
     }
   }
 
   async function registerIssue(reviewId: number) {
     const review = reviews.find((item) => item.reviewId === reviewId)
-    if (!review) {
-      return
-    }
-
-    const nextTags =
-      review.issueTags.length > 0
-        ? review.issueTags
-        : [review.rating <= 2 ? 'urgent-follow-up' : 'follow-up']
-
+    if (!review) return
+    const nextTags = review.issueTags.length > 0 ? review.issueTags : review.rating <= 2 ? ['빠른_확인_필요', '설명이_조금_빨라요'] : ['후속_답변_필요']
     try {
       await instructorReviewApi.addIssueTags(reviewId, nextTags)
       await refreshReviewData()
@@ -407,260 +288,223 @@ export default function InstructorReviewsPage({ session }: { session: AuthSessio
     }
   }
 
-  if (loading) {
-    return (
-      <div className="p-6">
-        <LoadingCard label="수강평 데이터를 불러오는 중입니다." />
-      </div>
-    )
-  }
+  if (loading) return <div className="p-6"><LoadingCard label="수강평 데이터를 불러오는 중입니다." /></div>
+  if (error || !summary || !helpful) return <div className="p-6"><ErrorCard message={error ?? '수강평 데이터를 불러오지 못했습니다.'} /></div>
 
-  if (error || !summary || !helpful) {
-    return (
-      <div className="p-6">
-        <ErrorCard message={error ?? '수강평 데이터를 불러오지 못했습니다.'} />
-      </div>
-    )
-  }
+  const totalReviewCount = summary.totalReviews || reviews.length
+  const unansweredCount = helpful.unansweredCount || reviews.filter((review) => !review.reply).length
+  const lowRatingCount = reviews.filter((review) => review.rating <= 3).length
+  const courseOptions = buildInstructorCourseOptions(courseCatalog)
+  const keywordTags = buildKeywordTags(reviews)
+  const templateOptions = templates.length > 0
+    ? templates.map((template) => {
+        const title = t(template.title, legacyTemplateTitle)
+        const content = t(template.content, legacyTemplateContent)
+        return { key: String(template.id), title, description: content.length > 52 ? `${content.slice(0, 52)}...` : content, content }
+      })
+    : fallbackTemplates
+
+  const filteredReviews = reviews.filter((review) => {
+    if (courseFilter !== 'all' && String(review.courseId) !== courseFilter) return false
+    if (currentTab === 'unreplied' && review.reply) return false
+    if (currentTab === 'low' && review.rating > 3) return false
+    if (starFilter === '5' && Math.floor(review.rating) !== 5) return false
+    if (starFilter === '4' && Math.floor(review.rating) !== 4) return false
+    if (starFilter === '3' && review.rating > 3) return false
+    if (!search.trim()) return true
+    const searchText = `${review.courseTitle} ${review.learnerName} ${review.content} ${review.issueTags.join(' ')} ${review.reply?.content ?? ''}`.toLowerCase()
+    return searchText.includes(search.trim().toLowerCase())
+  })
+  const visibleReviews = sortReviews(filteredReviews, sortFilter).slice(0, visibleLimit)
+  const hasMore = filteredReviews.length > visibleLimit
 
   return (
-    <div className="p-6">
-      <div className="mx-auto max-w-[1320px]">
+    <div className="w-full overflow-y-auto bg-[#F8F9FA] p-8">
+      <div className="mx-auto max-w-[1200px]">
         <div className="mb-6 flex flex-col justify-between gap-4 md:flex-row md:items-end">
           <div>
             <h1 className="mb-1 text-2xl font-black tracking-tight text-gray-900">수강평 관리</h1>
-            <p className="text-sm font-medium text-gray-500">수강생의 피드백을 확인하고 소통하여 강의 퀄리티를 높여보세요.</p>
+            <p className="text-sm font-medium text-gray-500">수강생의 피드백을 확인하고 답변으로 소통해 강의 만족도를 높여보세요.</p>
           </div>
           <div className="flex items-center gap-2">
             <div className="relative">
-              <select
-                value={courseFilter}
-                onChange={(event) => setCourseFilter(event.target.value)}
-                className="min-w-[240px] cursor-pointer appearance-none rounded-lg border border-gray-200 bg-white py-2 pl-4 pr-10 text-sm font-bold text-gray-700 shadow-sm outline-none focus:border-green-500"
-              >
-                <option value="all">📚 전체 강좌 보기</option>
-                {courseOptions.map(([courseId, courseTitle]) => (
-                  <option key={courseId} value={courseId}>
-                    {courseTitle}
-                  </option>
-                ))}
+              <select value={courseFilter} onChange={(event) => setCourseFilter(event.target.value)} className="min-w-[240px] cursor-pointer appearance-none rounded-lg border border-gray-200 bg-white py-2 pl-4 pr-10 text-sm font-bold text-gray-700 shadow-sm outline-none focus:border-green-500">
+                <option value="all">전체 강의 보기</option>
+                {courseOptions.map(([courseId, courseTitle]) => <option key={courseId} value={courseId}>{courseTitle}</option>)}
               </select>
-              <i className="fas fa-chevron-down pointer-events-none absolute top-3 right-3 text-xs text-gray-400" />
+              <i className="fas fa-chevron-down pointer-events-none absolute right-3 top-3 text-xs text-gray-400" />
             </div>
-
-            <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 shadow-sm">
+            <div className="flex h-10 items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 shadow-sm">
               <i className="fas fa-search text-gray-400" />
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                type="text"
-                placeholder="검색"
-                className="w-32 text-sm font-bold text-gray-600 outline-none"
-              />
+              <input value={search} onChange={(event) => setSearch(event.target.value)} type="text" placeholder="검색" className="w-32 bg-transparent text-sm font-bold text-gray-600 outline-none placeholder:text-gray-400" />
             </div>
           </div>
         </div>
 
         <div className="mb-8 grid grid-cols-1 gap-5 md:grid-cols-3">
-          <article className="rounded-[28px] border border-gray-200 bg-white p-6 shadow-sm">
+          <article className="flex h-full flex-col justify-between rounded-2xl border border-gray-200 bg-white p-6 shadow-[0_2px_10px_rgba(0,0,0,0.02)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_25px_rgba(0,0,0,0.05)]">
             <div className="mb-4 flex items-center justify-between">
-              <span className="text-xs font-extrabold tracking-[0.22em] text-gray-400 uppercase">Average Rating</span>
-              <span className="rounded bg-green-100 px-2 py-1 text-[10px] font-bold text-green-700">전체 기준</span>
+              <span className="text-xs font-extrabold uppercase tracking-widest text-gray-400">평균 평점</span>
+              <span className="rounded bg-green-100 px-2 py-1 text-[10px] font-bold text-green-700">최근 30일</span>
             </div>
             <div className="flex items-baseline gap-2">
               <span className="text-4xl font-black text-gray-900">{summary.averageRating.toFixed(1)}</span>
               <span className="text-sm font-bold text-gray-400">/ 5.0</span>
             </div>
             <div className="mt-4 space-y-2">
-              {ratingRows.map((row) => (
-                <div key={row.stars} className="flex items-center gap-2 text-xs font-bold text-gray-500">
-                  <span className="w-3">{row.stars}</span>
-                  <i className={`fas fa-star text-[10px] ${row.active ? 'text-yellow-400' : 'text-gray-300'}`} />
-                  <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
-                    <div className={`h-full ${row.tone}`} style={{ width: `${row.percent}%` }} />
+              {[5, 4, 3, 2, 1].map((stars) => {
+                const count = Number(summary.ratingDistribution?.[String(stars)] ?? 0)
+                const percent = totalReviewCount > 0 ? Math.round((count / totalReviewCount) * 100) : 0
+                const tone = stars === 5 ? 'bg-green-500' : stars === 4 ? 'bg-green-400' : stars === 3 ? 'bg-yellow-400' : stars === 2 ? 'bg-orange-400' : 'bg-red-400'
+                return (
+                  <div key={stars} className="flex items-center gap-2 text-xs font-bold text-gray-500">
+                    <span className="w-3">{stars}</span>
+                    <i className={`fas fa-star text-[10px] ${stars >= 4 ? 'text-yellow-400' : 'text-gray-300'}`} />
+                    <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-gray-100">
+                      <div className={`h-full rounded-full ${tone}`} style={{ width: `${percent}%` }} />
+                    </div>
+                    <span className="w-8 text-right">{percent}%</span>
                   </div>
-                  <span className="w-8 text-right">{row.percent}%</span>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </article>
 
-          <article className="relative overflow-hidden rounded-[28px] border border-gray-200 bg-white p-6 shadow-sm">
-            <div className="absolute top-0 right-0 p-4 opacity-10">
+          <article className="relative flex h-full flex-col justify-between overflow-hidden rounded-2xl border border-gray-200 bg-white p-6 shadow-[0_2px_10px_rgba(0,0,0,0.02)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_25px_rgba(0,0,0,0.05)]">
+            <div className="absolute right-0 top-0 p-4 opacity-10">
               <i className="fas fa-comment-dots text-8xl text-orange-500" />
             </div>
             <div className="relative z-10 mb-4 flex items-center justify-between">
-              <span className="text-xs font-extrabold tracking-[0.22em] text-gray-400 uppercase">Pending Replies</span>
-              <span className="rounded bg-orange-100 px-2 py-1 text-[10px] font-bold text-orange-700">Action Needed</span>
+              <span className="text-xs font-extrabold uppercase tracking-widest text-gray-400">답변 대기</span>
+              <span className="rounded bg-orange-100 px-2 py-1 text-[10px] font-bold text-orange-700">확인 필요</span>
             </div>
             <div className="relative z-10">
               <div className="mb-1 text-4xl font-black text-gray-900">
-                {unansweredCount}
+                {formatNumber(unansweredCount)}
                 <span className="ml-1 text-lg font-bold text-gray-400">건</span>
               </div>
-              <p className="text-xs font-bold text-gray-500">답변을 기다리는 수강평이 있습니다.</p>
+              <p className="text-xs font-bold text-gray-500">답변을 기다리는 수강생이 있습니다.</p>
             </div>
             <div className="relative z-10 mt-6">
-              <button
-                type="button"
-                onClick={setUnrepliedFilter}
-                className="w-full rounded-lg bg-orange-500 py-2 text-xs font-bold text-white shadow-md transition hover:bg-orange-600"
-              >
+              <button type="button" onClick={() => setCurrentTab('unreplied')} className="w-full rounded-lg bg-orange-500 py-2 text-xs font-bold text-white shadow-md transition hover:bg-orange-600">
                 미답변 리뷰 모아보기 <i className="fas fa-arrow-right ml-1" />
               </button>
             </div>
           </article>
 
-          <article className="rounded-[28px] border border-gray-200 bg-white p-6 shadow-sm">
+          <article className="flex h-full flex-col justify-between rounded-2xl border border-gray-200 bg-white p-6 shadow-[0_2px_10px_rgba(0,0,0,0.02)] transition hover:-translate-y-0.5 hover:shadow-[0_10px_25px_rgba(0,0,0,0.05)]">
             <div className="mb-4 flex items-center justify-between">
-              <span className="text-xs font-extrabold tracking-[0.22em] text-gray-400 uppercase">Review Keywords</span>
+              <span className="text-xs font-extrabold uppercase tracking-widest text-gray-400">리뷰 키워드</span>
               <i className="fas fa-lightbulb text-yellow-400" />
             </div>
             <div className="flex min-h-[108px] flex-wrap content-start gap-2">
               {keywordTags.length > 0 ? (
-                keywordTags.map(({ label, issue }) => (
-                  <span
-                    key={label}
-                    className={`rounded-full px-3 py-1 text-xs font-bold ${
-                      issue ? 'bg-orange-50 text-orange-600 ring-1 ring-orange-100' : 'bg-gray-100 text-gray-600'
-                    }`}
-                  >
-                    {label}
+                keywordTags.map((tag) => (
+                  <span key={tag.label} className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${tag.issue ? 'border border-red-100 bg-red-50 text-red-700' : 'border border-green-100 bg-green-50 text-green-700'}`}>
+                    {tag.label}
                   </span>
                 ))
               ) : (
-                <span className="text-xs font-bold text-gray-400">아직 집계된 이슈 태그가 없습니다.</span>
+                <span className="text-xs font-bold text-gray-400">아직 표시할 리뷰 키워드가 없습니다.</span>
               )}
             </div>
-            <p className="mt-2 text-right text-[10px] font-bold text-gray-400">* 전체 리뷰 분석</p>
+            <p className="mt-2 text-right text-[10px] font-bold text-gray-400">* 최근 30일 리뷰 분석</p>
           </article>
         </div>
 
-        <div className="mb-4 flex flex-wrap gap-2 rounded-[24px] border border-gray-200 bg-white p-2 shadow-sm">
+        <div className="mb-4 flex border-b border-gray-200">
           {[
-            { key: 'all', label: '전체 수강평', count: String(totalReviewCount) },
-            { key: 'unreplied', label: '미답변', count: String(unansweredCount) },
-            { key: 'low', label: '별점 3점 이하', count: String(lowRatingCount) },
+            { key: 'all', label: '전체 수강평', count: totalReviewCount, tone: 'bg-gray-100 text-gray-600' },
+            { key: 'unreplied', label: '미답변', count: unansweredCount, tone: 'bg-orange-100 text-orange-600' },
+            { key: 'low', label: '별점 3점 이하', count: lowRatingCount, tone: 'bg-gray-100 text-gray-600' },
           ].map((tab) => (
-            <button
-              key={tab.key}
-              type="button"
-              onClick={() => setCurrentTab(tab.key as ReviewTabKey)}
-              className={`rounded-2xl px-4 py-3 text-sm font-bold transition ${
-                currentTab === tab.key ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-800'
-              }`}
-            >
-              {tab.label}{' '}
-              <span
-                className={`ml-1 rounded-full px-2 py-0.5 text-[11px] font-extrabold ${
-                  currentTab === tab.key
-                    ? 'bg-white/15 text-white'
-                    : tab.key === 'unreplied'
-                      ? 'bg-orange-100 text-orange-600'
-                      : 'bg-gray-100 text-gray-600'
-                }`}
-              >
-                {tab.count}
+            <button key={tab.key} type="button" onClick={() => setCurrentTab(tab.key as ReviewTabKey)} className={`-mb-px flex items-center px-6 py-3 text-sm font-bold transition ${currentTab === tab.key ? 'border-b-2 border-b-[#00C471] text-[#00C471]' : 'border-b-2 border-b-transparent text-gray-500 hover:text-gray-900'}`}>
+              {tab.label}
+              <span className={`ml-2 rounded-full px-2 py-0.5 text-[11px] font-bold ${currentTab === tab.key ? 'bg-[#E6F9F1] text-[#00C471]' : tab.tone}`}>
+                {formatNumber(tab.count)}
               </span>
             </button>
           ))}
         </div>
 
-        <div className="mb-5 flex flex-col gap-3 rounded-[24px] border border-gray-200 bg-white px-4 py-3 shadow-sm md:flex-row md:items-center md:justify-between">
+        <div className="mb-5 flex items-center justify-between gap-3">
           <div className="flex gap-2">
-            <select
-              value={sortFilter}
-              onChange={(event) => setSortFilter(event.target.value)}
-              className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-bold text-gray-600 outline-none focus:border-brand"
-            >
-              <option value="latest">🕒 최신순</option>
+            <select value={sortFilter} onChange={(event) => setSortFilter(event.target.value)} className="cursor-pointer rounded-lg border border-gray-200 bg-white px-3 py-2 text-[13px] font-semibold text-gray-700 outline-none focus:border-[#00C471]">
+              <option value="latest">최신순</option>
               <option value="oldest">오래된순</option>
               <option value="high">별점 높은순</option>
               <option value="low">별점 낮은순</option>
             </select>
-            <select
-              value={starFilter}
-              onChange={(event) => setStarFilter(event.target.value)}
-              className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-bold text-gray-600 outline-none focus:border-brand"
-            >
-              <option value="all">⭐ 별점 전체</option>
+            <select value={starFilter} onChange={(event) => setStarFilter(event.target.value)} className="cursor-pointer rounded-lg border border-gray-200 bg-white px-3 py-2 text-[13px] font-semibold text-gray-700 outline-none focus:border-[#00C471]">
+              <option value="all">별점 전체</option>
               <option value="5">5점만</option>
               <option value="4">4점만</option>
               <option value="3">3점 이하</option>
             </select>
           </div>
           <div className="text-xs font-bold text-gray-400">
-            총 <span className="text-gray-900">{filteredReviews.length}</span>개의 리뷰가 표시됩니다.
+            총 <span className="text-gray-900">{formatNumber(filteredReviews.length)}</span>개의 리뷰가 표시됩니다.
           </div>
         </div>
 
-        <div className="space-y-4">
-          {filteredReviews.map((review) => {
-            const issueMeta = getIssueMeta(review)
-            const replyDateLabel = review.reply ? relativeDateLabel(review.reply.updatedAt ?? review.reply.createdAt) : ''
-
+        <div id="reviewList">
+          {visibleReviews.map((review) => {
+            const meta = getIssueMeta(review)
+            const displayName = profile?.name || review.reply?.authorName || session.name
+            const profileImage = profile?.profileImage ?? review.reply?.authorProfileImage ?? null
             return (
-              <article key={review.reviewId} className="rounded-[28px] border border-gray-200 bg-white p-6 shadow-sm">
+              <article key={review.reviewId} className={`group relative mb-4 rounded-xl border border-gray-200 border-l-4 bg-white p-6 transition hover:border-emerald-200 hover:shadow-[0_4px_20px_rgba(0,196,113,0.08)] ${meta.borderTone}`}>
                 <div className="flex items-start justify-between">
                   <div>
-                    <span className="inline-flex rounded-full bg-emerald-50 px-3 py-1 text-xs font-extrabold text-emerald-700 ring-1 ring-emerald-100">
-                      {review.courseTitle}
-                    </span>
-                    <div className="mt-2 mb-2 flex items-center gap-2">
-                      <StarRow rating={review.rating} />
+                    <span className="mb-2 inline-block rounded-md bg-gray-100 px-2 py-1 text-[11px] font-extrabold text-gray-500">{review.courseTitle}</span>
+                    <div className="mb-2 mt-1 flex items-center gap-2">
+                      <div className="flex text-xs text-yellow-400">
+                        {Array.from({ length: 5 }).map((_, index) => {
+                          if (index < Math.floor(review.rating)) return <i key={index} className="fas fa-star" />
+                          if (index === Math.floor(review.rating) && review.rating % 1 !== 0) return <i key={index} className="fas fa-star-half-alt" />
+                          return <i key={index} className="far fa-star" />
+                        })}
+                      </div>
                       <span className="text-sm font-black text-gray-900">{review.rating.toFixed(1)}</span>
-                      <span className="text-xs font-bold text-gray-400">·</span>
+                      <span className="mx-1 text-xs font-bold text-gray-400">·</span>
                       <span className="text-xs font-bold text-gray-500">{review.learnerName}</span>
                       <span className="text-xs font-bold text-gray-300">{relativeDateLabel(review.createdAt)}</span>
                     </div>
                   </div>
-                  <span className={`rounded-full border px-2 py-1 text-[10px] font-bold ${toneClass(issueMeta.tone)}`}>
-                    <i className={`fas ${issueMeta.icon} mr-1`} />
-                    {issueMeta.label}
+                  <span className={`rounded-full border px-2 py-1 text-[10px] font-bold ${meta.badgeTone}`}>
+                    <i className={`fas ${meta.icon} mr-1`} />
+                    {meta.badge}
                   </span>
                 </div>
 
-                <p className="mb-3 text-sm leading-relaxed font-medium text-gray-700">{review.content}</p>
+                <p className="mb-3 text-sm font-medium leading-relaxed text-gray-700">{review.content}</p>
 
                 {review.issueTags.length > 0 ? (
-                  <div className="mb-4 flex gap-2">
+                  <div className="mb-4 flex flex-wrap gap-2">
                     {review.issueTags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="rounded-full bg-orange-50 px-3 py-1 text-xs font-bold text-orange-600 ring-1 ring-orange-100"
-                      >
-                        #{tag}
+                      <span key={`${review.reviewId}-${tag}`} className={`rounded-full px-2.5 py-1 text-[11px] font-bold ${isNegativeTag(tag) ? 'border border-red-100 bg-red-50 text-red-700' : 'border border-green-100 bg-green-50 text-green-700'}`}>
+                        {formatTag(tag)}
                       </span>
                     ))}
                   </div>
                 ) : null}
 
                 {review.reply ? (
-                  <div className="mt-5 rounded-2xl bg-gray-50 p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="flex flex-col items-center gap-1">
-                        <UserAvatar
-                          name={review.reply.authorName || session.name}
-                          imageUrl={null}
-                          className="h-8 w-8 bg-white shadow-sm"
-                          alt={review.reply.authorName || session.name}
-                        />
+                  <div className="mt-4 border-t border-gray-100 pt-4">
+                    <div className="flex items-start">
+                      <div className="z-10 flex flex-col items-center gap-1">
+                        <UserAvatar name={displayName} imageUrl={profileImage} className="h-8 w-8 bg-white shadow-sm" alt={displayName} />
                         <div className="my-1 h-full w-px bg-gray-200" />
                       </div>
-                      <div className="min-w-0 flex-1 rounded-2xl border border-green-100 bg-white px-4 py-3">
+                      <div className="relative ml-5 flex-1 rounded-[0_12px_12px_12px] border border-green-200 bg-green-50 px-4 py-4">
+                        <div className="absolute left-[-9px] top-0 h-0 w-0 border-t-[12px] border-l-[12px] border-t-green-200 border-l-transparent" />
                         <div className="mb-1 flex items-center justify-between">
-                          <span className="text-xs font-black text-green-700">{review.reply.authorName || `${session.name} (Instructor)`}</span>
-                          <span className="text-[10px] font-bold text-gray-400">{replyDateLabel}</span>
+                          <span className="text-xs font-black text-green-700">{displayName} (강사)</span>
+                          <span className="text-[10px] font-bold text-gray-400">{relativeDateLabel(review.reply.updatedAt ?? review.reply.createdAt)}</span>
                         </div>
                         <p className="text-sm text-gray-700">{review.reply.content}</p>
                         <div className="mt-2 text-right">
-                          <button
-                            type="button"
-                            onClick={() => toggleReplyForm(review)}
-                            className="text-[10px] font-bold text-gray-400 underline transition hover:text-gray-600"
-                          >
-                            수정
-                          </button>
+                          <button type="button" onClick={() => toggleReplyForm(review)} className="text-[10px] font-bold text-gray-400 underline transition hover:text-gray-600">수정</button>
                         </div>
                       </div>
                     </div>
@@ -668,40 +512,23 @@ export default function InstructorReviewsPage({ session }: { session: AuthSessio
                 ) : null}
 
                 {openReplyFormId === review.reviewId ? (
-                  <div className="mt-4 rounded-2xl border border-gray-100 bg-gray-50 p-4">
+                  <div className="mt-4 rounded-lg border border-gray-100 bg-gray-50 p-4">
                     <div className="flex items-start gap-3">
-                      <UserAvatar
-                        name={session.name}
-                        imageUrl={null}
-                        className="h-8 w-8 bg-white"
-                        alt={session.name}
-                      />
+                      <UserAvatar name={displayName} imageUrl={profileImage} className="h-8 w-8 bg-white" alt={displayName} />
                       <div className="flex-1">
                         <textarea
                           rows={review.rating <= 3 ? 4 : 3}
                           value={replyDrafts[review.reviewId] ?? ''}
                           onChange={(event) => updateDraft(review.reviewId, event.target.value)}
-                          placeholder={
-                            review.rating <= 3
-                              ? '학습 로드맵을 제안하거나 보충 자료를 안내해 드려보세요.'
-                              : '수강생에게 격려의 말이나 해결책을 답변해주세요.'
-                          }
-                          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-gray-700 outline-none transition focus:border-brand focus:shadow-[0_0_0_3px_rgba(0,196,113,0.12)]"
+                          placeholder={review.rating <= 3 ? '수강생에게 구체적인 해결책이나 보충 학습 방향을 답변해주세요.' : '수강생에게 격려의 말이나 해결책을 답변해주세요.'}
+                          className="min-h-[110px] w-full rounded-lg border border-gray-200 bg-white px-4 py-3.5 text-sm font-medium text-gray-700 outline-none transition focus:border-[#00C471] focus:shadow-[0_0_0_3px_rgba(0,196,113,0.10)] placeholder:text-gray-400"
                         />
-                        <div className="mt-2 flex items-center justify-between">
-                          <button
-                            type="button"
-                            onClick={() => openTemplateModal(review.reviewId)}
-                            className="rounded border border-green-100 bg-green-50 px-2 py-1 text-xs font-bold text-green-600 transition hover:text-green-800"
-                          >
-                            <i className="fas fa-bolt mr-1" /> 템플릿 불러오기
+                        <div className="mt-3 flex items-center justify-between">
+                          <button type="button" onClick={() => openTemplateModal(review.reviewId)} className="rounded border border-green-100 bg-green-50 px-2 py-1 text-xs font-bold text-green-600 transition hover:text-green-800">
+                            <i className="fas fa-bolt mr-1" />템플릿 불러오기
                           </button>
-                          <button
-                            type="button"
-                            onClick={() => submitReply(review.reviewId)}
-                            className="rounded-xl bg-brand px-4 py-2 text-xs font-extrabold text-white shadow-sm transition hover:bg-green-600"
-                          >
-                            {review.reply ? '답글 수정' : '답글 등록'}
+                          <button type="button" onClick={() => submitReply(review.reviewId)} className="rounded-lg border border-gray-900 bg-gray-900 px-4 py-2 text-xs font-bold text-white transition hover:bg-black">
+                            답글 등록
                           </button>
                         </div>
                       </div>
@@ -710,20 +537,12 @@ export default function InstructorReviewsPage({ session }: { session: AuthSessio
                 ) : null}
 
                 {!review.reply ? (
-                  <div className="mt-4 flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => toggleReplyForm(review)}
-                      className="rounded-xl border border-brand bg-green-50 px-4 py-2 text-xs font-bold text-brand transition hover:bg-green-100"
-                    >
-                      <i className="fas fa-reply mr-1" /> 답글 작성
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => toggleReplyForm(review)} className="rounded-lg border border-[#00C471] bg-green-50 px-3.5 py-2 text-xs font-bold text-[#00C471] transition hover:bg-green-100">
+                      <i className="fas fa-reply mr-1" />답글 작성
                     </button>
-                    <button
-                      type="button"
-                      onClick={() => registerIssue(review.reviewId)}
-                      className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-bold text-gray-600 transition hover:bg-gray-50"
-                    >
-                      <i className="fas fa-flag mr-1" /> 이슈 등록
+                    <button type="button" onClick={() => registerIssue(review.reviewId)} className="rounded-lg border border-gray-200 bg-white px-3.5 py-2 text-xs font-bold text-gray-700 transition hover:bg-gray-50">
+                      <i className="fas fa-flag mr-1" />이슈 등록
                     </button>
                   </div>
                 ) : null}
@@ -732,35 +551,29 @@ export default function InstructorReviewsPage({ session }: { session: AuthSessio
           })}
         </div>
 
-        <div className="py-6 text-center">
-          <button type="button" className="text-sm font-bold text-gray-500 transition hover:text-gray-800">
-            더 불러오기 <i className="fas fa-chevron-down ml-1" />
-          </button>
-        </div>
+        {hasMore ? (
+          <div className="py-6 text-center">
+            <button type="button" onClick={() => setVisibleLimit((current) => current + 6)} className="text-sm font-bold text-gray-500 transition hover:text-gray-800">
+              더 불러오기 <i className="fas fa-chevron-down ml-1" />
+            </button>
+          </div>
+        ) : null}
       </div>
 
       {templateModalOpen ? (
-        <div className="fixed inset-0 z-[2500] flex items-center justify-center bg-black/50 px-4">
-          <div className="w-full max-w-md overflow-hidden rounded-[28px] bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50 px-4 py-4">
-              <h3 className="text-sm font-black text-gray-900">
-                <i className="fas fa-bolt mr-2 text-yellow-400" />
-                빠른 답변 템플릿
-              </h3>
+        <div className="fixed inset-0 z-[2000] flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-[400px] overflow-hidden rounded-2xl bg-white shadow-[0_10px_40px_rgba(0,0,0,0.2)]">
+            <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50 px-5 py-4">
+              <h3 className="text-sm font-black text-gray-900"><i className="fas fa-bolt mr-2 text-yellow-400" />빠른 답변 템플릿</h3>
               <button type="button" onClick={() => setTemplateModalOpen(false)} className="text-gray-400 transition hover:text-gray-600">
                 <i className="fas fa-times" />
               </button>
             </div>
             <div className="max-h-[300px] overflow-y-auto">
               {templateOptions.map((template) => (
-                <button
-                  key={template.key}
-                  type="button"
-                  onClick={() => insertTemplate(template)}
-                  className="w-full border-b border-gray-100 px-5 py-4 text-left transition hover:bg-gray-50"
-                >
-                  <div className="text-sm font-black text-gray-900">{template.title}</div>
-                  <div className="mt-1 text-xs text-gray-500">{template.description}</div>
+                <button key={template.key} type="button" onClick={() => insertTemplate(template)} className="w-full border-b border-gray-100 px-5 py-4 text-left transition last:border-b-0 hover:bg-gray-50">
+                  <div className="mb-1 text-[13px] font-extrabold text-gray-900">{template.title}</div>
+                  <div className="truncate text-xs text-gray-500">{template.description}</div>
                 </button>
               ))}
             </div>

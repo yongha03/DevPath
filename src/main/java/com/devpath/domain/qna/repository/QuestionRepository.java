@@ -81,4 +81,6 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
     );
 
     long countByCourseIdAndIsDeletedFalse(Long courseId);
+
+    long countByCourseIdAndQnaStatusAndIsDeletedFalse(Long courseId, QnaStatus status);
 }

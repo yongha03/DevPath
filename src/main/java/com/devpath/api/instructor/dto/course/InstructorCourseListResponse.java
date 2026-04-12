@@ -13,6 +13,7 @@ public record InstructorCourseListResponse(
         Long studentCount,
         Double averageProgressPercent,
         Long pendingQuestionCount,
+        Long reviewCount,
         Double averageRating,
         String thumbnailUrl,
         LocalDateTime publishedAt

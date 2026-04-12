@@ -1,78 +1,468 @@
-import { useEffect, useState } from 'react'
-import { ErrorCard, LoadingCard, formatDate } from '../../account/ui'
+import { useEffect, useState, type SyntheticEvent } from 'react'
+import { EmptyCard, ErrorCard, LoadingCard } from '../../account/ui'
+import {
+  DEFAULT_INSTRUCTOR_COURSE_THUMBNAIL,
+  getInstructorCategoryChipLabel,
+  normalizeInstructorCategoryLabel,
+  normalizeInstructorCourseStatus,
+  normalizeInstructorCourseTitle,
+  normalizeInstructorLevelLabel,
+  resolveInstructorCourseThumbnailUrl,
+} from '../../instructor/course-display'
 import { instructorAnnouncementApi, instructorCourseApi } from '../../lib/api'
 import type {
   InstructorAnnouncementDetail,
   InstructorCourseListItem,
 } from '../../types/instructor'
 
-type CourseStatus = 'published' | 'draft' | 'review'
+type CourseStatus = 'published' | 'review' | 'draft'
+type CourseFilter = 'all' | 'published' | 'draft'
+type FeaturedSlot = 'published' | 'review' | 'draft'
+type MetricTone = 'purple' | 'blue' | 'green' | 'yellow'
 
-function mapCourseStatus(status: string | null): CourseStatus {
-  switch (status) {
-    case 'PUBLISHED':
-      return 'published'
-    case 'IN_REVIEW':
-      return 'review'
-    case 'DRAFT':
-    default:
-      return 'draft'
-  }
+type CourseCardModel = InstructorCourseListItem & {
+  displayStatus: CourseStatus
+  displayTitle: string
+  displayCategory: string
+  displayCategoryChip: string
+  displayLevel: string
+  displayThumbnailUrl: string
+  displayDate: string
+  displayDuration: string
+  displayRatingValue: string
+  displayReviewCountLabel: string
+  displayStudentCountLabel: string
+  displayProgressLabel: string
+  displayPendingQuestionCount: number
+  displayPendingQuestionLabel: string
+  displayDraftProgress: number
+  displayDraftMessage: string
 }
 
-function getStatusMeta(status: CourseStatus) {
-  switch (status) {
-    case 'published':
-      return {
-        label: '공개 중',
-        tone: 'bg-green-100 text-green-700',
-      }
-    case 'review':
-      return {
-        label: '심사 중',
-        tone: 'bg-yellow-100 text-yellow-700',
-      }
-    case 'draft':
-    default:
-      return {
-        label: '초안',
-        tone: 'bg-gray-100 text-gray-600',
-      }
+const FEATURED_COURSE_TITLES: Record<FeaturedSlot, string> = {
+  published: 'Spring Boot Intro',
+  review: '스프링 부트 3.0 완전 정복',
+  draft: '제목 없는 강의 (초안)',
+}
+
+const ANNOUNCEMENT_TITLE_LABELS: Record<string, string> = {
+  'Offline security special event': '오프라인 스프링 시큐리티 특강 안내',
+  'Course material update': '강의 자료 업데이트 안내',
+}
+
+const ANNOUNCEMENT_CONTENT_LABELS: Record<string, string> = {
+  'Join the offline Spring Security special lecture and Q&A session.':
+    '오프라인 스프링 시큐리티 특강과 Q&A 세션 일정을 안내드립니다.',
+  'The latest Spring Boot Intro materials and examples have been updated.':
+    '스프링 부트 입문 강의의 최신 자료와 예제 파일이 업데이트되었습니다.',
+}
+
+function normalizeAnnouncementTitle(title: string) {
+  return ANNOUNCEMENT_TITLE_LABELS[title] ?? title
+}
+
+function normalizeAnnouncementContent(content: string) {
+  return ANNOUNCEMENT_CONTENT_LABELS[content] ?? content
+}
+
+function formatCompactDate(value: string | null | undefined) {
+  if (!value) {
+    return '-'
   }
+
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return '-'
+  }
+
+  const year = String(date.getFullYear()).slice(-2)
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}.${month}.${day}`
 }
 
 function formatDuration(durationSeconds: number | null) {
   if (!durationSeconds || durationSeconds <= 0) {
-    return '-'
+    return '분량 미정'
   }
 
-  const hours = Math.floor(durationSeconds / 3600)
-  const minutes = Math.floor((durationSeconds % 3600) / 60)
+  const totalMinutes = Math.floor(durationSeconds / 60)
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
 
-  if (hours > 0) {
-    return `${hours}시간 ${minutes}분`
+  if (hours <= 0) {
+    return `${minutes}분`
   }
 
-  return `${minutes}분`
+  if (minutes <= 0) {
+    return `${hours}시간`
+  }
+
+  return `${hours}시간 ${minutes}분`
 }
 
-function getUniqueValues(courses: InstructorCourseListItem[], key: 'categoryLabel' | 'levelLabel'): string[] {
-  return [...new Set(courses.map((c) => c[key]).filter(Boolean))].sort()
+function buildDraftProgress(course: InstructorCourseListItem) {
+  let progress = 10
+
+  if (course.title.trim()) {
+    progress += 10
+  }
+
+  if (course.lessonCount > 0) {
+    progress += Math.min(course.lessonCount * 10, 30)
+  }
+
+  if (course.durationSeconds && course.durationSeconds > 0) {
+    progress += 20
+  }
+
+  if (course.levelLabel && course.levelLabel !== '-') {
+    progress += 10
+  }
+
+  return Math.min(progress, 95)
 }
 
-function getUniqueTags(courses: InstructorCourseListItem[]): string[] {
-  return [...new Set(courses.flatMap((c) => c.tags ?? []))].sort()
+function formatCount(value: number) {
+  return value.toLocaleString('ko-KR')
+}
+
+function getUniqueValues(courses: CourseCardModel[], key: 'displayCategory' | 'displayLevel') {
+  return [...new Set(courses.map((course) => course[key]).filter(Boolean))].sort()
+}
+
+function handleThumbnailError(event: SyntheticEvent<HTMLImageElement>) {
+  const target = event.currentTarget
+  if (target.dataset.fallbackApplied === 'true') {
+    return
+  }
+
+  target.dataset.fallbackApplied = 'true'
+  target.src = DEFAULT_INSTRUCTOR_COURSE_THUMBNAIL
+}
+
+function toCourseCardModel(course: InstructorCourseListItem): CourseCardModel {
+  const reviewCount = Number(course.reviewCount ?? 0)
+
+  return {
+    ...course,
+    displayStatus: normalizeInstructorCourseStatus(course.status) as CourseStatus,
+    displayTitle: normalizeInstructorCourseTitle(course.title) ?? '제목 없는 강의 (초안)',
+    displayCategory: normalizeInstructorCategoryLabel(course.categoryLabel, course.title),
+    displayCategoryChip: getInstructorCategoryChipLabel(course.categoryLabel, course.title),
+    displayLevel: normalizeInstructorLevelLabel(course.levelLabel),
+    displayThumbnailUrl: resolveInstructorCourseThumbnailUrl(course.thumbnailUrl, course.title),
+    displayDate: formatCompactDate(course.publishedAt),
+    displayDuration: formatDuration(course.durationSeconds),
+    displayRatingValue: course.averageRating.toFixed(1),
+    displayReviewCountLabel: formatCount(reviewCount),
+    displayStudentCountLabel: `${formatCount(course.studentCount)}명`,
+    displayProgressLabel: `${course.averageProgressPercent.toFixed(0)}%`,
+    displayPendingQuestionCount: Number(course.pendingQuestionCount ?? 0),
+    displayPendingQuestionLabel: `${formatCount(course.pendingQuestionCount)}건`,
+    displayDraftProgress: buildDraftProgress(course),
+    displayDraftMessage: '커리큘럼 작성 중',
+  }
+}
+
+function isExactFeaturedCourse(course: CourseCardModel, slot: FeaturedSlot) {
+  const expectedTitle = FEATURED_COURSE_TITLES[slot]
+  return course.title === expectedTitle || course.displayTitle === expectedTitle
+}
+
+function buildFeaturedCourses(courses: CourseCardModel[]) {
+  const picks = new Map<FeaturedSlot, CourseCardModel>()
+
+  ;(['published', 'review', 'draft'] as FeaturedSlot[]).forEach((slot) => {
+    const exact = courses.find((course) => isExactFeaturedCourse(course, slot))
+    const fallback = courses.find((course) => {
+      if (slot === 'published') {
+        return course.displayStatus === 'published'
+      }
+
+      if (slot === 'review') {
+        return course.displayStatus === 'review'
+      }
+
+      return course.displayStatus === 'draft'
+    })
+
+    const selected = exact ?? fallback
+    if (selected) {
+      picks.set(slot, selected)
+    }
+  })
+
+  return (['published', 'review', 'draft'] as FeaturedSlot[])
+    .map((slot) => picks.get(slot))
+    .filter((course): course is CourseCardModel => Boolean(course))
+}
+
+function MetricCard(_: {
+  label: string
+  value: string
+  sub: string
+  icon: string
+  tone: MetricTone
+}) {
+  const { label, value, sub, icon, tone } = _
+  const toneClass =
+    tone === 'purple'
+      ? 'bg-purple-50 text-purple-600'
+      : tone === 'blue'
+        ? 'bg-blue-50 text-blue-600'
+        : tone === 'green'
+          ? 'bg-emerald-50 text-emerald-600'
+          : 'bg-yellow-50 text-yellow-500'
+
+  return (
+    <article className="rounded-[16px] border border-gray-200 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-[12px] font-semibold text-gray-500">{label}</p>
+        <div className={`flex h-8 w-8 items-center justify-center rounded-[8px] ${toneClass}`}>
+          <i className={icon} />
+        </div>
+      </div>
+      <div className="text-[22px] font-bold leading-none text-gray-900">{value}</div>
+      <p className="mt-1.5 text-[11px] font-medium text-gray-400">{sub}</p>
+    </article>
+  )
+}
+
+function PublishedCourseCard(_: {
+  course: CourseCardModel
+  onOpenNotice: (courseId: number) => void
+}) {
+  const { course, onOpenNotice } = _
+
+  return (
+    <article className="rounded-[16px] border border-gray-200 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.02)] transition hover:-translate-y-[1px] hover:border-gray-300 hover:shadow-[0_4px_12px_rgba(17,24,39,0.04)]">
+      <div className="flex flex-col gap-4 md:flex-row md:items-start">
+        <div className="relative h-[100px] w-full shrink-0 overflow-hidden rounded-[10px] bg-gray-100 md:w-[160px]">
+          <img
+            src={course.displayThumbnailUrl}
+            alt={course.displayTitle}
+            className="h-full w-full object-cover transition duration-300 hover:scale-[1.03]"
+            onError={handleThumbnailError}
+          />
+          <div className="absolute left-2 top-2 rounded bg-gray-900/70 px-1.5 py-0.5 text-[9px] font-bold text-white backdrop-blur">
+            {course.displayCategoryChip}
+          </div>
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="mb-1 flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="mb-1.5 flex items-center gap-2">
+                <span className="inline-flex items-center gap-1 rounded-md bg-green-50 px-2 py-1 text-[11px] font-semibold text-green-700">
+                  <i className="fas fa-circle text-[6px]" />
+                  공개 중
+                </span>
+                <span className="text-[11px] font-medium text-gray-400">
+                  업데이트: {course.displayDate}
+                </span>
+              </div>
+              <h3 className="truncate text-base font-bold text-gray-900 transition hover:text-emerald-500">
+                {course.displayTitle}
+              </h3>
+            </div>
+
+            <div className="flex gap-1">
+              <button
+                type="button"
+                title="통계"
+                onClick={() => {
+                  window.location.href = `student-analytics.html?courseId=${course.courseId}`
+                }}
+                className="flex h-8 w-8 items-center justify-center rounded-[8px] text-gray-500 transition hover:bg-gray-100 hover:text-gray-900"
+              >
+                <i className="fas fa-chart-line" />
+              </button>
+              <button
+                type="button"
+                title="공지사항"
+                onClick={() => onOpenNotice(course.courseId)}
+                className="flex h-8 w-8 items-center justify-center rounded-[8px] text-gray-500 transition hover:bg-gray-100 hover:text-gray-900"
+              >
+                <i className="fas fa-bullhorn" />
+              </button>
+            </div>
+          </div>
+
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-[11px] font-medium text-gray-600">
+              {course.displayLevel}
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-1 text-[11px] font-medium text-gray-600">
+              <i className="fas fa-clock text-gray-400" />
+              {course.displayDuration}
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-md border border-yellow-100 bg-yellow-50 px-2 py-1 text-[11px] font-semibold text-yellow-700">
+              <i className="fas fa-star text-[10px] text-yellow-500" />
+              {course.displayRatingValue} ({course.displayReviewCountLabel})
+            </span>
+          </div>
+
+          <div className="flex flex-col gap-3 rounded-lg border border-gray-100 bg-gray-50 p-2.5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex flex-wrap items-center gap-4 px-2 text-xs">
+              <div className="flex flex-col">
+                <span className="mb-0.5 font-semibold text-gray-500">누적 수강생</span>
+                <span className="font-bold text-gray-900">{course.displayStudentCountLabel}</span>
+              </div>
+              <div className="hidden h-8 w-px bg-gray-200 sm:block" />
+              <div className="flex flex-col">
+                <span className="mb-0.5 font-semibold text-gray-500">수강률</span>
+                <span className="font-bold text-emerald-500">{course.displayProgressLabel}</span>
+              </div>
+              <div className="hidden h-8 w-px bg-gray-200 sm:block" />
+              <div className="flex flex-col">
+                <span className="mb-0.5 font-semibold text-red-400">미답변 Q&amp;A</span>
+                <span className="font-bold text-red-600">{course.displayPendingQuestionLabel}</span>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                window.location.href = `instructor-course-detail.html?courseId=${course.courseId}`
+              }}
+              className="inline-flex h-[34px] items-center justify-center rounded-[10px] bg-gray-900 px-[14px] text-[12px] font-semibold text-white transition hover:bg-gray-700"
+            >
+              관리하기
+            </button>
+          </div>
+        </div>
+      </div>
+    </article>
+  )
+}
+
+function ReviewCourseCard(_: { course: CourseCardModel }) {
+  const { course } = _
+
+  return (
+    <article className="rounded-[16px] border border-gray-200 bg-gray-50/30 p-4 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+      <div className="flex flex-col gap-4 md:flex-row md:items-start">
+        <div className="flex h-[100px] w-full shrink-0 items-center justify-center rounded-[10px] border border-gray-200 bg-gray-100 md:w-[160px]">
+          <i className="fas fa-search text-2xl text-gray-300" />
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="mb-1 flex items-start justify-between">
+            <div className="min-w-0">
+              <div className="mb-1.5 flex items-center gap-2">
+                <span className="inline-flex items-center gap-1 rounded-md bg-amber-50 px-2 py-1 text-[11px] font-semibold text-amber-700">
+                  <i className="fas fa-hourglass-half text-[8px]" />
+                  심사 대기
+                </span>
+                <span className="text-[11px] font-medium text-gray-400">
+                  제출일 {course.displayDate}
+                </span>
+              </div>
+              <h3 className="truncate text-base font-bold text-gray-900">{course.displayTitle}</h3>
+            </div>
+          </div>
+
+          <div className="mb-3 flex gap-2">
+            <span className="inline-flex items-center rounded-md bg-gray-100 px-2 py-1 text-[11px] font-medium text-gray-600">
+              {course.displayLevel}
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-1 text-[11px] font-medium text-gray-600">
+              <i className="fas fa-clock text-gray-400" />
+              {course.displayDuration}
+            </span>
+          </div>
+
+          <div className="mt-1 flex items-center justify-between gap-4">
+            <p className="inline-flex items-center gap-1.5 rounded-lg border border-amber-100 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700">
+              <i className="fas fa-info-circle" />
+              운영팀 검토 중 (약 1~2일 소요)
+            </p>
+            <button
+              type="button"
+              disabled
+              className="inline-flex h-[34px] cursor-not-allowed items-center rounded-[10px] border border-gray-200 bg-white px-[14px] text-[12px] font-semibold text-gray-400"
+            >
+              수정 불가
+            </button>
+          </div>
+        </div>
+      </div>
+    </article>
+  )
+}
+
+function DraftCourseCard(_: { course: CourseCardModel }) {
+  const { course } = _
+
+  return (
+    <article className="rounded-[16px] border border-gray-200 bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.02)]">
+      <div className="flex flex-col gap-4 md:flex-row md:items-start">
+        <div className="flex h-[100px] w-full shrink-0 items-center justify-center rounded-[10px] border border-gray-200 bg-gray-50 md:w-[160px]">
+          <i className="fas fa-pen text-2xl text-gray-300" />
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <div className="mb-1 flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="mb-1.5 flex items-center gap-2">
+                <span className="inline-flex items-center gap-1 rounded-md bg-gray-100 px-2 py-1 text-[11px] font-semibold text-gray-600">
+                  <i className="fas fa-edit text-[8px]" />
+                  작성 중
+                </span>
+                <span className="text-[11px] font-medium text-gray-400">
+                  생성일 {course.displayDate}
+                </span>
+              </div>
+              <h3 className="truncate text-base font-bold text-gray-500">{course.displayTitle}</h3>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => window.alert('초안 삭제는 아직 연결되지 않았습니다.')}
+              className="px-2 text-[11px] font-semibold text-gray-400 transition hover:text-red-500"
+            >
+              삭제
+            </button>
+          </div>
+
+          <div className="mt-6 flex items-center justify-between gap-6">
+            <div className="w-full max-w-sm">
+              <div className="mb-1 flex items-center justify-between text-[11px] font-medium text-gray-500">
+                <span>진행률 {course.displayDraftProgress}%</span>
+                <span>{course.displayDraftMessage}</span>
+              </div>
+              <div className="h-1.5 w-full rounded-full bg-gray-100">
+                <div
+                  className="h-full rounded-full bg-emerald-500"
+                  style={{ width: `${course.displayDraftProgress}%` }}
+                />
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => {
+                window.location.href = `course-editor.html?courseId=${course.courseId}`
+              }}
+              className="inline-flex h-[34px] items-center rounded-[10px] border border-emerald-500 px-[14px] text-[12px] font-semibold text-emerald-600 transition hover:bg-emerald-50"
+            >
+              이어서 작성
+            </button>
+          </div>
+        </div>
+      </div>
+    </article>
+  )
 }
 
 export default function CourseManagementPage() {
-  const [filterStatus, setFilterStatus] = useState<'all' | 'published' | 'draft'>('all')
-  const [search, setSearch] = useState('')
-  const [sort, setSort] = useState('latest')
+  const [courses, setCourses] = useState<InstructorCourseListItem[]>([])
+  const [filterStatus, setFilterStatus] = useState<CourseFilter>('all')
   const [filterCategory, setFilterCategory] = useState('all')
   const [filterLevel, setFilterLevel] = useState('all')
-  const [filterTag, setFilterTag] = useState('all')
   const [pendingOnly, setPendingOnly] = useState(false)
-  const [courses, setCourses] = useState<InstructorCourseListItem[]>([])
+  const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [noticeModalCourseId, setNoticeModalCourseId] = useState<number | null>(null)
@@ -88,20 +478,16 @@ export default function CourseManagementPage() {
   useEffect(() => {
     const controller = new AbortController()
 
-    setLoading(true)
-    setError(null)
-
     instructorCourseApi
       .getCourses(controller.signal)
       .then((nextCourses) => {
         setCourses(nextCourses)
+        setError(null)
       })
       .catch((nextError: Error) => {
-        if (controller.signal.aborted) {
-          return
+        if (!controller.signal.aborted) {
+          setError(nextError.message)
         }
-
-        setError(nextError.message)
       })
       .finally(() => {
         if (!controller.signal.aborted) {
@@ -112,48 +498,70 @@ export default function CourseManagementPage() {
     return () => controller.abort()
   }, [])
 
-  const categoryOptions = getUniqueValues(courses, 'categoryLabel')
-  const levelOptions = getUniqueValues(courses, 'levelLabel')
-  const tagOptions = getUniqueTags(courses)
+  const courseCards = courses
+    .map(toCourseCardModel)
+    .filter((course) => !course.title.startsWith('[A-CASE-]'))
+
+  const featuredCourses = buildFeaturedCourses(courseCards)
+  const categoryOptions = getUniqueValues(featuredCourses, 'displayCategory')
+  const levelOptions = getUniqueValues(featuredCourses, 'displayLevel')
+  const selectedCourse = featuredCourses.find((course) => course.courseId === noticeModalCourseId) ?? null
+
+  const totalStudents = courseCards.reduce((sum, course) => sum + course.studentCount, 0)
+  const totalPendingQuestions = courseCards.reduce(
+    (sum, course) => sum + course.displayPendingQuestionCount,
+    0,
+  )
+  const totalPublished = courseCards.filter((course) => course.displayStatus === 'published').length
+  const totalReview = courseCards.filter((course) => course.displayStatus === 'review').length
+  const totalDraft = courseCards.filter((course) => course.displayStatus === 'draft').length
+  const totalReviewCount = courseCards.reduce(
+    (sum, course) => sum + Number(course.reviewCount ?? 0),
+    0,
+  )
+  const weightedRatingSum = courseCards.reduce(
+    (sum, course) => sum + course.averageRating * Number(course.reviewCount ?? 0),
+    0,
+  )
+  const averageRating = totalReviewCount > 0 ? weightedRatingSum / totalReviewCount : 0
 
   const isFilterActive =
     filterStatus !== 'all' ||
     filterCategory !== 'all' ||
     filterLevel !== 'all' ||
-    filterTag !== 'all' ||
     pendingOnly ||
     search.trim() !== ''
 
-  const visibleCourses = [...courses]
-    .filter((course) => {
-      const status = mapCourseStatus(course.status)
+  const visibleCourses = featuredCourses.filter((course) => {
+    if (filterStatus === 'published' && course.displayStatus !== 'published') {
+      return false
+    }
 
-      if (filterStatus !== 'all' && status !== filterStatus) return false
-      if (filterCategory !== 'all' && course.categoryLabel !== filterCategory) return false
-      if (filterLevel !== 'all' && course.levelLabel !== filterLevel) return false
-      if (filterTag !== 'all' && !(course.tags ?? []).includes(filterTag)) return false
-      if (pendingOnly && course.pendingQuestionCount === 0) return false
+    if (filterStatus === 'draft' && course.displayStatus === 'published') {
+      return false
+    }
 
-      if (search.trim()) {
-        const haystack = `${course.title} ${course.categoryLabel} ${course.levelLabel}`.toLowerCase()
-        return haystack.includes(search.trim().toLowerCase())
-      }
+    if (filterCategory !== 'all' && course.displayCategory !== filterCategory) {
+      return false
+    }
 
+    if (filterLevel !== 'all' && course.displayLevel !== filterLevel) {
+      return false
+    }
+
+    if (pendingOnly && course.displayPendingQuestionCount === 0) {
+      return false
+    }
+
+    if (!search.trim()) {
       return true
-    })
-    .sort((left, right) => {
-      if (sort === 'students') {
-        return right.studentCount - left.studentCount
-      }
+    }
 
-      if (sort === 'rating') {
-        return right.averageRating - left.averageRating
-      }
-
-      return (right.publishedAt ?? '').localeCompare(left.publishedAt ?? '')
-    })
-
-  const selectedCourse = courses.find((course) => course.courseId === noticeModalCourseId) ?? null
+    const keyword = search.trim().toLowerCase()
+    return `${course.displayTitle} ${course.displayCategory} ${course.displayLevel}`
+      .toLowerCase()
+      .includes(keyword)
+  })
 
   async function openNoticeModal(courseId: number) {
     setNoticeModalCourseId(courseId)
@@ -162,7 +570,9 @@ export default function CourseManagementPage() {
 
     try {
       const summaries = await instructorAnnouncementApi.getByCourse(courseId)
-      const details = await Promise.all(summaries.map((item) => instructorAnnouncementApi.getDetail(item.announcementId)))
+      const details = await Promise.all(
+        summaries.map((item) => instructorAnnouncementApi.getDetail(item.announcementId)),
+      )
       setNotices(details)
     } catch (nextError) {
       window.alert(nextError instanceof Error ? nextError.message : '공지 목록을 불러오지 못했습니다.')
@@ -179,16 +589,20 @@ export default function CourseManagementPage() {
     setNotices([])
   }
 
-  function toggleNoticeExpansion(id: number) {
-    setExpandedNoticeIds((current) => (current.includes(id) ? current.filter((item) => item !== id) : [...current, id]))
+  function resetFilters() {
+    setFilterStatus('all')
+    setFilterCategory('all')
+    setFilterLevel('all')
+    setPendingOnly(false)
+    setSearch('')
   }
 
-  function openCreateNoticeModal() {
-    setCreateNoticeOpen(true)
-    setNewNoticeTitle('')
-    setNewNoticeContent('')
-    setShowTitleError(false)
-    setShowContentError(false)
+  function toggleNoticeExpansion(announcementId: number) {
+    setExpandedNoticeIds((current) =>
+      current.includes(announcementId)
+        ? current.filter((item) => item !== announcementId)
+        : [...current, announcementId],
+    )
   }
 
   async function createNotice() {
@@ -235,320 +649,193 @@ export default function CourseManagementPage() {
 
   return (
     <div className="p-6">
-      <div className="mx-auto max-w-[1200px]">
-        <div className="mb-5 rounded-3xl border border-green-100 bg-gradient-to-br from-green-50 to-white p-5">
-          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-            <div>
-              <h1 className="text-2xl font-black tracking-tight text-gray-900">강의 관리</h1>
-              <p className="mt-1 text-sm text-gray-500">등록한 강의와 공지, 학습 현황을 한 번에 관리합니다.</p>
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                window.location.href = 'course-editor.html'
-              }}
-              className="inline-flex items-center gap-2 rounded-2xl bg-brand px-4 py-2.5 text-sm font-black text-white shadow-lg shadow-green-500/20 transition hover:bg-green-600"
-            >
-              <i className="fas fa-plus" /> 새 강의 만들기
-            </button>
+      <div className="mx-auto max-w-[1200px] pb-10">
+        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div>
+            <h1 className="text-xl font-bold tracking-tight text-gray-900">강의 관리</h1>
+            <p className="mt-1 text-xs font-medium text-gray-500">
+              작성 중이거나 운영 중인 모든 강의를 한 화면에서 관리하세요.
+            </p>
           </div>
+          <button
+            type="button"
+            onClick={() => {
+              window.location.href = 'course-editor.html'
+            }}
+            className="inline-flex h-[34px] items-center gap-2 rounded-[10px] bg-emerald-500 px-[14px] text-[12px] font-semibold text-white transition hover:bg-emerald-600"
+          >
+            <i className="fas fa-plus" />
+            새 강의 만들기
+          </button>
         </div>
 
-        <div className="mb-5 grid grid-cols-1 gap-3 md:grid-cols-3">
-          {[
-            ['총 수강생', `${courses.reduce((sum, item) => sum + item.studentCount, 0)}명`, 'bg-blue-50 text-blue-600', 'fas fa-user-plus'],
-            ['강의 수', `${courses.length}개`, 'bg-green-50 text-green-600', 'fas fa-users'],
-            ['평균 평점', `${(courses.reduce((sum, item) => sum + item.averageRating, 0) / Math.max(courses.length, 1)).toFixed(1)} / 5.0`, 'bg-yellow-50 text-yellow-500', 'fas fa-star'],
-          ].map(([label, value, tone, icon]) => (
-            <article key={label} className="flex items-center justify-between rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-              <div>
-                <p className="text-[11px] font-extrabold tracking-[0.04em] text-gray-500 uppercase">{label}</p>
-                <h3 className="mt-1 text-xl font-black text-gray-900">{value}</h3>
-              </div>
-              <div className={`flex h-10 w-10 items-center justify-center rounded-2xl ${tone}`}>
-                <i className={icon} />
-              </div>
-            </article>
-          ))}
+        <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <MetricCard
+            label="총 강의 수"
+            value={`${formatCount(courseCards.length)}개`}
+            sub={`공개 ${formatCount(totalPublished)} · 심사 ${formatCount(totalReview)} · 작성 ${formatCount(totalDraft)}`}
+            icon="fas fa-video"
+            tone="purple"
+          />
+          <MetricCard
+            label="총 수강생"
+            value={`${formatCount(totalStudents)}명`}
+            sub="운영 중인 강의의 누적 수강생 기준"
+            icon="fas fa-users"
+            tone="blue"
+          />
+          <MetricCard
+            label="미답변 질문"
+            value={`${formatCount(totalPendingQuestions)}건`}
+            sub="빠른 답변이 필요한 질문 수"
+            icon="fas fa-question-circle"
+            tone="green"
+          />
+          <MetricCard
+            label="평균 평점"
+            value={`${averageRating.toFixed(1)} / 5.0`}
+            sub={
+              totalReviewCount > 0
+                ? `총 ${formatCount(totalReviewCount)}개 리뷰`
+                : '아직 등록된 리뷰가 없습니다.'
+            }
+            icon="fas fa-star"
+            tone="yellow"
+          />
         </div>
 
-        <div className="mb-4 flex flex-col gap-3 rounded-3xl border border-gray-200 bg-white p-3 shadow-sm">
-          {/* 첫 번째 줄: 상태 탭 + 검색 + 정렬 */}
-          <div className="flex flex-col items-center justify-between gap-3 md:flex-row">
-            <div className="flex w-full gap-1 md:w-auto">
+        <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="inline-flex rounded-[12px] bg-gray-100 p-1">
               {[
-                ['all', '전체'],
-                ['published', '공개 중'],
-                ['draft', '초안 / 심사'],
-              ].map(([key, label]) => (
+                { key: 'all' as const, label: '전체보기' },
+                { key: 'published' as const, label: '공개 중' },
+                { key: 'draft' as const, label: '작성/심사' },
+              ].map((item) => (
                 <button
-                  key={key}
+                  key={item.key}
                   type="button"
-                  onClick={() => setFilterStatus(key as 'all' | 'published' | 'draft')}
-                  className={`rounded-xl px-4 py-2 text-sm transition ${
-                    filterStatus === key ? 'bg-green-50 font-bold text-brand' : 'font-medium text-gray-500 hover:bg-gray-50'
+                  onClick={() => setFilterStatus(item.key)}
+                  className={`inline-flex h-[32px] items-center rounded-[8px] px-[14px] text-[12px] font-semibold leading-none transition ${
+                    filterStatus === item.key
+                      ? 'bg-white text-gray-900 shadow-[0_1px_4px_rgba(0,0,0,0.06)]'
+                      : 'text-gray-500 hover:text-gray-900'
                   }`}
                 >
-                  {label}
+                  {item.label}
                 </button>
               ))}
             </div>
-            <div className="flex w-full gap-2 md:w-auto">
-              <div className="relative flex-1 md:w-72">
-                <input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  type="text"
-                  placeholder="강의명, 카테고리 검색"
-                  className="w-full rounded-xl border border-gray-200 py-2 pr-4 pl-9 text-sm outline-none focus:border-brand"
-                />
-                <i className="fas fa-search absolute top-1/2 left-3 -translate-y-1/2 text-xs text-gray-400" />
-              </div>
+
+            <div className="relative">
               <select
-                value={sort}
-                onChange={(event) => setSort(event.target.value)}
-                className="rounded-xl border border-gray-200 px-3 py-2 text-sm text-gray-600 outline-none focus:border-brand"
+                value={filterCategory}
+                onChange={(event) => setFilterCategory(event.target.value)}
+                className="h-[34px] appearance-none rounded-full border border-gray-200 bg-white pl-[14px] pr-9 text-[12px] font-semibold leading-none text-gray-700 outline-none transition hover:border-gray-300 hover:bg-gray-50"
               >
-                <option value="latest">최신순</option>
-                <option value="students">수강생순</option>
-                <option value="rating">평점순</option>
-              </select>
-            </div>
-          </div>
-
-          {/* 두 번째 줄: 상세 필터 */}
-          <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">
-            {/* 카테고리 */}
-            <select
-              value={filterCategory}
-              onChange={(e) => setFilterCategory(e.target.value)}
-              className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700 outline-none focus:border-brand"
-            >
-              <option value="all">전체 카테고리</option>
-              {categoryOptions.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-
-            {/* 난이도 */}
-            <select
-              value={filterLevel}
-              onChange={(e) => setFilterLevel(e.target.value)}
-              className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700 outline-none focus:border-brand"
-            >
-              <option value="all">전체 난이도</option>
-              {levelOptions.map((l) => (
-                <option key={l} value={l}>{l}</option>
-              ))}
-            </select>
-
-            {/* 태그 */}
-            {tagOptions.length > 0 && (
-              <select
-                value={filterTag}
-                onChange={(e) => setFilterTag(e.target.value)}
-                className="rounded-xl border border-gray-200 bg-white px-3 py-1.5 text-xs text-gray-700 outline-none focus:border-brand"
-              >
-                <option value="all">전체 태그</option>
-                {tagOptions.map((t) => (
-                  <option key={t} value={t}>{t}</option>
+                <option value="all">전체 카테고리</option>
+                {categoryOptions.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
                 ))}
               </select>
-            )}
+              <i className="fas fa-chevron-down pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-400" />
+            </div>
 
-            {/* 미답변 질문 토글 */}
-            <label className="flex cursor-pointer items-center gap-1.5 text-xs text-gray-600">
+            <div className="relative">
+              <select
+                value={filterLevel}
+                onChange={(event) => setFilterLevel(event.target.value)}
+                className="h-[34px] appearance-none rounded-full border border-gray-200 bg-white pl-[14px] pr-9 text-[12px] font-semibold leading-none text-gray-700 outline-none transition hover:border-gray-300 hover:bg-gray-50"
+              >
+                <option value="all">전체 난이도</option>
+                {levelOptions.map((level) => (
+                  <option key={level} value={level}>
+                    {level}
+                  </option>
+                ))}
+              </select>
+              <i className="fas fa-chevron-down pointer-events-none absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] text-gray-400" />
+            </div>
+
+            <label className="inline-flex h-[34px] items-center gap-2 rounded-full border border-gray-200 bg-white px-[14px] text-[12px] font-semibold leading-none text-gray-600 transition hover:border-gray-300 hover:bg-gray-50">
               <input
                 type="checkbox"
                 checked={pendingOnly}
-                onChange={(e) => setPendingOnly(e.target.checked)}
-                className="h-3.5 w-3.5 rounded accent-brand"
+                onChange={(event) => setPendingOnly(event.target.checked)}
+                className="h-[14px] w-[14px] rounded border border-gray-300 accent-emerald-500"
               />
               미답변 질문 있는 강의만
             </label>
 
-            {/* 초기화 */}
-            {isFilterActive && (
+            {isFilterActive ? (
               <button
                 type="button"
-                onClick={() => {
-                  setFilterStatus('all')
-                  setFilterCategory('all')
-                  setFilterLevel('all')
-                  setFilterTag('all')
-                  setPendingOnly(false)
-                  setSearch('')
-                }}
-                className="ml-auto text-xs text-gray-400 underline hover:text-gray-600"
+                onClick={resetFilters}
+                className="text-xs font-medium text-gray-400 underline underline-offset-2 hover:text-gray-600"
               >
                 필터 초기화
               </button>
-            )}
+            ) : null}
+          </div>
+
+          <div className="relative w-full lg:w-64">
+            <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400" />
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              type="text"
+              placeholder="강의명 검색..."
+              className="h-[34px] w-full rounded-[10px] border border-gray-200 bg-white py-0 pl-8 pr-4 text-[12px] font-medium leading-none text-gray-700 outline-none transition focus:border-emerald-500 focus:shadow-[0_0_0_3px_rgba(16,185,129,0.1)]"
+            />
           </div>
         </div>
 
         <div className="space-y-3">
-          {visibleCourses.map((course) => {
-            const status = mapCourseStatus(course.status)
-            const statusMeta = getStatusMeta(status)
+          {visibleCourses.length === 0 ? (
+            <EmptyCard
+              title="조건에 맞는 강의가 없습니다."
+              description="필터를 조정하거나 검색어를 바꿔서 다시 확인해보세요."
+            />
+          ) : null}
 
-            return (
-              <article key={course.courseId} className="rounded-2xl border border-gray-200 bg-white p-[18px] shadow-sm transition hover:border-gray-300">
-                <div className="flex flex-col gap-5 md:flex-row">
-                  <div className="flex h-[110px] w-full shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-gray-200 bg-gray-50 text-gray-400 md:w-[168px]">
-                    {course.thumbnailUrl ? (
-                      <img src={course.thumbnailUrl} alt={course.title} className="h-full w-full object-cover" />
-                    ) : (
-                      <i className="fas fa-play-circle text-3xl" />
-                    )}
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <div className="mb-2 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-                      <div className="min-w-0">
-                        <div className="mb-2 flex flex-wrap items-center gap-2">
-                          <span className={`rounded-full px-3 py-1 text-[11px] font-bold ${statusMeta.tone}`}>{statusMeta.label}</span>
-                          <span className="border-l border-gray-200 pl-2 text-xs text-gray-400">
-                            공개일: {formatDate(course.publishedAt)}
-                          </span>
-                        </div>
-
-                        <h3 className={`truncate text-[16px] leading-tight font-black ${status === 'draft' ? 'text-gray-500' : 'text-gray-900'}`}>
-                          {course.title}
-                        </h3>
-
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          <span className="rounded border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] text-gray-600">
-                            <i className="fas fa-tag mr-1" /> {course.categoryLabel}
-                          </span>
-                          <span className="rounded border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] text-gray-600">
-                            <i className="fas fa-layer-group mr-1" /> {course.levelLabel}
-                          </span>
-                          <span className="rounded border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] text-gray-600">
-                            <i className="fas fa-clock mr-1" /> {formatDuration(course.durationSeconds)}
-                          </span>
-                          <span className="rounded border border-gray-200 bg-gray-50 px-2 py-1 text-[11px] text-gray-600">
-                            <i className="fas fa-list-ul mr-1" /> {course.lessonCount}개 레슨
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="flex shrink-0 gap-2">
-                        {status === 'published' ? (
-                          <>
-                            <button
-                              type="button"
-                              title="통계"
-                              onClick={() => window.alert('학생 분석 탭에서 확인할 수 있습니다.')}
-                              className="flex h-[34px] w-[34px] items-center justify-center rounded-xl border border-gray-200 text-gray-500 transition hover:bg-gray-50 hover:text-gray-900"
-                            >
-                              <i className="fas fa-chart-bar" />
-                            </button>
-                            <button
-                              type="button"
-                              title="공지사항"
-                              onClick={() => openNoticeModal(course.courseId)}
-                              className="flex h-[34px] w-[34px] items-center justify-center rounded-xl border border-gray-200 text-gray-500 transition hover:bg-gray-50 hover:text-gray-900"
-                            >
-                              <i className="fas fa-bullhorn" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                window.location.href = `instructor-course-detail.html?courseId=${course.courseId}`
-                              }}
-                              className="rounded-xl bg-gray-900 px-4 py-2 text-xs font-black text-white transition hover:bg-black"
-                            >
-                              관리 / 수정
-                            </button>
-                          </>
-                        ) : status === 'draft' ? (
-                          <button
-                            type="button"
-                            onClick={() => {
-                              window.location.href = `course-editor.html?courseId=${course.courseId}`
-                            }}
-                            className="rounded-xl bg-brand px-4 py-2 text-xs font-black text-white transition hover:bg-green-600"
-                          >
-                            이어서 작성
-                          </button>
-                        ) : (
-                          <button
-                            type="button"
-                            disabled
-                            className="cursor-not-allowed rounded-xl border border-gray-200 px-4 py-2 text-xs font-black text-gray-400"
-                          >
-                            심사 중
-                          </button>
-                        )}
-                      </div>
-                    </div>
-
-                    {status === 'published' ? (
-                      <div className="mt-3 grid grid-cols-2 gap-3 border-t border-slate-100 pt-3 lg:grid-cols-4">
-                        <div className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-3">
-                          <p className="mb-1 text-[10px] font-bold text-gray-500">총 수강생</p>
-                          <p className="text-sm font-black text-gray-900">{course.studentCount}명</p>
-                        </div>
-                        <div className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-3">
-                          <p className="mb-1 text-[10px] font-bold text-gray-500">평균 진도율</p>
-                          <p className="text-sm font-black text-gray-900">{course.averageProgressPercent.toFixed(1)}%</p>
-                        </div>
-                        <div className="rounded-lg border border-slate-100 border-l-4 border-l-red-400 bg-slate-50 px-3 py-3">
-                          <p className="mb-1 text-[10px] font-bold text-gray-500">미답변 질문</p>
-                          <p className="text-sm font-black text-red-500">{course.pendingQuestionCount}건</p>
-                        </div>
-                        <div className="rounded-lg border border-slate-100 bg-slate-50 px-3 py-3">
-                          <p className="mb-1 text-[10px] font-bold text-gray-500">평점</p>
-                          <p className="text-sm font-black text-gray-900">{course.averageRating.toFixed(1)}</p>
-                        </div>
-                      </div>
-                    ) : status === 'draft' ? (
-                      <div className="mt-3 border-t border-slate-100 pt-3">
-                        <div className="mb-1 flex justify-between text-xs">
-                          <span className="font-black text-gray-600">콘텐츠 구성도</span>
-                          <span className="font-black text-brand">{Math.min(100, course.lessonCount * 10)}%</span>
-                        </div>
-                        <div className="h-2.5 rounded-full bg-gray-100">
-                          <div className="h-2.5 rounded-full bg-brand" style={{ width: `${Math.min(100, course.lessonCount * 10)}%` }} />
-                        </div>
-                        <p className="mt-2 text-[10px] font-bold text-gray-400">
-                          <i className="fas fa-info-circle mr-1" /> 초안 강의는 lesson과 소개 정보를 채운 뒤 심사로 넘길 수 있습니다.
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="mt-3 inline-block w-full rounded-xl border border-yellow-100 bg-yellow-50 p-3">
-                        <p className="flex items-center gap-2 text-xs font-bold text-yellow-800">
-                          <i className="fas fa-clock" /> 운영팀이 강의 내용을 검토하고 있습니다.
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </article>
-            )
-          })}
+          {visibleCourses.map((course) =>
+            course.displayStatus === 'published' ? (
+              <PublishedCourseCard key={course.courseId} course={course} onOpenNotice={openNoticeModal} />
+            ) : course.displayStatus === 'review' ? (
+              <ReviewCourseCard key={course.courseId} course={course} />
+            ) : (
+              <DraftCourseCard key={course.courseId} course={course} />
+            ),
+          )}
         </div>
       </div>
 
       {selectedCourse ? (
-        <div className="fixed inset-0 z-[2200] flex items-center justify-center bg-black/45 px-4">
-          <div className="w-full max-w-[720px] overflow-hidden rounded-[28px] border border-gray-200 bg-white shadow-2xl">
+        <div className="fixed inset-0 z-[2200] flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-[560px] overflow-hidden rounded-[16px] border border-gray-200 bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-              <div className="flex items-center gap-2 text-sm font-black text-gray-900">
-                <i className="fas fa-bullhorn text-brand" />
-                <span>{selectedCourse.title} 공지사항</span>
+              <div className="flex items-center gap-2 text-sm font-bold text-gray-900">
+                <i className="fas fa-bullhorn text-emerald-500" />
+                <span>{selectedCourse.displayTitle} 공지 관리</span>
               </div>
-              <button type="button" onClick={closeNoticeModal} className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 transition hover:bg-gray-50">
-                <i className="fas fa-times text-gray-500" />
+              <button
+                type="button"
+                onClick={closeNoticeModal}
+                className="flex h-8 w-8 items-center justify-center rounded-[8px] text-gray-500 transition hover:bg-gray-100 hover:text-gray-900"
+              >
+                <i className="fas fa-times" />
               </button>
             </div>
 
-            <div className="max-h-[440px] overflow-y-auto p-5">
+            <div className="max-h-[50vh] overflow-y-auto p-5">
               {noticesLoading ? (
                 <LoadingCard label="공지 목록을 불러오는 중입니다." />
+              ) : notices.length === 0 ? (
+                <div className="py-8 text-center text-sm text-gray-400">등록된 공지사항이 없습니다.</div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2.5">
                   {notices.map((notice) => {
                     const expanded = expandedNoticeIds.includes(notice.announcementId)
 
@@ -557,13 +844,21 @@ export default function CourseManagementPage() {
                         key={notice.announcementId}
                         type="button"
                         onClick={() => toggleNoticeExpansion(notice.announcementId)}
-                        className="w-full rounded-2xl border border-gray-200 bg-white px-4 py-3 text-left transition hover:bg-gray-50"
+                        className="w-full rounded-[12px] border border-gray-200 bg-white px-4 py-3 text-left transition hover:border-gray-300 hover:bg-gray-50"
                       >
-                        <div className="flex items-center justify-between gap-4">
-                          <div className="text-sm font-black text-gray-900">{notice.title}</div>
-                          <div className="text-[11px] font-extrabold text-gray-400">{formatDate(notice.publishedAt)}</div>
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="text-sm font-semibold text-gray-900">
+                            {normalizeAnnouncementTitle(notice.title)}
+                          </div>
+                          <div className="text-[11px] font-medium text-gray-400">
+                            {formatCompactDate(notice.publishedAt)}
+                          </div>
                         </div>
-                        {expanded ? <div className="mt-2 text-xs leading-6 text-gray-500">{notice.content}</div> : null}
+                        {expanded ? (
+                          <div className="mt-3 border-t border-dashed border-gray-200 pt-3 text-xs leading-6 text-gray-600">
+                            {normalizeAnnouncementContent(notice.content)}
+                          </div>
+                        ) : null}
                       </button>
                     )
                   })}
@@ -571,26 +866,26 @@ export default function CourseManagementPage() {
               )}
             </div>
 
-            <div className="flex items-center justify-end gap-2 border-t border-gray-100 px-5 py-4">
+            <div className="flex items-center justify-end gap-2 border-t border-gray-100 bg-gray-50 px-5 py-4">
               <button
                 type="button"
                 onClick={() => setExpandedNoticeIds([])}
-                className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-black text-gray-700 transition hover:bg-gray-50"
+                className="inline-flex h-[34px] items-center rounded-[10px] border border-gray-200 bg-white px-[14px] text-[12px] font-semibold text-gray-700 transition hover:bg-gray-50"
               >
-                접기
+                모두 닫기
               </button>
               <button
                 type="button"
-                onClick={() => setExpandedNoticeIds(notices.map((notice) => notice.announcementId))}
-                className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-black text-gray-700 transition hover:bg-gray-50"
+                onClick={() => {
+                  setCreateNoticeOpen(true)
+                  setNewNoticeTitle('')
+                  setNewNoticeContent('')
+                  setShowTitleError(false)
+                  setShowContentError(false)
+                }}
+                className="inline-flex h-[34px] items-center gap-2 rounded-[10px] bg-emerald-500 px-[14px] text-[12px] font-semibold text-white transition hover:bg-emerald-600"
               >
-                전체 펼치기
-              </button>
-              <button
-                type="button"
-                onClick={openCreateNoticeModal}
-                className="rounded-xl bg-brand px-4 py-2 text-xs font-black text-white transition hover:bg-green-600"
-              >
+                <i className="fas fa-plus" />
                 새 공지 작성
               </button>
             </div>
@@ -599,60 +894,68 @@ export default function CourseManagementPage() {
       ) : null}
 
       {selectedCourse && createNoticeOpen ? (
-        <div className="fixed inset-0 z-[2300] flex items-center justify-center bg-black/55 px-4">
-          <div className="w-full max-w-[640px] overflow-hidden rounded-[28px] border border-gray-200 bg-white shadow-2xl">
+        <div className="fixed inset-0 z-[2300] flex items-center justify-center bg-black/50 px-4">
+          <div className="w-full max-w-[500px] overflow-hidden rounded-[16px] border border-gray-200 bg-white shadow-xl">
             <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-              <div className="flex items-center gap-2 text-sm font-black text-gray-900">
-                <i className="fas fa-pen-nib text-brand" />
-                <span>{selectedCourse.title} 공지 작성</span>
+              <div className="flex items-center gap-2 text-sm font-bold text-gray-900">
+                <i className="fas fa-pen text-emerald-500" />
+                <span>새 공지 작성</span>
               </div>
               <button
                 type="button"
                 onClick={() => setCreateNoticeOpen(false)}
-                className="flex h-9 w-9 items-center justify-center rounded-xl border border-gray-200 transition hover:bg-gray-50"
+                className="flex h-8 w-8 items-center justify-center rounded-[8px] text-gray-500 transition hover:bg-gray-100 hover:text-gray-900"
               >
-                <i className="fas fa-times text-gray-500" />
+                <i className="fas fa-times" />
               </button>
             </div>
 
             <div className="space-y-4 p-5">
               <label className="block">
-                <div className="mb-2 text-sm font-black text-gray-900">제목</div>
+                <div className="mb-2 text-[11px] font-bold text-gray-600">
+                  제목 <span className="text-rose-500">*</span>
+                </div>
                 <input
                   value={newNoticeTitle}
                   onChange={(event) => setNewNoticeTitle(event.target.value)}
                   maxLength={60}
-                  placeholder="공지 제목"
-                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-brand focus:shadow-[0_0_0_3px_rgba(0,196,113,0.12)]"
+                  placeholder="제목을 입력하세요"
+                  className="h-[38px] w-full rounded-[10px] border border-gray-200 px-4 text-[12px] text-gray-700 outline-none transition focus:border-emerald-500 focus:shadow-[0_0_0_3px_rgba(16,185,129,0.15)]"
                 />
-                {showTitleError ? <div className="mt-1 text-[11px] font-black text-red-500">제목을 입력해 주세요.</div> : null}
+                {showTitleError ? (
+                  <div className="mt-1 text-[11px] font-semibold text-rose-500">제목을 입력해주세요.</div>
+                ) : null}
               </label>
 
               <label className="block">
-                <div className="mb-2 text-sm font-black text-gray-900">내용</div>
+                <div className="mb-2 text-[11px] font-bold text-gray-600">
+                  내용 <span className="text-rose-500">*</span>
+                </div>
                 <textarea
                   value={newNoticeContent}
                   onChange={(event) => setNewNoticeContent(event.target.value)}
                   maxLength={800}
-                  placeholder="공지 내용을 입력해 주세요."
-                  className="min-h-[140px] w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-brand focus:shadow-[0_0_0_3px_rgba(0,196,113,0.12)]"
+                  placeholder="공지 내용을 작성하세요"
+                  className="min-h-[128px] w-full rounded-[10px] border border-gray-200 px-4 py-3 text-[12px] text-gray-700 outline-none transition focus:border-emerald-500 focus:shadow-[0_0_0_3px_rgba(16,185,129,0.15)]"
                 />
-                {showContentError ? <div className="mt-1 text-[11px] font-black text-red-500">내용을 입력해 주세요.</div> : null}
+                {showContentError ? (
+                  <div className="mt-1 text-[11px] font-semibold text-rose-500">내용을 입력해주세요.</div>
+                ) : null}
               </label>
             </div>
 
-            <div className="flex items-center justify-end gap-2 border-t border-gray-100 px-5 py-4">
+            <div className="flex items-center justify-end gap-2 border-t border-gray-100 bg-gray-50 px-5 py-4">
               <button
                 type="button"
                 onClick={() => setCreateNoticeOpen(false)}
-                className="rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-black text-gray-700 transition hover:bg-gray-50"
+                className="inline-flex h-[34px] items-center rounded-[10px] border border-gray-200 bg-white px-[14px] text-[12px] font-semibold text-gray-700 transition hover:bg-gray-50"
               >
                 취소
               </button>
               <button
                 type="button"
                 onClick={createNotice}
-                className="rounded-xl bg-brand px-4 py-2 text-xs font-black text-white transition hover:bg-green-600"
+                className="inline-flex h-[34px] items-center rounded-[10px] bg-emerald-500 px-[14px] text-[12px] font-semibold text-white transition hover:bg-emerald-600"
               >
                 등록
               </button>

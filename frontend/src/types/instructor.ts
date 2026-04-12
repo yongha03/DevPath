@@ -53,6 +53,7 @@ export interface InstructorCourseListItem {
   studentCount: number
   averageProgressPercent: number
   pendingQuestionCount: number
+  reviewCount?: number
   averageRating: number
   thumbnailUrl: string | null
   publishedAt: string | null
@@ -97,6 +98,8 @@ export interface InstructorQnaAnswer {
   answerId: number
   questionId: number
   instructorId: number
+  authorName?: string | null
+  authorProfileImage?: string | null
   content: string
   createdAt: string | null
   updatedAt: string | null
@@ -131,6 +134,7 @@ export interface InstructorQnaTemplate {
 export interface InstructorReviewReply {
   replyId: number
   authorName: string
+  authorProfileImage: string | null
   content: string
   createdAt: string | null
   updatedAt: string | null

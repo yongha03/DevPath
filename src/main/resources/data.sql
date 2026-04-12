@@ -549,10 +549,10 @@ SELECT
     'Spring Boot Intro',
     'Fast path to practical API development',
     'Backend starter course covering Spring Boot, JPA, and security basics.',
-    '/images/courses/spring-boot.png',
+    'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=1200&q=80',
     '/videos/trailers/spring-boot.mp4',
     'assets/courses/trailers/spring-boot.mp4',
-    95,
+    55200,
     99000,
     129000,
     'KRW',
@@ -592,7 +592,7 @@ SELECT
     'JPA Practical Design',
     'Entity design to query optimization',
     'Practical JPA patterns and performance optimization techniques.',
-    '/images/courses/jpa.png',
+    'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1200&q=80',
     '/videos/trailers/jpa.mp4',
     'assets/courses/trailers/jpa.mp4',
     110,
@@ -635,7 +635,7 @@ SELECT
     'React Dashboard Sprint',
     'Build analytics dashboards with React',
     'Frontend course focused on React dashboard layouts, reusable widgets, and product-ready charts.',
-    '/images/courses/react-dashboard.png',
+    'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80',
     '/videos/trailers/react-dashboard.mp4',
     'assets/courses/trailers/react-dashboard.mp4',
     88,
@@ -653,6 +653,92 @@ WHERE u.email = 'instructor@devpath.com'
       SELECT 1
       FROM courses
       WHERE title = 'React Dashboard Sprint'
+  );
+
+INSERT INTO courses (
+    instructor_id,
+    title,
+    subtitle,
+    description,
+    thumbnail_url,
+    intro_video_url,
+    video_asset_key,
+    duration_seconds,
+    price,
+    original_price,
+    currency,
+    difficulty_level,
+    language,
+    has_certificate,
+    status,
+    published_at
+)
+SELECT
+    u.user_id,
+    '스프링 부트 3.0 완전 정복',
+    '실무 백엔드 프로젝트를 위한 스프링 부트 집중 과정',
+    '심사 중인 강의 예시로 사용하는 스프링 부트 3 기반 백엔드 실전 강의입니다.',
+    'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=1200&q=80',
+    '/videos/trailers/spring-boot-advanced.mp4',
+    'assets/courses/trailers/spring-boot-advanced.mp4',
+    28800,
+    119000,
+    149000,
+    'KRW',
+    'INTERMEDIATE',
+    'ko',
+    TRUE,
+    'IN_REVIEW',
+    TIMESTAMP '2026-01-29 13:00:00'
+FROM users u
+WHERE u.email = 'instructor@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM courses
+      WHERE title = '스프링 부트 3.0 완전 정복'
+  );
+
+INSERT INTO courses (
+    instructor_id,
+    title,
+    subtitle,
+    description,
+    thumbnail_url,
+    intro_video_url,
+    video_asset_key,
+    duration_seconds,
+    price,
+    original_price,
+    currency,
+    difficulty_level,
+    language,
+    has_certificate,
+    status,
+    published_at
+)
+SELECT
+    u.user_id,
+    '제목 없는 강의 (초안)',
+    '초안 강의 카드 표시용 샘플 데이터',
+    '강의 관리 화면의 작성 중 카드 예시에 사용하는 초안 강의입니다.',
+    NULL,
+    NULL,
+    NULL,
+    0,
+    0,
+    0,
+    'KRW',
+    NULL,
+    'ko',
+    FALSE,
+    'DRAFT',
+    TIMESTAMP '2026-01-30 11:00:00'
+FROM users u
+WHERE u.email = 'instructor@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM courses
+      WHERE title = '제목 없는 강의 (초안)'
   );
 
 INSERT INTO course_prerequisites (course_id, prerequisite)
@@ -1035,14 +1121,14 @@ INSERT INTO course_announcements (
 SELECT
     c.course_id,
     'EVENT',
-    'Offline security special event',
-    'Join the offline Spring Security special lecture and Q&A session.',
+    '오프라인 스프링 시큐리티 특강 안내',
+    '오프라인 스프링 시큐리티 특강과 Q&A 세션 일정을 안내드립니다.',
     TRUE,
     0,
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP,
     TIMESTAMP '2099-12-31 23:59:59',
-    'March offline special lecture',
+    '3월 오프라인 특강',
     'https://devpath.com/events/security-special',
     CURRENT_TIMESTAMP,
     CURRENT_TIMESTAMP
@@ -1052,7 +1138,7 @@ WHERE c.title = 'Spring Boot Intro'
       SELECT 1
       FROM course_announcements ca
       WHERE ca.course_id = c.course_id
-        AND ca.title = 'Offline security special event'
+        AND ca.title = '오프라인 스프링 시큐리티 특강 안내'
   );
 
 INSERT INTO course_announcements (
@@ -1073,8 +1159,8 @@ INSERT INTO course_announcements (
 SELECT
     c.course_id,
     'NORMAL',
-    'Course material update',
-    'The latest Spring Boot Intro materials and examples have been updated.',
+    '강의 자료 업데이트 안내',
+    '스프링 부트 입문 강의의 최신 자료와 예제 파일이 업데이트되었습니다.',
     FALSE,
     1,
     CURRENT_TIMESTAMP,
@@ -1090,14 +1176,27 @@ WHERE c.title = 'Spring Boot Intro'
       SELECT 1
       FROM course_announcements ca
       WHERE ca.course_id = c.course_id
-        AND ca.title = 'Course material update'
+        AND ca.title = '강의 자료 업데이트 안내'
   );
+
+UPDATE course_announcements
+SET title = '오프라인 스프링 시큐리티 특강 안내',
+    content = '오프라인 스프링 시큐리티 특강과 Q&A 세션 일정을 안내드립니다.',
+    event_banner_text = '3월 오프라인 특강'
+WHERE title = 'Offline security special event'
+   OR title = '오프라인 스프링 시큐리티 특강 안내';
+
+UPDATE course_announcements
+SET title = '강의 자료 업데이트 안내',
+    content = '스프링 부트 입문 강의의 최신 자료와 예제 파일이 업데이트되었습니다.'
+WHERE title = 'Course material update'
+   OR title = '강의 자료 업데이트 안내';
 
 INSERT INTO qna_question_templates
     (template_type, name, description, guide_example, sort_order, is_active, created_at, updated_at)
-SELECT 'DEBUGGING', 'Debugging question',
-       'Use this template when you need help identifying the root cause of an error or failure.',
-       'Explain the error message, when it happens, and what you already checked before asking.',
+SELECT 'DEBUGGING', '디버깅 질문',
+       '오류나 장애의 원인을 파악하고 싶을 때 사용하는 질문 템플릿입니다.',
+       '에러 메시지, 발생 시점, 이미 확인한 내용을 함께 적어주면 빠르게 원인을 좁힐 수 있습니다.',
        1, TRUE, NOW(), NOW()
 WHERE NOT EXISTS (
     SELECT 1
@@ -1107,9 +1206,9 @@ WHERE NOT EXISTS (
 
 INSERT INTO qna_question_templates
     (template_type, name, description, guide_example, sort_order, is_active, created_at, updated_at)
-SELECT 'IMPLEMENTATION', 'Implementation question',
-       'Use this template when you are building a feature and need guidance on structure or approach.',
-       'Describe the feature you are trying to build, the current design, and the exact part that blocks you.',
+SELECT 'IMPLEMENTATION', '구현 질문',
+       '기능을 구현하는 과정에서 구조나 접근 방식에 대한 도움이 필요할 때 사용하는 템플릿입니다.',
+       '만들고 싶은 기능, 현재 설계, 막히는 지점을 구체적으로 적어주세요.',
        2, TRUE, NOW(), NOW()
 WHERE NOT EXISTS (
     SELECT 1
@@ -1119,9 +1218,9 @@ WHERE NOT EXISTS (
 
 INSERT INTO qna_question_templates
     (template_type, name, description, guide_example, sort_order, is_active, created_at, updated_at)
-SELECT 'CODE_REVIEW', 'Code review question',
-       'Use this template when you want feedback on code quality, readability, or tradeoffs.',
-       'Share the relevant code, the expected behavior, and what kind of feedback you want most.',
+SELECT 'CODE_REVIEW', '코드 리뷰 질문',
+       '코드 품질, 가독성, 트레이드오프에 대한 피드백이 필요할 때 사용하는 템플릿입니다.',
+       '관련 코드, 기대 동작, 어떤 피드백이 가장 필요한지 함께 적어주세요.',
        3, TRUE, NOW(), NOW()
 WHERE NOT EXISTS (
     SELECT 1
@@ -1131,9 +1230,9 @@ WHERE NOT EXISTS (
 
 INSERT INTO qna_question_templates
     (template_type, name, description, guide_example, sort_order, is_active, created_at, updated_at)
-SELECT 'CAREER', 'Career question',
-       'Use this template when you need advice on learning path, portfolio direction, or role preparation.',
-       'Explain your current level, target role, and the decision you are trying to make next.',
+SELECT 'CAREER', '커리어 질문',
+       '학습 방향, 포트폴리오, 직무 준비에 대한 조언이 필요할 때 사용하는 템플릿입니다.',
+       '현재 수준, 목표 직무, 다음에 결정하려는 내용을 함께 적어주세요.',
        4, TRUE, NOW(), NOW()
 WHERE NOT EXISTS (
     SELECT 1
@@ -1143,9 +1242,9 @@ WHERE NOT EXISTS (
 
 INSERT INTO qna_question_templates
     (template_type, name, description, guide_example, sort_order, is_active, created_at, updated_at)
-SELECT 'STUDY', 'Study question',
-       'Use this template when you want help planning what to study next or how to review effectively.',
-       'Describe the topic, what you already understand, and what kind of study plan you want.',
+SELECT 'STUDY', '학습 질문',
+       '다음 학습 계획이나 복습 방법이 필요할 때 사용하는 템플릿입니다.',
+       '현재 공부 중인 주제, 이미 이해한 내용, 원하는 학습 계획을 적어주세요.',
        5, TRUE, NOW(), NOW()
 WHERE NOT EXISTS (
     SELECT 1
@@ -1155,9 +1254,9 @@ WHERE NOT EXISTS (
 
 INSERT INTO qna_question_templates
     (template_type, name, description, guide_example, sort_order, is_active, created_at, updated_at)
-SELECT 'PROJECT', 'Project question',
-       'Use this template when you need help scoping, structuring, or improving a project idea or build.',
-       'Explain the project goal, current progress, and the specific decision or risk you want reviewed.',
+SELECT 'PROJECT', '프로젝트 질문',
+       '프로젝트 범위 설정, 구조 설계, 개선 방향이 필요할 때 사용하는 템플릿입니다.',
+       '프로젝트 목표, 현재 진행 상황, 검토받고 싶은 결정 포인트를 적어주세요.',
        6, TRUE, NOW(), NOW()
 WHERE NOT EXISTS (
     SELECT 1
@@ -1176,8 +1275,8 @@ INSERT INTO review (
     course_id, learner_id, rating, content, status, is_hidden, is_deleted, issue_tags_raw, created_at, updated_at
 )
 SELECT c.course_id, u.user_id, 5,
-       'Examples were practical and the explanation flow was very clear.',
-       'ANSWERED', FALSE, FALSE, 'clear-examples,good-pacing',
+       '예제가 실무에 바로 연결돼서 좋았고, 설명 흐름도 자연스러워서 끝까지 집중해서 들을 수 있었습니다.',
+       'ANSWERED', FALSE, FALSE, '설명_자세해요,예제가_실전적이에요',
        '2026-02-10 10:00:00', '2026-02-10 10:00:00'
 FROM users u, courses c
 WHERE u.email = 'learner@devpath.com'
@@ -1191,8 +1290,8 @@ INSERT INTO review (
     course_id, learner_id, rating, content, status, is_hidden, is_deleted, issue_tags_raw, created_at, updated_at
 )
 SELECT c.course_id, u.user_id, 3,
-       'The topic itself is useful, but I needed slower pacing around entity mapping and fetch strategy.',
-       'UNANSWERED', FALSE, FALSE, 'too-fast,needs-more-diagrams',
+       '주제 자체는 정말 유용했지만 엔티티 매핑과 fetch 전략 부분은 조금 더 천천히 설명해주셨으면 좋겠습니다.',
+       'UNANSWERED', FALSE, FALSE, '조금_빨라요,도식이_더_필요해요',
        '2026-02-12 14:00:00', '2026-02-12 14:00:00'
 FROM users u, courses c
 WHERE u.email = 'learner@devpath.com'
@@ -1202,11 +1301,41 @@ WHERE u.email = 'learner@devpath.com'
       WHERE r.course_id = c.course_id AND r.learner_id = u.user_id
   );
 
+INSERT INTO review (
+    course_id, learner_id, rating, content, status, is_hidden, is_deleted, issue_tags_raw, created_at, updated_at
+)
+SELECT c.course_id, u.user_id, 5,
+       '대시보드 실습 위주라서 바로 따라 만들 수 있었고, 차트와 레이아웃을 한 번에 정리하기 좋았습니다.',
+       'ANSWERED', FALSE, FALSE, '실습_구성이_좋아요,예제가_바로_써먹기_좋아요',
+       '2026-02-14 11:30:00', '2026-02-14 11:30:00'
+FROM users u, courses c
+WHERE u.email = 'learner2@devpath.com'
+  AND c.title = 'React Dashboard Sprint'
+  AND NOT EXISTS (
+      SELECT 1 FROM review r
+      WHERE r.course_id = c.course_id AND r.learner_id = u.user_id
+  );
+
+INSERT INTO review (
+    course_id, learner_id, rating, content, status, is_hidden, is_deleted, issue_tags_raw, created_at, updated_at
+)
+SELECT c.course_id, u.user_id, 4,
+       '차트 옵션 설명은 좋았는데 상태 관리와 API 연결 파트는 조금 더 천천히 짚어주면 더 좋을 것 같습니다.',
+       'UNANSWERED', FALSE, FALSE, '상태관리_설명이_더_필요해요,API_연결_보강이_필요해요',
+       '2026-02-16 16:20:00', '2026-02-16 16:20:00'
+FROM users u, courses c
+WHERE u.email = 'learner3@devpath.com'
+  AND c.title = 'React Dashboard Sprint'
+  AND NOT EXISTS (
+      SELECT 1 FROM review r
+      WHERE r.course_id = c.course_id AND r.learner_id = u.user_id
+  );
+
 INSERT INTO review_reply (
     review_id, instructor_id, content, is_deleted, created_at, updated_at
 )
 SELECT r.id, iu.user_id,
-       'Thanks for the feedback. I will add more mapping diagrams and a slower walkthrough in the next update.',
+       '좋은 피드백 감사합니다. 다음 업데이트에서 매핑 다이어그램을 더 보강하고 해당 구간은 조금 더 천천히 설명하겠습니다.',
        FALSE, '2026-02-10 12:00:00', '2026-02-10 12:00:00'
 FROM review r, users iu, courses c
 WHERE iu.email = 'instructor@devpath.com'
@@ -1216,11 +1345,27 @@ WHERE iu.email = 'instructor@devpath.com'
       SELECT 1 FROM review_reply rr WHERE rr.review_id = r.id AND rr.is_deleted = FALSE
   );
 
+INSERT INTO review_reply (
+    review_id, instructor_id, content, is_deleted, created_at, updated_at
+)
+SELECT r.id, iu.user_id,
+       '좋은 피드백 감사합니다. 차트 구성 실습은 유지하면서 다음 업데이트에서 API 연결과 상태 관리 설명을 더 세분화해두겠습니다.',
+       FALSE, '2026-02-14 13:10:00', '2026-02-14 13:10:00'
+FROM review r
+JOIN users iu ON iu.email = 'instructor@devpath.com'
+JOIN users lu ON lu.user_id = r.learner_id
+JOIN courses c ON c.course_id = r.course_id
+WHERE c.title = 'React Dashboard Sprint'
+  AND lu.email = 'learner2@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1 FROM review_reply rr WHERE rr.review_id = r.id AND rr.is_deleted = FALSE
+  );
+
 INSERT INTO review_report (
     review_id, reporter_id, reason, is_resolved, resolved_by, resolved_at, created_at, updated_at
 )
 SELECT r.id, au.user_id,
-       'Contains vague wording and should be reviewed before public exposure.',
+       '표현이 다소 모호해 공개 노출 전에 한 번 더 확인이 필요합니다.',
        FALSE, NULL, NULL, '2026-02-13 09:00:00', '2026-02-13 09:00:00'
 FROM review r, users au, courses c
 WHERE au.email = 'admin@devpath.com'
@@ -1233,27 +1378,53 @@ WHERE au.email = 'admin@devpath.com'
 INSERT INTO review_template (
     instructor_id, title, content, is_deleted, created_at, updated_at
 )
-SELECT iu.user_id, 'Thanks and follow-up',
-       'Thanks for leaving a detailed review. I will reflect your feedback in the next revision.',
+SELECT iu.user_id, '감사 인사',
+       '정성스러운 리뷰 남겨주셔서 감사합니다. 남겨주신 의견은 다음 개정에 바로 반영하겠습니다.',
        FALSE, '2026-02-01 00:00:00', '2026-02-01 00:00:00'
 FROM users iu
 WHERE iu.email = 'instructor@devpath.com'
   AND NOT EXISTS (
       SELECT 1 FROM review_template rt
-      WHERE rt.instructor_id = iu.user_id AND rt.title = 'Thanks and follow-up'
+      WHERE rt.instructor_id = iu.user_id AND rt.title = '감사 인사'
   );
 
 INSERT INTO review_template (
     instructor_id, title, content, is_deleted, created_at, updated_at
 )
-SELECT iu.user_id, 'Issue acknowledged',
-       'I reproduced the issue and added it to the revision queue. I will update the course notes as well.',
+SELECT iu.user_id, '사과 및 개선 약속',
+       '불편을 드려 죄송합니다. 말씀해주신 내용을 확인했고, 강의 개정 목록에 반영해 보충 자료와 함께 정리하겠습니다.',
        FALSE, '2026-02-02 00:00:00', '2026-02-02 00:00:00'
 FROM users iu
 WHERE iu.email = 'instructor@devpath.com'
   AND NOT EXISTS (
       SELECT 1 FROM review_template rt
-      WHERE rt.instructor_id = iu.user_id AND rt.title = 'Issue acknowledged'
+      WHERE rt.instructor_id = iu.user_id AND rt.title = '사과 및 개선 약속'
+  );
+
+INSERT INTO review_template (
+    instructor_id, title, content, is_deleted, created_at, updated_at
+)
+SELECT iu.user_id, '학습 가이드 제안',
+       '해당 구간이 어렵게 느껴지셨다면 이전 섹션의 보충 강의와 함께 다시 보시면 이해가 훨씬 쉬워집니다. 필요한 자료도 추가로 보완하겠습니다.',
+       FALSE, '2026-02-03 00:00:00', '2026-02-03 00:00:00'
+FROM users iu
+WHERE iu.email = 'instructor@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1 FROM review_template rt
+      WHERE rt.instructor_id = iu.user_id AND rt.title = '학습 가이드 제안'
+  );
+
+INSERT INTO review_template (
+    instructor_id, title, content, is_deleted, created_at, updated_at
+)
+SELECT iu.user_id, '만족 리뷰 답글',
+       '좋게 봐주셔서 감사합니다. 앞으로도 실무에 바로 연결되는 예제와 설명으로 더 만족스러운 강의를 만들어가겠습니다.',
+       FALSE, '2026-02-04 00:00:00', '2026-02-04 00:00:00'
+FROM users iu
+WHERE iu.email = 'instructor@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1 FROM review_template rt
+      WHERE rt.instructor_id = iu.user_id AND rt.title = '만족 리뷰 답글'
   );
 
 -- [B-02] qna_questions / qna_answers / qna_answer_draft / qna_template
@@ -1262,14 +1433,14 @@ INSERT INTO qna_questions (
     course_id, lecture_timestamp, qna_status, view_count, is_deleted, created_at, updated_at
 )
 SELECT u.user_id, 'DEBUGGING', 'EASY',
-       'BeanCreationException during startup',
-       'Spring Boot startup fails with BeanCreationException. Which bean should I inspect first and how do I narrow the cause?',
+       'BeanCreationException이 발생할 때 어디부터 확인해야 하나요?',
+       '스프링 부트를 실행하면 BeanCreationException이 발생합니다. 어떤 빈부터 확인해야 하고, 원인을 빠르게 좁히는 순서가 궁금합니다.',
        NULL, c.course_id, NULL, 'ANSWERED', 3, FALSE, '2026-02-05 00:00:00', '2026-02-06 00:00:00'
 FROM users u, courses c
 WHERE u.email = 'learner@devpath.com'
   AND c.title = 'Spring Boot Intro'
   AND NOT EXISTS (
-      SELECT 1 FROM qna_questions q WHERE q.title = 'BeanCreationException during startup'
+      SELECT 1 FROM qna_questions q WHERE q.title = 'BeanCreationException이 발생할 때 어디부터 확인해야 하나요?'
   );
 
 INSERT INTO qna_questions (
@@ -1277,25 +1448,98 @@ INSERT INTO qna_questions (
     course_id, lecture_timestamp, qna_status, view_count, is_deleted, created_at, updated_at
 )
 SELECT u.user_id, 'IMPLEMENTATION', 'MEDIUM',
-       'How to avoid JPA infinite recursion',
-       'My entity graph loops when I serialize it to JSON. What is the safest way to stop recursive references?',
+       'JPA 무한 참조를 안전하게 끊는 방법이 궁금합니다',
+       '엔티티를 JSON으로 직렬화하면 양방향 연관관계 때문에 순환 참조가 발생합니다. 가장 안전하게 막는 방법이 무엇인가요?',
        NULL, c.course_id, '00:12:44', 'UNANSWERED', 5, FALSE, '2026-02-08 00:00:00', '2026-02-09 00:00:00'
 FROM users u, courses c
 WHERE u.email = 'learner@devpath.com'
   AND c.title = 'JPA Practical Design'
   AND NOT EXISTS (
-      SELECT 1 FROM qna_questions q WHERE q.title = 'How to avoid JPA infinite recursion'
+      SELECT 1 FROM qna_questions q WHERE q.title = 'JPA 무한 참조를 안전하게 끊는 방법이 궁금합니다'
+  );
+
+INSERT INTO qna_questions (
+    user_id, template_type, difficulty, title, content, adopted_answer_id,
+    course_id, lecture_timestamp, qna_status, view_count, is_deleted, created_at, updated_at
+)
+SELECT u.user_id, 'DEBUGGING', 'MEDIUM',
+       'application.yml 설정이 반영되지 않는 이유가 궁금합니다',
+       'application.yml에서 값을 바꿨는데 실행하면 이전 설정처럼 동작합니다. 프로필 우선순위나 환경 변수 때문에 덮어써지는 상황을 어떻게 확인하면 좋을까요?',
+       NULL, c.course_id, '00:04:12', 'UNANSWERED', 2, FALSE, '2026-02-09 10:00:00', '2026-02-09 10:00:00'
+FROM users u, courses c
+WHERE u.email = 'learner@devpath.com'
+  AND c.title = 'Spring Boot Intro'
+  AND NOT EXISTS (
+      SELECT 1 FROM qna_questions q WHERE q.title = 'application.yml 설정이 반영되지 않는 이유가 궁금합니다'
+  );
+
+INSERT INTO qna_questions (
+    user_id, template_type, difficulty, title, content, adopted_answer_id,
+    course_id, lecture_timestamp, qna_status, view_count, is_deleted, created_at, updated_at
+)
+SELECT u.user_id, 'DEBUGGING', 'MEDIUM',
+       'SecurityConfig 변경 후 로그인 흐름이 막히는 이유가 궁금합니다',
+       'SecurityConfig를 수정한 뒤부터 로그인 페이지 리다이렉트가 꼬이거나 403이 발생합니다. 필터 체인과 permitAll 설정을 어떤 순서로 보면 좋을까요?',
+       NULL, c.course_id, '00:15:42', 'UNANSWERED', 4, FALSE, '2026-02-11 09:20:00', '2026-02-11 09:20:00'
+FROM users u, courses c
+WHERE u.email = 'learner2@devpath.com'
+  AND c.title = 'Spring Boot Intro'
+  AND NOT EXISTS (
+      SELECT 1 FROM qna_questions q WHERE q.title = 'SecurityConfig 변경 후 로그인 흐름이 막히는 이유가 궁금합니다'
+  );
+
+INSERT INTO qna_questions (
+    user_id, template_type, difficulty, title, content, adopted_answer_id,
+    course_id, lecture_timestamp, qna_status, view_count, is_deleted, created_at, updated_at
+)
+SELECT u.user_id, 'IMPLEMENTATION', 'MEDIUM',
+       'React Query와 Chart.js 데이터를 같이 관리할 때 구조를 어떻게 나누면 좋을까요?',
+       '대시보드 페이지에서 React Query로 받아온 응답을 차트용 데이터로 가공하고 있는데, 컴포넌트가 길어져서 구조를 어떻게 나누는 게 좋은지 궁금합니다.',
+       NULL, c.course_id, '00:18:25', 'ANSWERED', 4, FALSE, '2026-02-15 09:30:00', '2026-02-15 10:20:00'
+FROM users u, courses c
+WHERE u.email = 'learner2@devpath.com'
+  AND c.title = 'React Dashboard Sprint'
+  AND NOT EXISTS (
+      SELECT 1 FROM qna_questions q WHERE q.title = 'React Query와 Chart.js 데이터를 같이 관리할 때 구조를 어떻게 나누면 좋을까요?'
+  );
+
+INSERT INTO qna_questions (
+    user_id, template_type, difficulty, title, content, adopted_answer_id,
+    course_id, lecture_timestamp, qna_status, view_count, is_deleted, created_at, updated_at
+)
+SELECT u.user_id, 'DEBUGGING', 'EASY',
+       'recharts 툴팁 포맷팅이 렌더링마다 바뀌는 문제를 어떻게 보면 될까요?',
+       '같은 데이터인데도 툴팁 숫자 형식이 간헐적으로 달라 보입니다. 포맷 함수를 어디에 두는 게 안전한지 궁금합니다.',
+       NULL, c.course_id, '00:27:40', 'UNANSWERED', 2, FALSE, '2026-02-16 19:05:00', '2026-02-16 19:05:00'
+FROM users u, courses c
+WHERE u.email = 'learner3@devpath.com'
+  AND c.title = 'React Dashboard Sprint'
+  AND NOT EXISTS (
+      SELECT 1 FROM qna_questions q WHERE q.title = 'recharts 툴팁 포맷팅이 렌더링마다 바뀌는 문제를 어떻게 보면 될까요?'
   );
 
 INSERT INTO qna_answers (
     question_id, user_id, content, is_adopted, is_deleted, created_at, updated_at
 )
 SELECT q.question_id, iu.user_id,
-       'Start from the root cause in the stack trace, then check configuration classes, component scanning, and constructor dependencies.',
+       '스택 트레이스에서 가장 아래쪽 원인 메시지부터 확인한 뒤, 설정 클래스, 컴포넌트 스캔 범위, 생성자 의존성을 순서대로 점검해보세요.',
        FALSE, FALSE, '2026-02-06 09:00:00', '2026-02-06 09:00:00'
 FROM qna_questions q, users iu
-WHERE q.title = 'BeanCreationException during startup'
+WHERE q.title = 'BeanCreationException이 발생할 때 어디부터 확인해야 하나요?'
   AND iu.email = 'instructor@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1 FROM qna_answers a WHERE a.question_id = q.question_id AND a.is_deleted = FALSE
+  );
+
+INSERT INTO qna_answers (
+    question_id, user_id, content, is_adopted, is_deleted, created_at, updated_at
+)
+SELECT q.question_id, iu.user_id,
+       '서버 응답 fetch와 차트 데이터 가공을 한 컴포넌트에 다 넣기보다, 조회 훅과 차트 변환 함수로 분리해두면 읽기와 테스트가 훨씬 쉬워집니다.',
+       FALSE, FALSE, '2026-02-15 11:00:00', '2026-02-15 11:00:00'
+FROM qna_questions q
+JOIN users iu ON iu.email = 'instructor@devpath.com'
+WHERE q.title = 'React Query와 Chart.js 데이터를 같이 관리할 때 구조를 어떻게 나누면 좋을까요?'
   AND NOT EXISTS (
       SELECT 1 FROM qna_answers a WHERE a.question_id = q.question_id AND a.is_deleted = FALSE
   );
@@ -1304,10 +1548,10 @@ INSERT INTO qna_answer_draft (
     question_id, instructor_id, draft_content, is_deleted, saved_at, updated_at
 )
 SELECT q.question_id, iu.user_id,
-       'Prefer response DTOs for API output, and use reference annotations only when you must serialize the entity graph directly.',
+       'API 응답은 DTO로 분리하고, 꼭 엔티티를 직접 직렬화해야 할 때만 참조 관련 어노테이션을 제한적으로 사용하는 방식이 가장 안전합니다.',
        FALSE, '2026-02-09 00:00:00', '2026-02-09 00:00:00'
 FROM qna_questions q, users iu
-WHERE q.title = 'How to avoid JPA infinite recursion'
+WHERE q.title = 'JPA 무한 참조를 안전하게 끊는 방법이 궁금합니다'
   AND iu.email = 'instructor@devpath.com'
   AND NOT EXISTS (
       SELECT 1 FROM qna_answer_draft d
@@ -1317,27 +1561,40 @@ WHERE q.title = 'How to avoid JPA infinite recursion'
 INSERT INTO qna_template (
     instructor_id, title, content, is_deleted, created_at, updated_at
 )
-SELECT iu.user_id, 'Debugging startup errors',
-       'Check stack trace order, configuration classes, environment variables, and recent dependency changes first.',
+SELECT iu.user_id, '시작 오류 점검 순서',
+       '스택 트레이스 순서, 설정 클래스, 환경 변수, 최근 변경한 의존성을 먼저 점검해보세요.',
        FALSE, '2026-01-10 00:00:00', '2026-01-10 00:00:00'
 FROM users iu
 WHERE iu.email = 'instructor@devpath.com'
   AND NOT EXISTS (
       SELECT 1 FROM qna_template qt
-      WHERE qt.instructor_id = iu.user_id AND qt.title = 'Debugging startup errors'
+      WHERE qt.instructor_id = iu.user_id AND qt.title = '시작 오류 점검 순서'
   );
 
 INSERT INTO qna_template (
     instructor_id, title, content, is_deleted, created_at, updated_at
 )
-SELECT iu.user_id, 'N+1 review checklist',
-       'Compare repository query count, fetch strategy, and entity graph usage before changing domain structure.',
+SELECT iu.user_id, '직렬화 및 연관관계 점검 체크리스트',
+       '도메인 구조를 바꾸기 전에 쿼리 수, fetch 전략, 엔티티 그래프 사용 여부를 먼저 비교해보세요.',
        FALSE, '2026-01-10 00:00:00', '2026-01-10 00:00:00'
 FROM users iu
 WHERE iu.email = 'instructor@devpath.com'
   AND NOT EXISTS (
       SELECT 1 FROM qna_template qt
-      WHERE qt.instructor_id = iu.user_id AND qt.title = 'N+1 review checklist'
+      WHERE qt.instructor_id = iu.user_id AND qt.title = '직렬화 및 연관관계 점검 체크리스트'
+  );
+
+INSERT INTO qna_template (
+    instructor_id, title, content, is_deleted, created_at, updated_at
+)
+SELECT iu.user_id, '코드 리뷰형 답변',
+       '문제 코드와 기대 결과를 기준으로 원인, 수정 포인트, 다시 확인할 항목을 순서대로 정리해보세요.',
+       FALSE, '2026-01-11 00:00:00', '2026-01-11 00:00:00'
+FROM users iu
+WHERE iu.email = 'instructor@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1 FROM qna_template qt
+      WHERE qt.instructor_id = iu.user_id AND qt.title = '코드 리뷰형 답변'
   );
 
 -- [B-03] instructor_post / instructor_comment / likes
@@ -1945,7 +2202,7 @@ SELECT
     'ROLE_LEARNER',
     TRUE,
     NOW(),
-    NOW()
+    TIMESTAMP '2026-01-20 09:00:00'
 WHERE NOT EXISTS (
     SELECT 1
     FROM users
@@ -1966,6 +2223,21 @@ WHERE NOT EXISTS (
     FROM users
     WHERE email = 'learner3@devpath.com'
 );
+
+INSERT INTO review (
+    course_id, learner_id, rating, content, status, is_hidden, is_deleted, issue_tags_raw, created_at, updated_at
+)
+SELECT c.course_id, u.user_id, 2,
+       '중반 이후부터 설명 속도가 빨라져서 따라가기 어려웠습니다. 초보자 기준으로 한 번 더 짚어주는 보충 설명이나 요약 자료가 있으면 좋겠습니다.',
+       'UNANSWERED', FALSE, FALSE, '속도가_빨라요,초보자에겐_어려워요',
+       '2026-02-15 19:30:00', '2026-02-15 19:30:00'
+FROM users u, courses c
+WHERE u.email = 'learner2@devpath.com'
+  AND c.title = 'Spring Boot Intro'
+  AND NOT EXISTS (
+      SELECT 1 FROM review r
+      WHERE r.course_id = c.course_id AND r.learner_id = u.user_id
+  );
 
 -- ========================================
 -- C SECTION STUDY
@@ -4100,6 +4372,7 @@ INSERT INTO courses (
     title,
     subtitle,
     description,
+    thumbnail_url,
     price,
     original_price,
     currency,
@@ -4115,6 +4388,7 @@ SELECT
     '[A-CASE-A] Node Clearance Course',
     'Case A only course',
     'Course used to verify lesson completion, tags, quiz, and assignment pass.',
+    'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1200&q=80',
     0,
     0,
     'KRW',
@@ -4137,6 +4411,7 @@ INSERT INTO courses (
     title,
     subtitle,
     description,
+    thumbnail_url,
     price,
     original_price,
     currency,
@@ -4152,6 +4427,7 @@ SELECT
     '[A-CASE-B] Tag Missing Course',
     'Case B only course',
     'Course used to verify the missing required tag branch.',
+    'https://images.unsplash.com/photo-1504639725590-34d0984388bd?auto=format&fit=crop&w=1200&q=80',
     0,
     0,
     'KRW',
@@ -4174,6 +4450,7 @@ INSERT INTO courses (
     title,
     subtitle,
     description,
+    thumbnail_url,
     price,
     original_price,
     currency,
@@ -4189,6 +4466,7 @@ SELECT
     '[A-CASE-C] Quiz Fail Course',
     'Case C only course',
     'Course used to verify the quiz failed branch.',
+    'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=1200&q=80',
     0,
     0,
     'KRW',
@@ -4205,6 +4483,50 @@ WHERE iu.email = 'instructor@devpath.com'
       FROM courses c
       WHERE c.title = '[A-CASE-C] Quiz Fail Course'
   );
+
+UPDATE courses
+SET thumbnail_url = 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=1200&q=80'
+WHERE title = 'Spring Boot Intro';
+
+UPDATE courses
+SET duration_seconds = 55200,
+    difficulty_level = 'INTERMEDIATE',
+    published_at = TIMESTAMP '2026-01-20 09:00:00'
+WHERE title = 'Spring Boot Intro';
+
+UPDATE courses
+SET thumbnail_url = 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=1200&q=80'
+WHERE title = 'JPA Practical Design';
+
+UPDATE courses
+SET thumbnail_url = 'https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80'
+WHERE title = 'React Dashboard Sprint';
+
+UPDATE courses
+SET published_at = TIMESTAMP '2026-01-29 13:00:00'
+WHERE title = '스프링 부트 3.0 완전 정복';
+
+UPDATE courses
+SET published_at = TIMESTAMP '2026-01-30 11:00:00'
+WHERE title = '제목 없는 강의 (초안)';
+
+UPDATE courses
+SET status = 'DRAFT',
+    has_certificate = FALSE,
+    duration_seconds = 0
+WHERE title = '제목 없는 강의 (초안)';
+
+UPDATE courses
+SET thumbnail_url = 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1200&q=80'
+WHERE title = '[A-CASE-A] Node Clearance Course';
+
+UPDATE courses
+SET thumbnail_url = 'https://images.unsplash.com/photo-1504639725590-34d0984388bd?auto=format&fit=crop&w=1200&q=80'
+WHERE title = '[A-CASE-B] Tag Missing Course';
+
+UPDATE courses
+SET thumbnail_url = 'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=1200&q=80'
+WHERE title = '[A-CASE-C] Quiz Fail Course';
 
 INSERT INTO course_sections (course_id, title, description, sort_order, is_published)
 SELECT
@@ -6599,6 +6921,168 @@ WHERE u.email = 'learner@devpath.com'
       FROM recommendation_histories rh
       WHERE rh.recommendation_id = rc.recommendation_change_id
         AND rh.action_type = 'CHANGE_IGNORE'
+  );
+
+INSERT INTO course_enrollments (
+    user_id,
+    course_id,
+    status,
+    enrolled_at,
+    completed_at,
+    progress_percentage,
+    last_accessed_at
+)
+SELECT
+    u.user_id,
+    c.course_id,
+    'COMPLETED',
+    TIMESTAMP '2026-02-03 09:00:00',
+    TIMESTAMP '2026-03-10 22:10:00',
+    100,
+    TIMESTAMP '2026-03-10 22:10:00'
+FROM users u
+JOIN courses c ON c.title = 'Spring Boot Intro'
+WHERE u.email = 'learner@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM course_enrollments ce
+      WHERE ce.user_id = u.user_id
+        AND ce.course_id = c.course_id
+  );
+
+INSERT INTO course_enrollments (
+    user_id,
+    course_id,
+    status,
+    enrolled_at,
+    completed_at,
+    progress_percentage,
+    last_accessed_at
+)
+SELECT
+    u.user_id,
+    c.course_id,
+    'ACTIVE',
+    TIMESTAMP '2026-02-08 13:30:00',
+    NULL,
+    62,
+    TIMESTAMP '2026-03-28 21:15:00'
+FROM users u
+JOIN courses c ON c.title = 'Spring Boot Intro'
+WHERE u.email = 'learner2@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM course_enrollments ce
+      WHERE ce.user_id = u.user_id
+        AND ce.course_id = c.course_id
+  );
+
+INSERT INTO course_enrollments (
+    user_id,
+    course_id,
+    status,
+    enrolled_at,
+    completed_at,
+    progress_percentage,
+    last_accessed_at
+)
+SELECT
+    u.user_id,
+    c.course_id,
+    'ACTIVE',
+    TIMESTAMP '2026-02-11 18:20:00',
+    NULL,
+    54,
+    TIMESTAMP '2026-03-29 20:40:00'
+FROM users u
+JOIN courses c ON c.title = 'JPA Practical Design'
+WHERE u.email = 'learner@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM course_enrollments ce
+      WHERE ce.user_id = u.user_id
+        AND ce.course_id = c.course_id
+  );
+
+INSERT INTO course_enrollments (
+    user_id,
+    course_id,
+    status,
+    enrolled_at,
+    completed_at,
+    progress_percentage,
+    last_accessed_at
+)
+SELECT
+    u.user_id,
+    c.course_id,
+    'ACTIVE',
+    TIMESTAMP '2026-02-12 19:10:00',
+    NULL,
+    37,
+    TIMESTAMP '2026-03-27 23:05:00'
+FROM users u
+JOIN courses c ON c.title = 'JPA Practical Design'
+WHERE u.email = 'learner3@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM course_enrollments ce
+      WHERE ce.user_id = u.user_id
+        AND ce.course_id = c.course_id
+  );
+
+INSERT INTO course_enrollments (
+    user_id,
+    course_id,
+    status,
+    enrolled_at,
+    completed_at,
+    progress_percentage,
+    last_accessed_at
+)
+SELECT
+    u.user_id,
+    c.course_id,
+    'ACTIVE',
+    TIMESTAMP '2026-02-14 10:40:00',
+    NULL,
+    68,
+    TIMESTAMP '2026-03-30 18:25:00'
+FROM users u
+JOIN courses c ON c.title = 'React Dashboard Sprint'
+WHERE u.email = 'learner2@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM course_enrollments ce
+      WHERE ce.user_id = u.user_id
+        AND ce.course_id = c.course_id
+  );
+
+INSERT INTO course_enrollments (
+    user_id,
+    course_id,
+    status,
+    enrolled_at,
+    completed_at,
+    progress_percentage,
+    last_accessed_at
+)
+SELECT
+    u.user_id,
+    c.course_id,
+    'ACTIVE',
+    TIMESTAMP '2026-02-16 09:10:00',
+    NULL,
+    46,
+    TIMESTAMP '2026-03-31 09:35:00'
+FROM users u
+JOIN courses c ON c.title = 'React Dashboard Sprint'
+WHERE u.email = 'learner3@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM course_enrollments ce
+      WHERE ce.user_id = u.user_id
+        AND ce.course_id = c.course_id
   );
 
 -- ========================================

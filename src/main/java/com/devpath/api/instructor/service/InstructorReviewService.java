@@ -23,6 +23,8 @@ import com.devpath.common.exception.ErrorCode;
 import com.devpath.domain.course.entity.Course;
 import com.devpath.domain.course.repository.CourseRepository;
 import com.devpath.domain.user.entity.User;
+import com.devpath.domain.user.entity.UserProfile;
+import com.devpath.domain.user.repository.UserProfileRepository;
 import com.devpath.domain.user.repository.UserRepository;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -44,6 +46,7 @@ public class InstructorReviewService {
     private final ReviewReportRepository reviewReportRepository;
     private final CourseRepository courseRepository;
     private final UserRepository userRepository;
+    private final UserProfileRepository userProfileRepository;
 
     @Transactional(readOnly = true)
     public List<InstructorReviewListResponse> getReviews(Long instructorId) {
@@ -57,6 +60,10 @@ public class InstructorReviewService {
         Map<Long, User> learnersById = userRepository.findAllById(reviews.stream().map(Review::getLearnerId).distinct().toList())
                 .stream()
                 .collect(Collectors.toMap(User::getId, Function.identity(), (left, right) -> left, LinkedHashMap::new));
+        User instructor = userRepository.findById(instructorId).orElse(null);
+        UserProfile instructorProfile = userProfileRepository.findByUserId(instructorId).orElse(null);
+        String instructorName = instructor == null ? "강사" : instructor.getName();
+        String instructorProfileImage = instructorProfile == null ? null : instructorProfile.getDisplayProfileImage();
         Map<Long, ReviewReply> repliesByReviewId = reviewReplyRepository.findAllByReviewIdInAndIsDeletedFalse(
                         reviews.stream().map(Review::getId).toList()
                 ).stream()
@@ -81,7 +88,8 @@ public class InstructorReviewService {
                             review.getIsHidden(),
                             reply == null ? null : new InstructorReviewListResponse.ReplyInfo(
                                     reply.getId(),
-                                    "Instructor",
+                                    instructorName,
+                                    instructorProfileImage,
                                     reply.getContent(),
                                     reply.getCreatedAt(),
                                     reply.getUpdatedAt()
@@ -107,7 +115,7 @@ public class InstructorReviewService {
         ReviewReply saved = reviewReplyRepository.save(reply);
         review.markAnswered();
 
-        return ReviewReplyResponse.from(saved);
+        return ReviewReplyResponse.from(saved, getInstructorDisplayName(instructorId), getInstructorProfileImage(instructorId));
     }
 
     public ReviewReplyResponse updateReply(Long reviewId, Long replyId, Long instructorId, ReviewReplyRequest request) {
@@ -119,7 +127,7 @@ public class InstructorReviewService {
         validateReplyOwner(reply, reviewId, instructorId);
         reply.updateContent(request.getContent());
 
-        return ReviewReplyResponse.from(reply);
+        return ReviewReplyResponse.from(reply, getInstructorDisplayName(instructorId), getInstructorProfileImage(instructorId));
     }
 
     public void deleteReply(Long reviewId, Long replyId, Long instructorId) {
@@ -277,5 +285,17 @@ public class InstructorReviewService {
                 .map(String::trim)
                 .filter(tag -> !tag.isBlank())
                 .toList();
+    }
+
+    private String getInstructorDisplayName(Long instructorId) {
+        return userRepository.findById(instructorId)
+                .map(User::getName)
+                .orElse("강사");
+    }
+
+    private String getInstructorProfileImage(Long instructorId) {
+        return userProfileRepository.findByUserId(instructorId)
+                .map(UserProfile::getDisplayProfileImage)
+                .orElse(null);
     }
 }

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { ErrorCard, LoadingCard, formatNumber } from '../../account/ui'
-import { instructorAnalyticsApi } from '../../lib/api'
-import type { InstructorAnalyticsDashboard } from '../../types/instructor'
+import { buildInstructorCourseOptions } from '../../instructor/course-display'
+import { instructorAnalyticsApi, instructorCourseApi } from '../../lib/api'
+import type { InstructorAnalyticsDashboard, InstructorCourseListItem } from '../../types/instructor'
 
 type Tone = 'safe' | 'warn' | 'danger'
 
@@ -122,8 +123,20 @@ function buildPerformanceSummary(data: InstructorAnalyticsDashboard) {
 export default function StudentAnalyticsPage() {
   const [courseId, setCourseId] = useState<number | null>(null)
   const [analytics, setAnalytics] = useState<InstructorAnalyticsDashboard | null>(null)
+  const [courseCatalog, setCourseCatalog] = useState<InstructorCourseListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    const controller = new AbortController()
+
+    instructorCourseApi
+      .getCourses(controller.signal)
+      .then((nextCourses) => setCourseCatalog(nextCourses))
+      .catch(() => {})
+
+    return () => controller.abort()
+  }, [])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -199,6 +212,7 @@ export default function StudentAnalyticsPage() {
     tone: getDifficultyTone(item.weaknessScore),
   }))
   const performanceSummary = buildPerformanceSummary(analytics)
+  const courseOptions = buildInstructorCourseOptions(courseCatalog)
 
   const metrics = [
     {
@@ -255,9 +269,9 @@ export default function StudentAnalyticsPage() {
               className="cursor-pointer rounded-lg border border-gray-200 bg-white px-4 py-2 text-sm font-semibold text-gray-700 transition hover:border-gray-300"
             >
               <option value="all">전체 강의</option>
-              {analytics.courseOptions.map((course) => (
-                <option key={course.courseId} value={course.courseId}>
-                  {course.title}
+              {courseOptions.map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
                 </option>
               ))}
             </select>
