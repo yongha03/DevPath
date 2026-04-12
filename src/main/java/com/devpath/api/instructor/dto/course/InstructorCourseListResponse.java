@@ -1,6 +1,7 @@
 package com.devpath.api.instructor.dto.course;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record InstructorCourseListResponse(
         Long courseId,
@@ -16,6 +17,7 @@ public record InstructorCourseListResponse(
         Long reviewCount,
         Double averageRating,
         String thumbnailUrl,
-        LocalDateTime publishedAt
+        LocalDateTime publishedAt,
+        List<String> tags
 ) {
 }
