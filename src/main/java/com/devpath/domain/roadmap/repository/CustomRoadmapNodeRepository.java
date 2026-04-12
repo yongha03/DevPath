@@ -10,6 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface CustomRoadmapNodeRepository extends JpaRepository<CustomRoadmapNode, Long> {
+
   List<CustomRoadmapNode> findAllByCustomRoadmap(CustomRoadmap customRoadmap);
 
   List<CustomRoadmapNode> findAllByCustomRoadmapOrderByOriginalNodeSortOrderAsc(

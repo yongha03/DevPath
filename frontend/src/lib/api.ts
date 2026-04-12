@@ -226,6 +226,15 @@ export const roadmapApi = {
       { auth: true },
     )
   },
+
+  // [TEST] 노드 완료 즉시 분기 추천 테스트용 — 실 서비스 전 삭제 대상
+  testRunDiagnosis(originalRoadmapId: number, originalNodeId: number) {
+    return request<{ score: number; maxScore: number; branchType: string; recommendedNodes: string }>(
+      `/api/me/roadmaps/${originalRoadmapId}/diagnosis/test-run?originalNodeId=${originalNodeId}`,
+      { method: 'POST' },
+      { auth: true },
+    )
+  },
 }
 
 export const authApi = {

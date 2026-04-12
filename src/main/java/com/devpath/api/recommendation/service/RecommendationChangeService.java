@@ -23,6 +23,7 @@ import com.devpath.domain.roadmap.entity.RoadmapNode;
 import com.devpath.domain.roadmap.repository.CustomNodePrerequisiteRepository;
 import com.devpath.domain.roadmap.repository.CustomRoadmapNodeRepository;
 import com.devpath.domain.roadmap.repository.CustomRoadmapRepository;
+import com.devpath.domain.roadmap.repository.RoadmapNodeRepository;
 import com.devpath.domain.roadmap.repository.RoadmapRepository;
 import com.devpath.domain.user.entity.User;
 import com.devpath.domain.user.repository.UserRepository;
@@ -43,6 +44,7 @@ public class RecommendationChangeService {
     private final CustomRoadmapNodeRepository customRoadmapNodeRepository;
     private final CustomRoadmapRepository customRoadmapRepository;
     private final CustomNodePrerequisiteRepository customNodePrerequisiteRepository;
+    private final RoadmapNodeRepository roadmapNodeRepository;
     private final LearningAutomationRuleRepository learningAutomationRuleRepository;
     private final SupplementRecommendationService supplementRecommendationService;
     private final RecommendationHistoryService recommendationHistoryService;
@@ -113,7 +115,7 @@ public class RecommendationChangeService {
         recommendationChange.apply();
 
         if (recommendationChange.getNodeChangeType() == NodeChangeType.ADD) {
-            addNodeToCustomRoadmap(recommendationChange.getRoadmapNode(), userId);
+            addNodeToCustomRoadmap(recommendationChange.getRoadmapNode(), userId, recommendationChange.getBranchFromNodeId());
         } else if (recommendationChange.getNodeChangeType() == NodeChangeType.DELETE) {
             deleteNodeFromCustomRoadmaps(recommendationChange.getRoadmapNode().getNodeId(), userId);
         }
@@ -296,7 +298,7 @@ public class RecommendationChangeService {
     }
 
     // ADD 타입 변경 적용: 해당 유저의 커스텀 로드맵에 노드 추가 + 진행률 재계산
-    private void addNodeToCustomRoadmap(RoadmapNode roadmapNode, Long userId) {
+    private void addNodeToCustomRoadmap(RoadmapNode roadmapNode, Long userId, Long branchFromNodeId) {
         Long roadmapId = roadmapNode.getRoadmap().getRoadmapId();
 
         CustomRoadmap customRoadmap = customRoadmapRepository
@@ -312,8 +314,19 @@ public class RecommendationChangeService {
             return;
         }
 
-        // 삽입 위치: 원본 sort_order를 기준으로 해당 위치 이후 노드를 모두 +1 밀기
-        int insertAt = roadmapNode.getSortOrder() != null ? roadmapNode.getSortOrder() + 1 : Integer.MAX_VALUE;
+        // 삽입 위치: branchFromNodeId(클리어한 노드)의 customSortOrder 바로 다음
+        // branchFromNodeId가 없으면 roadmapNode.sortOrder 기준으로 fallback
+        int insertAt;
+        if (branchFromNodeId != null) {
+            insertAt = customRoadmapNodeRepository
+                .findAllByCustomRoadmap(customRoadmap).stream()
+                .filter(n -> n.getOriginalNode().getNodeId().equals(branchFromNodeId))
+                .mapToInt(n -> n.getCustomSortOrder() != null ? n.getCustomSortOrder() + 1 : Integer.MAX_VALUE)
+                .findFirst()
+                .orElse(roadmapNode.getSortOrder() != null ? roadmapNode.getSortOrder() + 1 : Integer.MAX_VALUE);
+        } else {
+            insertAt = roadmapNode.getSortOrder() != null ? roadmapNode.getSortOrder() + 1 : Integer.MAX_VALUE;
+        }
 
         List<CustomRoadmapNode> nodesToShift =
             customRoadmapNodeRepository.findAllByCustomRoadmapAndCustomSortOrderGreaterThanEqual(
@@ -325,6 +338,8 @@ public class RecommendationChangeService {
                 .customRoadmap(customRoadmap)
                 .originalNode(roadmapNode)
                 .customSortOrder(insertAt)
+                .isBranch(branchFromNodeId != null)
+                .branchFromNodeId(branchFromNodeId)
                 .build()
         );
 
@@ -392,6 +407,7 @@ public class RecommendationChangeService {
             .nodeId(recommendationChange.getRoadmapNode().getNodeId())
             .nodeTitle(recommendationChange.getRoadmapNode().getTitle())
             .nodeSortOrder(recommendationChange.getRoadmapNode().getSortOrder())
+            .branchFromNodeId(recommendationChange.getBranchFromNodeId())
             .reason(recommendationChange.getReason())
             .contextSummary(recommendationChange.getContextSummary())
             .nodeChangeType(recommendationChange.getNodeChangeType().name())

@@ -7,6 +7,7 @@ import com.devpath.domain.roadmap.entity.DiagnosisQuiz;
 import com.devpath.domain.roadmap.entity.DiagnosisResult;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -57,6 +58,7 @@ public class DiagnosisQuizController {
         DiagnosisResult result = diagnosisQuizService.submitQuizAnswer(
                 userId,
                 quizId,
+                request.getClearedNodeId(),
                 request.getAnswers()
         );
 
@@ -81,6 +83,24 @@ public class DiagnosisQuizController {
         DiagnosisQuizDto.QuizResultResponse response = DiagnosisQuizDto.QuizResultResponse.from(result);
 
         return ResponseEntity.ok(ApiResponse.ok(response));
+    }
+
+    // ── [TEST] 노드 완료 즉시 추천 — 실 서비스 전 삭제 대상 ───────────────────
+
+    /**
+     * [TEST] 노드 완료 시 랜덤 점수로 즉시 분기 추천 생성 (테스트 전용)
+     */
+    @PostMapping("/{roadmapId}/diagnosis/test-run")
+    @Operation(summary = "[TEST] 즉시 분기 추천 생성", description = "테스트 전용 — 랜덤 점수로 즉시 추천 분기를 생성합니다")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> testRunDiagnosis(
+            @PathVariable Long roadmapId,
+            @RequestParam Long originalNodeId) {
+
+        // TODO: 실제 구현 시 SecurityContext에서 userId 추출
+        Long userId = 1L;
+
+        Map<String, Object> result = diagnosisQuizService.testRunRecommend(userId, roadmapId, originalNodeId);
+        return ResponseEntity.ok(ApiResponse.ok(result));
     }
 
     /**

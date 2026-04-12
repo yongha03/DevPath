@@ -3,6 +3,8 @@ package com.devpath.api.roadmap.service;
 import com.devpath.api.roadmap.dto.MyRoadmapDto;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
+import com.devpath.domain.learning.entity.clearance.NodeClearance;
+import com.devpath.domain.learning.repository.clearance.NodeClearanceRepository;
 import com.devpath.domain.roadmap.entity.CustomRoadmap;
 import com.devpath.domain.roadmap.entity.CustomRoadmapNode;
 import com.devpath.domain.roadmap.entity.NodeStatus;
@@ -26,6 +28,7 @@ public class CustomRoadmapQueryService {
   private final CustomRoadmapRepository customRoadmapRepository;
   private final CustomRoadmapNodeRepository customRoadmapNodeRepository;
   private final CustomNodePrerequisiteRepository customNodePrerequisiteRepository;
+  private final NodeClearanceRepository nodeClearanceRepository;
 
   @Transactional(readOnly = true)
   public List<CustomRoadmap> getMyRoadmaps(Long userId) {
@@ -54,7 +57,13 @@ public class CustomRoadmapQueryService {
     Map<Long, NodeStatus> statusByNodeId = customNodes.stream()
         .collect(Collectors.toMap(CustomRoadmapNode::getId, CustomRoadmapNode::getStatus));
 
-    return MyRoadmapDto.DetailResponse.from(customRoadmap, customNodes, prerequisiteIdsByNodeId, statusByNodeId);
+    Map<Long, NodeClearance> clearanceByNodeId =
+        nodeClearanceRepository.findAllByUserIdAndNodeRoadmapRoadmapIdOrderByNodeSortOrderAscNodeNodeIdAsc(
+                userId, customRoadmap.getOriginalRoadmap().getRoadmapId())
+            .stream()
+            .collect(Collectors.toMap(c -> c.getNode().getNodeId(), c -> c));
+
+    return MyRoadmapDto.DetailResponse.from(customRoadmap, customNodes, prerequisiteIdsByNodeId, statusByNodeId, clearanceByNodeId);
   }
 
   @Transactional

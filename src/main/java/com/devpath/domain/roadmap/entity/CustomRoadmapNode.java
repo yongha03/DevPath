@@ -41,6 +41,18 @@ public class CustomRoadmapNode {
   @Column(name = "custom_sort_order")
   private Integer customSortOrder;
 
+  // 진단 퀴즈 결과로 생성된 추천 분기 노드 여부
+  @Column(name = "is_branch", nullable = false)
+  private boolean isBranch = false;
+
+  // 어느 원본 노드(original_node_id)에서 갈라진 분기인지 (일반 노드는 null)
+  @Column(name = "branch_from_node_id")
+  private Long branchFromNodeId;
+
+  // 분기 종류: "REVIEW"(복습) | "ADVANCED"(심화) | null(일반 노드)
+  @Column(name = "branch_type", length = 20)
+  private String branchType;
+
   @Column(name = "started_at")
   private LocalDateTime startedAt;
 
@@ -48,13 +60,16 @@ public class CustomRoadmapNode {
   private LocalDateTime completedAt;
 
   @Builder
-  public CustomRoadmapNode(CustomRoadmap customRoadmap, RoadmapNode originalNode, Integer customSortOrder) {
+  public CustomRoadmapNode(CustomRoadmap customRoadmap, RoadmapNode originalNode, Integer customSortOrder,
+      boolean isBranch, Long branchFromNodeId, String branchType) {
     this.customRoadmap = customRoadmap;
     this.originalNode = originalNode;
-    this.status = NodeStatus.NOT_STARTED; // 초기 상태는 '시작 전'
-    // 명시적으로 전달된 값이 없으면 원본 노드의 sort_order를 그대로 사용
+    this.status = NodeStatus.NOT_STARTED;
     this.customSortOrder = customSortOrder != null ? customSortOrder
         : (originalNode != null ? originalNode.getSortOrder() : null);
+    this.isBranch = isBranch;
+    this.branchFromNodeId = branchFromNodeId;
+    this.branchType = branchType;
   }
 
   // 커스텀 순서 변경 비즈니스 메서드 (노드 삽입 시 기존 노드 밀기에 사용)

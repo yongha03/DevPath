@@ -52,6 +52,7 @@ public class DiagnosisQuizDto {
     @Getter
     @Builder
     public static class SubmitAnswerRequest {
+        private Long clearedNodeId;           // 방금 클리어한 노드의 originalNodeId
         private Map<Integer, String> answers; // 문제 번호 -> 답변
     }
 

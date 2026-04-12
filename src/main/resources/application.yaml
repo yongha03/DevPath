@@ -98,6 +98,10 @@ ocr:
   # sourceTextHint를 로컬/테스트 fallback으로 허용할지 여부
   allow-source-text-fallback: ${OCR_ALLOW_SOURCE_TEXT_FALLBACK:true}
 
+gemini:
+  api:
+    key: ${GEMINI_API_KEY:AIzaSyAI2_SisH-evir3f8J4ZKQDCze1A0Jnm24}
+
 blog:
   publish:
     # 로컬/테스트에서만 MOCK provider를 명시적으로 허용

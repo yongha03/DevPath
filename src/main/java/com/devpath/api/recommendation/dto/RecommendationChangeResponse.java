@@ -28,6 +28,9 @@ public class RecommendationChangeResponse {
         @Schema(description = "Node sort order (ADD 타입에서 삽입 위치 결정용)", example = "8")
         private Integer nodeSortOrder;
 
+        @Schema(description = "진단 퀴즈 추천 시 클리어한 원본 노드 ID (분기 위치 결정용)")
+        private Long branchFromNodeId;
+
         @Schema(description = "Reason", example = "Generated from supplement recommendation and weakness signals.")
         private String reason;
 

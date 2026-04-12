@@ -8408,7 +8408,7 @@ WHERE u.email = 'learner@devpath.com'
       WHERE cr.user_id = u.user_id AND cr.original_roadmap_id = r.roadmap_id
   );
 
-INSERT INTO custom_roadmap_nodes (custom_roadmap_id, original_node_id, status, custom_sort_order, started_at, completed_at)
+INSERT INTO custom_roadmap_nodes (custom_roadmap_id, original_node_id, status, custom_sort_order, is_branch, branch_from_node_id, branch_type, started_at, completed_at)
 SELECT cr.custom_roadmap_id,
        rn.node_id,
        CASE
@@ -8417,6 +8417,9 @@ SELECT cr.custom_roadmap_id,
            ELSE 'NOT_STARTED'
        END,
        rn.sort_order,
+       false,
+       NULL,
+       NULL,
        CASE WHEN rn.sort_order <= 3 THEN TIMESTAMP '2026-03-28 10:00:00' ELSE NULL END,
        CASE WHEN rn.sort_order <= 2 THEN TIMESTAMP '2026-03-29 18:00:00' ELSE NULL END
 FROM custom_roadmaps cr
@@ -8472,77 +8475,758 @@ WHERE u.email = 'learner@devpath.com'
       WHERE nc.user_id = u.user_id AND nc.node_id = rn.node_id
   );
 
--- ============================================================
--- [TEST DATA] 수정 제안(recommendation_changes) 테스트용 데이터
--- 테스트 완료 후 아래 블록 전체 삭제 가능
--- 포함 내용:
---   1. ADD 테스트 전용 노드 (커스텀 로드맵에 미포함 상태)
---   2. ADD 타입 제안: 위 테스트 노드를 커스텀 로드맵에 추가 제안
---   3. DELETE 타입 제안: '메시지 큐 & MSA' 노드 삭제 제안
--- ============================================================
 
--- [TEST] ADD 테스트용 노드: 커스텀 로드맵에는 추가하지 않음 (ADD 제안 수락 시 삽입되는지 확인용)
-INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
-SELECT r.roadmap_id,
-       '[TEST] Kubernetes 기초',
-       '컨테이너 오케스트레이션 개념, Pod/Service/Deployment 리소스, kubectl 기본 명령어를 학습합니다.',
-       'PRACTICE', 8, 'Pod,Service,Deployment,kubectl,Namespace,ConfigMap', NULL
-FROM roadmaps r
-WHERE r.title = 'Backend Master Roadmap'
-  AND NOT EXISTS (
-      SELECT 1 FROM roadmap_nodes rn
-      WHERE rn.roadmap_id = r.roadmap_id AND rn.title = '[TEST] Kubernetes 기초'
-  );
+-- ========================================
+-- Backend Master Roadmap 노드 필수 태그 (sub_topics 기반 정제)
+-- ========================================
 
--- [TEST] ADD 타입 제안: learner@devpath.com 에게 '[TEST] Kubernetes 기초' 노드 추가 제안
-INSERT INTO recommendation_changes
-    (user_id, node_id, source_recommendation_id, reason, context_summary,
-     node_change_type, change_status, decision_status, suggested_at, created_at, updated_at)
-SELECT
-    u.user_id,
-    rn.node_id,
-    NULL,
-    'Docker & CI/CD를 완료했습니다. 컨테이너 오케스트레이션 단계로 넘어가는 것을 추천합니다.',
-    'tilCount=3, weaknessSignal=false, warningCount=0, historyCount=1',
-    'ADD',
-    'SUGGESTED',
-    'UNDECIDED',
-    TIMESTAMP '2026-04-07 09:00:00',
-    TIMESTAMP '2026-04-07 09:00:00',
-    TIMESTAMP '2026-04-07 09:00:00'
+-- 신규 태그 추가
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'DNS', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'DNS');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT '도메인', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = '도메인');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT '웹 호스팅', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = '웹 호스팅');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT '브라우저', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = '브라우저');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT '프로세스 관리', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = '프로세스 관리');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT '스레드', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = '스레드');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT '메모리 관리', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = '메모리 관리');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'I/O 관리', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'I/O 관리');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'OOP', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'OOP');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT '상속', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = '상속');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT '인터페이스', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = '인터페이스');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT '제네릭', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = '제네릭');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT '컬렉션', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = '컬렉션');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'Git', 'DevOps', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'Git');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT '브랜치 전략', 'DevOps', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = '브랜치 전략');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'GitFlow', 'DevOps', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'GitFlow');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'Pull Request', 'DevOps', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'Pull Request');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT '코드 리뷰', 'DevOps', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = '코드 리뷰');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'SQL', 'Database', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'SQL');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'JOIN', 'Database', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'JOIN');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT '서브쿼리', 'Database', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = '서브쿼리');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT '인덱스', 'Database', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = '인덱스');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT '트랜잭션', 'Database', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = '트랜잭션');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'REST', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'REST');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'URI 설계', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'URI 설계');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'HTTP 메서드', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'HTTP 메서드');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'HTTP 상태코드', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'HTTP 상태코드');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'Swagger', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'Swagger');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'DI/IoC', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'DI/IoC');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'Spring Bean', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'Spring Bean');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'Spring MVC', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'Spring MVC');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT '3계층 구조', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = '3계층 구조');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'Entity 매핑', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'Entity 매핑');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'JPQL', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'JPQL');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'FetchType', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'FetchType');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'N+1 문제', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'N+1 문제');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'QueryDSL', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'QueryDSL');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'Redis 자료구조', 'Database', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'Redis 자료구조');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'Redis TTL', 'Database', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'Redis TTL');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'Spring Cache', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'Spring Cache');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'Redis Session', 'Database', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'Redis Session');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'Pub/Sub', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'Pub/Sub');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT '분산 락', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = '분산 락');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'JUnit5', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'JUnit5');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'Mockito', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'Mockito');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'BDD', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'BDD');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT '단위 테스트', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = '단위 테스트');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'MockMvc', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'MockMvc');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT '통합 테스트', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = '통합 테스트');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT '테스트 커버리지', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = '테스트 커버리지');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'OAuth2', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'OAuth2');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT '소셜 로그인', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = '소셜 로그인');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'docker-compose', 'DevOps', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'docker-compose');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'GitHub Actions', 'DevOps', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'GitHub Actions');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'CI/CD', 'DevOps', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'CI/CD');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'AWS EC2', 'DevOps', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'AWS EC2');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'SOLID 원칙', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'SOLID 원칙');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT '디자인 패턴', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = '디자인 패턴');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'Singleton', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'Singleton');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'Factory 패턴', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'Factory 패턴');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'Strategy 패턴', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'Strategy 패턴');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'OWASP', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'OWASP');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'XSS', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'XSS');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'CSRF', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'CSRF');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'SQL Injection', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'SQL Injection');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'HTTPS', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'HTTPS');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'CORS', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'CORS');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'Kafka', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'Kafka');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'Kafka 토픽', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'Kafka 토픽');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'MSA', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'MSA');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT 'API Gateway', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = 'API Gateway');
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+SELECT '서비스 분리', 'Backend', TRUE, FALSE
+WHERE NOT EXISTS (SELECT 1 FROM tags WHERE name = '서비스 분리');
+
+-- 노드별 필수 태그 연결
+-- 인터넷 & 웹 기초
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = '인터넷 & 웹 기초' AND t.name = 'HTTP'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = '인터넷 & 웹 기초' AND t.name = 'DNS'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = '인터넷 & 웹 기초' AND t.name = '도메인'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = '인터넷 & 웹 기초' AND t.name = '웹 호스팅'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = '인터넷 & 웹 기초' AND t.name = '브라우저'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+
+-- OS & 터미널
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'OS & 터미널' AND t.name = 'Linux'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'OS & 터미널' AND t.name = '프로세스 관리'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'OS & 터미널' AND t.name = '스레드'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'OS & 터미널' AND t.name = '메모리 관리'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'OS & 터미널' AND t.name = 'I/O 관리'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+
+-- Java 기초
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Java 기초' AND t.name = 'Java'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Java 기초' AND t.name = 'OOP'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Java 기초' AND t.name = '상속'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Java 기초' AND t.name = '인터페이스'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Java 기초' AND t.name = '제네릭'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Java 기초' AND t.name = '컬렉션'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+
+-- Git & 버전 관리
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Git & 버전 관리' AND t.name = 'Git'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Git & 버전 관리' AND t.name = '브랜치 전략'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Git & 버전 관리' AND t.name = 'GitFlow'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Git & 버전 관리' AND t.name = 'Pull Request'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Git & 버전 관리' AND t.name = '코드 리뷰'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+
+-- RDB & SQL
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'RDB & SQL' AND t.name = 'SQL'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'RDB & SQL' AND t.name = 'JOIN'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'RDB & SQL' AND t.name = '서브쿼리'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'RDB & SQL' AND t.name = '인덱스'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'RDB & SQL' AND t.name = '트랜잭션'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'RDB & SQL' AND t.name = 'PostgreSQL'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+
+-- REST API 설계
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'REST API 설계' AND t.name = 'REST'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'REST API 설계' AND t.name = 'HTTP'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'REST API 설계' AND t.name = 'URI 설계'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'REST API 설계' AND t.name = 'HTTP 메서드'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'REST API 설계' AND t.name = 'HTTP 상태코드'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'REST API 설계' AND t.name = 'Swagger'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+
+-- Spring Boot & MVC
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Spring Boot & MVC' AND t.name = 'Spring Boot'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Spring Boot & MVC' AND t.name = 'DI/IoC'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Spring Boot & MVC' AND t.name = 'Spring Bean'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Spring Boot & MVC' AND t.name = 'Spring MVC'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Spring Boot & MVC' AND t.name = '3계층 구조'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+
+-- Spring Data JPA
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Spring Data JPA' AND t.name = 'JPA'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Spring Data JPA' AND t.name = 'Entity 매핑'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Spring Data JPA' AND t.name = 'JPQL'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Spring Data JPA' AND t.name = 'FetchType'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Spring Data JPA' AND t.name = 'N+1 문제'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Spring Data JPA' AND t.name = 'QueryDSL'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+
+-- Redis 기초
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Redis 기초' AND t.name = 'Redis'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Redis 기초' AND t.name = 'Redis 자료구조'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Redis 기초' AND t.name = 'Redis TTL'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Redis 기초' AND t.name = 'Spring Cache'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+
+-- Redis 심화
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Redis 심화' AND t.name = 'Redis'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Redis 심화' AND t.name = 'Redis Session'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Redis 심화' AND t.name = 'Pub/Sub'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Redis 심화' AND t.name = '분산 락'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+
+-- JUnit5 & Mockito
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'JUnit5 & Mockito' AND t.name = 'JUnit5'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'JUnit5 & Mockito' AND t.name = 'Mockito'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'JUnit5 & Mockito' AND t.name = 'BDD'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'JUnit5 & Mockito' AND t.name = '단위 테스트'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+
+-- Spring Boot 테스트
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Spring Boot 테스트' AND t.name = 'Spring Boot'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Spring Boot 테스트' AND t.name = 'MockMvc'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Spring Boot 테스트' AND t.name = '통합 테스트'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Spring Boot 테스트' AND t.name = '테스트 커버리지'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+
+-- Spring Security & JWT
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Spring Security & JWT' AND t.name = 'Spring Security'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Spring Security & JWT' AND t.name = 'JWT'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Spring Security & JWT' AND t.name = 'OAuth2'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Spring Security & JWT' AND t.name = '소셜 로그인'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+
+-- Docker & CI/CD
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Docker & CI/CD' AND t.name = 'Docker'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Docker & CI/CD' AND t.name = 'docker-compose'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Docker & CI/CD' AND t.name = 'GitHub Actions'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Docker & CI/CD' AND t.name = 'CI/CD'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'Docker & CI/CD' AND t.name = 'AWS EC2'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+
+-- SOLID & 디자인패턴
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'SOLID & 디자인패턴' AND t.name = 'SOLID 원칙'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'SOLID & 디자인패턴' AND t.name = '디자인 패턴'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'SOLID & 디자인패턴' AND t.name = 'Singleton'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'SOLID & 디자인패턴' AND t.name = 'Factory 패턴'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = 'SOLID & 디자인패턴' AND t.name = 'Strategy 패턴'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+
+-- 웹 보안 기초
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = '웹 보안 기초' AND t.name = 'OWASP'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = '웹 보안 기초' AND t.name = 'XSS'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = '웹 보안 기초' AND t.name = 'CSRF'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = '웹 보안 기초' AND t.name = 'SQL Injection'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = '웹 보안 기초' AND t.name = 'HTTPS'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = '웹 보안 기초' AND t.name = 'CORS'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+
+-- 메시지 큐 & MSA
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = '메시지 큐 & MSA' AND t.name = 'Kafka'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = '메시지 큐 & MSA' AND t.name = 'Kafka 토픽'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = '메시지 큐 & MSA' AND t.name = 'MSA'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = '메시지 큐 & MSA' AND t.name = 'API Gateway'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+INSERT INTO node_required_tags (node_id, tag_id)
+SELECT rn.node_id, t.tag_id FROM roadmap_nodes rn, tags t
+WHERE rn.title = '메시지 큐 & MSA' AND t.name = '서비스 분리'
+  AND NOT EXISTS (SELECT 1 FROM node_required_tags WHERE node_id = rn.node_id AND tag_id = t.tag_id);
+
+-- learner 기술 스택: 클리어 노드 + Java 기초 필수 태그 전체 보유
+INSERT INTO user_tech_stacks (user_id, tag_id)
+SELECT u.user_id, t.tag_id FROM users u, tags t
+WHERE u.email = 'learner@devpath.com' AND t.name = 'HTTP'
+  AND NOT EXISTS (SELECT 1 FROM user_tech_stacks uts WHERE uts.user_id = u.user_id AND uts.tag_id = t.tag_id);
+INSERT INTO user_tech_stacks (user_id, tag_id)
+SELECT u.user_id, t.tag_id FROM users u, tags t
+WHERE u.email = 'learner@devpath.com' AND t.name = 'DNS'
+  AND NOT EXISTS (SELECT 1 FROM user_tech_stacks uts WHERE uts.user_id = u.user_id AND uts.tag_id = t.tag_id);
+INSERT INTO user_tech_stacks (user_id, tag_id)
+SELECT u.user_id, t.tag_id FROM users u, tags t
+WHERE u.email = 'learner@devpath.com' AND t.name = '도메인'
+  AND NOT EXISTS (SELECT 1 FROM user_tech_stacks uts WHERE uts.user_id = u.user_id AND uts.tag_id = t.tag_id);
+INSERT INTO user_tech_stacks (user_id, tag_id)
+SELECT u.user_id, t.tag_id FROM users u, tags t
+WHERE u.email = 'learner@devpath.com' AND t.name = '웹 호스팅'
+  AND NOT EXISTS (SELECT 1 FROM user_tech_stacks uts WHERE uts.user_id = u.user_id AND uts.tag_id = t.tag_id);
+INSERT INTO user_tech_stacks (user_id, tag_id)
+SELECT u.user_id, t.tag_id FROM users u, tags t
+WHERE u.email = 'learner@devpath.com' AND t.name = '브라우저'
+  AND NOT EXISTS (SELECT 1 FROM user_tech_stacks uts WHERE uts.user_id = u.user_id AND uts.tag_id = t.tag_id);
+INSERT INTO user_tech_stacks (user_id, tag_id)
+SELECT u.user_id, t.tag_id FROM users u, tags t
+WHERE u.email = 'learner@devpath.com' AND t.name = 'Linux'
+  AND NOT EXISTS (SELECT 1 FROM user_tech_stacks uts WHERE uts.user_id = u.user_id AND uts.tag_id = t.tag_id);
+INSERT INTO user_tech_stacks (user_id, tag_id)
+SELECT u.user_id, t.tag_id FROM users u, tags t
+WHERE u.email = 'learner@devpath.com' AND t.name = '프로세스 관리'
+  AND NOT EXISTS (SELECT 1 FROM user_tech_stacks uts WHERE uts.user_id = u.user_id AND uts.tag_id = t.tag_id);
+INSERT INTO user_tech_stacks (user_id, tag_id)
+SELECT u.user_id, t.tag_id FROM users u, tags t
+WHERE u.email = 'learner@devpath.com' AND t.name = '스레드'
+  AND NOT EXISTS (SELECT 1 FROM user_tech_stacks uts WHERE uts.user_id = u.user_id AND uts.tag_id = t.tag_id);
+INSERT INTO user_tech_stacks (user_id, tag_id)
+SELECT u.user_id, t.tag_id FROM users u, tags t
+WHERE u.email = 'learner@devpath.com' AND t.name = '메모리 관리'
+  AND NOT EXISTS (SELECT 1 FROM user_tech_stacks uts WHERE uts.user_id = u.user_id AND uts.tag_id = t.tag_id);
+INSERT INTO user_tech_stacks (user_id, tag_id)
+SELECT u.user_id, t.tag_id FROM users u, tags t
+WHERE u.email = 'learner@devpath.com' AND t.name = 'I/O 관리'
+  AND NOT EXISTS (SELECT 1 FROM user_tech_stacks uts WHERE uts.user_id = u.user_id AND uts.tag_id = t.tag_id);
+INSERT INTO user_tech_stacks (user_id, tag_id)
+SELECT u.user_id, t.tag_id FROM users u, tags t
+WHERE u.email = 'learner@devpath.com' AND t.name = 'Java'
+  AND NOT EXISTS (SELECT 1 FROM user_tech_stacks uts WHERE uts.user_id = u.user_id AND uts.tag_id = t.tag_id);
+INSERT INTO user_tech_stacks (user_id, tag_id)
+SELECT u.user_id, t.tag_id FROM users u, tags t
+WHERE u.email = 'learner@devpath.com' AND t.name = 'OOP'
+  AND NOT EXISTS (SELECT 1 FROM user_tech_stacks uts WHERE uts.user_id = u.user_id AND uts.tag_id = t.tag_id);
+INSERT INTO user_tech_stacks (user_id, tag_id)
+SELECT u.user_id, t.tag_id FROM users u, tags t
+WHERE u.email = 'learner@devpath.com' AND t.name = '상속'
+  AND NOT EXISTS (SELECT 1 FROM user_tech_stacks uts WHERE uts.user_id = u.user_id AND uts.tag_id = t.tag_id);
+INSERT INTO user_tech_stacks (user_id, tag_id)
+SELECT u.user_id, t.tag_id FROM users u, tags t
+WHERE u.email = 'learner@devpath.com' AND t.name = '인터페이스'
+  AND NOT EXISTS (SELECT 1 FROM user_tech_stacks uts WHERE uts.user_id = u.user_id AND uts.tag_id = t.tag_id);
+INSERT INTO user_tech_stacks (user_id, tag_id)
+SELECT u.user_id, t.tag_id FROM users u, tags t
+WHERE u.email = 'learner@devpath.com' AND t.name = '제네릭'
+  AND NOT EXISTS (SELECT 1 FROM user_tech_stacks uts WHERE uts.user_id = u.user_id AND uts.tag_id = t.tag_id);
+INSERT INTO user_tech_stacks (user_id, tag_id)
+SELECT u.user_id, t.tag_id FROM users u, tags t
+WHERE u.email = 'learner@devpath.com' AND t.name = '컬렉션'
+  AND NOT EXISTS (SELECT 1 FROM user_tech_stacks uts WHERE uts.user_id = u.user_id AND uts.tag_id = t.tag_id);
+
+-- Java 기초 node_clearances: 태그 모두 충족, 레슨 80% 진행, 아직 미클리어
+-- (진단 퀴즈 추천 테스트용 — 클리어 처리 시 추천 로직 동작 확인)
+INSERT INTO node_clearances
+    (user_id, node_id, clearance_status, lesson_completion_rate, required_tags_satisfied,
+     missing_tag_count, lesson_completed, quiz_passed, assignment_passed, proof_eligible,
+     cleared_at, last_calculated_at, created_at, updated_at)
+SELECT u.user_id, rn.node_id,
+       'NOT_CLEARED', 0.80, TRUE, 0, FALSE, FALSE, FALSE, FALSE,
+       NULL,
+       TIMESTAMP '2026-04-10 12:00:00',
+       TIMESTAMP '2026-04-10 12:00:00',
+       TIMESTAMP '2026-04-10 12:00:00'
 FROM users u
-JOIN roadmap_nodes rn ON rn.title = '[TEST] Kubernetes 기초'
+JOIN roadmaps r ON r.title = 'Backend Master Roadmap'
+JOIN roadmap_nodes rn ON rn.roadmap_id = r.roadmap_id AND rn.title = 'Java 기초'
 WHERE u.email = 'learner@devpath.com'
   AND NOT EXISTS (
-      SELECT 1 FROM recommendation_changes rc
-      WHERE rc.user_id = u.user_id AND rc.node_id = rn.node_id AND rc.change_status = 'SUGGESTED'
+      SELECT 1 FROM node_clearances nc
+      WHERE nc.user_id = u.user_id AND nc.node_id = rn.node_id
   );
-
--- [TEST] DELETE 타입 제안: '메시지 큐 & MSA' 노드 삭제 제안 (커리큘럼에서 제거 권고)
-INSERT INTO recommendation_changes
-    (user_id, node_id, source_recommendation_id, reason, context_summary,
-     node_change_type, change_status, decision_status, suggested_at, created_at, updated_at)
-SELECT
-    u.user_id,
-    rn.node_id,
-    NULL,
-    '현재 학습 단계에서 MSA는 과도한 범위입니다. 핵심 스택 완료 후 다시 추가하는 것을 권장합니다.',
-    'tilCount=1, weaknessSignal=true, warningCount=2, historyCount=0',
-    'DELETE',
-    'SUGGESTED',
-    'UNDECIDED',
-    TIMESTAMP '2026-04-07 09:05:00',
-    TIMESTAMP '2026-04-07 09:05:00',
-    TIMESTAMP '2026-04-07 09:05:00'
-FROM users u
-JOIN roadmap_nodes rn ON rn.title = '메시지 큐 & MSA'
-JOIN roadmaps r ON r.roadmap_id = rn.roadmap_id AND r.title = 'Backend Master Roadmap'
-WHERE u.email = 'learner@devpath.com'
-  AND NOT EXISTS (
-      SELECT 1 FROM recommendation_changes rc
-      WHERE rc.user_id = u.user_id AND rc.node_id = rn.node_id AND rc.change_status = 'SUGGESTED'
-  );
-
--- ============================================================
--- [TEST DATA END]
--- ============================================================

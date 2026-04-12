@@ -12,6 +12,11 @@ export interface RoadmapNodeItem {
   content?: string
   subTopics?: string[]
   branchGroup?: number | null
+  isBranch?: boolean
+  branchFromNodeId?: number | null
+  branchType?: string | null
+  lessonCompletionRate?: number
+  requiredTagsSatisfied?: boolean
 }
 
 export interface RoadmapDetail {
@@ -29,6 +34,7 @@ export interface RecommendationChange {
   nodeId: number
   nodeTitle: string
   nodeSortOrder: number | null
+  branchFromNodeId: number | null
   reason: string
   contextSummary: string
   nodeChangeType: ChangeType

@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DevPath - 로드맵 노드 변경사항 반영</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+        body { font-family: 'Pretendard', sans-serif; background-color: #F8F9FA; }
+        
+        /* 로드맵 트리 스타일 */
+        .spine
+            position: absolute; left: 50%; top: 0; bottom: 0; width: 4px;
+            background: #cbd5e1; transform: translateX(-50%); z-index: 0;
+        }
+
+        .node-box {
+            position: relative; z-index: 10;
+            background: white; border: 2px solid #333; padding: 12px 24px;
+            border-radius: 8px; font-weight: bold; font-size: 0.95rem;
+            box-shadow: 3px 3px 0px rgba(0,0,0,0.1);
+            transition: all 0.2s; text-align: center; cursor: pointer;
+            width: 300px;
+        }
+        .node-box:hover { transform: translateY(-2px); box-shadow: 5px 5px 0px rgba(0,0,0,0.15); }
+        
+        .status-done { background: #DCFCE7; border-color: #00C471; color: #166534; }
+        .status-active { background: #FEF9C3; border-color: #EAB308; color: #854D0E; }
+
+        /* 노드 변경사항 표시 */
+        .node-new { 
+            border: 3px dashed #3B82F6 !important; 
+            background: #EFF6FF !important;
+            animation: pulse-blue 2s infinite;
+        }
+        .node-modified { 
+            border: 3px dashed #F59E0B !important;
+            background: #FEF3C7 !important;
+            animation: pulse-orange 2s infinite;
+        }
+        .node-delete { 
+            border: 3px dashed #EF4444 !important;
+            background: #FEE2E2 !important;
+            opacity: 0.6;
+            animation: pulse-red 2s infinite;
+        }
+
+        @keyframes pulse-blue {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7); }
+            50% { box-shadow: 0 0 0 10px rgba(59, 130, 246, 0); }
+        }
+        @keyframes pulse-orange {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+            50% { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
+        }
+        @keyframes pulse-red {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); }
+            50% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+        }
+
+        /* 변경사항 패널 */
+        .changes-panel {
+            position: fixed;
+            right: 0;
+            top: 80px;
+            width: 400px;
+            height: calc(100vh - 80px);
+            background: white;
+            border-left: 2px solid #E5E7EB;
+            box-shadow: -4px 0 12px rgba(0,0,0,0.1);
+            z-index: 100;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+        }
+        .changes-panel.open {
+            transform: translateX(0);
+        }
+
+        .change-item {
+            border-left: 4px solid transparent;
+            transition: all 0.2s;
+        }
+        .change-item:hover {
+            background: #F9FAFB;
+        }
+        .change-item.new { border-left-color: #3B82F6; }
+        .change-item.modified { border-left-color: #F59E0B; }
+        .change-item.delete { border-left-color: #EF4444; }
+
+        /* 서브 노드 */
+        .sub-node {
+            background: #FFEDD5; border: 1px solid #F97316; color: #9A3412;
+            padding: 6px 16px; font-size: 0.8rem; border-radius: 6px;
+            margin-bottom: 8px; position: relative;
+            display: flex; align-items: center; justify-content: center;
+            box-shadow: 1px 1px 0px rgba(0,0,0,0.05);
+            transition: all 0.1s; cursor: pointer; min-width: 120px;
+            z-index: 5;
+        }
+        .sub-node:hover { transform: scale(1.05); background: #FFF7ED; }
+
+        .sub-node-group {
+            position: absolute;
+            top: 50%; transform: translateY(-50%);
+            display: flex; flex-direction: column; justify-content: center;
+            padding-top: 10px; padding-bottom: 10px;
+        }
+
+        .group-right {
+            left: 50%; margin-left: 190px;
+            border-left: 2px dashed #cbd5e1;
+            padding-left: 20px;
+        }
+        .group-left {
+            right: 50%; margin-right: 190px;
+            border-right: 2px dashed #cbd5e1;
+            padding-right: 20px;
+            align-items: flex-end;
+        }
+
+        .connector-arm {
+            position: absolute; top: 50%; height: 2px; width: 40px;
+            background: transparent; border-top: 2px dashed #cbd5e1;
+        }
+        .arm-right { left: 50%; margin-left: 150px; }
+        .arm-left { right: 50%; margin-right: 150px; }
+
+        .group-right .sub-node::before {
+            content: ''; position: absolute;
+            right: 100%; top: 50%; width: 20px; height: 2px;
+            border-top: 2px dashed #cbd5e1;
+        }
+        .group-left .sub-node::after {
+            content: ''; position: absolute;
+            left: 100%; top: 50%; width: 20px; height: 2px;
+            border-top: 2px dashed #cbd5e1;
+        }
+
+        /* 알림 배지 */
+        .badge-pulse {
+            animation: badge-pulse 2s infinite;
+        }
+        @keyframes badge-pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+    </style>
+</head>
+<body class="overflow-x-hidden">
+
+    <!-- 헤더 -->
+    <header class="bg-white border-b px-6 py-4 sticky top-0 z-50 flex justify-between items-center shadow-sm">
+        <div class="flex items-center gap-4">
+            <a href="#" class="text-gray-500 hover:text-black"><i class="fas fa-arrow-left"></i> 목록</a>
+            <h1 class="font-bold text-xl">Backend Developer Roadmap 2026</h1>
+        </div>
+        <div class="flex items-center gap-4">
+            <!-- 변경사항 알림 버튼 -->
+            <button onclick="toggleChangesPanel()" class="relative flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition border border-blue-200">
+                <i class="fas fa-bell"></i>
+                <span class="font-bold">노드 변경사항</span>
+                <span class="badge-pulse absolute -top-1 -right-1 bg-red-500 text-white text-xs w-6 h-6 rounded-full flex items-center justify-center font-bold">5</span>
+            </button>
+            
+            <!-- 진행률 -->
+            <div class="flex items-center gap-3">
+                <span class="text-xs text-gray-500">전체 진행률</span>
+                <div class="w-32 h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div class="h-full bg-[#00C471] w-[15%]"></div>
+                </div>
+                <span class="text-sm font-bold text-[#00C471]">15%</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- 변경사항 패널 -->
+    <div id="changesPanel" class="changes-panel">
+        <div class="h-full flex flex-col">
+            <!-- 패널 헤더 -->
+            <div class="p-4 border-b bg-gradient-to-r from-blue-50 to-white">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="font-bold text-lg">노드 변경사항</h2>
+                    <button onclick="toggleChangesPanel()" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <p class="text-xs text-gray-600">학습 로그를 기반으로 로드맵 노드를 자동 업데이트합니다</p>
+            </div>
+
+            <!-- 변경사항 목록 -->
+            <div class="flex-1 overflow-y-auto p-4 space-y-3">
+                <!-- 추가 -->
+                <div class="change-item new p-3 bg-white rounded-lg border border-gray-200 hover:shadow-md transition">
+                    <div class="flex items-start gap-3">
+                        <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-plus text-blue-600 text-sm"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">추가</span>
+                                <span class="text-xs text-gray-500">새로운 노드</span>
+                            </div>
+                            <h4 class="font-bold text-sm text-gray-900 mb-1">Spring Boot Framework</h4>
+                            <p class="text-xs text-gray-600 mb-2">학습 로그에서 Spring Boot 관련 내용이 확인되었습니다</p>
+                            <div class="flex flex-wrap gap-1">
+                                <span class="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded">#SpringBoot</span>
+                                <span class="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded">#REST API</span>
+                                <span class="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded">#JPA</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 수정 -->
+                <div class="change-item modified p-3 bg-white rounded-lg border border-gray-200 hover:shadow-md transition">
+                    <div class="flex items-start gap-3">
+                        <div class="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-edit text-orange-600 text-sm"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-xs font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded">수정</span>
+                                <span class="text-xs text-gray-500">기존 노드 업데이트</span>
+                            </div>
+                            <h4 class="font-bold text-sm text-gray-900 mb-1">OS & 일반 지식</h4>
+                            <p class="text-xs text-gray-600 mb-2">하위 스킬에 "Docker Basics" 추가 제안</p>
+                            <div class="flex flex-wrap gap-1">
+                                <span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded line-through">#Linux</span>
+                                <span class="text-xs bg-orange-50 text-orange-700 px-2 py-0.5 rounded">#Docker</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 추가 -->
+                <div class="change-item new p-3 bg-white rounded-lg border border-gray-200 hover:shadow-md transition">
+                    <div class="flex items-start gap-3">
+                        <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-plus text-blue-600 text-sm"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">추가</span>
+                                <span class="text-xs text-gray-500">새로운 서브노드</span>
+                            </div>
+                            <h4 class="font-bold text-sm text-gray-900 mb-1">Kubernetes Basics</h4>
+                            <p class="text-xs text-gray-600 mb-2">"컨테이너 오케스트레이션" 노드 하위에 추가</p>
+                            <div class="flex flex-wrap gap-1">
+                                <span class="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded">#K8s</span>
+                                <span class="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded">#Orchestration</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 삭제 -->
+                <div class="change-item delete p-3 bg-white rounded-lg border border-gray-200 hover:shadow-md transition">
+                    <div class="flex items-start gap-3">
+                        <div class="w-8 h-8 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-trash text-red-600 text-sm"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-xs font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded">삭제</span>
+                                <span class="text-xs text-gray-500">중복 노드 제거</span>
+                            </div>
+                            <h4 class="font-bold text-sm text-gray-900 mb-1 line-through opacity-60">SOAP APIs</h4>
+                            <p class="text-xs text-gray-600 mb-2">현재 학습 방향과 맞지 않는 노드로 판단됨</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 수정 -->
+                <div class="change-item modified p-3 bg-white rounded-lg border border-gray-200 hover:shadow-md transition">
+                    <div class="flex items-start gap-3">
+                        <div class="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-edit text-orange-600 text-sm"></i>
+                        </div>
+                        <div class="flex-1">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="text-xs font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded">수정</span>
+                                <span class="text-xs text-gray-500">스킬 업데이트</span>
+                            </div>
+                            <h4 class="font-bold text-sm text-gray-900 mb-1">관계형 데이터베이스</h4>
+                            <p class="text-xs text-gray-600 mb-2">MySQL → PostgreSQL로 주력 DB 변경</p>
+                            <div class="flex flex-wrap gap-1">
+                                <span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded line-through">#MySQL</span>
+                                <span class="text-xs bg-orange-50 text-orange-700 px-2 py-0.5 rounded">#PostgreSQL</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 액션 버튼 -->
+            <div class="p-4 border-t bg-gray-50 space-y-2">
+                <button onclick="applyChanges()" class="w-full bg-[#00C471] text-white py-3 rounded-lg font-bold hover:bg-[#00B565] transition flex items-center justify-center gap-2">
+                    <i class="fas fa-check"></i>
+                    변경사항 모두 적용
+                </button>
+                <button onclick="rejectChanges()" class="w-full bg-white text-gray-700 py-2 rounded-lg font-medium hover:bg-gray-100 transition border border-gray-300">
+                    무시하기
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 메인 로드맵 -->
+    <main class="relative py-16 flex flex-col items-center w-full max-w-[1400px] mx-auto min-h-screen">
+        
+        <div class="spine"></div>
+
+        <!-- 기존 완료 노드 -->
+        <div class="relative w-full h-40 flex justify-center items-center mb-10">
+            <div class="node-box status-done">
+                <i class="fas fa-check-circle absolute -top-3 -right-3 text-2xl text-[#00C471] bg-white rounded-full"></i>
+                인터넷 (Internet)
+                <div class="text-[10px] font-normal mt-1 opacity-80">How does the internet work?</div>
+            </div>
+
+            <div class="connector-arm arm-right"></div>
+
+            <div class="sub-node-group group-right">
+                <div class="sub-node bg-green-50 border-green-200 text-green-800">HTTP / HTTPS</div>
+                <div class="sub-node bg-green-50 border-green-200 text-green-800">DNS 작동 원리</div>
+                <div class="sub-node bg-green-50 border-green-200 text-green-800">Domain Name</div>
+                <div class="sub-node bg-green-50 border-green-200 text-green-800">Hosting</div>
+            </div>
+        </div>
+
+        <!-- 완료 노드 -->
+        <div class="relative w-full h-40 flex justify-center items-center mb-10">
+            <div class="sub-node-group group-left">
+                <div class="sub-node bg-green-50 border-green-200 text-green-800">HTML</div>
+                <div class="sub-node bg-green-50 border-green-200 text-green-800">CSS</div>
+                <div class="sub-node bg-green-50 border-green-200 text-green-800">JavaScript</div>
+            </div>
+
+            <div class="connector-arm arm-left"></div>
+
+            <div class="node-box status-done">
+                <i class="fas fa-check-circle absolute -top-3 -right-3 text-2xl text-[#00C471] bg-white rounded-full"></i>
+                프론트엔드 기초
+                <div class="text-[10px] font-normal mt-1 opacity-80">Frontend Basics</div>
+            </div>
+        </div>
+
+        <!-- 수정 제안 노드 (Docker 추가) -->
+        <div class="relative w-full h-40 flex justify-center items-center mb-10">
+            <div class="node-box status-active node-modified">
+                <div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-orange-500 text-white text-xs px-3 py-1 rounded-full font-bold shadow-lg flex items-center gap-2">
+                    <i class="fas fa-edit"></i>
+                    수정 제안
+                </div>
+                <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-yellow-400 text-white text-[10px] px-3 py-0.5 rounded-full font-bold shadow">Current Step</div>
+                OS & 일반 지식
+                <div class="text-[10px] font-normal mt-1">Terminal, Process, Thread</div>
+            </div>
+
+            <div class="connector-arm arm-right"></div>
+
+            <div class="sub-node-group group-right">
+                <div class="sub-node">터미널 명령어</div>
+                <div class="sub-node">프로세스 관리</div>
+                <div class="sub-node">스레드와 동시성</div>
+                <!-- 새로 추가될 서브노드 -->
+                <div class="sub-node" style="border: 2px dashed #3B82F6; background: #EFF6FF; color: #1E40AF;">
+                    <i class="fas fa-plus text-xs mr-1"></i>
+                    Docker Basics
+                </div>
+            </div>
+        </div>
+
+        <!-- 새로 추가될 노드 (Spring Boot) -->
+        <div class="relative w-full h-40 flex justify-center items-center mb-10">
+            <div class="node-box node-new">
+                <div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-blue-500 text-white text-xs px-3 py-1 rounded-full font-bold shadow-lg flex items-center gap-2">
+                    <i class="fas fa-plus"></i>
+                    추가 제안
+                </div>
+                Spring Boot Framework
+                <div class="text-[10px] font-normal mt-1">Java Web Application</div>
+            </div>
+
+            <div class="connector-arm arm-right"></div>
+
+            <div class="sub-node-group group-right">
+                <div class="sub-node" style="border: 2px dashed #3B82F6; background: #EFF6FF; color: #1E40AF;">REST API</div>
+                <div class="sub-node" style="border: 2px dashed #3B82F6; background: #EFF6FF; color: #1E40AF;">JPA</div>
+                <div class="sub-node" style="border: 2px dashed #3B82F6; background: #EFF6FF; color: #1E40AF;">Spring Security</div>
+            </div>
+        </div>
+
+        <!-- 언어 선택 -->
+        <div class="relative w-full mb-24 flex flex-col items-center mt-12">
+            <div class="node-box w-full max-w-lg bg-white border-2 border-purple-500 text-purple-900 mb-8 shadow-md">
+                언어 선택 (Pick a Language)
+                <div class="text-[10px] text-gray-500 mt-1">하나를 선택해 깊게 파고드세요</div>
+            </div>
+            
+            <div class="grid grid-cols-4 gap-4 w-full max-w-3xl relative z-10 bg-[#F8F9FA] p-4 rounded-xl">
+                <div class="node-box py-3 text-sm hover:bg-purple-50 min-w-0 shadow-sm border-gray-200">Java</div>
+                <div class="node-box py-3 text-sm hover:bg-blue-50 min-w-0 shadow-sm border-gray-200">Python</div>
+                <div class="node-box py-3 text-sm hover:bg-cyan-50 min-w-0 shadow-sm border-gray-200">Go</div>
+                <div class="node-box py-3 text-sm hover:bg-orange-50 min-w-0 shadow-sm border-gray-200">Rust</div>
+                <div class="node-box py-3 text-sm hover:bg-red-50 min-w-0 shadow-sm border-gray-200">Ruby</div>
+                <div class="node-box py-3 text-sm hover:bg-blue-50 min-w-0 shadow-sm border-gray-200">C#</div>
+                <div class="node-box py-3 text-sm hover:bg-yellow-50 min-w-0 shadow-sm border-gray-200">JavaScript</div>
+                <div class="node-box py-3 text-sm hover:bg-indigo-50 min-w-0 shadow-sm border-gray-200">PHP</div>
+            </div>
+        </div>
+
+        <!-- 버전 관리 시스템 -->
+        <div class="relative w-full h-48 flex justify-center items-center mb-10">
+            <div class="sub-node-group group-left">
+                <div class="sub-node">Git 기본 명령어</div>
+                <div class="sub-node">Branch 전략</div>
+                <div class="sub-node">Merge / Rebase</div>
+            </div>
+            <div class="connector-arm arm-left"></div>
+
+            <div class="node-box">
+                버전 관리 시스템 (VCS)
+                <div class="text-[10px] font-normal text-gray-500">Git & GitHub</div>
+            </div>
+
+            <div class="connector-arm arm-right"></div>
+            <div class="sub-node-group group-right">
+                <div class="sub-node">GitHub</div>
+                <div class="sub-node">GitLab</div>
+                <div class="sub-node">Bitbucket</div>
+            </div>
+        </div>
+
+        <!-- 데이터베이스 (수정 제안) -->
+        <div class="relative w-full h-48 flex justify-center items-center mb-10">
+            <div class="sub-node-group group-left">
+                <!-- 기존 MySQL이 삭제 표시 -->
+                <div class="sub-node bg-red-50 border-red-200 text-red-400 line-through opacity-50">MySQL</div>
+                <!-- PostgreSQL이 추가됨 -->
+                <div class="sub-node" style="border: 2px dashed #F59E0B; background: #FEF3C7; color: #92400E;">
+                    <i class="fas fa-star text-xs mr-1"></i>
+                    PostgreSQL
+                </div>
+            </div>
+            <div class="connector-arm arm-left"></div>
+
+            <div class="node-box node-modified">
+                <div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-orange-500 text-white text-xs px-3 py-1 rounded-full font-bold shadow-lg flex items-center gap-2">
+                    <i class="fas fa-edit"></i>
+                    수정 제안
+                </div>
+                관계형 데이터베이스
+                <div class="text-[10px] font-normal mt-1">SQL, Schema, ACID, Indexing</div>
+            </div>
+
+            <div class="connector-arm arm-right"></div>
+            <div class="sub-node-group group-right">
+                <div class="sub-node bg-blue-50 border-blue-200 text-blue-800">MariaDB</div>
+                <div class="sub-node bg-blue-50 border-blue-200 text-blue-800">Oracle</div>
+            </div>
+        </div>
+
+        <!-- APIs 구축 (삭제 제안) -->
+        <div class="relative w-full h-48 flex justify-center items-center mb-10">
+            <div class="sub-node-group group-left">
+                <div class="sub-node">REST</div>
+                <div class="sub-node">JSON APIs</div>
+                <!-- SOAP가 삭제 제안 -->
+                <div class="sub-node node-delete">
+                    <i class="fas fa-times text-xs mr-1"></i>
+                    SOAP
+                </div>
+            </div>
+            <div class="connector-arm arm-left"></div>
+
+            <div class="node-box bg-purple-50 border-purple-300 text-purple-900">
+                APIs 구축하기
+                <div class="text-[10px] font-normal mt-1">Interface Design</div>
+            </div>
+
+            <div class="connector-arm arm-right"></div>
+            <div class="sub-node-group group-right">
+                <div class="sub-node">Authentication (JWT)</div>
+                <div class="sub-node">OAuth</div>
+                <div class="sub-node">OpenAPI Spec</div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        function toggleChangesPanel() {
+            const panel = document.getElementById('changesPanel');
+            panel.classList.toggle('open');
+        }
+
+        function applyChanges() {
+            alert('변경사항이 로드맵에 반영되었습니다! 🎉\n\n- Spring Boot Framework 노드 추가\n- OS & 일반 지식에 Docker 추가\n- PostgreSQL로 DB 변경\n- SOAP API 제거\n- Kubernetes 추가');
+            toggleChangesPanel();
+            
+            // 실제로는 서버에 반영 요청
+            // 노드 스타일 변경 등의 애니메이션 추가 가능
+        }
+
+        function rejectChanges() {
+            if (confirm('모든 변경사항을 무시하시겠습니까?')) {
+                alert('변경사항이 무시되었습니다.');
+                toggleChangesPanel();
+            }
+        }
+
+        // 초기 로드 시 패널 자동 열기 (데모용)
+        setTimeout(() => {
+            toggleChangesPanel();
+        }, 1000);
+    </script>
+
+</body>
+</html>

@@ -43,6 +43,9 @@ public class RecommendationChange {
     @Column(name = "source_recommendation_id")
     private Long sourceRecommendationId;
 
+    @Column(name = "branch_from_node_id")
+    private Long branchFromNodeId;
+
     @Column(name = "reason", nullable = false, columnDefinition = "TEXT")
     private String reason;
 
@@ -83,6 +86,7 @@ public class RecommendationChange {
         User user,
         RoadmapNode roadmapNode,
         Long sourceRecommendationId,
+        Long branchFromNodeId,
         String reason,
         String contextSummary,
         NodeChangeType nodeChangeType,
@@ -93,6 +97,7 @@ public class RecommendationChange {
         this.user = user;
         this.roadmapNode = roadmapNode;
         this.sourceRecommendationId = sourceRecommendationId;
+        this.branchFromNodeId = branchFromNodeId;
         this.reason = reason;
         this.contextSummary = contextSummary;
         this.nodeChangeType = nodeChangeType == null ? NodeChangeType.ADD : nodeChangeType;
