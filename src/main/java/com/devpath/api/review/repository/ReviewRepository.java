@@ -47,6 +47,42 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     );
 
     @Query("""
+            SELECT COUNT(r)
+            FROM Review r
+            WHERE r.courseId IN (
+                SELECT c.courseId
+                FROM Course c
+                WHERE c.instructorId = :instructorId
+            )
+            AND r.isDeleted = false
+            AND NOT EXISTS (
+                SELECT 1
+                FROM ReviewReply rr
+                WHERE rr.reviewId = r.id
+                AND rr.isDeleted = false
+            )
+            """)
+    long countUnansweredByInstructorId(@Param("instructorId") Long instructorId);
+
+    @Query("""
+            SELECT COUNT(r)
+            FROM Review r
+            WHERE r.courseId IN (
+                SELECT c.courseId
+                FROM Course c
+                WHERE c.instructorId = :instructorId
+            )
+            AND r.isDeleted = false
+            AND EXISTS (
+                SELECT 1
+                FROM ReviewReply rr
+                WHERE rr.reviewId = r.id
+                AND rr.isDeleted = false
+            )
+            """)
+    long countAnsweredByInstructorId(@Param("instructorId") Long instructorId);
+
+    @Query("""
             SELECT AVG(r.rating)
             FROM Review r
             WHERE r.courseId IN (

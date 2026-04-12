@@ -9,10 +9,11 @@ import {
   normalizeInstructorLevelLabel,
   resolveInstructorCourseThumbnailUrl,
 } from '../../instructor/course-display'
-import { instructorAnnouncementApi, instructorCourseApi } from '../../lib/api'
+import { instructorAnnouncementApi, instructorCourseApi, instructorQnaApi } from '../../lib/api'
 import type {
   InstructorAnnouncementDetail,
   InstructorCourseListItem,
+  InstructorQnaInboxItem,
 } from '../../types/instructor'
 
 type CourseStatus = 'published' | 'review' | 'draft'
@@ -465,10 +466,11 @@ function DraftCourseCard(_: { course: CourseCardModel }) {
 
 export default function CourseManagementPage() {
   const [courses, setCourses] = useState<InstructorCourseListItem[]>([])
+  const [unansweredQuestions, setUnansweredQuestions] = useState<InstructorQnaInboxItem[] | null>(null)
   const [filterStatus, setFilterStatus] = useState<CourseFilter>('all')
   const [filterCategory, setFilterCategory] = useState('all')
   const [filterLevel, setFilterLevel] = useState('all')
-  const [quickViewFilter, setQuickViewFilter] = useState<QuickViewFilter>('default')
+  const [quickViewFilter, setQuickViewFilter] = useState<QuickViewFilter>('latest')
   const [pendingOnly, setPendingOnly] = useState(false)
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
@@ -486,10 +488,13 @@ export default function CourseManagementPage() {
   useEffect(() => {
     const controller = new AbortController()
 
-    instructorCourseApi
-      .getCourses(controller.signal)
-      .then((nextCourses) => {
+    Promise.all([
+      instructorCourseApi.getCourses(controller.signal),
+      instructorQnaApi.getInbox('UNANSWERED', controller.signal).catch(() => null),
+    ])
+      .then(([nextCourses, nextUnansweredQuestions]) => {
         setCourses(nextCourses)
+        setUnansweredQuestions(nextUnansweredQuestions)
         setError(null)
       })
       .catch((nextError: Error) => {
@@ -506,8 +511,29 @@ export default function CourseManagementPage() {
     return () => controller.abort()
   }, [])
 
+  const unansweredQuestionCountsByCourse = unansweredQuestions?.reduce<Map<number, number>>((counts, question) => {
+    if (question.courseId === null || question.courseId === undefined) {
+      return counts
+    }
+
+    counts.set(question.courseId, (counts.get(question.courseId) ?? 0) + 1)
+    return counts
+  }, new Map())
+
   const courseCards = courses
     .map(toCourseCardModel)
+    .map((course) => {
+      if (!unansweredQuestionCountsByCourse) {
+        return course
+      }
+
+      const pendingCount = unansweredQuestionCountsByCourse.get(course.courseId) ?? 0
+      return {
+        ...course,
+        displayPendingQuestionCount: pendingCount,
+        displayPendingQuestionLabel: `${formatCount(pendingCount)}건`,
+      }
+    })
     .filter((course) => !isInternalTestCourse(course.title))
 
   const categoryOptions = getUniqueValues(courseCards, 'displayCategory')
@@ -536,7 +562,7 @@ export default function CourseManagementPage() {
     filterStatus !== 'all' ||
     filterCategory !== 'all' ||
     filterLevel !== 'all' ||
-    quickViewFilter !== 'default' ||
+    quickViewFilter !== 'latest' ||
     pendingOnly ||
     search.trim() !== ''
 
@@ -637,7 +663,7 @@ export default function CourseManagementPage() {
     setFilterStatus('all')
     setFilterCategory('all')
     setFilterLevel('all')
-    setQuickViewFilter('default')
+    setQuickViewFilter('latest')
     setPendingOnly(false)
     setSearch('')
   }
@@ -693,7 +719,7 @@ export default function CourseManagementPage() {
   }
 
   return (
-    <div className="p-6">
+    <div className="min-h-full bg-[#F8F9FA] p-6">
       <div className="mx-auto max-w-[1200px] pb-10">
         <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <div>
@@ -751,7 +777,7 @@ export default function CourseManagementPage() {
 
         <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap items-center gap-2.5">
-            <div className="inline-flex rounded-[12px] bg-gray-100 p-1">
+            <div className="inline-flex rounded-[12px] bg-[#F3F4F6] p-1">
               {[
                 { key: 'all' as const, label: '전체보기' },
                 { key: 'published' as const, label: '공개 중' },
@@ -832,7 +858,6 @@ export default function CourseManagementPage() {
                 onChange={(event) => setQuickViewFilter(event.target.value as QuickViewFilter)}
                 className="h-[34px] w-full appearance-none rounded-[10px] border border-gray-200 bg-white pl-[14px] pr-9 text-[12px] font-semibold leading-none text-gray-700 outline-none transition hover:border-gray-300 hover:bg-gray-50"
               >
-                <option value="default">빠른 필터</option>
                 <option value="latest">최신순</option>
                 <option value="oldest">오래된순</option>
                 <option value="published-only">공개된 것만</option>

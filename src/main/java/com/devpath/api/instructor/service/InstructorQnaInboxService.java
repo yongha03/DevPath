@@ -48,14 +48,24 @@ public class InstructorQnaInboxService {
 
     @Transactional(readOnly = true)
     public List<QnaInboxResponse> getInbox(Long instructorId, QnaStatus status) {
-        List<Question> questions = (status != null)
-                ? questionRepository.findAllByInstructorIdAndQnaStatusAndIsDeletedFalse(instructorId, status)
-                : questionRepository.findAllByInstructorIdAndIsDeletedFalse(instructorId);
+        List<Question> questions;
+        if (status == QnaStatus.UNANSWERED) {
+            questions = questionRepository.findAllUnansweredByInstructorId(instructorId);
+        } else if (status == QnaStatus.ANSWERED) {
+            questions = questionRepository.findAllAnsweredByInstructorId(instructorId);
+        } else {
+            questions = questionRepository.findAllByInstructorIdAndIsDeletedFalse(instructorId);
+        }
 
         Map<Long, String> courseTitles = resolveCourseTitles(questions);
+        Map<Long, QnaStatus> statusesByQuestionId = resolveStatuses(questions);
 
         return questions.stream()
-                .map(question -> QnaInboxResponse.from(question, courseTitles.get(question.getCourseId())))
+                .map(question -> QnaInboxResponse.from(
+                        question,
+                        courseTitles.get(question.getCourseId()),
+                        statusesByQuestionId.getOrDefault(question.getId(), QnaStatus.UNANSWERED)
+                ))
                 .toList();
     }
 
@@ -170,7 +180,11 @@ public class InstructorQnaInboxService {
                 .orElse(null);
 
         return new QnaTimelineResponse(
-                QnaInboxResponse.from(question, resolveCourseTitle(question.getCourseId())),
+                QnaInboxResponse.from(
+                        question,
+                        resolveCourseTitle(question.getCourseId()),
+                        publishedAnswer == null ? QnaStatus.UNANSWERED : QnaStatus.ANSWERED
+                ),
                 publishedAnswer,
                 draft,
                 question.getTitle(),
@@ -265,5 +279,25 @@ public class InstructorQnaInboxService {
         return userProfileRepository.findByUserId(instructorId)
                 .map(UserProfile::getDisplayProfileImage)
                 .orElse(null);
+    }
+
+    private Map<Long, QnaStatus> resolveStatuses(List<Question> questions) {
+        if (questions.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, QnaStatus> statuses = questions.stream()
+                .collect(Collectors.toMap(
+                        Question::getId,
+                        question -> QnaStatus.UNANSWERED,
+                        (left, right) -> left
+                ));
+
+        answerRepository.findAllByQuestionIdInAndIsDeletedFalse(
+                        questions.stream().map(Question::getId).distinct().toList()
+                )
+                .forEach(answer -> statuses.put(answer.getQuestion().getId(), QnaStatus.ANSWERED));
+
+        return statuses;
     }
 }

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react'
 import { ErrorCard, LoadingCard, formatNumber } from '../../account/ui'
 import { buildInstructorCourseOptions } from '../../instructor/course-display'
-import { instructorAnalyticsApi, instructorCourseApi } from '../../lib/api'
-import type { InstructorAnalyticsDashboard, InstructorCourseListItem } from '../../types/instructor'
+import { instructorAnalyticsApi } from '../../lib/api'
+import type { InstructorAnalyticsDashboard } from '../../types/instructor'
 
 type Tone = 'safe' | 'warn' | 'danger'
 
@@ -123,20 +123,8 @@ function buildPerformanceSummary(data: InstructorAnalyticsDashboard) {
 export default function StudentAnalyticsPage() {
   const [courseId, setCourseId] = useState<number | null>(null)
   const [analytics, setAnalytics] = useState<InstructorAnalyticsDashboard | null>(null)
-  const [courseCatalog, setCourseCatalog] = useState<InstructorCourseListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-
-  useEffect(() => {
-    const controller = new AbortController()
-
-    instructorCourseApi
-      .getCourses(controller.signal)
-      .then((nextCourses) => setCourseCatalog(nextCourses))
-      .catch(() => {})
-
-    return () => controller.abort()
-  }, [])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -164,6 +152,14 @@ export default function StudentAnalyticsPage() {
 
     return () => controller.abort()
   }, [courseId])
+
+  const availableCourseOptions = analytics ? buildInstructorCourseOptions(analytics.courseOptions) : []
+
+  useEffect(() => {
+    if (courseId !== null && !availableCourseOptions.some(([value]) => Number(value) === courseId)) {
+      setCourseId(null)
+    }
+  }, [courseId, availableCourseOptions])
 
   if (loading) {
     return (
@@ -212,7 +208,7 @@ export default function StudentAnalyticsPage() {
     tone: getDifficultyTone(item.weaknessScore),
   }))
   const performanceSummary = buildPerformanceSummary(analytics)
-  const courseOptions = buildInstructorCourseOptions(courseCatalog)
+  const courseOptions = availableCourseOptions
 
   const metrics = [
     {

@@ -55,6 +55,7 @@ public class InstructorAnalyticsService {
         Long selectedCourseId = courseId != null && availableCourseIds.contains(courseId) ? courseId : null;
 
         List<Course> scopedCourses = courseRepository.findAllByInstructorIdOrderByCourseIdDesc(instructorId).stream()
+                .filter(course -> availableCourseIds.contains(course.getCourseId()))
                 .filter(course -> selectedCourseId == null || course.getCourseId().equals(selectedCourseId))
                 .toList();
 
@@ -68,6 +69,7 @@ public class InstructorAnalyticsService {
 
         List<CourseEnrollment> enrollments = courseEnrollmentRepository.findAllByCourseInstructorIdOrderByEnrolledAtDesc(instructorId).stream()
                 .filter(enrollment -> scopedCourseIds.contains(enrollment.getCourse().getCourseId()))
+                .filter(this::isCountableEnrollment)
                 .toList();
         List<Lesson> lessons = lessonRepository.findAllBySectionCourseInstructorIdAndIsPublishedTrue(instructorId).stream()
                 .filter(lesson -> scopedCourseIds.contains(lesson.getSection().getCourse().getCourseId()))
@@ -467,6 +469,11 @@ public class InstructorAnalyticsService {
 
     private boolean isEnrollmentCompleted(CourseEnrollment enrollment) {
         return isEnrollmentCompleted(enrollment, resolveEnrollmentProgress(enrollment));
+    }
+
+    private boolean isCountableEnrollment(CourseEnrollment enrollment) {
+        return enrollment.getStatus() == EnrollmentStatus.ACTIVE
+                || enrollment.getStatus() == EnrollmentStatus.COMPLETED;
     }
 
     private boolean isEnrollmentCompleted(CourseEnrollment enrollment, Double progress) {

@@ -13,6 +13,7 @@ import com.devpath.domain.course.entity.CourseObjective;
 import com.devpath.domain.course.entity.CourseSection;
 import com.devpath.domain.course.entity.CourseTagMap;
 import com.devpath.domain.course.entity.CourseTargetAudience;
+import com.devpath.domain.course.entity.EnrollmentStatus;
 import com.devpath.domain.course.entity.Lesson;
 import com.devpath.domain.course.repository.CourseEnrollmentRepository;
 import com.devpath.domain.course.repository.CourseMaterialRepository;
@@ -22,7 +23,6 @@ import com.devpath.domain.course.repository.CourseSectionRepository;
 import com.devpath.domain.course.repository.CourseTagMapRepository;
 import com.devpath.domain.course.repository.CourseTargetAudienceRepository;
 import com.devpath.domain.course.repository.LessonRepository;
-import com.devpath.domain.qna.entity.QnaStatus;
 import com.devpath.domain.qna.repository.QuestionRepository;
 import com.devpath.domain.user.entity.UserProfile;
 import com.devpath.domain.user.repository.UserProfileRepository;
@@ -115,7 +115,10 @@ public class InstructorCourseQueryService {
 
         return courses.stream()
                 .map(course -> {
-                    List<CourseEnrollment> enrollments = enrollmentsByCourseId.getOrDefault(course.getCourseId(), List.of());
+                    List<CourseEnrollment> enrollments = enrollmentsByCourseId.getOrDefault(course.getCourseId(), List.of())
+                            .stream()
+                            .filter(this::isCountableEnrollment)
+                            .toList();
                     List<Review> reviews = reviewsByCourseId.getOrDefault(course.getCourseId(), List.of());
                     List<CourseTagMap> tagMaps = courseTagMapRepository.findAllByCourseCourseId(course.getCourseId());
                     List<String> tags = buildCourseTagNames(tagMaps);
@@ -145,10 +148,7 @@ public class InstructorCourseQueryService {
                             (long) lessons.size(),
                             (long) enrollments.size(),
                             round(averageProgressPercent),
-                            questionRepository.countByCourseIdAndQnaStatusAndIsDeletedFalse(
-                                    course.getCourseId(),
-                                    QnaStatus.UNANSWERED
-                            ),
+                            questionRepository.countUnansweredByCourseId(course.getCourseId()),
                             (long) reviews.size(),
                             round(averageRating),
                             resolveCourseThumbnailUrl(course),
@@ -227,6 +227,11 @@ public class InstructorCourseQueryService {
     }
 
     // 강의 목표 엔티티 목록을 응답 DTO로 변환한다.
+    private boolean isCountableEnrollment(CourseEnrollment enrollment) {
+        EnrollmentStatus status = enrollment.getStatus();
+        return status == EnrollmentStatus.ACTIVE || status == EnrollmentStatus.COMPLETED;
+    }
+
     private List<CourseDetailResponse.ObjectiveItem> mapObjectives(List<CourseObjective> objectives) {
         return objectives.stream()
                 .map(objective -> CourseDetailResponse.ObjectiveItem.builder()

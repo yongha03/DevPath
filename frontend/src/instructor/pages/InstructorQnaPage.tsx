@@ -20,66 +20,11 @@ import type {
 import type { UserProfile } from '../../types/learner'
 
 type QuestionStatusFilter = 'pending' | 'answered'
-type TemplateKey = 'classic' | 'steps' | 'codeReview'
+type MarkdownAction = 'heading' | 'bold' | 'italic' | 'link' | 'code' | 'image'
 type ToastState = {
   message: string
   tone: 'info' | 'success'
 } | null
-
-const recommendedTemplates: Record<
-  TemplateKey,
-  { title: string; description: string; content: string }
-> = {
-  classic: {
-    title: '핵심 정리 + 원인 + 예시',
-    description: '개념형 질문에 바로 붙일 수 있는 기본 답변 구조입니다.',
-    content: `## 먼저 결론부터 말씀드리면
-
-- 질문하신 현상은 **원인 후보를 좁혀가며 확인**하면 빠르게 해결할 수 있습니다.
-
-## 왜 이런 문제가 생기나요?
-
-- 현재 로그나 증상을 보면 핵심 원인은 보통 **설정 누락 / 의존성 충돌 / 잘못된 직렬화 구조** 중 하나입니다.
-
-## 이렇게 확인해보세요
-
-1. 에러 로그의 가장 아래 원인 메시지를 먼저 확인합니다.
-2. 최근에 바꾼 설정 파일이나 애노테이션을 다시 점검합니다.
-3. 그래도 재현되면 관련 코드와 로그를 함께 정리해서 다시 남겨주세요.`,
-  },
-  steps: {
-    title: '단계별 해결 순서',
-    description: '설치, 환경 변수, 설정 오류처럼 순서가 중요한 질문에 적합합니다.',
-    content: `## 점검 순서
-
-1. 현재 사용 중인 버전과 실행 환경을 먼저 확인합니다.
-2. 설정 파일 경로와 값이 실제로 반영되는지 확인합니다.
-3. 실행 로그에서 실패 지점을 다시 확인합니다.
-4. 한 번에 하나씩 수정하면서 결과를 비교합니다.
-
-> 여기까지 해도 해결되지 않으면 현재 설정 파일과 로그 일부를 함께 공유해주세요.`,
-  },
-  codeReview: {
-    title: '코드 리뷰형 답변',
-    description: '코드 조각과 함께 개선 포인트를 안내할 때 쓰기 좋습니다.',
-    content: `## 추천 방향
-
-- 지금 구조에서는 **응답 전용 DTO를 분리**하는 방식이 가장 안전합니다.
-
-\`\`\`java
-public record QuestionResponse(
-    Long id,
-    String title,
-    String content
-) {}
-\`\`\`
-
-## 이유
-
-- 엔티티를 그대로 직렬화하면 연관관계 때문에 예기치 않은 필드가 함께 나갈 수 있습니다.
-- DTO를 쓰면 필요한 데이터만 명확하게 제어할 수 있습니다.`,
-  },
-}
 
 const legacyTextMap: Record<string, string> = {
   'Spring Boot Intro': '스프링 부트 입문',
@@ -300,7 +245,15 @@ export default function InstructorQnaPage({ session }: { session: AuthSession })
     return () => controller.abort()
   }, [])
 
-  const visibleQuestions = [...questions]
+  const courseOptions = buildInstructorCourseOptions(courseCatalog).filter(([value]) =>
+    questions.some((question) => String(question.courseId) === value),
+  )
+  const allowedCourseIds = new Set(courseOptions.map(([value]) => Number(value)))
+  const scopedQuestions =
+    courseCatalog.length > 0
+      ? questions.filter((question) => question.courseId !== null && allowedCourseIds.has(question.courseId))
+      : questions
+  const visibleQuestions = [...scopedQuestions]
     .filter((question) => {
       if (courseFilter !== 'all' && String(question.courseId) !== courseFilter) {
         return false
@@ -383,7 +336,12 @@ export default function InstructorQnaPage({ session }: { session: AuthSession })
     sanitizeInstructorProfileImageUrl(timeline?.publishedAnswer?.authorProfileImage) ??
     null
   const showAnswerForm = current ? current.status === 'UNANSWERED' || editingAnswer : false
-  const courseOptions = buildInstructorCourseOptions(courseCatalog)
+
+  useEffect(() => {
+    if (courseFilter !== 'all' && !courseOptions.some(([value]) => value === courseFilter)) {
+      setCourseFilter('all')
+    }
+  }, [courseFilter, courseOptions])
 
   function focusEditorSelection(start: number, end: number) {
     window.requestAnimationFrame(() => {
@@ -431,13 +389,8 @@ export default function InstructorQnaPage({ session }: { session: AuthSession })
     })
   }
 
-  function applyMarkdown(action: TemplateKey | 'heading' | 'bold' | 'italic' | 'link' | 'code' | 'image') {
+  function applyMarkdown(action: MarkdownAction) {
     if (!showAnswerForm) {
-      return
-    }
-
-    if (action === 'classic' || action === 'steps' || action === 'codeReview') {
-      appendReply(recommendedTemplates[action].content)
       return
     }
 
@@ -665,7 +618,7 @@ export default function InstructorQnaPage({ session }: { session: AuthSession })
             <div className="mb-5 flex items-center justify-between">
               <h2 className="text-xl font-black text-gray-900">수강생 Q&amp;A</h2>
               <span className="rounded-full border border-orange-200 bg-orange-50 px-2.5 py-1 text-[11px] font-extrabold text-orange-700">
-                미답변 {questions.filter((question) => question.status === 'UNANSWERED').length}건
+                {statusFilter === 'pending' ? '미답변' : '답변 완료'} {visibleQuestions.length}건
               </span>
             </div>
 
@@ -909,7 +862,12 @@ export default function InstructorQnaPage({ session }: { session: AuthSession })
                           <button
                             type="button"
                             onClick={() => setTemplateOpen(true)}
-                            className="flex h-9 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-700 shadow-sm transition hover:border-[#00c471] hover:text-[#00c471]"
+                            disabled={quickReplies.length === 0}
+                            className={`flex h-9 items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold shadow-sm transition ${
+                              quickReplies.length > 0
+                                ? 'border-gray-200 bg-white text-gray-700 hover:border-[#00c471] hover:text-[#00c471]'
+                                : 'cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400'
+                            }`}
                           >
                             <i className="fas fa-magic text-[#00c471]" />
                             템플릿 사용
@@ -1003,27 +961,33 @@ export default function InstructorQnaPage({ session }: { session: AuthSession })
                   <div className="space-y-6 p-5">
                     <div>
                       <h4 className="mb-3 px-1 text-[10px] font-extrabold uppercase tracking-[0.18em] text-gray-400">
-                        추천 템플릿
+                        빠른 삽입
                       </h4>
                       <div className="space-y-2">
-                        {(Object.keys(recommendedTemplates) as TemplateKey[]).map((key) => (
-                          <button
-                            key={key}
-                            type="button"
-                            onClick={() => applyMarkdown(key)}
-                            className="flex w-full items-start justify-between gap-3 rounded-2xl border border-gray-200 bg-white p-3.5 text-left transition hover:-translate-y-0.5 hover:border-gray-300 hover:bg-gray-50 hover:shadow-[0_10px_18px_rgba(15,23,42,0.05)]"
-                          >
-                            <div>
-                              <div className="text-[13px] font-black text-gray-900">
-                                {recommendedTemplates[key].title}
+                        {quickReplies.length > 0 ? (
+                          quickReplies.map((reply) => (
+                            <button
+                              key={reply.id}
+                              type="button"
+                              onClick={() => appendReply(reply.content)}
+                              className="flex w-full items-start justify-between gap-3 rounded-2xl border border-gray-200 bg-white p-3.5 text-left transition hover:-translate-y-0.5 hover:border-gray-300 hover:bg-gray-50 hover:shadow-[0_10px_18px_rgba(15,23,42,0.05)]"
+                            >
+                              <div className="min-w-0 flex-1">
+                                <div className="line-clamp-1 text-[13px] font-black text-gray-900">
+                                  {reply.title}
+                                </div>
+                                <div className="mt-1 line-clamp-2 text-[11px] font-medium leading-5 text-gray-500">
+                                  {reply.content}
+                                </div>
                               </div>
-                              <div className="mt-1 text-[11px] font-medium leading-5 text-gray-500">
-                                {recommendedTemplates[key].description}
-                              </div>
-                            </div>
-                            <i className="fas fa-plus-circle mt-1 text-lg text-gray-300" />
-                          </button>
-                        ))}
+                              <i className="fas fa-plus-circle mt-1 text-lg text-gray-300" />
+                            </button>
+                          ))
+                        ) : (
+                          <div className="rounded-2xl border border-dashed border-gray-200 bg-white px-4 py-6 text-center text-xs font-medium text-gray-500">
+                            저장된 빠른 답변이 없습니다.
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -1033,7 +997,7 @@ export default function InstructorQnaPage({ session }: { session: AuthSession })
                           저장한 빠른 답변
                         </h4>
                         <span className="rounded-md border border-gray-200 bg-gray-100 px-2 py-0.5 text-[10px] font-extrabold text-gray-600">
-                          {quickReplies.length}
+                          {visibleQuestions.length}
                         </span>
                       </div>
 
@@ -1196,25 +1160,31 @@ export default function InstructorQnaPage({ session }: { session: AuthSession })
       {templateOpen ? (
         <Modal title="답변 템플릿 선택" icon="fas fa-magic" onClose={() => setTemplateOpen(false)}>
           <div className="space-y-3 bg-[#f8f9fa] p-6">
-            {(Object.keys(recommendedTemplates) as TemplateKey[]).map((key) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => {
-                  appendReply(recommendedTemplates[key].content)
-                  setTemplateOpen(false)
-                }}
-                className="flex w-full items-start justify-between gap-3 rounded-2xl border border-gray-200 bg-white p-4 text-left transition hover:bg-gray-50"
-              >
-                <div>
-                  <div className="text-sm font-black text-gray-900">{recommendedTemplates[key].title}</div>
-                  <div className="mt-1 text-xs font-medium text-gray-500">
-                    {recommendedTemplates[key].description}
+            {quickReplies.length > 0 ? (
+              quickReplies.map((reply) => (
+                <button
+                  key={reply.id}
+                  type="button"
+                  onClick={() => {
+                    appendReply(reply.content)
+                    setTemplateOpen(false)
+                  }}
+                  className="flex w-full items-start justify-between gap-3 rounded-2xl border border-gray-200 bg-white p-4 text-left transition hover:bg-gray-50"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="line-clamp-1 text-sm font-black text-gray-900">{reply.title}</div>
+                    <div className="mt-1 line-clamp-2 text-xs font-medium text-gray-500">
+                      {reply.content}
+                    </div>
                   </div>
-                </div>
-                <i className="fas fa-check-circle mt-1 text-xl text-gray-300" />
-              </button>
-            ))}
+                  <i className="fas fa-check-circle mt-1 text-xl text-gray-300" />
+                </button>
+              ))
+            ) : (
+              <div className="rounded-2xl border border-dashed border-gray-200 bg-white px-4 py-8 text-center text-sm font-medium text-gray-500">
+                등록된 답변 템플릿이 없습니다.
+              </div>
+            )}
           </div>
         </Modal>
       ) : null}

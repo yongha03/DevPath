@@ -161,8 +161,8 @@ public class InstructorReviewService {
     @Transactional(readOnly = true)
     public ReviewHelpfulResponse getHelpfulStats(Long instructorId) {
         long totalReviews = reviewRepository.countByInstructorId(instructorId);
-        long answeredCount = reviewRepository.countByInstructorIdAndStatus(instructorId, ReviewStatus.ANSWERED);
-        long unansweredCount = reviewRepository.countByInstructorIdAndStatus(instructorId, ReviewStatus.UNANSWERED);
+        long answeredCount = reviewRepository.countAnsweredByInstructorId(instructorId);
+        long unansweredCount = reviewRepository.countUnansweredByInstructorId(instructorId);
         long unsatisfiedCount = reviewRepository.countByInstructorIdAndStatus(instructorId, ReviewStatus.UNSATISFIED);
 
         double answerRate = totalReviews == 0
@@ -181,7 +181,7 @@ public class InstructorReviewService {
     @Transactional(readOnly = true)
     public ReviewSummaryResponse getReviewSummary(Long instructorId) {
         long totalReviews = reviewRepository.countByInstructorId(instructorId);
-        long unansweredCount = reviewRepository.countByInstructorIdAndStatus(instructorId, ReviewStatus.UNANSWERED);
+        long unansweredCount = reviewRepository.countUnansweredByInstructorId(instructorId);
         Double avgRating = reviewRepository.findAverageRatingByInstructorId(instructorId);
 
         double averageRating = avgRating == null ? 0.0 : Math.round(avgRating * 10.0) / 10.0;

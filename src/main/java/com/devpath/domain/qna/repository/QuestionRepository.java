@@ -46,6 +46,44 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
             @Param("status") QnaStatus status
     );
 
+    @Query("""
+            SELECT q
+            FROM Question q
+            WHERE q.courseId IN (
+                SELECT c.courseId
+                FROM Course c
+                WHERE c.instructorId = :instructorId
+            )
+            AND q.isDeleted = false
+            AND NOT EXISTS (
+                SELECT 1
+                FROM Answer a
+                WHERE a.question.id = q.id
+                AND a.isDeleted = false
+            )
+            ORDER BY q.createdAt DESC
+            """)
+    List<Question> findAllUnansweredByInstructorId(@Param("instructorId") Long instructorId);
+
+    @Query("""
+            SELECT q
+            FROM Question q
+            WHERE q.courseId IN (
+                SELECT c.courseId
+                FROM Course c
+                WHERE c.instructorId = :instructorId
+            )
+            AND q.isDeleted = false
+            AND EXISTS (
+                SELECT 1
+                FROM Answer a
+                WHERE a.question.id = q.id
+                AND a.isDeleted = false
+            )
+            ORDER BY q.createdAt DESC
+            """)
+    List<Question> findAllAnsweredByInstructorId(@Param("instructorId") Long instructorId);
+
     // 미답변 요약은 count query로 바로 집계한다.
     @Query("""
             SELECT COUNT(q)
@@ -62,6 +100,24 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
             @Param("instructorId") Long instructorId,
             @Param("status") QnaStatus status
     );
+
+    @Query("""
+            SELECT COUNT(q)
+            FROM Question q
+            WHERE q.courseId IN (
+                SELECT c.courseId
+                FROM Course c
+                WHERE c.instructorId = :instructorId
+            )
+            AND q.isDeleted = false
+            AND NOT EXISTS (
+                SELECT 1
+                FROM Answer a
+                WHERE a.question.id = q.id
+                AND a.isDeleted = false
+            )
+            """)
+    long countUnansweredByInstructorId(@Param("instructorId") Long instructorId);
 
     // 질문 상세 조작은 담당 강사 소유 질문만 조회한다.
     @Query("""
@@ -83,4 +139,18 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
     long countByCourseIdAndIsDeletedFalse(Long courseId);
 
     long countByCourseIdAndQnaStatusAndIsDeletedFalse(Long courseId, QnaStatus status);
+
+    @Query("""
+            SELECT COUNT(q)
+            FROM Question q
+            WHERE q.courseId = :courseId
+            AND q.isDeleted = false
+            AND NOT EXISTS (
+                SELECT 1
+                FROM Answer a
+                WHERE a.question.id = q.id
+                AND a.isDeleted = false
+            )
+            """)
+    long countUnansweredByCourseId(@Param("courseId") Long courseId);
 }

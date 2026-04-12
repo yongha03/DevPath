@@ -60,33 +60,6 @@ const negativeTags = new Set([
   '설명이_조금_빨라요',
 ])
 
-const fallbackTemplates: TemplateOption[] = [
-  {
-    key: 'thanks',
-    title: '감사 인사',
-    description: '정성스러운 리뷰에 감사의 말을 전합니다.',
-    content: '정성스럽게 리뷰 남겨주셔서 감사합니다. 남겨주신 의견 덕분에 강의 보완 방향을 더 명확하게 잡을 수 있었습니다.',
-  },
-  {
-    key: 'apology',
-    title: '사과 및 개선 약속',
-    description: '불편했던 부분에 빠르게 공감하고 개선 계획을 전합니다.',
-    content: '불편을 드려 죄송합니다. 말씀해주신 내용을 바로 확인했고, 다음 개정에서 더 이해하기 쉽게 보완하겠습니다.',
-  },
-  {
-    key: 'guide',
-    title: '학습 가이드 제안',
-    description: '복습 순서나 보충 자료를 함께 안내하는 답변입니다.',
-    content: '해당 구간이 어렵게 느껴지셨다면 이전 섹션의 보충 강의와 함께 다시 보시면 이해가 훨씬 쉬워집니다. 필요한 자료도 추가로 보완하겠습니다.',
-  },
-  {
-    key: 'review',
-    title: '만족 리뷰 답글',
-    description: '만족한 수강생에게 따뜻하게 답변합니다.',
-    content: '좋게 봐주셔서 감사합니다. 앞으로도 실무에 바로 연결되는 예제와 설명으로 더 만족스러운 강의를 만들어가겠습니다.',
-  },
-]
-
 function t(value: string | null | undefined, dict: Record<string, string>) {
   if (!value) return ''
   return dict[value] ?? value
@@ -288,23 +261,36 @@ export default function InstructorReviewsPage({ session }: { session: AuthSessio
     }
   }
 
+  const availableCourseOptions = buildInstructorCourseOptions(courseCatalog).filter(([value]) =>
+    reviews.some((review) => String(review.courseId) === value),
+  )
+  const allowedCourseIds = new Set(availableCourseOptions.map(([value]) => Number(value)))
+  const scopedReviews =
+    courseCatalog.length > 0
+      ? reviews.filter((review) => allowedCourseIds.has(review.courseId))
+      : reviews
+
+  useEffect(() => {
+    if (courseFilter !== 'all' && !availableCourseOptions.some(([value]) => value === courseFilter)) {
+      setCourseFilter('all')
+    }
+  }, [courseFilter, availableCourseOptions])
+
   if (loading) return <div className="p-6"><LoadingCard label="수강평 데이터를 불러오는 중입니다." /></div>
   if (error || !summary || !helpful) return <div className="p-6"><ErrorCard message={error ?? '수강평 데이터를 불러오지 못했습니다.'} /></div>
 
-  const totalReviewCount = summary.totalReviews || reviews.length
-  const unansweredCount = helpful.unansweredCount || reviews.filter((review) => !review.reply).length
-  const lowRatingCount = reviews.filter((review) => review.rating <= 3).length
-  const courseOptions = buildInstructorCourseOptions(courseCatalog)
-  const keywordTags = buildKeywordTags(reviews)
-  const templateOptions = templates.length > 0
-    ? templates.map((template) => {
-        const title = t(template.title, legacyTemplateTitle)
-        const content = t(template.content, legacyTemplateContent)
-        return { key: String(template.id), title, description: content.length > 52 ? `${content.slice(0, 52)}...` : content, content }
-      })
-    : fallbackTemplates
+  const totalReviewCount = summary.totalReviews
+  const unansweredCount = helpful.unansweredCount
+  const lowRatingCount = scopedReviews.filter((review) => review.rating <= 3).length
+  const courseOptions = availableCourseOptions
+  const keywordTags = buildKeywordTags(scopedReviews)
+  const templateOptions = templates.map((template) => {
+    const title = t(template.title, legacyTemplateTitle)
+    const content = t(template.content, legacyTemplateContent)
+    return { key: String(template.id), title, description: content.length > 52 ? `${content.slice(0, 52)}...` : content, content }
+  })
 
-  const filteredReviews = reviews.filter((review) => {
+  const filteredReviews = scopedReviews.filter((review) => {
     if (courseFilter !== 'all' && String(review.courseId) !== courseFilter) return false
     if (currentTab === 'unreplied' && review.reply) return false
     if (currentTab === 'low' && review.rating > 3) return false
@@ -524,7 +510,16 @@ export default function InstructorReviewsPage({ session }: { session: AuthSessio
                           className="min-h-[110px] w-full rounded-lg border border-gray-200 bg-white px-4 py-3.5 text-sm font-medium text-gray-700 outline-none transition focus:border-[#00C471] focus:shadow-[0_0_0_3px_rgba(0,196,113,0.10)] placeholder:text-gray-400"
                         />
                         <div className="mt-3 flex items-center justify-between">
-                          <button type="button" onClick={() => openTemplateModal(review.reviewId)} className="rounded border border-green-100 bg-green-50 px-2 py-1 text-xs font-bold text-green-600 transition hover:text-green-800">
+                          <button
+                            type="button"
+                            onClick={() => openTemplateModal(review.reviewId)}
+                            disabled={templateOptions.length === 0}
+                            className={`rounded border px-2 py-1 text-xs font-bold transition ${
+                              templateOptions.length > 0
+                                ? 'border-green-100 bg-green-50 text-green-600 hover:text-green-800'
+                                : 'cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400'
+                            }`}
+                          >
                             <i className="fas fa-bolt mr-1" />템플릿 불러오기
                           </button>
                           <button type="button" onClick={() => submitReply(review.reviewId)} className="rounded-lg border border-gray-900 bg-gray-900 px-4 py-2 text-xs font-bold text-white transition hover:bg-black">
@@ -570,12 +565,18 @@ export default function InstructorReviewsPage({ session }: { session: AuthSessio
               </button>
             </div>
             <div className="max-h-[300px] overflow-y-auto">
-              {templateOptions.map((template) => (
-                <button key={template.key} type="button" onClick={() => insertTemplate(template)} className="w-full border-b border-gray-100 px-5 py-4 text-left transition last:border-b-0 hover:bg-gray-50">
-                  <div className="mb-1 text-[13px] font-extrabold text-gray-900">{template.title}</div>
-                  <div className="truncate text-xs text-gray-500">{template.description}</div>
-                </button>
-              ))}
+              {templateOptions.length > 0 ? (
+                templateOptions.map((template) => (
+                  <button key={template.key} type="button" onClick={() => insertTemplate(template)} className="w-full border-b border-gray-100 px-5 py-4 text-left transition last:border-b-0 hover:bg-gray-50">
+                    <div className="mb-1 text-[13px] font-extrabold text-gray-900">{template.title}</div>
+                    <div className="truncate text-xs text-gray-500">{template.description}</div>
+                  </button>
+                ))
+              ) : (
+                <div className="px-5 py-10 text-center text-sm font-medium text-gray-500">
+                  등록된 답변 템플릿이 없습니다.
+                </div>
+              )}
             </div>
           </div>
         </div>

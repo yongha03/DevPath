@@ -1,5 +1,11 @@
 import type { InstructorCourseListItem } from '../types/instructor'
 
+type InstructorCourseOptionSource = {
+  courseId: number | null | undefined
+  title?: string | null
+  courseTitle?: string | null
+}
+
 export const DEFAULT_INSTRUCTOR_COURSE_THUMBNAIL =
   'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=1200&q=80'
 
@@ -102,6 +108,10 @@ export function normalizeInstructorCourseTitle(title: string | null | undefined)
   return COURSE_TITLE_LABELS[title] ?? title
 }
 
+export function isInternalTestCourseTitle(title: string | null | undefined) {
+  return (title ?? '').startsWith('[A-CASE-')
+}
+
 export function normalizeInstructorCourseStatus(status: string | null | undefined) {
   switch (status) {
     case 'PUBLISHED':
@@ -197,12 +207,34 @@ export function buildInstructorCourseOptions(
     if (
       course.courseId === null ||
       course.courseId === undefined ||
+      isInternalTestCourseTitle(course.title) ||
       (statusSet.size > 0 && !statusSet.has(course.status ?? ''))
     ) {
       return
     }
 
     options.set(String(course.courseId), normalizeInstructorCourseTitle(course.title))
+  })
+
+  return Array.from(options.entries())
+}
+
+export function buildInstructorCourseOptionsFromSources(
+  sources: InstructorCourseOptionSource[],
+) {
+  const options = new Map<string, string>()
+
+  sources.forEach((source) => {
+    if (source.courseId === null || source.courseId === undefined) {
+      return
+    }
+
+    const label = normalizeInstructorCourseTitle(source.courseTitle ?? source.title)
+    if (!label) {
+      return
+    }
+
+    options.set(String(source.courseId), label)
   })
 
   return Array.from(options.entries())

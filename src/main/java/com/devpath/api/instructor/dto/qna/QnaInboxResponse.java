@@ -23,6 +23,10 @@ public record QnaInboxResponse(
     }
 
     public static QnaInboxResponse from(Question question, String courseTitle) {
+        return from(question, courseTitle, question.getQnaStatus());
+    }
+
+    public static QnaInboxResponse from(Question question, String courseTitle, QnaStatus status) {
         Long learnerId = question.getUser() == null ? null : question.getUser().getId();
         String learnerName = question.getUser() == null ? null : question.getUser().getName();
         return new QnaInboxResponse(
@@ -34,7 +38,7 @@ public record QnaInboxResponse(
                 learnerName,
                 question.getTitle(),
                 question.getContent(),
-                question.getQnaStatus(),
+                status,
                 question.getLectureTimestamp(),
                 question.getCreatedAt()
         );

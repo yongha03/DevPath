@@ -18,4 +18,6 @@ public interface AnswerRepository extends JpaRepository<Answer, Long> {
 
     // 운영 정책상 published answer는 질문당 1개만 유지한다.
     Optional<Answer> findFirstByQuestionIdAndIsDeletedFalse(Long questionId);
+
+    List<Answer> findAllByQuestionIdInAndIsDeletedFalse(List<Long> questionIds);
 }

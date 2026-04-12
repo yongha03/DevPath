@@ -7,11 +7,9 @@ import com.devpath.api.instructor.dto.communication.UnansweredSummaryResponse;
 import com.devpath.api.instructor.entity.DmRoom;
 import com.devpath.api.instructor.repository.DmMessageRepository;
 import com.devpath.api.instructor.repository.DmRoomRepository;
-import com.devpath.api.review.entity.ReviewStatus;
 import com.devpath.api.review.repository.ReviewRepository;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
-import com.devpath.domain.qna.entity.QnaStatus;
 import com.devpath.domain.qna.repository.QuestionRepository;
 import com.devpath.domain.user.repository.UserRepository;
 import java.time.LocalDateTime;
@@ -33,14 +31,8 @@ public class InstructorCommunicationService {
 
     // 집계는 리스트 전체를 불러오지 않고 count query를 우선 사용한다.
     public UnansweredSummaryResponse getUnansweredSummary(Long instructorId) {
-        long unansweredQnaCount = questionRepository.countByInstructorIdAndQnaStatus(
-                instructorId,
-                QnaStatus.UNANSWERED
-        );
-        long unansweredReviewCount = reviewRepository.countByInstructorIdAndStatus(
-                instructorId,
-                ReviewStatus.UNANSWERED
-        );
+        long unansweredQnaCount = questionRepository.countUnansweredByInstructorId(instructorId);
+        long unansweredReviewCount = reviewRepository.countUnansweredByInstructorId(instructorId);
 
         return UnansweredSummaryResponse.builder()
                 .unansweredQnaCount(unansweredQnaCount)
