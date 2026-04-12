@@ -22,6 +22,9 @@ public class QuestionDetailResponse {
     @Schema(description = "작성자 이름", example = "김태형")
     private String authorName;
 
+    @Schema(description = "Course ID", example = "1", nullable = true)
+    private Long courseId;
+
     @Schema(description = "질문 템플릿 타입", example = "DEBUGGING")
     private String templateType;
 
@@ -36,6 +39,15 @@ public class QuestionDetailResponse {
 
     @Schema(description = "채택된 답변 ID", example = "25", nullable = true)
     private Long adoptedAnswerId;
+
+    @Schema(description = "Lecture timestamp", example = "00:12:44", nullable = true)
+    private String lectureTimestamp;
+
+    @Schema(description = "Q&A status", example = "UNANSWERED")
+    private String qnaStatus;
+
+    @Schema(description = "Answer count", example = "2")
+    private int answerCount;
 
     @Schema(description = "조회수", example = "13")
     private int viewCount;
@@ -58,11 +70,15 @@ public class QuestionDetailResponse {
                 .id(question.getId())
                 .authorId(question.getUser().getId())
                 .authorName(question.getUser().getName())
+                .courseId(question.getCourseId())
                 .templateType(question.getTemplateType().name())
                 .difficulty(question.getDifficulty().name())
                 .title(question.getTitle())
                 .content(question.getContent())
                 .adoptedAnswerId(question.getAdoptedAnswerId())
+                .lectureTimestamp(question.getLectureTimestamp())
+                .qnaStatus(question.getQnaStatus().name())
+                .answerCount(answers.size())
                 .viewCount(question.getViewCount())
                 .createdAt(question.getCreatedAt())
                 .updatedAt(question.getUpdatedAt())

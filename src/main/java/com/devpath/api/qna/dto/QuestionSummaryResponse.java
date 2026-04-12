@@ -20,6 +20,9 @@ public class QuestionSummaryResponse {
     @Schema(description = "작성자 이름", example = "김태형")
     private String authorName;
 
+    @Schema(description = "Course ID", example = "1", nullable = true)
+    private Long courseId;
+
     @Schema(description = "질문 템플릿 타입", example = "DEBUGGING")
     private String templateType;
 
@@ -32,6 +35,15 @@ public class QuestionSummaryResponse {
     @Schema(description = "채택된 답변 ID", example = "25", nullable = true)
     private Long adoptedAnswerId;
 
+    @Schema(description = "Lecture timestamp", example = "00:12:44", nullable = true)
+    private String lectureTimestamp;
+
+    @Schema(description = "Q&A status", example = "UNANSWERED")
+    private String qnaStatus;
+
+    @Schema(description = "Answer count", example = "2")
+    private int answerCount;
+
     @Schema(description = "조회수", example = "12")
     private int viewCount;
 
@@ -39,15 +51,19 @@ public class QuestionSummaryResponse {
     private LocalDateTime createdAt;
 
     // 엔티티를 질문 목록 응답 DTO로 변환한다.
-    public static QuestionSummaryResponse from(Question question) {
+    public static QuestionSummaryResponse from(Question question, int answerCount) {
         return QuestionSummaryResponse.builder()
                 .id(question.getId())
                 .authorId(question.getUser().getId())
                 .authorName(question.getUser().getName())
+                .courseId(question.getCourseId())
                 .templateType(question.getTemplateType().name())
                 .difficulty(question.getDifficulty().name())
                 .title(question.getTitle())
                 .adoptedAnswerId(question.getAdoptedAnswerId())
+                .lectureTimestamp(question.getLectureTimestamp())
+                .qnaStatus(question.getQnaStatus().name())
+                .answerCount(answerCount)
                 .viewCount(question.getViewCount())
                 .createdAt(question.getCreatedAt())
                 .build();

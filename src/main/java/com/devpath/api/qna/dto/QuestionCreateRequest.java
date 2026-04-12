@@ -44,4 +44,10 @@ public class QuestionCreateRequest {
             example = "OncePerRequestFilter를 사용했는데도 로그가 두 번 찍힙니다. SecurityFilterChain 설정도 함께 봐야 할까요?"
     )
     private String content;
+
+    @Schema(description = "媛뺤쓽 ID", example = "1", nullable = true)
+    private Long courseId;
+
+    @Schema(description = "媛뺤쓽 ?쒖젏 紐⑥떇", example = "00:12:44", nullable = true)
+    private String lectureTimestamp;
 }

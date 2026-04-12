@@ -78,13 +78,18 @@ public class Question {
             QuestionTemplateType templateType,
             QuestionDifficulty difficulty,
             String title,
-            String content
+            String content,
+            Long courseId,
+            String lectureTimestamp
     ) {
         this.user = user;
         this.templateType = templateType;
         this.difficulty = difficulty;
         this.title = title;
         this.content = content;
+        this.courseId = courseId;
+        this.lectureTimestamp = lectureTimestamp;
+        this.qnaStatus = QnaStatus.UNANSWERED;
         this.adoptedAnswerId = null;
         this.viewCount = 0;
         this.isDeleted = false;

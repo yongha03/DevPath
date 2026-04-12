@@ -8,6 +8,8 @@ import com.devpath.api.qna.dto.QuestionDetailResponse;
 import com.devpath.api.qna.dto.QuestionSummaryResponse;
 import com.devpath.api.qna.dto.QuestionTemplateResponse;
 import com.devpath.api.qna.service.QnaService;
+import com.devpath.common.exception.CustomException;
+import com.devpath.common.exception.ErrorCode;
 import com.devpath.common.response.ApiResponse;
 import com.devpath.common.swagger.SwaggerDocConstants;
 import com.devpath.common.swagger.SwaggerErrorResponse;
@@ -20,6 +22,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -56,11 +59,12 @@ public class QnaController {
             )
     })
     public ApiResponse<QuestionDetailResponse> createQuestion(
+            @Parameter(hidden = true) @AuthenticationPrincipal Long authenticatedUserId,
             @Parameter(description = SwaggerDocConstants.DUMMY_USER_ID_DESCRIPTION, example = "1")
-            @RequestParam Long userId,
+            @RequestParam(required = false) Long userId,
             @Valid @RequestBody QuestionCreateRequest request
     ) {
-        QuestionDetailResponse response = qnaService.createQuestion(userId, request);
+        QuestionDetailResponse response = qnaService.createQuestion(resolveUserId(authenticatedUserId, userId), request);
         return ApiResponse.ok(response);
     }
 
@@ -69,8 +73,11 @@ public class QnaController {
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "질문 목록 조회 성공")
     })
-    public ApiResponse<List<QuestionSummaryResponse>> getQuestions() {
-        List<QuestionSummaryResponse> responses = qnaService.getQuestions();
+    public ApiResponse<List<QuestionSummaryResponse>> getQuestions(
+            @Parameter(description = "Course ID", example = "1")
+            @RequestParam(required = false) Long courseId
+    ) {
+        List<QuestionSummaryResponse> responses = qnaService.getQuestions(courseId);
         return ApiResponse.ok(responses);
     }
 
@@ -126,13 +133,14 @@ public class QnaController {
             )
     })
     public ApiResponse<AnswerResponse> createAnswer(
+            @Parameter(hidden = true) @AuthenticationPrincipal Long authenticatedUserId,
             @Parameter(description = SwaggerDocConstants.DUMMY_USER_ID_DESCRIPTION, example = "2")
-            @RequestParam Long userId,
+            @RequestParam(required = false) Long userId,
             @Parameter(description = "답변을 등록할 질문 ID입니다.", example = "1")
             @PathVariable Long questionId,
             @Valid @RequestBody AnswerCreateRequest request
     ) {
-        AnswerResponse response = qnaService.createAnswer(userId, questionId, request);
+        AnswerResponse response = qnaService.createAnswer(resolveUserId(authenticatedUserId, userId), questionId, request);
         return ApiResponse.ok(response);
     }
 
@@ -157,14 +165,19 @@ public class QnaController {
             )
     })
     public ApiResponse<QuestionDetailResponse> adoptAnswer(
+            @Parameter(hidden = true) @AuthenticationPrincipal Long authenticatedUserId,
             @Parameter(description = SwaggerDocConstants.DUMMY_USER_ID_DESCRIPTION, example = "1")
-            @RequestParam Long userId,
+            @RequestParam(required = false) Long userId,
             @Parameter(description = "질문 ID입니다.", example = "1")
             @PathVariable Long questionId,
             @Parameter(description = "채택할 답변 ID입니다.", example = "1")
             @PathVariable Long answerId
     ) {
-        QuestionDetailResponse response = qnaService.adoptAnswer(userId, questionId, answerId);
+        QuestionDetailResponse response = qnaService.adoptAnswer(
+                resolveUserId(authenticatedUserId, userId),
+                questionId,
+                answerId
+        );
         return ApiResponse.ok(response);
     }
 
@@ -176,5 +189,17 @@ public class QnaController {
     public ApiResponse<List<QuestionTemplateResponse>> getQuestionTemplates() {
         List<QuestionTemplateResponse> responses = qnaService.getQuestionTemplates();
         return ApiResponse.ok(responses);
+    }
+
+    private Long resolveUserId(Long authenticatedUserId, Long requestUserId) {
+        if (authenticatedUserId != null) {
+            return authenticatedUserId;
+        }
+
+        if (requestUserId != null) {
+            return requestUserId;
+        }
+
+        throw new CustomException(ErrorCode.INVALID_INPUT, "userId is required.");
     }
 }

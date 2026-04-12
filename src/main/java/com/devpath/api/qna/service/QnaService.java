@@ -18,6 +18,7 @@ import com.devpath.domain.qna.repository.QuestionTemplateRepository;
 import com.devpath.domain.user.entity.User;
 import com.devpath.domain.user.repository.UserRepository;
 import java.text.Normalizer;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -25,6 +26,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -62,16 +64,26 @@ public class QnaService {
                 .difficulty(request.getDifficulty())
                 .title(request.getTitle())
                 .content(request.getContent())
+                .courseId(request.getCourseId())
+                .lectureTimestamp(request.getLectureTimestamp())
                 .build();
 
         Question savedQuestion = questionRepository.save(question);
         return QuestionDetailResponse.from(savedQuestion, List.of());
     }
 
-    public List<QuestionSummaryResponse> getQuestions() {
-        return questionRepository.findAllByIsDeletedFalseOrderByCreatedAtDesc()
-                .stream()
-                .map(QuestionSummaryResponse::from)
+    public List<QuestionSummaryResponse> getQuestions(Long courseId) {
+        List<Question> questions = courseId == null
+                ? questionRepository.findAllByIsDeletedFalseOrderByCreatedAtDesc()
+                : questionRepository.findAllByCourseIdAndIsDeletedFalseOrderByCreatedAtDesc(courseId);
+
+        Map<Long, Integer> answerCounts = buildAnswerCountMap(questions);
+
+        return questions.stream()
+                .map(question -> QuestionSummaryResponse.from(
+                        question,
+                        answerCounts.getOrDefault(question.getId(), 0)
+                ))
                 .toList();
     }
 
@@ -98,6 +110,7 @@ public class QnaService {
                 .build();
 
         Answer savedAnswer = answerRepository.save(answer);
+        question.markAsAnswered();
         return AnswerResponse.from(savedAnswer);
     }
 
@@ -224,6 +237,23 @@ public class QnaService {
                 .stream()
                 .map(AnswerResponse::from)
                 .toList();
+    }
+
+    private Map<Long, Integer> buildAnswerCountMap(List<Question> questions) {
+        if (questions.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        List<Long> questionIds = questions.stream()
+                .map(Question::getId)
+                .toList();
+
+        return answerRepository.findAllByQuestionIdInAndIsDeletedFalse(questionIds)
+                .stream()
+                .collect(Collectors.groupingBy(
+                        answer -> answer.getQuestion().getId(),
+                        Collectors.collectingAndThen(Collectors.counting(), Long::intValue)
+                ));
     }
 
     // 중복 추천용 제목 입력을 정규화한다.

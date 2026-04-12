@@ -85,6 +85,12 @@ import type {
   SaveInstructorAssignmentEditorRequest,
   SaveInstructorQuizEditorRequest,
 } from '../types/instructor-evaluation'
+import type {
+  CreateQnaQuestionRequest,
+  QnaQuestionDetail,
+  QnaQuestionSummary,
+  QnaQuestionTemplate,
+} from '../types/qna'
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') ?? ''
 
@@ -678,6 +684,40 @@ export const reviewApi = {
       `/api/reviews${buildQueryString({ courseId })}`,
       { method: 'GET', signal },
       { auth: false },
+    )
+  },
+}
+
+export const qnaApi = {
+  getQuestions(courseId?: number, signal?: AbortSignal) {
+    return request<QnaQuestionSummary[]>(
+      `/api/qna/questions${buildQueryString({ courseId })}`,
+      { method: 'GET', signal },
+      { auth: false },
+    )
+  },
+  getQuestionDetail(questionId: number, signal?: AbortSignal) {
+    return request<QnaQuestionDetail>(
+      `/api/qna/questions/${questionId}`,
+      { method: 'GET', signal },
+      { auth: false },
+    )
+  },
+  getTemplates(signal?: AbortSignal) {
+    return request<QnaQuestionTemplate[]>(
+      '/api/qna/templates',
+      { method: 'GET', signal },
+      { auth: false },
+    )
+  },
+  createQuestion(payload: CreateQnaQuestionRequest, userId?: number | null) {
+    return request<QnaQuestionDetail>(
+      `/api/qna/questions${buildQueryString({ userId })}`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      },
+      { auth: true },
     )
   },
 }
