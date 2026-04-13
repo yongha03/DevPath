@@ -4,6 +4,7 @@ import com.devpath.domain.course.entity.Course;
 import com.devpath.domain.course.entity.CourseStatus;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface CourseRepository extends JpaRepository<Course, Long> {
@@ -12,12 +13,14 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
 
     boolean existsByCourseIdAndInstructorId(Long courseId, Long instructorId);
 
+    @EntityGraph(attributePaths = "instructor")
     List<Course> findByStatus(CourseStatus status);
 
     long countByStatus(CourseStatus status);
 
     List<Course> findTop3ByStatusOrderByPublishedAtDescCourseIdDesc(CourseStatus status);
 
+    @EntityGraph(attributePaths = "instructor")
     Optional<Course> findByCourseIdAndStatus(Long courseId, CourseStatus status);
 
     List<Course> findTop4ByInstructorIdAndStatusOrderByPublishedAtDescCourseIdDesc(

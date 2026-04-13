@@ -2,6 +2,7 @@ package com.devpath.api.common.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -73,6 +74,12 @@ public class CourseDetailResponse {
 
     @Schema(description = "강의 태그 목록")
     private List<TagItem> tags;
+
+    @Schema(description = "Bookmarked by current user", example = "false")
+    private Boolean isBookmarked;
+
+    @Schema(description = "Enrolled by current user", example = "false")
+    private Boolean isEnrolled;
 
     @Schema(description = "강사 정보")
     private InstructorInfo instructor;
@@ -231,6 +238,9 @@ public class CourseDetailResponse {
 
         @Schema(description = "첨부 자료 목록")
         private List<MaterialItem> materials;
+
+        @Schema(description = "레슨에 연결된 과제 정보")
+        private AssignmentItem assignment;
     }
 
     // 첨부 자료 응답 DTO다.
@@ -257,6 +267,94 @@ public class CourseDetailResponse {
 
         @Schema(description = "정렬 순서", example = "0")
         private Integer sortOrder;
+    }
+
+    // 학습 플레이어에서 사용하는 과제 요약 DTO다.
+    @Getter
+    @Builder
+    @AllArgsConstructor
+    @Schema(description = "학습 플레이어용 과제 요약 DTO")
+    public static class AssignmentItem {
+
+        @Schema(description = "과제 ID", example = "20")
+        private Long assignmentId;
+
+        @Schema(description = "로드맵 노드 ID", example = "301")
+        private Long roadmapNodeId;
+
+        @Schema(description = "과제 제목")
+        private String title;
+
+        @Schema(description = "과제 설명")
+        private String description;
+
+        @Schema(description = "제출 규칙 설명")
+        private String submissionRuleDescription;
+
+        @Schema(description = "총점", example = "100")
+        private Integer totalScore;
+
+        @Schema(description = "합격 점수", example = "80")
+        private Integer passScore;
+
+        @Schema(description = "자동 채점 여부", example = "true")
+        private Boolean autoGradeEnabled;
+
+        @Schema(description = "AI 리뷰 여부", example = "false")
+        private Boolean aiReviewEnabled;
+
+        @Schema(description = "텍스트 제출 허용 여부", example = "true")
+        private Boolean allowTextSubmission;
+
+        @Schema(description = "파일 제출 허용 여부", example = "true")
+        private Boolean allowFileSubmission;
+
+        @Schema(description = "URL 제출 허용 여부", example = "false")
+        private Boolean allowUrlSubmission;
+
+        @Schema(description = "README 필수 여부", example = "true")
+        private Boolean readmeRequired;
+
+        @Schema(description = "테스트 통과 필수 여부", example = "true")
+        private Boolean testRequired;
+
+        @Schema(description = "린트 통과 필수 여부", example = "true")
+        private Boolean lintRequired;
+
+        @Schema(description = "지각 제출 허용 여부", example = "false")
+        private Boolean allowLateSubmission;
+
+        @Schema(description = "마감 일시", example = "2026-04-20T23:59:00")
+        private LocalDateTime dueAt;
+
+        @Schema(description = "허용 파일 형식 목록")
+        private List<String> allowedFileFormats;
+
+        @Schema(description = "자동채점 루브릭 목록")
+        private List<AssignmentRubricItem> rubrics;
+    }
+
+    // 학습 플레이어에서 과제 채점 기준을 표시하는 루브릭 DTO다.
+    @Getter
+    @Builder
+    @AllArgsConstructor
+    @Schema(description = "학습 플레이어용 과제 루브릭 DTO")
+    public static class AssignmentRubricItem {
+
+        @Schema(description = "루브릭 ID", example = "501")
+        private Long rubricId;
+
+        @Schema(description = "평가 항목명")
+        private String criteriaName;
+
+        @Schema(description = "평가 항목 설명")
+        private String criteriaDescription;
+
+        @Schema(description = "배점", example = "30")
+        private Integer maxPoints;
+
+        @Schema(description = "노출 순서", example = "1")
+        private Integer displayOrder;
     }
 
     // 뉴스 응답 DTO다.

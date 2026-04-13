@@ -1,11 +1,12 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DevPath - 퀴즈 생성기</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="/vendor/fontawesome/css/all.min.css" rel="stylesheet">
+    <link rel='stylesheet' href='/vendor/fontawesome/css/devpath-compat.css' />
     <style>
         @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
         body { font-family: 'Pretendard', sans-serif; background-color: #F0F2F5; }
@@ -14,29 +15,29 @@
         .border-primary { border-color: #00C471; }
         .nav-item.active { background-color: #F0FDF4; color: #00C471; font-weight: 700; }
         
-        /* 애니메이션 */
+        /* ?좊땲硫붿씠??*/
         .ai-pulse { animation: pulse-glow 2s infinite; }
         @keyframes pulse-glow { 0% { box-shadow: 0 0 0 0 rgba(0, 196, 113, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(0, 196, 113, 0); } 100% { box-shadow: 0 0 0 0 rgba(0, 196, 113, 0); } }
         .item-enter { animation: slideIn 0.3s ease-out forwards; }
         @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* 탭 전환 */
+        /* ???꾪솚 */
         .tab-content { display: none; }
         .tab-content.active { display: block; animation: fadeIn 0.3s ease; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        /* 태그 칩 */
+        /* ?쒓렇 移?*/
         .tag-chip { background: #ECFDF5; border: 1px solid #A7F3D0; color: #047857; padding: 4px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; transition: all 0.2s; }
         .tag-chip:hover { background: #D1FAE5; }
 
-        /* 스크롤바 */
+        /* ?ㅽ겕濡ㅻ컮 */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #E5E7EB; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: #D1D5DB; }
 
         /* =========================================================
-           ✅ (가져온) dashboard 헤더/aside 이식 스타일
+           ??(媛?몄삩) dashboard ?ㅻ뜑/aside ?댁떇 ?ㅽ???
         ========================================================== */
         body { background-color: #F3F4F6; }
         .text-brand { color: #00C471; }
@@ -77,7 +78,7 @@
 
         .hide-scroll::-webkit-scrollbar{ display:none; }
 
-        /* ✅ ASIDE hover/active 애니메이션 */
+        /* ??ASIDE hover/active ?좊땲硫붿씠??*/
         .nav-item{
           position: relative;
           transform: translateZ(0);
@@ -170,11 +171,11 @@
             </div>
 
             <div class="flex-1 flex items-center justify-center gap-10 text-sm font-bold text-gray-500">
-                <a href="roadmap-hub.html" class="hover:text-brand transition">로드맵</a>
-                <a href="lecture-list.html" class="hover:text-brand transition">강의</a>
-                <a href="lounge-dashboard.html" class="hover:text-brand transition">프로젝트</a>
-                <a href="community-list.html" class="hover:text-brand transition">커뮤니티</a>
-                <a href="job-matching.html" class="hover:text-brand transition">채용분석</a>
+                <a href="roadmap-hub.html" class="hover:text-brand transition">濡쒕뱶留?/a>
+                <a href="lecture-list.html" class="hover:text-brand transition">媛뺤쓽</a>
+                <a href="lounge-dashboard.html" class="hover:text-brand transition">?꾨줈?앺듃</a>
+                <a href="community-list.html" class="hover:text-brand transition">而ㅻ??덊떚</a>
+                <a href="job-matching.html" class="hover:text-brand transition">梨꾩슜遺꾩꽍</a>
             </div>
 
             <div class="w-60 flex items-center justify-end gap-4">
@@ -183,7 +184,7 @@
                     class="text-sm font-bold text-gray-500 hover:text-brand transition whitespace-nowrap header-active"
                     style="transform: translateX(-375px);"
                 >
-                    강사 대시보드
+                    媛뺤궗 ??쒕낫??
                 </a>
 
                 <div
@@ -191,7 +192,7 @@
                     style="transform: translateX(120px);"
                     onclick="location.href='profile.html'"
                 >
-                    <span class="text-sm font-bold text-gray-700">김멘토</span>
+                    <span class="text-sm font-bold text-gray-700">源硫섑넗</span>
                     <img
                         src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"
                         class="w-9 h-9 rounded-full border border-gray-200 shadow-sm"
@@ -207,26 +208,26 @@
             <div class="pt-4"></div>
             <nav class="flex-1 px-4 py-6 overflow-y-auto hide-scroll space-y-1">
                 <p class="px-2 text-[10px] font-extrabold text-gray-400 mb-2 uppercase tracking-widest aside-section-title">Overview</p>
-                <a href="instructor-dashboard.html" class="nav-item"><i class="fas fa-th-large w-5 text-center"></i> 대시보드</a>
-                <a href="course-management.html" class="nav-item active"><i class="fas fa-video w-5 text-center"></i> 강의 관리</a>
-                <a href="instructor-mentoring.html" class="nav-item"><i class="fas fa-users-cog w-5 text-center"></i> 멘토링 관리</a>
-                <a href="student-analytics.html" class="nav-item"><i class="fas fa-user-graduate w-5 text-center"></i> 수강생 & 분석</a>
+                <a href="instructor-dashboard.html" class="nav-item"><i class="fas fa-th-large w-5 text-center"></i> ??쒕낫??/a>
+                <a href="course-management.html" class="nav-item active"><i class="fas fa-video w-5 text-center"></i> 媛뺤쓽 愿由?/a>
+                <a href="instructor-mentoring.html" class="nav-item"><i class="fas fa-users-cog w-5 text-center"></i> 硫섑넗留?愿由?/a>
+                <a href="student-analytics.html" class="nav-item"><i class="fas fa-user-graduate w-5 text-center"></i> ?섍컯??& 遺꾩꽍</a>
 
                 <p class="px-2 text-[10px] font-extrabold text-gray-400 mb-2 mt-6 uppercase tracking-widest aside-section-title">Communication</p>
                 <a href="instructor-qna.html" class="nav-item flex justify-between">
                     <div class="flex items-center gap-3">
-                        <i class="fas fa-question-circle w-5 text-center"></i> 질문 게시판
+                        <i class="fas fa-question-circle w-5 text-center"></i> 吏덈Ц 寃뚯떆??
                     </div>
                     <span class="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full">3</span>
                 </a>
-                <a href="instructor-reviews.html" class="nav-item"><i class="fas fa-star w-5 text-center"></i> 수강평 관리</a>
+                <a href="instructor-reviews.html" class="nav-item"><i class="fas fa-star w-5 text-center"></i> ?섍컯??愿由?/a>
 
                 <p class="px-2 text-[10px] font-extrabold text-gray-400 mb-2 mt-6 uppercase tracking-widest aside-section-title">Management</p>
-                <a href="instructor-revenue.html" class="nav-item"><i class="fas fa-wallet w-5 text-center"></i> 정산 관리</a>
-                <a href="instructor-marketing.html" class="nav-item"><i class="fas fa-ad w-5 text-center"></i> 마케팅 관리</a>
+                <a href="instructor-revenue.html" class="nav-item"><i class="fas fa-wallet w-5 text-center"></i> ?뺤궛 愿由?/a>
+                <a href="instructor-marketing.html" class="nav-item"><i class="fas fa-ad w-5 text-center"></i> 留덉???愿由?/a>
 
                 <p class="px-2 text-[10px] font-extrabold text-gray-400 mb-2 mt-6 uppercase tracking-widest aside-section-title">Quick</p>
-                <a href="course-editor.html" class="nav-item"><i class="fas fa-arrow-left w-5 text-center"></i> 강의편집으로 복귀</a>
+                <a href="course-editor.html" class="nav-item"><i class="fas fa-arrow-left w-5 text-center"></i> 媛뺤쓽?몄쭛?쇰줈 蹂듦?</a>
             </nav>
         </aside>
 
@@ -235,60 +236,60 @@
             <div class="w-96 bg-white border-r border-gray-200 flex flex-col z-10 shadow-lg">
                 <div class="p-6 border-b border-gray-100">
                     <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
-                        <i class="fas fa-robot text-purple-600"></i> AI 퀴즈 생성
+                        <i class="fas fa-robot text-purple-600"></i> AI ?댁쫰 ?앹꽦
                     </h2>
-                    <p class="text-xs text-gray-500 mt-1">강의 자료를 분석해 문제를 자동 출제합니다.</p>
+                    <p class="text-xs text-gray-500 mt-1">媛뺤쓽 ?먮즺瑜?遺꾩꽍??臾몄젣瑜??먮룞 異쒖젣?⑸땲??</p>
                 </div>
 
                 <div class="flex-1 overflow-y-auto p-6">
                     <div class="bg-gray-100 p-1 rounded-xl flex mb-6">
                         <button onclick="setMode('video')" id="tab-video" class="flex-1 py-2 rounded-lg text-xs font-bold shadow-sm bg-white text-gray-900 transition-all">
-                            <i class="fas fa-video mr-1"></i> 영상 분석
+                            <i class="fas fa-video mr-1"></i> ?곸긽 遺꾩꽍
                         </button>
                         <button onclick="setMode('text')" id="tab-text" class="flex-1 py-2 rounded-lg text-xs font-bold text-gray-500 hover:text-gray-900 transition-all">
-                            <i class="fas fa-file-alt mr-1"></i> 텍스트 분석
+                            <i class="fas fa-file-alt mr-1"></i> ?띿뒪??遺꾩꽍
                         </button>
                     </div>
 
                     <div id="content-video" class="tab-content active space-y-6">
                         <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center cursor-pointer hover:border-primary hover:bg-green-50 transition group" onclick="document.getElementById('video-upload').click()">
                             <i class="fas fa-cloud-upload-alt text-3xl text-gray-400 group-hover:text-primary mb-2 transition"></i>
-                            <p class="text-sm font-bold text-gray-600 group-hover:text-gray-900">강의 영상 업로드</p>
+                            <p class="text-sm font-bold text-gray-600 group-hover:text-gray-900">媛뺤쓽 ?곸긽 ?낅줈??/p>
                             <p class="text-[10px] text-gray-400 mt-1">MP4, MOV (Max 500MB)</p>
-                            <input type="file" id="video-upload" class="hidden" accept="video/*" onchange="alert('영상이 선택되었습니다: ' + this.files[0].name)">
+                            <input type="file" id="video-upload" class="hidden" accept="video/*" onchange="alert('?곸긽???좏깮?섏뿀?듬땲?? ' + this.files[0].name)">
                         </div>
                     </div>
 
                     <div id="content-text" class="tab-content space-y-4">
                         <div>
-                            <label class="block text-xs font-bold text-gray-700 mb-1">핵심 주제 / 키워드</label>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">?듭떖 二쇱젣 / ?ㅼ썙??/label>
                             <div class="border border-gray-300 rounded-lg p-2 bg-white focus-within:border-primary focus-within:ring-1 focus-within:ring-primary transition" onclick="document.getElementById('tagInput').focus()">
                                 <div class="flex flex-wrap gap-2 mb-1" id="tagList">
                                     </div>
-                                <input type="text" id="tagInput" class="w-full text-sm outline-none p-1 placeholder-gray-400" placeholder="키워드 입력 후 Enter">
+                                <input type="text" id="tagInput" class="w-full text-sm outline-none p-1 placeholder-gray-400" placeholder="?ㅼ썙???낅젰 ??Enter">
                             </div>
                         </div>
                         <div>
-                            <label class="block text-xs font-bold text-gray-700 mb-1">강의 스크립트</label>
-                            <textarea class="w-full h-32 border border-gray-300 rounded-lg p-2.5 text-sm outline-none resize-none focus:border-primary transition" placeholder="강의 내용을 요약해서 입력하세요."></textarea>
+                            <label class="block text-xs font-bold text-gray-700 mb-1">媛뺤쓽 ?ㅽ겕由쏀듃</label>
+                            <textarea class="w-full h-32 border border-gray-300 rounded-lg p-2.5 text-sm outline-none resize-none focus:border-primary transition" placeholder="媛뺤쓽 ?댁슜???붿빟?댁꽌 ?낅젰?섏꽭??"></textarea>
                         </div>
                     </div>
 
                     <div class="mt-8 pt-6 border-t border-gray-100 space-y-4">
                         <div>
                             <div class="flex justify-between mb-1">
-                                <label class="text-xs font-bold text-gray-700">난이도</label>
-                                <span class="text-xs text-primary font-bold" id="difficulty-label">중급</span>
+                                <label class="text-xs font-bold text-gray-700">?쒖씠??/label>
+                                <span class="text-xs text-primary font-bold" id="difficulty-label">以묎툒</span>
                             </div>
                             <input type="range" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#00C471]" min="1" max="3" value="2" oninput="updateDifficulty(this.value)">
                             <div class="flex justify-between text-[10px] text-gray-400 mt-1 px-1">
-                                <span>초급</span><span>중급</span><span>고급</span>
+                                <span>珥덇툒</span><span>以묎툒</span><span>怨좉툒</span>
                             </div>
                         </div>
                         <div>
                             <div class="flex justify-between mb-1">
-                                <label class="text-xs font-bold text-gray-700">문항 수</label>
-                                <span class="text-xs text-gray-900 font-bold" id="count-label">3 문제</span>
+                                <label class="text-xs font-bold text-gray-700">臾명빆 ??/label>
+                                <span class="text-xs text-gray-900 font-bold" id="count-label">3 臾몄젣</span>
                             </div>
                             <input type="range" class="w-full h-1.5 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#00C471]" min="1" max="10" value="3" oninput="updateCount(this.value)">
                         </div>
@@ -297,7 +298,7 @@
 
                 <div class="p-6 border-t border-gray-100 bg-gray-50">
                     <button onclick="startGeneration()" class="w-full bg-gray-900 hover:bg-black text-white py-3 rounded-xl font-bold text-sm shadow-lg flex justify-center items-center gap-2 transition transform active:scale-95 ai-pulse">
-                        <i class="fas fa-magic text-yellow-400"></i> 퀴즈 생성하기
+                        <i class="fas fa-magic text-yellow-400"></i> ?댁쫰 ?앹꽦?섍린
                     </button>
                 </div>
             </div>
@@ -311,8 +312,8 @@
                             <p class="text-[10px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded inline-block mt-0.5">&#xC139;&#xC158; 1. &#xC624;&#xB9AC;&#xC5D4;&#xD14C;&#xC774;&#xC158; &gt; &#xC911;&#xAC04; &#xD034;&#xC988;</p>
                         </div>
                         <div class="hidden">
-                        <h1 class="text-lg font-bold text-gray-900">퀴즈 편집기</h1>
-                        <p class="text-xs text-gray-500">섹션 1. 오리엔테이션 > 중간 점검</p>
+                        <h1 class="text-lg font-bold text-gray-900">?댁쫰 ?몄쭛湲?/h1>
+                        <p class="text-xs text-gray-500">?뱀뀡 1. ?ㅻ━?뷀뀒?댁뀡 > 以묎컙 ?먭?</p>
                     </div>
                     </div>
                     <div class="flex gap-2">
@@ -326,12 +327,12 @@
                     </div>
                     <div class="hidden flex gap-2">
                         <div class="flex items-center gap-2 mr-4 text-xs text-gray-500">
-                            <span><i class="fas fa-clock"></i> 제한 시간 <input type="number" value="10" class="w-8 text-center border-b border-gray-300 outline-none focus:border-primary">분</span>
+                            <span><i class="fas fa-clock"></i> ?쒗븳 ?쒓컙 <input type="number" value="10" class="w-8 text-center border-b border-gray-300 outline-none focus:border-primary">遺?/span>
                             <span>|</span>
-                            <span><i class="fas fa-check-circle"></i> 통과 점수 <input type="number" value="60" class="w-8 text-center border-b border-gray-300 outline-none focus:border-primary">점</span>
+                            <span><i class="fas fa-check-circle"></i> ?듦낵 ?먯닔 <input type="number" value="60" class="w-8 text-center border-b border-gray-300 outline-none focus:border-primary">??/span>
                         </div>
-                        <button class="bg-white border border-gray-300 text-gray-600 px-4 py-2 rounded-lg font-bold text-xs hover:bg-gray-50 transition">설정 변경</button>
-                        <button onclick="alert('퀴즈가 저장되었습니다. 강의 관리 페이지로 이동합니다.'); location.href='course-editor.html'" class="bg-primary text-white px-5 py-2 rounded-lg font-bold text-xs hover:bg-green-600 shadow-md transition">저장 완료</button>
+                        <button class="bg-white border border-gray-300 text-gray-600 px-4 py-2 rounded-lg font-bold text-xs hover:bg-gray-50 transition">?ㅼ젙 蹂寃?/button>
+                        <button onclick="alert('?댁쫰媛 ??λ릺?덉뒿?덈떎. 媛뺤쓽 愿由??섏씠吏濡??대룞?⑸땲??'); location.href='course-editor.html'" class="bg-primary text-white px-5 py-2 rounded-lg font-bold text-xs hover:bg-green-600 shadow-md transition">????꾨즺</button>
                     </div>
                 </div>
 
@@ -339,15 +340,15 @@
                     
                     <div id="loading-overlay" class="absolute inset-0 bg-white/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center hidden">
                         <div class="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
-                        <p class="text-gray-900 font-bold animate-pulse">AI가 문제를 생성하고 있습니다...</p>
+                        <p class="text-gray-900 font-bold animate-pulse">AI媛 臾몄젣瑜??앹꽦?섍퀬 ?덉뒿?덈떎...</p>
                     </div>
 
                     <div id="quiz-list" class="max-w-3xl mx-auto space-y-6">
                         
                         <div id="empty-state" class="text-center py-20 text-gray-400">
                             <i class="fas fa-clipboard-list text-6xl mb-4 text-gray-300"></i>
-                            <p class="text-lg font-bold text-gray-500">아직 등록된 문제가 없습니다.</p>
-                            <p class="text-sm">왼쪽에서 AI 생성을 하거나, 아래 버튼으로 직접 추가하세요.</p>
+                            <p class="text-lg font-bold text-gray-500">?꾩쭅 ?깅줉??臾몄젣媛 ?놁뒿?덈떎.</p>
+                            <p class="text-sm">?쇱そ?먯꽌 AI ?앹꽦???섍굅?? ?꾨옒 踰꾪듉?쇰줈 吏곸젒 異붽??섏꽭??</p>
                         </div>
 
                     </div>
@@ -355,7 +356,7 @@
                     <div class="max-w-3xl mx-auto mt-8 pb-10">
                         <button onclick="addManualQuestion()" class="w-full py-4 border-2 border-dashed border-gray-300 rounded-xl text-gray-400 font-bold hover:border-primary hover:text-primary transition flex flex-col items-center gap-2 bg-white/50 hover:bg-white">
                             <i class="fas fa-plus-circle text-2xl"></i>
-                            <span>새 문제 직접 추가하기</span>
+                            <span>??臾몄젣 吏곸젒 異붽??섍린</span>
                         </button>
                     </div>
                 </div>
@@ -379,16 +380,16 @@
 
     <script>
         // ==========================================
-        // 1. 초기화 및 왼쪽 패널 로직
+        // 1. 珥덇린??諛??쇱そ ?⑤꼸 濡쒖쭅
         // ==========================================
 
-        // 페이지 로드 시 기본 태그 세팅
+        // ?섏씠吏 濡쒕뱶 ??湲곕낯 ?쒓렇 ?명똿
         window.onload = function() {
             const defaultTags = ["Java", "Backend", "Spring Boot"];
             defaultTags.forEach(tag => addTagToElement(tag));
         }
 
-        // 탭 전환
+        // ???꾪솚
         function setMode(mode) {
             const btnVideo = document.getElementById('tab-video');
             const btnText = document.getElementById('tab-text');
@@ -408,7 +409,7 @@
             }
         }
 
-        // 태그 입력 로직
+        // ?쒓렇 ?낅젰 濡쒖쭅
         const tagInput = document.getElementById('tagInput');
         tagInput.addEventListener('keydown', function(e) {
             if (e.key === 'Enter') {
@@ -428,61 +429,61 @@
             tagList.appendChild(tag);
         }
 
-        // 난이도 슬라이더 업데이트
+        // ?쒖씠???щ씪?대뜑 ?낅뜲?댄듃
         function updateDifficulty(val) {
             const label = document.getElementById('difficulty-label');
-            if (val == 1) label.innerText = "초급";
-            else if (val == 2) label.innerText = "중급";
-            else label.innerText = "고급";
+            if (val == 1) label.innerText = "珥덇툒";
+            else if (val == 2) label.innerText = "以묎툒";
+            else label.innerText = "怨좉툒";
         }
 
-        // 문항 수 슬라이더 업데이트
+        // 臾명빆 ???щ씪?대뜑 ?낅뜲?댄듃
         function updateCount(val) {
-            document.getElementById('count-label').innerText = val + " 문제";
+            document.getElementById('count-label').innerText = val + " 臾몄젣";
         }
 
-        // AI 생성 로직 (시뮬레이션)
+        // AI ?앹꽦 濡쒖쭅 (?쒕??덉씠??
         function startGeneration() {
             const loading = document.getElementById('loading-overlay');
             const emptyState = document.getElementById('empty-state');
             
-            loading.classList.remove('hidden'); // 로딩 시작
+            loading.classList.remove('hidden'); // 濡쒕뵫 ?쒖옉
 
             setTimeout(() => {
-                loading.classList.add('hidden'); // 로딩 종료
-                if (emptyState) emptyState.style.display = 'none'; // 빈 상태 숨김
+                loading.classList.add('hidden'); // 濡쒕뵫 醫낅즺
+                if (emptyState) emptyState.style.display = 'none'; // 鍮??곹깭 ?④?
                 
-                // 샘플 문제 자동 추가
-                addQuestionCard(getNextQuestionNumber(), "객관식", "자바(Java)의 특징으로 올바르지 않은 것은?", ["객체지향 언어이다.", "메모리를 직접 관리해야 한다.", "운영체제에 독립적이다."], 1);
-                addQuestionCard(getNextQuestionNumber(), "객관식", "다음 중 기본형(Primitive Type)이 아닌 것은?", ["int", "boolean", "String"], 2);
-                addQuestionCard(getNextQuestionNumber(), "OX", "자바의 String 객체는 불변(Immutable)하다.", [], 0); // OX는 옵션 없음(내부처리)
+                // ?섑뵆 臾몄젣 ?먮룞 異붽?
+                addQuestionCard(getNextQuestionNumber(), "媛앷???, "?먮컮(Java)???뱀쭠?쇰줈 ?щ컮瑜댁? ?딆? 寃껋??", ["媛앹껜吏???몄뼱?대떎.", "硫붾え由щ? 吏곸젒 愿由ы빐???쒕떎.", "?댁쁺泥댁젣???낅┰?곸씠??"], 1);
+                addQuestionCard(getNextQuestionNumber(), "媛앷???, "?ㅼ쓬 以?湲곕낯??Primitive Type)???꾨땶 寃껋??", ["int", "boolean", "String"], 2);
+                addQuestionCard(getNextQuestionNumber(), "OX", "?먮컮??String 媛앹껜??遺덈?(Immutable)?섎떎.", [], 0); // OX???듭뀡 ?놁쓬(?대?泥섎━)
                 
-                // 스크롤을 맨 위로
+                // ?ㅽ겕濡ㅼ쓣 留??꾨줈
                 document.querySelector('.overflow-y-auto').scrollTop = 0;
             }, 1500);
         }
 
 
         // ==========================================
-        // 2. 오른쪽 캔버스 및 퀴즈 카드 로직 (핵심)
+        // 2. ?ㅻⅨ履?罹붾쾭??諛??댁쫰 移대뱶 濡쒖쭅 (?듭떖)
         // ==========================================
 
         function getNextQuestionNumber() {
             return document.querySelectorAll('.quiz-card').length + 1;
         }
 
-        // 수동 추가 (기본 객관식)
+        // ?섎룞 異붽? (湲곕낯 媛앷???
         function addManualQuestion() {
             const emptyState = document.getElementById('empty-state');
             if (emptyState) emptyState.style.display = 'none';
             
-            addQuestionCard(getNextQuestionNumber(), "객관식", "", ["", ""], -1); // 빈 문제 추가
+            addQuestionCard(getNextQuestionNumber(), "媛앷???, "", ["", ""], -1); // 鍮?臾몄젣 異붽?
             
             const container = document.querySelector('.overflow-y-auto');
             container.scrollTop = container.scrollHeight;
         }
 
-        // 문제 카드 생성 함수
+        // 臾몄젣 移대뱶 ?앹꽦 ?⑥닔
         function addQuestionCard(num, type, title, options, correctIdx) {
             const container = document.getElementById('quiz-list');
             const card = document.createElement('div');
@@ -490,17 +491,17 @@
             
             card.className = "quiz-card bg-white rounded-xl border border-gray-200 p-6 shadow-sm hover:border-primary hover:shadow-md transition group item-enter relative";
             card.id = qId;
-            card.dataset.type = type; // 타입 저장
+            card.dataset.type = type; // ??????
 
-            // 헤더 HTML
+            // ?ㅻ뜑 HTML
             const headerHtml = `
                 <div class="flex justify-between items-start mb-4">
                     <div class="flex items-center gap-2">
                         <span class="q-num w-6 h-6 rounded-full bg-gray-900 text-white flex items-center justify-center text-xs font-bold">${num}</span>
                         <select onchange="changeQuizType(this, '${qId}')" class="text-xs text-gray-500 font-bold bg-gray-100 px-2 py-0.5 rounded border-none outline-none cursor-pointer hover:bg-gray-200 transition">
-                            <option value="객관식" ${type === '객관식' ? 'selected' : ''}>객관식</option>
-                            <option value="OX" ${type === 'OX' ? 'selected' : ''}>OX 퀴즈</option>
-                            <option value="단답형" ${type === '단답형' ? 'selected' : ''}>단답형</option>
+                            <option value="媛앷??? ${type === '媛앷??? ? 'selected' : ''}>媛앷???/option>
+                            <option value="OX" ${type === 'OX' ? 'selected' : ''}>OX ?댁쫰</option>
+                            <option value="?⑤떟?? ${type === '?⑤떟?? ? 'selected' : ''}>?⑤떟??/option>
                         </select>
                     </div>
                     <div class="flex gap-2 text-gray-400">
@@ -509,40 +510,40 @@
                         <button class="hover:text-red-500 ml-2 transition" onclick="deleteCard('${qId}')"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>
-                <input type="text" class="w-full text-lg font-bold text-gray-900 border-b border-transparent focus:border-primary focus:outline-none bg-transparent mb-4 transition placeholder-gray-300" value="${title}" placeholder="질문을 입력하세요">
+                <input type="text" class="w-full text-lg font-bold text-gray-900 border-b border-transparent focus:border-primary focus:outline-none bg-transparent mb-4 transition placeholder-gray-300" value="${title}" placeholder="吏덈Ц???낅젰?섏꽭??>
             `;
 
-            // 내용물 컨테이너
+            // ?댁슜臾?而⑦뀒?대꼫
             const contentHtml = `<div class="content-area space-y-2 pl-2"></div>`;
             
-            // 버튼 컨테이너 (객관식일 때만 보임)
-            const buttonHtml = `<button class="add-opt-btn mt-3 text-xs text-blue-500 hover:text-blue-700 font-bold pl-2 transition flex items-center gap-1" onclick="addOptionToCard('${qId}')"><i class="fas fa-plus"></i> 보기 추가</button>`;
+            // 踰꾪듉 而⑦뀒?대꼫 (媛앷??앹씪 ?뚮쭔 蹂댁엫)
+            const buttonHtml = `<button class="add-opt-btn mt-3 text-xs text-blue-500 hover:text-blue-700 font-bold pl-2 transition flex items-center gap-1" onclick="addOptionToCard('${qId}')"><i class="fas fa-plus"></i> 蹂닿린 異붽?</button>`;
 
             card.innerHTML = headerHtml + contentHtml + buttonHtml;
             container.appendChild(card);
 
-            // 타입에 맞는 초기 내용 렌더링
+            // ??낆뿉 留욌뒗 珥덇린 ?댁슜 ?뚮뜑留?
             renderContent(qId, type, options, correctIdx);
         }
 
-        // 유형별 내용 렌더링 함수
+        // ?좏삎蹂??댁슜 ?뚮뜑留??⑥닔
         function renderContent(qId, type, options = [], correctIdx = -1) {
             const card = document.getElementById(qId);
             const contentArea = card.querySelector('.content-area');
             const addBtn = card.querySelector('.add-opt-btn');
 
-            contentArea.innerHTML = ''; // 초기화
+            contentArea.innerHTML = ''; // 珥덇린??
 
-            if (type === '객관식') {
-                addBtn.style.display = 'flex'; // 보기 추가 버튼 보임
-                // 옵션 렌더링
+            if (type === '媛앷???) {
+                addBtn.style.display = 'flex'; // 蹂닿린 異붽? 踰꾪듉 蹂댁엫
+                // ?듭뀡 ?뚮뜑留?
                 if(options.length === 0) options = ["", ""];
                 options.forEach((opt, idx) => {
                     contentArea.insertAdjacentHTML('beforeend', createOptionHtml(qId, opt, idx === correctIdx));
                 });
             } 
             else if (type === 'OX') {
-                addBtn.style.display = 'none'; // 버튼 숨김
+                addBtn.style.display = 'none'; // 踰꾪듉 ?④?
                 const oxHtml = `
                     <div class="flex gap-4 mt-2">
                         <button onclick="selectOx(this, '${qId}', 'O')" class="flex-1 py-3 rounded-lg border-2 border-gray-200 text-gray-400 font-bold text-sm hover:bg-gray-50 transition">O (True)</button>
@@ -551,26 +552,26 @@
                 `;
                 contentArea.innerHTML = oxHtml;
             } 
-            else if (type === '단답형') {
-                addBtn.style.display = 'none'; // 버튼 숨김
+            else if (type === '?⑤떟??) {
+                addBtn.style.display = 'none'; // 踰꾪듉 ?④?
                 const shortHtml = `
                     <div class="mt-2 bg-green-50 p-3 rounded-lg border border-green-100">
-                        <label class="block text-xs font-bold text-green-700 mb-1">정답 키워드 (쉼표로 구분)</label>
-                        <input type="text" class="w-full bg-white border border-green-200 rounded p-2 text-sm outline-none focus:border-green-500" placeholder="예: Garbage Collection, GC">
+                        <label class="block text-xs font-bold text-green-700 mb-1">?뺣떟 ?ㅼ썙??(?쇳몴濡?援щ텇)</label>
+                        <input type="text" class="w-full bg-white border border-green-200 rounded p-2 text-sm outline-none focus:border-green-500" placeholder="?? Garbage Collection, GC">
                     </div>
                 `;
                 contentArea.innerHTML = shortHtml;
             }
         }
 
-        // 퀴즈 타입 변경 핸들러
+        // ?댁쫰 ???蹂寃??몃뱾??
         function changeQuizType(selectEl, qId) {
             const newType = selectEl.value;
-            // 타입 변경 시 내용은 초기화 (단, 객관식->객관식은 유지)
+            // ???蹂寃????댁슜? 珥덇린??(?? 媛앷???>媛앷??앹? ?좎?)
             renderContent(qId, newType);
         }
 
-        // [객관식] 보기 HTML 생성
+        // [媛앷??? 蹂닿린 HTML ?앹꽦
         function createOptionHtml(qId, value, isCorrect) {
             const borderClass = isCorrect ? 'border-green-500 bg-green-50' : 'border-gray-200 border-transparent hover:bg-gray-50';
             const textClass = isCorrect ? 'text-green-700 font-bold' : 'text-gray-600';
@@ -580,31 +581,31 @@
             return `
                 <div class="flex items-center gap-3 p-2 rounded-lg border ${borderClass} transition duration-200 group/opt">
                     <input type="radio" name="${qId}" class="accent-primary w-4 h-4 cursor-pointer" ${checkedAttr} onclick="selectCorrectOption(this)">
-                    <input type="text" class="flex-1 bg-transparent text-sm ${textClass} outline-none placeholder-gray-300" value="${value}" placeholder="보기 입력">
+                    <input type="text" class="flex-1 bg-transparent text-sm ${textClass} outline-none placeholder-gray-300" value="${value}" placeholder="蹂닿린 ?낅젰">
                     ${checkIcon}
                     <i class="fas fa-times text-gray-300 hover:text-red-500 cursor-pointer ml-2 opacity-0 group-hover/opt:opacity-100 transition" onclick="this.parentElement.remove()"></i>
                 </div>
             `;
         }
 
-        // [객관식] 보기 추가
+        // [媛앷??? 蹂닿린 異붽?
         function addOptionToCard(qId) {
             const card = document.getElementById(qId);
             const container = card.querySelector('.content-area');
             container.insertAdjacentHTML('beforeend', createOptionHtml(qId, "", false));
         }
 
-        // [객관식] 정답 선택 로직
+        // [媛앷??? ?뺣떟 ?좏깮 濡쒖쭅
         function selectCorrectOption(radioBtn) {
             const container = radioBtn.closest('.content-area');
-            // 초기화
+            // 珥덇린??
             container.querySelectorAll('div').forEach(div => {
                 div.className = 'flex items-center gap-3 p-2 rounded-lg border border-gray-200 border-transparent hover:bg-gray-50 transition duration-200 group/opt';
                 div.querySelector('input[type="text"]').className = 'flex-1 bg-transparent text-sm text-gray-600 outline-none placeholder-gray-300';
                 const icon = div.querySelector('.fa-check-circle');
                 if(icon) icon.remove();
             });
-            // 선택 스타일 적용
+            // ?좏깮 ?ㅽ????곸슜
             const selectedDiv = radioBtn.parentElement;
             selectedDiv.className = 'flex items-center gap-3 p-2 rounded-lg border border-green-500 bg-green-50 transition duration-200 group/opt';
             selectedDiv.querySelector('input[type="text"]').className = 'flex-1 bg-transparent text-sm text-green-700 font-bold outline-none placeholder-gray-300';
@@ -616,14 +617,14 @@
             }
         }
 
-        // [OX] 선택 로직
+        // [OX] ?좏깮 濡쒖쭅
         function selectOx(btn, qId, val) {
             const container = btn.parentElement;
-            // 초기화
+            // 珥덇린??
             Array.from(container.children).forEach(b => {
                 b.className = "flex-1 py-3 rounded-lg border-2 border-gray-200 text-gray-400 font-bold text-sm hover:bg-gray-50 transition";
             });
-            // 선택 스타일
+            // ?좏깮 ?ㅽ???
             if (val === 'O') {
                 btn.className = "flex-1 py-3 rounded-lg border-2 border-primary bg-green-50 text-primary font-bold text-sm shadow-sm transition";
             } else {
@@ -631,9 +632,9 @@
             }
         }
 
-        // 카드 삭제
+        // 移대뱶 ??젣
         function deleteCard(id) {
-            if(confirm('이 문제를 삭제하시겠습니까?')) {
+            if(confirm('??臾몄젣瑜???젣?섏떆寃좎뒿?덇퉴?')) {
                 const card = document.getElementById(id);
                 card.classList.add('opacity-0', 'transform', 'scale-95');
                 setTimeout(() => {
@@ -646,7 +647,7 @@
             }
         }
 
-        // 순서 변경
+        // ?쒖꽌 蹂寃?
         function moveCard(id, direction) {
             const card = document.getElementById(id);
             const container = document.getElementById('quiz-list');
@@ -661,7 +662,7 @@
             updateQuestionNumbers();
         }
 
-        // 번호 재정렬
+        // 踰덊샇 ?ъ젙??
         function updateQuestionNumbers() {
             const cards = document.querySelectorAll('.quiz-card');
             cards.forEach((card, index) => {

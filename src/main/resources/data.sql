@@ -9463,3 +9463,1068 @@ WHERE u.email = 'learner@devpath.com'
 -- ============================================================
 -- [TEST DATA END]
 -- ============================================================
+
+-- ============================================================
+-- SAMPLE VIDEO DATA: 로컬 샘플 영상 연결 (개발/테스트용)
+-- public/samples/ 에 있는 영상 파일을 video_url로 지정
+-- ============================================================
+
+-- 기존 Spring Boot Intro 강의에 로컬 샘플 영상 연결
+UPDATE lessons
+SET video_url = '/samples/lesson-spring-di.mp4',
+    duration_seconds = 20,
+    thumbnail_url = 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=800&q=60'
+WHERE title = 'Understanding DI and IoC';
+
+UPDATE lessons
+SET video_url = '/samples/lesson-spring-bean.mp4',
+    duration_seconds = 20,
+    thumbnail_url = 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=800&q=60'
+WHERE title = 'Bean registration and lifecycle';
+
+UPDATE lessons
+SET video_url = '/samples/lesson-os-context.mp4',
+    duration_seconds = 20,
+    thumbnail_url = 'https://images.unsplash.com/photo-1555066931-4365d14bab8c?auto=format&fit=crop&w=800&q=60'
+WHERE title = 'Entity relationships and mapping';
+
+-- 운영체제 이해하기 강의 (학습 플레이어 UI 확인용)
+INSERT INTO courses (
+    instructor_id, title, subtitle, description,
+    thumbnail_url, intro_video_url, video_asset_key,
+    duration_seconds, price, original_price, currency,
+    difficulty_level, language, has_certificate, status, published_at
+)
+SELECT
+    u.user_id,
+    '운영체제 이해하기',
+    'CS 핵심: 프로세스, 스레드, 메모리 관리',
+    '백엔드·시스템 프로그래밍 입문자를 위한 운영체제 핵심 개념 강의입니다. 프로세스·스레드 구조부터 컨텍스트 스위칭, 메모리 관리까지 실무에 필요한 OS 지식을 다룹니다.',
+    'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=1200&q=80',
+    '/samples/sample-intro.mp4',
+    NULL,
+    60,
+    89000, 119000, 'KRW',
+    'BEGINNER', 'ko', TRUE, 'PUBLISHED', TIMESTAMP '2026-03-01 10:00:00'
+FROM users u
+WHERE u.email = 'instructor@devpath.com'
+  AND NOT EXISTS (SELECT 1 FROM courses WHERE title = '운영체제 이해하기');
+
+-- 섹션 1: 운영체제 기초
+INSERT INTO course_sections (course_id, title, description, sort_order, is_published)
+SELECT c.course_id, '운영체제 기초', 'OS 개념, 프로세스, 스레드', 1, TRUE
+FROM courses c
+WHERE c.title = '운영체제 이해하기'
+  AND NOT EXISTS (
+      SELECT 1 FROM course_sections cs
+      WHERE cs.course_id = c.course_id AND cs.sort_order = 1
+  );
+
+-- 강의 1: OS란 무엇인가? (미리보기 허용, OCR 테스트용 영상)
+INSERT INTO lessons (
+    section_id, title, description, lesson_type,
+    video_url, video_asset_key, video_provider,
+    thumbnail_url, duration_seconds, is_preview, is_published, sort_order
+)
+SELECT
+    cs.section_id,
+    'OS란 무엇인가?',
+    '운영체제의 역할과 구성요소를 소개합니다.',
+    'VIDEO',
+    '/samples/ocr-code-demo.mp4',
+    NULL, NULL,
+    'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=60',
+    14, TRUE, TRUE, 1
+FROM course_sections cs
+JOIN courses c ON c.course_id = cs.course_id
+WHERE c.title = '운영체제 이해하기' AND cs.sort_order = 1
+  AND NOT EXISTS (
+      SELECT 1 FROM lessons l WHERE l.section_id = cs.section_id AND l.sort_order = 1
+  );
+
+-- 강의 2: 프로세스와 스레드의 이해 (OCR 테스트용 영상)
+INSERT INTO lessons (
+    section_id, title, description, lesson_type,
+    video_url, video_asset_key, video_provider,
+    thumbnail_url, duration_seconds, is_preview, is_published, sort_order
+)
+SELECT
+    cs.section_id,
+    '프로세스와 스레드의 이해',
+    'PCB 구조, 스레드 모델, 생성 비용 차이를 설명합니다.',
+    'VIDEO',
+    '/samples/ocr-code-demo.mp4',
+    NULL, NULL,
+    'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=60',
+    14, FALSE, TRUE, 2
+FROM course_sections cs
+JOIN courses c ON c.course_id = cs.course_id
+WHERE c.title = '운영체제 이해하기' AND cs.sort_order = 1
+  AND NOT EXISTS (
+      SELECT 1 FROM lessons l WHERE l.section_id = cs.section_id AND l.sort_order = 2
+  );
+
+-- 강의 3: 컨텍스트 스위칭 심화 (코드 OCR 테스트용 영상)
+INSERT INTO lessons (
+    section_id, title, description, lesson_type,
+    video_url, video_asset_key, video_provider,
+    thumbnail_url, duration_seconds, is_preview, is_published, sort_order
+)
+SELECT
+    cs.section_id,
+    '컨텍스트 스위칭 심화',
+    '컨텍스트 스위칭 동작 원리와 오버헤드를 코드로 확인합니다. (OCR 기능 테스트용)',
+    'VIDEO',
+    '/samples/ocr-code-demo.mp4',
+    NULL, NULL,
+    'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&w=800&q=60',
+    14, FALSE, TRUE, 3
+FROM course_sections cs
+JOIN courses c ON c.course_id = cs.course_id
+WHERE c.title = '운영체제 이해하기' AND cs.sort_order = 1
+  AND NOT EXISTS (
+      SELECT 1 FROM lessons l WHERE l.section_id = cs.section_id AND l.sort_order = 3
+  );
+
+-- 이미 DB에 들어간 lesson-os-*.mp4 참조를 ocr-code-demo.mp4 로 통일하고 duration 보정
+UPDATE lessons
+SET video_url = '/samples/ocr-code-demo.mp4', duration_seconds = 14
+WHERE title IN ('OS란 무엇인가?', '프로세스와 스레드의 이해', '컨텍스트 스위칭 심화')
+  AND video_url <> '/samples/ocr-code-demo.mp4';
+
+-- duration_seconds가 잘못 들어간 경우(예: 20) 보정
+UPDATE lessons
+SET duration_seconds = 14
+WHERE title IN ('OS란 무엇인가?', '프로세스와 스레드의 이해', '컨텍스트 스위칭 심화')
+  AND video_url = '/samples/ocr-code-demo.mp4'
+  AND duration_seconds <> 14;
+
+-- 운영체제 강의 Q&A 샘플 데이터
+INSERT INTO qna_questions (
+    user_id, template_type, difficulty, title, content, adopted_answer_id,
+    course_id, lecture_timestamp, qna_status, view_count, is_deleted, created_at, updated_at
+)
+SELECT u.user_id, 'STUDY', 'EASY',
+       '스레드 풀과 컨텍스트 스위칭 질문',
+       '스레드 풀을 사용하는 주된 이유가 스레드 생성 비용 때문인가요, 아니면 컨텍스트 스위칭 비용을 줄이기 위함인가요?',
+       NULL, c.course_id, '02:15', 'ANSWERED', 7, FALSE,
+       TIMESTAMP '2026-04-12 14:30:00', TIMESTAMP '2026-04-12 20:00:00'
+FROM users u, courses c
+WHERE u.email = 'learner@devpath.com'
+  AND c.title = '운영체제 이해하기'
+  AND NOT EXISTS (
+      SELECT 1 FROM qna_questions q WHERE q.title = '스레드 풀과 컨텍스트 스위칭 질문'
+  );
+
+INSERT INTO qna_questions (
+    user_id, template_type, difficulty, title, content, adopted_answer_id,
+    course_id, lecture_timestamp, qna_status, view_count, is_deleted, created_at, updated_at
+)
+SELECT u.user_id, 'STUDY', 'MEDIUM',
+       '프로세스 통신(IPC) 관련해서요',
+       '파이프 말고 공유 메모리를 사용할 때의 치명적인 단점이 있다면 무엇이 있을까요? 동기화 처리 말고 성능상 단점도 존재하는지 궁금합니다.',
+       NULL, c.course_id, NULL, 'UNANSWERED', 3, FALSE,
+       TIMESTAMP '2026-04-13 03:00:00', TIMESTAMP '2026-04-13 03:00:00'
+FROM users u, courses c
+WHERE u.email = 'learner2@devpath.com'
+  AND c.title = '운영체제 이해하기'
+  AND NOT EXISTS (
+      SELECT 1 FROM qna_questions q WHERE q.title = '프로세스 통신(IPC) 관련해서요'
+  );
+
+-- 스레드 풀 질문에 강사 답변 추가
+INSERT INTO qna_answers (question_id, user_id, content, is_adopted, is_deleted, created_at, updated_at)
+SELECT q.question_id, u.user_id,
+       '안녕하세요!
+
+좋은 질문입니다. 스레드 풀의 주된 목적은 스레드 생성 및 소멸 비용을 줄이는 것에 있습니다.
+스레드를 미리 만들어두고 재사용함으로써 OS에 스레드 생성 요청을 하는 오버헤드를 막는 것이죠.
+
+컨텍스트 스위칭 자체를 막아주지는 않지만, 너무 많은 스레드가 무분별하게 생성되어 발생하는 과도한 스위칭 현상은 스레드 풀의 개수 제한을 통해 어느 정도 방어할 수 있습니다.',
+       TRUE, FALSE,
+       TIMESTAMP '2026-04-12 20:00:00', TIMESTAMP '2026-04-12 20:00:00'
+FROM qna_questions q
+JOIN users u ON u.email = 'instructor@devpath.com'
+WHERE q.title = '스레드 풀과 컨텍스트 스위칭 질문'
+  AND NOT EXISTS (
+      SELECT 1 FROM qna_answers a WHERE a.question_id = q.question_id
+  );
+
+-- adopted_answer_id 업데이트
+UPDATE qna_questions
+SET adopted_answer_id = (
+    SELECT a.answer_id FROM qna_answers a WHERE a.question_id = qna_questions.question_id LIMIT 1
+)
+WHERE title = '스레드 풀과 컨텍스트 스위칭 질문'
+  AND adopted_answer_id IS NULL;
+
+-- 운영체제 이해하기 강의 수강 등록 (learner@devpath.com)
+INSERT INTO course_enrollments (
+    user_id, course_id, status, enrolled_at, completed_at, progress_percentage, last_accessed_at
+)
+SELECT u.user_id, c.course_id,
+       'ACTIVE',
+       TIMESTAMP '2026-04-10 10:00:00',
+       NULL,
+       0,
+       TIMESTAMP '2026-04-10 10:00:00'
+FROM users u
+JOIN courses c ON c.title = '운영체제 이해하기'
+WHERE u.email = 'learner@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1 FROM course_enrollments ce
+      WHERE ce.user_id = u.user_id AND ce.course_id = c.course_id
+  );
+
+-- ============================================================
+-- [SAMPLE VIDEO DATA END]
+-- ============================================================
+
+-- ============================================================
+-- PUBLIC CATALOG DATA: lecture-list.html 실제 API 노출용 공개 강의
+--   - instructor@devpath.com: 2개
+--   - frontend@devpath.com  : 3개
+--   - data@devpath.com      : 3개
+-- ============================================================
+
+INSERT INTO users (
+    email, password, name, role_name, is_active,
+    account_status, instructor_status, instructor_grade,
+    created_at, updated_at
+)
+SELECT
+    'frontend@devpath.com',
+    '$2a$10$xh6.EW/FRzJBWfxqpdXh2uTVoepPhUxQRUH5OEwk90IpYeKjegkj.',
+    '김소연',
+    'ROLE_INSTRUCTOR',
+    TRUE,
+    'ACTIVE',
+    'APPROVED',
+    'PRO',
+    TIMESTAMP '2026-04-01 09:00:00',
+    TIMESTAMP '2026-04-01 09:00:00'
+WHERE NOT EXISTS (SELECT 1 FROM users WHERE email = 'frontend@devpath.com');
+
+INSERT INTO users (
+    email, password, name, role_name, is_active,
+    account_status, instructor_status, instructor_grade,
+    created_at, updated_at
+)
+SELECT
+    'data@devpath.com',
+    '$2a$10$xh6.EW/FRzJBWfxqpdXh2uTVoepPhUxQRUH5OEwk90IpYeKjegkj.',
+    '이민수',
+    'ROLE_INSTRUCTOR',
+    TRUE,
+    'ACTIVE',
+    'APPROVED',
+    'PRO',
+    TIMESTAMP '2026-04-01 09:05:00',
+    TIMESTAMP '2026-04-01 09:05:00'
+WHERE NOT EXISTS (SELECT 1 FROM users WHERE email = 'data@devpath.com');
+
+UPDATE users
+SET account_status = 'ACTIVE',
+    instructor_status = 'APPROVED',
+    instructor_grade = COALESCE(instructor_grade, 'PRO'),
+    is_active = TRUE
+WHERE email IN ('instructor@devpath.com', 'frontend@devpath.com', 'data@devpath.com');
+
+INSERT INTO user_profiles (
+    user_id, profile_image, channel_name, bio, channel_description,
+    phone, date_of_birth, github_url, blog_url, is_public,
+    created_at, updated_at
+)
+SELECT
+    u.user_id,
+    'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=400&q=80',
+    'Frontend Craft',
+    'React, Next.js, Flutter로 제품 출시까지 이어지는 프론트엔드 강의를 만듭니다.',
+    '프론트엔드 구조 설계, UI 품질, 모바일 앱 출시까지 실무 흐름으로 다루는 채널입니다.',
+    NULL, NULL,
+    'https://github.com/frontend-craft',
+    'https://blog.devpath.com/frontend-craft',
+    TRUE,
+    TIMESTAMP '2026-04-01 09:00:00',
+    TIMESTAMP '2026-04-01 09:00:00'
+FROM users u
+WHERE u.email = 'frontend@devpath.com'
+  AND NOT EXISTS (SELECT 1 FROM user_profiles up WHERE up.user_id = u.user_id);
+
+INSERT INTO user_profiles (
+    user_id, profile_image, channel_name, bio, channel_description,
+    phone, date_of_birth, github_url, blog_url, is_public,
+    created_at, updated_at
+)
+SELECT
+    u.user_id,
+    'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
+    'AI Data Lab',
+    'LLM 서비스, 데이터 분석, 커리어 준비를 실습 중심으로 안내합니다.',
+    'AI 서비스 구현, 데이터 분석 기본기, 개발자 커리어 문서화를 함께 다루는 채널입니다.',
+    NULL, NULL,
+    'https://github.com/ai-data-lab',
+    'https://blog.devpath.com/ai-data-lab',
+    TRUE,
+    TIMESTAMP '2026-04-01 09:05:00',
+    TIMESTAMP '2026-04-01 09:05:00'
+FROM users u
+WHERE u.email = 'data@devpath.com'
+  AND NOT EXISTS (SELECT 1 FROM user_profiles up WHERE up.user_id = u.user_id);
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+WITH catalog_tags(name, category) AS (
+    VALUES
+        ('Kubernetes', 'DevOps'),
+        ('DevOps', 'DevOps'),
+        ('Next.js', 'Frontend'),
+        ('Tailwind', 'Frontend'),
+        ('Flutter', 'Mobile'),
+        ('모바일', 'Mobile'),
+        ('앱 출시', 'Mobile'),
+        ('AI', 'AI'),
+        ('LLM', 'AI'),
+        ('RAG', 'AI'),
+        ('LangChain', 'AI'),
+        ('SQL', 'Data'),
+        ('Pandas', 'Data'),
+        ('데이터', 'Data'),
+        ('이력서', 'Career'),
+        ('기술 면접', 'Career'),
+        ('포트폴리오', 'Career')
+)
+SELECT ct.name, ct.category, TRUE, FALSE
+FROM catalog_tags ct
+WHERE NOT EXISTS (SELECT 1 FROM tags t WHERE t.name = ct.name);
+
+INSERT INTO user_tech_stacks (user_id, tag_id)
+WITH instructor_tags(email, tag_name) AS (
+    VALUES
+        ('instructor@devpath.com', 'Java'),
+        ('instructor@devpath.com', 'Spring Boot'),
+        ('instructor@devpath.com', 'Docker'),
+        ('instructor@devpath.com', 'Kubernetes'),
+        ('frontend@devpath.com', 'React'),
+        ('frontend@devpath.com', 'TypeScript'),
+        ('frontend@devpath.com', 'Next.js'),
+        ('frontend@devpath.com', 'Flutter'),
+        ('frontend@devpath.com', 'Tailwind'),
+        ('data@devpath.com', 'AI'),
+        ('data@devpath.com', 'LLM'),
+        ('data@devpath.com', 'RAG'),
+        ('data@devpath.com', 'SQL'),
+        ('data@devpath.com', 'Pandas'),
+        ('data@devpath.com', '기술 면접')
+)
+SELECT u.user_id, t.tag_id
+FROM instructor_tags it
+JOIN users u ON u.email = it.email
+JOIN tags t ON t.name = it.tag_name
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM user_tech_stacks uts
+    WHERE uts.user_id = u.user_id
+      AND uts.tag_id = t.tag_id
+);
+
+-- 기존 테스트/샘플 공개 강의는 학습자 공개 목록에서 제외한다.
+UPDATE courses
+SET status = 'DRAFT',
+    published_at = NULL
+WHERE title IN (
+    'Spring Boot Intro',
+    'React Dashboard Sprint',
+    '운영체제 이해하기',
+    '[A-CASE-A] Node Clearance Course',
+    '[A-CASE-B] Tag Missing Course',
+    '[A-CASE-C] Quiz Fail Course'
+);
+
+INSERT INTO courses (
+    instructor_id, title, subtitle, description,
+    thumbnail_url, intro_video_url, video_asset_key, duration_seconds,
+    price, original_price, currency, difficulty_level, language,
+    has_certificate, status, published_at
+)
+WITH catalog_courses(
+    instructor_email, title, subtitle, description, thumbnail_url,
+    duration_seconds, price, original_price, difficulty_level, has_certificate, published_at
+) AS (
+    VALUES
+        ('instructor@devpath.com', '실무 Spring Boot 백엔드 입문', 'REST API, JPA, 인증까지 한 번에 잡는 백엔드 시작 과정', 'Java 기본기를 가진 학습자가 Spring Boot 프로젝트 구조, REST API 설계, JPA 매핑, JWT 인증 흐름을 실제 서비스 형태로 연결해 보는 강의입니다.', 'https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=1200&q=80', 32400, 89000, 129000, 'BEGINNER', TRUE, TIMESTAMP '2026-04-01 09:00:00'),
+        ('instructor@devpath.com', 'Docker & Kubernetes 운영 실전', '컨테이너 이미지부터 배포 매니페스트까지 다루는 운영 입문', 'Docker 이미지 빌드, Compose 기반 로컬 환경, Kubernetes Deployment와 Service를 연결해 운영 가능한 백엔드 배포 흐름을 익힙니다.', 'https://images.unsplash.com/photo-1667372393119-3d4c48d07fc9?auto=format&fit=crop&w=1200&q=80', 39600, 109000, 159000, 'ADVANCED', TRUE, TIMESTAMP '2026-04-02 09:00:00'),
+        ('frontend@devpath.com', 'React 19 프론트엔드 실전 가이드', '상태 설계, UI 품질, 테스트까지 연결하는 React 실무 과정', '컴포넌트 경계, 상태 배치, 폼 처리, Tailwind 스타일링, Playwright 테스트를 통해 프론트엔드 기능을 안정적으로 출시하는 방법을 다룹니다.', 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1200&q=80', 28800, 79000, 119000, 'INTERMEDIATE', TRUE, TIMESTAMP '2026-04-03 09:00:00'),
+        ('frontend@devpath.com', 'Next.js 14 제품 개발 실전', 'App Router 기반으로 배포 가능한 제품 화면 만들기', 'Next.js App Router, 서버 컴포넌트, 캐싱, 인증, 메타데이터, 이미지 최적화까지 제품 출시 전에 필요한 구현 포인트를 실습합니다.', 'https://images.unsplash.com/photo-1555949963-aa79dcee981c?auto=format&fit=crop&w=1200&q=80', 34200, 99000, 139000, 'INTERMEDIATE', TRUE, TIMESTAMP '2026-04-04 09:00:00'),
+        ('frontend@devpath.com', 'Flutter로 MVP 앱 출시하기', '아이디어 검증용 모바일 앱을 빠르게 만들고 출시 준비하기', 'Flutter 위젯 구조, 상태 관리, API 연동, 폼 검증, 앱 아이콘과 권한 설정을 거쳐 MVP 앱 출시 체크리스트까지 완성합니다.', 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?auto=format&fit=crop&w=1200&q=80', 25200, 69000, 99000, 'BEGINNER', TRUE, TIMESTAMP '2026-04-05 09:00:00'),
+        ('data@devpath.com', 'ChatGPT API와 RAG 서비스 만들기', 'LLM API 호출부터 문서 기반 Q&A 챗봇까지', '프롬프트 구조, API 호출, 임베딩, 벡터 검색, LangChain 기반 RAG 파이프라인을 연결해 문서 기반 AI 서비스를 구현합니다.', 'https://images.unsplash.com/photo-1677442136019-21780ecad995?auto=format&fit=crop&w=1200&q=80', 36000, 99000, 149000, 'INTERMEDIATE', TRUE, TIMESTAMP '2026-04-06 09:00:00'),
+        ('data@devpath.com', 'SQL로 끝내는 데이터 분석 기본기', 'JOIN, GROUP BY, 윈도우 함수, Pandas 리포트까지', '데이터 분석에 필요한 SQL 핵심 문법과 Pandas 후처리를 묶어 매출, 리텐션, 사용자 행동 데이터를 직접 분석하는 강의입니다.', 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1200&q=80', 21600, 49000, 89000, 'BEGINNER', TRUE, TIMESTAMP '2026-04-07 09:00:00'),
+        ('data@devpath.com', '개발자 이력서와 기술 면접 패키지', '프로젝트 경험을 채용 문서와 면접 답변으로 바꾸는 과정', '프로젝트 경험 정리, 이력서 문장 작성, 포트폴리오 링크 구성, 기술 면접 답변 구조화를 통해 지원 준비물을 완성합니다.', 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=1200&q=80', 18000, 0, 59000, 'BEGINNER', FALSE, TIMESTAMP '2026-04-08 09:00:00')
+)
+SELECT
+    u.user_id, cc.title, cc.subtitle, cc.description,
+    cc.thumbnail_url, '/samples/sample-intro.mp4', NULL, cc.duration_seconds,
+    cc.price, cc.original_price, 'KRW', cc.difficulty_level, 'ko',
+    cc.has_certificate, 'PUBLISHED', cc.published_at
+FROM catalog_courses cc
+JOIN users u ON u.email = cc.instructor_email
+WHERE NOT EXISTS (SELECT 1 FROM courses c WHERE c.title = cc.title);
+
+INSERT INTO course_prerequisites (course_id, prerequisite)
+WITH prereq_seed AS (
+    SELECT '실무 Spring Boot 백엔드 입문' AS course_title, 'Java 문법과 객체지향 기본 개념을 알고 있어야 합니다.' AS prereq_text UNION ALL
+    SELECT '실무 Spring Boot 백엔드 입문', 'HTTP 요청/응답과 JSON 구조를 이해하고 있으면 좋습니다.' UNION ALL
+    SELECT 'Docker & Kubernetes 운영 실전', 'Linux 터미널 기본 명령어를 사용할 수 있어야 합니다.' UNION ALL
+    SELECT 'Docker & Kubernetes 운영 실전', '간단한 웹 애플리케이션 배포 경험이 있으면 좋습니다.' UNION ALL
+    SELECT 'React 19 프론트엔드 실전 가이드', 'HTML, CSS, JavaScript 기본 문법을 알고 있어야 합니다.' UNION ALL
+    SELECT 'React 19 프론트엔드 실전 가이드', 'React 컴포넌트를 한 번 이상 만들어 본 경험이 있으면 좋습니다.' UNION ALL
+    SELECT 'Next.js 14 제품 개발 실전', 'React의 props, state, hooks 개념을 이해하고 있어야 합니다.' UNION ALL
+    SELECT 'Next.js 14 제품 개발 실전', 'REST API를 호출해 화면에 데이터를 표시해 본 경험이 있으면 좋습니다.' UNION ALL
+    SELECT 'Flutter로 MVP 앱 출시하기', '프로그래밍 기초 문법과 비동기 처리 개념을 알고 있으면 좋습니다.' UNION ALL
+    SELECT 'Flutter로 MVP 앱 출시하기', '모바일 앱 화면 구성에 관심이 있는 입문자를 대상으로 합니다.' UNION ALL
+    SELECT 'ChatGPT API와 RAG 서비스 만들기', 'Python 또는 JavaScript로 API를 호출해 본 경험이 있으면 좋습니다.' UNION ALL
+    SELECT 'ChatGPT API와 RAG 서비스 만들기', 'JSON, HTTP, 환경 변수 관리의 기본 개념을 알고 있어야 합니다.' UNION ALL
+    SELECT 'SQL로 끝내는 데이터 분석 기본기', '엑셀 또는 스프레드시트로 데이터를 정리해 본 경험이 있으면 충분합니다.' UNION ALL
+    SELECT 'SQL로 끝내는 데이터 분석 기본기', 'Python 기본 문법을 알면 Pandas 파트를 더 쉽게 따라올 수 있습니다.' UNION ALL
+    SELECT '개발자 이력서와 기술 면접 패키지', '진행했거나 진행 중인 개인/팀 프로젝트가 하나 이상 있으면 좋습니다.' UNION ALL
+    SELECT '개발자 이력서와 기술 면접 패키지', '지원하고 싶은 직무 또는 포지션을 정해두면 실습 효과가 높습니다.'
+)
+SELECT c.course_id, p.prereq_text
+FROM prereq_seed p
+JOIN courses c ON c.title = p.course_title
+WHERE NOT EXISTS (
+    SELECT 1 FROM course_prerequisites cp
+    WHERE cp.course_id = c.course_id AND cp.prerequisite = p.prereq_text
+);
+
+INSERT INTO course_job_relevance (course_id, job_relevance)
+WITH relevance(course_title, relevance_text) AS (
+    VALUES
+        ('실무 Spring Boot 백엔드 입문', '백엔드 개발자 주니어 과제 전형 준비'),
+        ('실무 Spring Boot 백엔드 입문', 'Spring Boot 기반 사내 서비스 API 개발'),
+        ('Docker & Kubernetes 운영 실전', 'DevOps 엔지니어와 플랫폼 엔지니어의 배포 운영 업무'),
+        ('Docker & Kubernetes 운영 실전', '백엔드 서비스 컨테이너화와 클러스터 운영'),
+        ('React 19 프론트엔드 실전 가이드', '프론트엔드 개발자 실무 UI 구현과 테스트 자동화'),
+        ('React 19 프론트엔드 실전 가이드', '제품 대시보드와 관리 화면 개발'),
+        ('Next.js 14 제품 개발 실전', 'Next.js 기반 스타트업 제품 개발'),
+        ('Next.js 14 제품 개발 실전', 'SEO와 성능을 고려한 웹 서비스 출시'),
+        ('Flutter로 MVP 앱 출시하기', '초기 스타트업 MVP 앱 개발'),
+        ('Flutter로 MVP 앱 출시하기', '프론트엔드 개발자의 모바일 앱 확장 역량'),
+        ('ChatGPT API와 RAG 서비스 만들기', 'AI 기능을 포함한 SaaS 프로토타입 개발'),
+        ('ChatGPT API와 RAG 서비스 만들기', '사내 문서 검색 챗봇과 고객지원 자동화'),
+        ('SQL로 끝내는 데이터 분석 기본기', '데이터 기반 제품 개선과 운영 리포트 작성'),
+        ('SQL로 끝내는 데이터 분석 기본기', '주니어 데이터 분석가와 PM의 지표 분석 업무'),
+        ('개발자 이력서와 기술 면접 패키지', '신입/주니어 개발자 채용 준비'),
+        ('개발자 이력서와 기술 면접 패키지', '프로젝트 경험을 포트폴리오와 면접 답변으로 전환')
+)
+SELECT c.course_id, r.relevance_text
+FROM relevance r
+JOIN courses c ON c.title = r.course_title
+WHERE NOT EXISTS (
+    SELECT 1 FROM course_job_relevance cj
+    WHERE cj.course_id = c.course_id AND cj.job_relevance = r.relevance_text
+);
+
+INSERT INTO course_objectives (course_id, objective_text, display_order)
+WITH objectives(course_title, objective_body, display_order) AS (
+    VALUES
+        ('실무 Spring Boot 백엔드 입문', '계층형 구조로 REST API를 설계하고 구현할 수 있습니다.', 1),
+        ('실무 Spring Boot 백엔드 입문', 'JPA 매핑과 JWT 인증을 연결해 기본 백엔드 기능을 완성할 수 있습니다.', 2),
+        ('Docker & Kubernetes 운영 실전', 'Dockerfile과 Compose로 재현 가능한 로컬 실행 환경을 만들 수 있습니다.', 1),
+        ('Docker & Kubernetes 운영 실전', 'Kubernetes Deployment, Service, ConfigMap을 이용해 서비스를 배포할 수 있습니다.', 2),
+        ('React 19 프론트엔드 실전 가이드', '상태 위치와 컴포넌트 경계를 판단해 유지보수 가능한 화면을 만들 수 있습니다.', 1),
+        ('React 19 프론트엔드 실전 가이드', 'Tailwind와 Playwright를 활용해 UI 품질을 점검할 수 있습니다.', 2),
+        ('Next.js 14 제품 개발 실전', 'App Router 기반 라우팅, 레이아웃, 서버 컴포넌트 구조를 설계할 수 있습니다.', 1),
+        ('Next.js 14 제품 개발 실전', '캐싱, 인증, 이미지 최적화를 적용해 배포 가능한 제품 화면을 완성할 수 있습니다.', 2),
+        ('Flutter로 MVP 앱 출시하기', 'Flutter 위젯 구조와 상태 관리를 이용해 앱 화면을 구성할 수 있습니다.', 1),
+        ('Flutter로 MVP 앱 출시하기', 'API 연동과 빌드 설정을 거쳐 MVP 앱 출시 준비를 할 수 있습니다.', 2),
+        ('ChatGPT API와 RAG 서비스 만들기', 'LLM API 호출 구조와 프롬프트 메시지 설계를 이해할 수 있습니다.', 1),
+        ('ChatGPT API와 RAG 서비스 만들기', '임베딩, 검색, 생성을 연결해 RAG 기반 Q&A 서비스를 만들 수 있습니다.', 2),
+        ('SQL로 끝내는 데이터 분석 기본기', 'JOIN, GROUP BY, 윈도우 함수로 업무 지표를 직접 계산할 수 있습니다.', 1),
+        ('SQL로 끝내는 데이터 분석 기본기', 'Pandas로 분석 결과를 정리하고 리포트용 테이블을 만들 수 있습니다.', 2),
+        ('개발자 이력서와 기술 면접 패키지', '프로젝트 경험을 성과 중심 이력서 문장으로 바꿀 수 있습니다.', 1),
+        ('개발자 이력서와 기술 면접 패키지', '기술 면접 질문에 구조적으로 답변하는 연습 흐름을 만들 수 있습니다.', 2)
+)
+SELECT c.course_id, o.objective_body, o.display_order
+FROM objectives o
+JOIN courses c ON c.title = o.course_title
+WHERE NOT EXISTS (
+    SELECT 1 FROM course_objectives co
+    WHERE co.course_id = c.course_id AND co.display_order = o.display_order
+);
+
+INSERT INTO course_target_audiences (course_id, audience_description, display_order)
+WITH audiences(course_title, audience_body, display_order) AS (
+    VALUES
+        ('실무 Spring Boot 백엔드 입문', 'Spring Boot 백엔드 개발을 처음 실무 형태로 배우려는 학습자', 1),
+        ('실무 Spring Boot 백엔드 입문', 'API 과제 전형을 준비하는 주니어 개발자', 2),
+        ('Docker & Kubernetes 운영 실전', '컨테이너 배포와 운영 흐름을 익히려는 백엔드 개발자', 1),
+        ('Docker & Kubernetes 운영 실전', 'Kubernetes 매니페스트를 직접 작성해 보고 싶은 DevOps 입문자', 2),
+        ('React 19 프론트엔드 실전 가이드', 'React 실무 코드 구조와 테스트를 정리하고 싶은 프론트엔드 개발자', 1),
+        ('React 19 프론트엔드 실전 가이드', '대시보드나 관리자 화면을 안정적으로 만들고 싶은 학습자', 2),
+        ('Next.js 14 제품 개발 실전', 'Next.js App Router 기반 제품을 만들어 보고 싶은 개발자', 1),
+        ('Next.js 14 제품 개발 실전', '성능, SEO, 인증을 함께 고려해야 하는 웹 서비스 담당자', 2),
+        ('Flutter로 MVP 앱 출시하기', '빠르게 모바일 앱 MVP를 만들어 검증하고 싶은 개발자', 1),
+        ('Flutter로 MVP 앱 출시하기', '웹 개발 경험을 모바일 앱 개발로 확장하려는 학습자', 2),
+        ('ChatGPT API와 RAG 서비스 만들기', 'LLM API로 실제 기능을 만들어 보고 싶은 웹/백엔드 개발자', 1),
+        ('ChatGPT API와 RAG 서비스 만들기', '사내 문서 기반 챗봇이나 검색 기능을 기획하는 개발자', 2),
+        ('SQL로 끝내는 데이터 분석 기본기', 'SQL로 제품 지표를 직접 확인해야 하는 개발자와 PM', 1),
+        ('SQL로 끝내는 데이터 분석 기본기', '데이터 분석 직무 전환을 준비하는 입문자', 2),
+        ('개발자 이력서와 기술 면접 패키지', '신입 또는 주니어 개발자 채용을 준비하는 학습자', 1),
+        ('개발자 이력서와 기술 면접 패키지', '프로젝트 경험은 있지만 문서화와 면접 답변이 막히는 개발자', 2)
+)
+SELECT c.course_id, a.audience_body, a.display_order
+FROM audiences a
+JOIN courses c ON c.title = a.course_title
+WHERE NOT EXISTS (
+    SELECT 1 FROM course_target_audiences cta
+    WHERE cta.course_id = c.course_id AND cta.display_order = a.display_order
+);
+
+INSERT INTO course_tag_maps (course_id, tag_id, proficiency_level)
+WITH course_tags(course_title, tag_name, proficiency_level) AS (
+    VALUES
+        ('실무 Spring Boot 백엔드 입문', 'Java', 2),
+        ('실무 Spring Boot 백엔드 입문', 'Spring Boot', 3),
+        ('실무 Spring Boot 백엔드 입문', 'JPA', 2),
+        ('Docker & Kubernetes 운영 실전', 'Docker', 3),
+        ('Docker & Kubernetes 운영 실전', 'Kubernetes', 3),
+        ('Docker & Kubernetes 운영 실전', 'DevOps', 2),
+        ('React 19 프론트엔드 실전 가이드', 'React', 3),
+        ('React 19 프론트엔드 실전 가이드', 'TypeScript', 2),
+        ('React 19 프론트엔드 실전 가이드', 'Tailwind', 2),
+        ('Next.js 14 제품 개발 실전', 'Next.js', 3),
+        ('Next.js 14 제품 개발 실전', 'React', 3),
+        ('Next.js 14 제품 개발 실전', 'TypeScript', 2),
+        ('Flutter로 MVP 앱 출시하기', 'Flutter', 3),
+        ('Flutter로 MVP 앱 출시하기', '모바일', 2),
+        ('Flutter로 MVP 앱 출시하기', '앱 출시', 2),
+        ('ChatGPT API와 RAG 서비스 만들기', 'AI', 2),
+        ('ChatGPT API와 RAG 서비스 만들기', 'LLM', 3),
+        ('ChatGPT API와 RAG 서비스 만들기', 'RAG', 3),
+        ('ChatGPT API와 RAG 서비스 만들기', 'LangChain', 2),
+        ('SQL로 끝내는 데이터 분석 기본기', 'SQL', 3),
+        ('SQL로 끝내는 데이터 분석 기본기', 'Pandas', 2),
+        ('SQL로 끝내는 데이터 분석 기본기', '데이터', 2),
+        ('개발자 이력서와 기술 면접 패키지', '이력서', 3),
+        ('개발자 이력서와 기술 면접 패키지', '기술 면접', 3),
+        ('개발자 이력서와 기술 면접 패키지', '포트폴리오', 2)
+)
+SELECT c.course_id, t.tag_id, ct.proficiency_level
+FROM course_tags ct
+JOIN courses c ON c.title = ct.course_title
+JOIN tags t ON t.name = ct.tag_name
+WHERE NOT EXISTS (
+    SELECT 1 FROM course_tag_maps ctm
+    WHERE ctm.course_id = c.course_id AND ctm.tag_id = t.tag_id
+);
+
+INSERT INTO course_sections (course_id, title, description, sort_order, is_published)
+WITH sections(course_title, section_title, section_description, sort_order) AS (
+    VALUES
+        ('실무 Spring Boot 백엔드 입문', 'Spring Boot 프로젝트 시작', '프로젝트 구조, 계층 분리, REST API 흐름을 잡습니다.', 1),
+        ('실무 Spring Boot 백엔드 입문', 'JPA와 인증 기본기', '데이터 모델링과 JWT 인증을 연결해 백엔드 기본 기능을 완성합니다.', 2),
+        ('Docker & Kubernetes 운영 실전', '컨테이너 운영 기초', 'Dockerfile, 이미지, 컨테이너, Compose 실행 흐름을 다룹니다.', 1),
+        ('Docker & Kubernetes 운영 실전', 'Kubernetes 배포 흐름', 'Deployment, Service, ConfigMap, Secret을 이용한 클러스터 배포를 익힙니다.', 2),
+        ('React 19 프론트엔드 실전 가이드', 'React 구조 설계', '컴포넌트 경계와 상태 배치를 기준 있게 결정합니다.', 1),
+        ('React 19 프론트엔드 실전 가이드', 'UI 품질과 테스트', 'Tailwind 스타일링과 Playwright 테스트로 화면 품질을 점검합니다.', 2),
+        ('Next.js 14 제품 개발 실전', 'App Router와 데이터 흐름', '라우팅, 레이아웃, 서버 컴포넌트, 캐싱 전략을 연결합니다.', 1),
+        ('Next.js 14 제품 개발 실전', '배포 가능한 제품 완성', '인증, 이미지 최적화, 메타데이터, 출시 점검을 다룹니다.', 2),
+        ('Flutter로 MVP 앱 출시하기', 'Flutter 앱 구조', '위젯 트리, 상태 관리, 라우팅, 폼 검증으로 앱의 뼈대를 만듭니다.', 1),
+        ('Flutter로 MVP 앱 출시하기', '출시 준비', 'API 연동, 에러 처리, 빌드 설정과 스토어 제출 준비를 진행합니다.', 2),
+        ('ChatGPT API와 RAG 서비스 만들기', 'LLM API 기본', '프롬프트, 메시지 구조, API 호출과 응답 처리를 다룹니다.', 1),
+        ('ChatGPT API와 RAG 서비스 만들기', 'RAG 파이프라인', '문서 청킹, 임베딩, 검색, 생성을 하나의 서비스 흐름으로 연결합니다.', 2),
+        ('SQL로 끝내는 데이터 분석 기본기', 'SQL 분석 기초', 'SELECT, JOIN, GROUP BY, 윈도우 함수로 업무 지표를 계산합니다.', 1),
+        ('SQL로 끝내는 데이터 분석 기본기', 'Pandas 리포트 자동화', 'CSV 정리, 결측치 처리, 집계 테이블 작성으로 리포트를 자동화합니다.', 2),
+        ('개발자 이력서와 기술 면접 패키지', '이력서 스토리라인', '프로젝트 경험을 성과 중심 문장과 STAR 구조로 정리합니다.', 1),
+        ('개발자 이력서와 기술 면접 패키지', '면접과 포트폴리오', '기술 면접 답변과 GitHub 포트폴리오 정리를 함께 진행합니다.', 2)
+)
+SELECT c.course_id, s.section_title, s.section_description, s.sort_order, TRUE
+FROM sections s
+JOIN courses c ON c.title = s.course_title
+WHERE NOT EXISTS (
+    SELECT 1 FROM course_sections cs
+    WHERE cs.course_id = c.course_id AND cs.sort_order = s.sort_order
+);
+
+INSERT INTO lessons (
+    section_id, title, description, lesson_type,
+    video_url, video_asset_key, video_provider,
+    thumbnail_url, duration_seconds, is_preview, is_published, sort_order
+)
+WITH lessons_seed(course_title, section_order, lesson_order, lesson_title, lesson_description, lesson_type, video_url, duration_seconds, is_preview) AS (
+    VALUES
+        ('실무 Spring Boot 백엔드 입문', 1, 1, '프로젝트 구조와 개발 환경 세팅', 'Gradle 프로젝트 구조와 로컬 실행 환경을 맞춥니다.', 'VIDEO', '/samples/ocr-code-demo.mp4', 780, TRUE),
+        ('실무 Spring Boot 백엔드 입문', 1, 2, 'REST API 흐름과 계층 분리', 'Controller, Service, Repository의 책임을 나누어 구현합니다.', 'VIDEO', '/samples/sample-intro.mp4', 960, FALSE),
+        ('실무 Spring Boot 백엔드 입문', 1, 3, '섹션 마무리 퀴즈: Controller-Service-Repository 흐름', '요청 흐름과 계층별 책임을 점검합니다.', 'READING', NULL, 300, FALSE),
+        ('실무 Spring Boot 백엔드 입문', 2, 1, 'Entity 설계와 Repository 작성', '회원 도메인을 기준으로 Entity와 Repository를 작성합니다.', 'VIDEO', '/samples/ocr-code-demo.mp4', 1020, FALSE),
+        ('실무 Spring Boot 백엔드 입문', 2, 2, 'Spring Security와 JWT 인증 흐름', '로그인 요청부터 토큰 검증까지의 흐름을 연결합니다.', 'VIDEO', '/samples/sample-intro.mp4', 1080, FALSE),
+        ('실무 Spring Boot 백엔드 입문', 2, 3, '실습 과제: 회원 API와 JWT 로그인 완성', '회원 가입, 로그인, 인증 테스트 결과를 제출합니다.', 'CODING', NULL, 900, FALSE),
+        ('Docker & Kubernetes 운영 실전', 1, 1, 'Dockerfile 작성과 이미지 빌드', '멀티 스테이지 빌드와 이미지 태그 전략을 익힙니다.', 'VIDEO', '/samples/ocr-code-demo.mp4', 840, TRUE),
+        ('Docker & Kubernetes 운영 실전', 1, 2, 'Docker Compose로 로컬 환경 구성', 'DB와 애플리케이션을 Compose로 함께 실행합니다.', 'VIDEO', '/samples/sample-intro.mp4', 960, FALSE),
+        ('Docker & Kubernetes 운영 실전', 1, 3, '섹션 마무리 퀴즈: 이미지와 컨테이너 생명주기', '이미지, 컨테이너, 볼륨의 차이를 점검합니다.', 'READING', NULL, 300, FALSE),
+        ('Docker & Kubernetes 운영 실전', 2, 1, 'Deployment와 Service 이해', 'Pod 복제와 네트워크 노출 방식을 실습합니다.', 'VIDEO', '/samples/ocr-code-demo.mp4', 1020, FALSE),
+        ('Docker & Kubernetes 운영 실전', 2, 2, 'ConfigMap과 Secret 적용', '환경 설정과 민감 정보를 분리해 배포합니다.', 'VIDEO', '/samples/sample-intro.mp4', 900, FALSE),
+        ('Docker & Kubernetes 운영 실전', 2, 3, '실습 과제: 무중단 배포 매니페스트 작성', 'Deployment, Service, ConfigMap을 포함한 배포 파일을 제출합니다.', 'CODING', NULL, 900, FALSE),
+        ('React 19 프론트엔드 실전 가이드', 1, 1, '컴포넌트 경계와 상태 배치', '상태가 살아야 할 위치와 컴포넌트 책임을 정합니다.', 'VIDEO', '/samples/ocr-code-demo.mp4', 900, TRUE),
+        ('React 19 프론트엔드 실전 가이드', 1, 2, 'Actions와 폼 처리 패턴', '폼 제출, 낙관적 업데이트, 오류 메시지 흐름을 구성합니다.', 'VIDEO', '/samples/sample-intro.mp4', 960, FALSE),
+        ('React 19 프론트엔드 실전 가이드', 1, 3, '섹션 마무리 퀴즈: 상태 설계 판단 기준', '지역 상태와 공유 상태를 구분하는 기준을 점검합니다.', 'READING', NULL, 300, FALSE),
+        ('React 19 프론트엔드 실전 가이드', 2, 1, 'Tailwind 유틸리티 설계', '반복 스타일을 줄이고 화면 단위를 안정적으로 구성합니다.', 'VIDEO', '/samples/ocr-code-demo.mp4', 840, FALSE),
+        ('React 19 프론트엔드 실전 가이드', 2, 2, 'Playwright로 사용자 흐름 테스트', '로그인부터 주요 액션까지 E2E 테스트를 작성합니다.', 'VIDEO', '/samples/sample-intro.mp4', 1020, FALSE),
+        ('React 19 프론트엔드 실전 가이드', 2, 3, '실습 과제: 대시보드 화면 완성', '필터, 카드, 차트를 포함한 대시보드 화면을 제출합니다.', 'CODING', NULL, 900, FALSE),
+        ('Next.js 14 제품 개발 실전', 1, 1, '라우팅과 레이아웃 구조 설계', 'App Router에서 공통 레이아웃과 상세 페이지를 분리합니다.', 'VIDEO', '/samples/ocr-code-demo.mp4', 900, TRUE),
+        ('Next.js 14 제품 개발 실전', 1, 2, '서버 컴포넌트와 캐싱 전략', '서버 렌더링 데이터와 캐시 무효화 기준을 정합니다.', 'VIDEO', '/samples/sample-intro.mp4', 1080, FALSE),
+        ('Next.js 14 제품 개발 실전', 1, 3, '섹션 마무리 퀴즈: App Router 데이터 흐름', '서버 컴포넌트와 클라이언트 컴포넌트의 역할을 점검합니다.', 'READING', NULL, 300, FALSE),
+        ('Next.js 14 제품 개발 실전', 2, 1, '인증과 권한 처리', '세션 확인과 보호 라우트 처리 흐름을 구현합니다.', 'VIDEO', '/samples/ocr-code-demo.mp4', 960, FALSE),
+        ('Next.js 14 제품 개발 실전', 2, 2, '이미지 최적화와 메타데이터', '제품 상세 화면의 이미지, title, description을 정리합니다.', 'VIDEO', '/samples/sample-intro.mp4', 840, FALSE),
+        ('Next.js 14 제품 개발 실전', 2, 3, '실습 과제: 예약 상세 페이지 출시 체크리스트', '예약 상세 페이지를 만들고 성능, 접근성, SEO 점검 결과를 제출합니다.', 'CODING', NULL, 900, FALSE),
+        ('Flutter로 MVP 앱 출시하기', 1, 1, '위젯 트리와 상태 관리', 'StatelessWidget, StatefulWidget, 상태 변경 흐름을 정리합니다.', 'VIDEO', '/samples/ocr-code-demo.mp4', 840, TRUE),
+        ('Flutter로 MVP 앱 출시하기', 1, 2, '라우팅과 폼 검증', '화면 이동과 입력 검증을 이용해 가입 화면을 만듭니다.', 'VIDEO', '/samples/sample-intro.mp4', 900, FALSE),
+        ('Flutter로 MVP 앱 출시하기', 1, 3, '섹션 마무리 퀴즈: 위젯과 상태 흐름', '위젯 분리와 상태 갱신 범위를 점검합니다.', 'READING', NULL, 300, FALSE),
+        ('Flutter로 MVP 앱 출시하기', 2, 1, 'REST API 연동과 에러 처리', 'HTTP 요청, 로딩, 실패 메시지 처리를 구현합니다.', 'VIDEO', '/samples/ocr-code-demo.mp4', 960, FALSE),
+        ('Flutter로 MVP 앱 출시하기', 2, 2, '앱 아이콘, 권한, 빌드 설정', '출시 전에 필요한 앱 메타데이터와 빌드 설정을 정리합니다.', 'VIDEO', '/samples/sample-intro.mp4', 780, FALSE),
+        ('Flutter로 MVP 앱 출시하기', 2, 3, '실습 과제: 스토어 제출용 MVP 화면 완성', '핵심 화면 3개와 빌드 체크리스트를 제출합니다.', 'CODING', NULL, 900, FALSE),
+        ('ChatGPT API와 RAG 서비스 만들기', 1, 1, '프롬프트와 메시지 구조', 'system, user, assistant 메시지의 역할과 프롬프트 템플릿을 정리합니다.', 'VIDEO', '/samples/ocr-code-demo.mp4', 900, TRUE),
+        ('ChatGPT API와 RAG 서비스 만들기', 1, 2, 'LLM API 호출과 응답 처리', '환경 변수, 요청 본문, 스트리밍 응답 처리 흐름을 구현합니다.', 'VIDEO', '/samples/sample-intro.mp4', 1080, FALSE),
+        ('ChatGPT API와 RAG 서비스 만들기', 1, 3, '섹션 마무리 퀴즈: 프롬프트와 토큰 관리', '프롬프트 구성과 토큰 비용을 점검합니다.', 'READING', NULL, 300, FALSE),
+        ('ChatGPT API와 RAG 서비스 만들기', 2, 1, '문서 청킹과 임베딩 저장', '문서를 검색 가능한 단위로 나누고 임베딩을 저장합니다.', 'VIDEO', '/samples/ocr-code-demo.mp4', 1020, FALSE),
+        ('ChatGPT API와 RAG 서비스 만들기', 2, 2, 'LangChain으로 검색-생성 연결', '검색 결과를 프롬프트에 넣어 답변을 생성합니다.', 'VIDEO', '/samples/sample-intro.mp4', 1140, FALSE),
+        ('ChatGPT API와 RAG 서비스 만들기', 2, 3, '실습 과제: 사내 문서 Q&A 챗봇 프로토타입', '문서 업로드, 검색, 답변 생성 흐름이 있는 프로토타입을 제출합니다.', 'CODING', NULL, 900, FALSE),
+        ('SQL로 끝내는 데이터 분석 기본기', 1, 1, 'SELECT, JOIN, GROUP BY 핵심', '업무 데이터 분석에 가장 자주 쓰는 SQL 패턴을 정리합니다.', 'VIDEO', '/samples/ocr-code-demo.mp4', 840, TRUE),
+        ('SQL로 끝내는 데이터 분석 기본기', 1, 2, '윈도우 함수로 순위와 누적 계산', 'ROW_NUMBER, SUM OVER로 랭킹과 누적 지표를 계산합니다.', 'VIDEO', '/samples/sample-intro.mp4', 960, FALSE),
+        ('SQL로 끝내는 데이터 분석 기본기', 1, 3, '섹션 마무리 퀴즈: 집계 쿼리 읽기', 'GROUP BY와 윈도우 함수의 차이를 점검합니다.', 'READING', NULL, 300, FALSE),
+        ('SQL로 끝내는 데이터 분석 기본기', 2, 1, 'CSV 정리와 결측치 처리', 'Pandas로 원본 데이터를 정리하고 결측치를 처리합니다.', 'VIDEO', '/samples/ocr-code-demo.mp4', 900, FALSE),
+        ('SQL로 끝내는 데이터 분석 기본기', 2, 2, '시각화용 집계 테이블 만들기', '차트에 바로 연결할 수 있는 분석 테이블을 만듭니다.', 'VIDEO', '/samples/sample-intro.mp4', 840, FALSE),
+        ('SQL로 끝내는 데이터 분석 기본기', 2, 3, '실습 과제: 매출 리텐션 리포트 작성', 'SQL 결과와 Pandas 요약을 이용해 리포트를 제출합니다.', 'CODING', NULL, 900, FALSE),
+        ('개발자 이력서와 기술 면접 패키지', 1, 1, '경력 없는 프로젝트를 성과로 쓰기', '기능 나열을 줄이고 문제, 행동, 결과 중심 문장으로 바꿉니다.', 'VIDEO', '/samples/ocr-code-demo.mp4', 780, TRUE),
+        ('개발자 이력서와 기술 면접 패키지', 1, 2, 'STAR 방식으로 경험 정리하기', 'Situation, Task, Action, Result 구조로 경험을 정리합니다.', 'VIDEO', '/samples/sample-intro.mp4', 840, FALSE),
+        ('개발자 이력서와 기술 면접 패키지', 1, 3, '섹션 마무리 퀴즈: 이력서 문장 점검', '좋은 이력서 문장과 나쁜 문장을 구분합니다.', 'READING', NULL, 300, FALSE),
+        ('개발자 이력서와 기술 면접 패키지', 2, 1, 'CS와 프로젝트 질문 답변 구조', '기술 선택 이유, 트러블슈팅, 개선 경험을 답변으로 구성합니다.', 'VIDEO', '/samples/ocr-code-demo.mp4', 900, FALSE),
+        ('개발자 이력서와 기술 면접 패키지', 2, 2, 'GitHub README와 배포 링크 정리', '면접관이 바로 확인할 수 있는 README와 데모 링크를 정리합니다.', 'VIDEO', '/samples/sample-intro.mp4', 720, FALSE),
+        ('개발자 이력서와 기술 면접 패키지', 2, 3, '실습 과제: 지원 포지션 맞춤 이력서 완성', '지원 포지션 하나를 정해 이력서와 프로젝트 설명을 제출합니다.', 'CODING', NULL, 900, FALSE)
+)
+SELECT
+    cs.section_id,
+    ls.lesson_title,
+    ls.lesson_description,
+    ls.lesson_type,
+    ls.video_url,
+    NULL,
+    NULL,
+    c.thumbnail_url,
+    ls.duration_seconds,
+    ls.is_preview,
+    TRUE,
+    ls.lesson_order
+FROM lessons_seed ls
+JOIN courses c ON c.title = ls.course_title
+JOIN course_sections cs ON cs.course_id = c.course_id AND cs.sort_order = ls.section_order
+WHERE NOT EXISTS (
+    SELECT 1 FROM lessons l
+    WHERE l.section_id = cs.section_id AND l.sort_order = ls.lesson_order
+);
+
+INSERT INTO roadmaps (creator_id, title, description, is_official, is_public, is_deleted, created_at)
+SELECT
+    u.user_id,
+    'DevPath 공개 강의 평가 데이터',
+    '공개 강의 섹션 마지막 퀴즈와 과제를 연결하기 위한 내부 로드맵입니다.',
+    FALSE,
+    FALSE,
+    FALSE,
+    TIMESTAMP '2026-04-01 10:00:00'
+FROM users u
+WHERE u.email = 'admin@devpath.com'
+  AND NOT EXISTS (SELECT 1 FROM roadmaps r WHERE r.title = 'DevPath 공개 강의 평가 데이터');
+
+INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
+WITH activity_nodes(course_title, section_order, activity_kind, node_title, node_content, sort_order) AS (
+    VALUES
+        ('실무 Spring Boot 백엔드 입문', 1, 'QUIZ', '[CATALOG] 실무 Spring Boot 백엔드 입문 - 1 QUIZ', 'Spring Boot 계층 구조와 요청 흐름을 확인하는 퀴즈입니다.', 1001),
+        ('실무 Spring Boot 백엔드 입문', 2, 'ASSIGNMENT', '[CATALOG] 실무 Spring Boot 백엔드 입문 - 2 ASSIGNMENT', '회원 API와 JWT 로그인 흐름을 완성하는 과제입니다.', 1002),
+        ('Docker & Kubernetes 운영 실전', 1, 'QUIZ', '[CATALOG] Docker & Kubernetes 운영 실전 - 1 QUIZ', '이미지, 컨테이너, Compose 실행 흐름을 확인하는 퀴즈입니다.', 1011),
+        ('Docker & Kubernetes 운영 실전', 2, 'ASSIGNMENT', '[CATALOG] Docker & Kubernetes 운영 실전 - 2 ASSIGNMENT', 'Kubernetes 배포 매니페스트를 작성하는 과제입니다.', 1012),
+        ('React 19 프론트엔드 실전 가이드', 1, 'QUIZ', '[CATALOG] React 19 프론트엔드 실전 가이드 - 1 QUIZ', 'React 상태 설계와 컴포넌트 경계를 확인하는 퀴즈입니다.', 1021),
+        ('React 19 프론트엔드 실전 가이드', 2, 'ASSIGNMENT', '[CATALOG] React 19 프론트엔드 실전 가이드 - 2 ASSIGNMENT', '대시보드 화면과 테스트 흐름을 완성하는 과제입니다.', 1022),
+        ('Next.js 14 제품 개발 실전', 1, 'QUIZ', '[CATALOG] Next.js 14 제품 개발 실전 - 1 QUIZ', 'App Router와 서버 컴포넌트 역할을 확인하는 퀴즈입니다.', 1031),
+        ('Next.js 14 제품 개발 실전', 2, 'ASSIGNMENT', '[CATALOG] Next.js 14 제품 개발 실전 - 2 ASSIGNMENT', '예약 상세 페이지 출시 체크리스트를 완성하는 과제입니다.', 1032),
+        ('Flutter로 MVP 앱 출시하기', 1, 'QUIZ', '[CATALOG] Flutter로 MVP 앱 출시하기 - 1 QUIZ', '위젯 구조와 상태 흐름을 확인하는 퀴즈입니다.', 1041),
+        ('Flutter로 MVP 앱 출시하기', 2, 'ASSIGNMENT', '[CATALOG] Flutter로 MVP 앱 출시하기 - 2 ASSIGNMENT', '스토어 제출용 MVP 화면을 완성하는 과제입니다.', 1042),
+        ('ChatGPT API와 RAG 서비스 만들기', 1, 'QUIZ', '[CATALOG] ChatGPT API와 RAG 서비스 만들기 - 1 QUIZ', '프롬프트 구성과 토큰 관리 기준을 확인하는 퀴즈입니다.', 1051),
+        ('ChatGPT API와 RAG 서비스 만들기', 2, 'ASSIGNMENT', '[CATALOG] ChatGPT API와 RAG 서비스 만들기 - 2 ASSIGNMENT', '문서 기반 Q&A 챗봇 프로토타입을 완성하는 과제입니다.', 1052),
+        ('SQL로 끝내는 데이터 분석 기본기', 1, 'QUIZ', '[CATALOG] SQL로 끝내는 데이터 분석 기본기 - 1 QUIZ', '집계 쿼리와 윈도우 함수 차이를 확인하는 퀴즈입니다.', 1061),
+        ('SQL로 끝내는 데이터 분석 기본기', 2, 'ASSIGNMENT', '[CATALOG] SQL로 끝내는 데이터 분석 기본기 - 2 ASSIGNMENT', '매출 리텐션 리포트를 작성하는 과제입니다.', 1062),
+        ('개발자 이력서와 기술 면접 패키지', 1, 'QUIZ', '[CATALOG] 개발자 이력서와 기술 면접 패키지 - 1 QUIZ', '이력서 문장과 STAR 구조를 확인하는 퀴즈입니다.', 1071),
+        ('개발자 이력서와 기술 면접 패키지', 2, 'ASSIGNMENT', '[CATALOG] 개발자 이력서와 기술 면접 패키지 - 2 ASSIGNMENT', '지원 포지션 맞춤 이력서를 완성하는 과제입니다.', 1072)
+)
+SELECT
+    r.roadmap_id,
+    an.node_title,
+    an.node_content,
+    an.activity_kind,
+    an.sort_order,
+    an.course_title,
+    an.section_order
+FROM activity_nodes an
+JOIN roadmaps r ON r.title = 'DevPath 공개 강의 평가 데이터'
+WHERE NOT EXISTS (SELECT 1 FROM roadmap_nodes rn WHERE rn.title = an.node_title);
+
+INSERT INTO course_node_mappings (course_id, node_id, created_at)
+SELECT c.course_id, rn.node_id, TIMESTAMP '2026-04-01 10:10:00'
+FROM courses c
+JOIN roadmap_nodes rn ON rn.sub_topics = c.title
+WHERE rn.title LIKE '[CATALOG]%'
+  AND NOT EXISTS (
+      SELECT 1 FROM course_node_mappings cnm
+      WHERE cnm.course_id = c.course_id AND cnm.node_id = rn.node_id
+  );
+
+UPDATE lessons l
+SET quiz_node_id = (
+    SELECT rn.node_id
+    FROM course_sections cs
+    JOIN courses c ON c.course_id = cs.course_id
+    JOIN roadmap_nodes rn ON rn.sub_topics = c.title
+                         AND rn.branch_group = cs.sort_order
+                         AND rn.node_type = 'QUIZ'
+    WHERE cs.section_id = l.section_id
+)
+WHERE l.sort_order = 3
+  AND l.title LIKE '섹션 마무리 퀴즈:%'
+  AND l.quiz_node_id IS NULL
+  AND EXISTS (
+      SELECT 1
+      FROM course_sections cs
+      JOIN courses c ON c.course_id = cs.course_id
+      JOIN roadmap_nodes rn ON rn.sub_topics = c.title
+                           AND rn.branch_group = cs.sort_order
+                           AND rn.node_type = 'QUIZ'
+      WHERE cs.section_id = l.section_id
+  );
+
+UPDATE lessons l
+SET assignment_node_id = (
+    SELECT rn.node_id
+    FROM course_sections cs
+    JOIN courses c ON c.course_id = cs.course_id
+    JOIN roadmap_nodes rn ON rn.sub_topics = c.title
+                         AND rn.branch_group = cs.sort_order
+                         AND rn.node_type = 'ASSIGNMENT'
+    WHERE cs.section_id = l.section_id
+)
+WHERE l.sort_order = 3
+  AND l.title LIKE '실습 과제:%'
+  AND l.assignment_node_id IS NULL
+  AND EXISTS (
+      SELECT 1
+      FROM course_sections cs
+      JOIN courses c ON c.course_id = cs.course_id
+      JOIN roadmap_nodes rn ON rn.sub_topics = c.title
+                           AND rn.branch_group = cs.sort_order
+                           AND rn.node_type = 'ASSIGNMENT'
+      WHERE cs.section_id = l.section_id
+  );
+
+INSERT INTO quizzes (
+    node_id, title, description, quiz_type, total_score, pass_score,
+    time_limit_minutes, is_published, is_active, expose_answer,
+    expose_explanation, is_deleted, created_at, updated_at
+)
+SELECT
+    rn.node_id,
+    rn.sub_topics || ' 섹션 점검 퀴즈',
+    rn.content,
+    'MANUAL',
+    10,
+    7,
+    10,
+    TRUE,
+    TRUE,
+    TRUE,
+    TRUE,
+    FALSE,
+    TIMESTAMP '2026-04-01 10:20:00',
+    TIMESTAMP '2026-04-01 10:20:00'
+FROM roadmap_nodes rn
+WHERE rn.title LIKE '[CATALOG]%'
+  AND rn.node_type = 'QUIZ'
+  AND NOT EXISTS (SELECT 1 FROM quizzes q WHERE q.node_id = rn.node_id);
+
+INSERT INTO quiz_questions (
+    quiz_id, question_type, question_text, explanation, points,
+    display_order, source_timestamp, is_deleted, created_at, updated_at
+)
+SELECT
+    q.quiz_id,
+    'MULTIPLE_CHOICE',
+    rn.sub_topics || ' 섹션을 마무리할 때 가장 먼저 확인해야 하는 것은 무엇인가요?',
+    '섹션 핵심 개념과 실습 요구사항이 일치하는지 확인해야 실제 적용으로 이어질 수 있습니다.',
+    10,
+    1,
+    NULL,
+    FALSE,
+    TIMESTAMP '2026-04-01 10:25:00',
+    TIMESTAMP '2026-04-01 10:25:00'
+FROM quizzes q
+JOIN roadmap_nodes rn ON rn.node_id = q.node_id
+WHERE rn.title LIKE '[CATALOG]%'
+  AND NOT EXISTS (
+      SELECT 1 FROM quiz_questions qq
+      WHERE qq.quiz_id = q.quiz_id AND qq.display_order = 1
+  );
+
+INSERT INTO quiz_question_options (
+    question_id, option_text, is_correct, display_order,
+    is_deleted, created_at, updated_at
+)
+SELECT
+    qq.question_id,
+    '섹션 핵심 개념과 실습 요구사항이 일치하는지 확인한다',
+    TRUE,
+    1,
+    FALSE,
+    TIMESTAMP '2026-04-01 10:30:00',
+    TIMESTAMP '2026-04-01 10:30:00'
+FROM quiz_questions qq
+JOIN quizzes q ON q.quiz_id = qq.quiz_id
+JOIN roadmap_nodes rn ON rn.node_id = q.node_id
+WHERE rn.title LIKE '[CATALOG]%'
+  AND NOT EXISTS (
+      SELECT 1 FROM quiz_question_options qo
+      WHERE qo.question_id = qq.question_id AND qo.display_order = 1
+  );
+
+INSERT INTO quiz_question_options (
+    question_id, option_text, is_correct, display_order,
+    is_deleted, created_at, updated_at
+)
+SELECT
+    qq.question_id,
+    '도구 이름만 외우고 동작 흐름은 확인하지 않는다',
+    FALSE,
+    2,
+    FALSE,
+    TIMESTAMP '2026-04-01 10:30:00',
+    TIMESTAMP '2026-04-01 10:30:00'
+FROM quiz_questions qq
+JOIN quizzes q ON q.quiz_id = qq.quiz_id
+JOIN roadmap_nodes rn ON rn.node_id = q.node_id
+WHERE rn.title LIKE '[CATALOG]%'
+  AND NOT EXISTS (
+      SELECT 1 FROM quiz_question_options qo
+      WHERE qo.question_id = qq.question_id AND qo.display_order = 2
+  );
+
+INSERT INTO quiz_questions (
+    quiz_id, question_type, question_text, explanation, points,
+    display_order, source_timestamp, is_deleted, created_at, updated_at
+)
+WITH catalog_quiz_question_seed(course_title, question_text, explanation) AS (
+    VALUES
+        ('실무 Spring Boot 백엔드 입문', 'Spring Boot REST API 구조에서 Controller의 역할로 가장 적절한 것은 무엇인가요?', 'Controller는 HTTP 요청과 응답을 담당하고, 핵심 비즈니스 흐름은 Service로 위임하는 것이 일반적인 계층 분리 방식입니다.'),
+        ('Docker & Kubernetes 운영 실전', 'Docker 이미지와 컨테이너의 관계로 가장 올바른 설명은 무엇인가요?', '이미지는 실행 가능한 템플릿이고, 컨테이너는 그 이미지를 기반으로 실행된 인스턴스입니다.'),
+        ('React 19 프론트엔드 실전 가이드', 'React에서 상태 위치를 정할 때 가장 먼저 고려해야 하는 기준은 무엇인가요?', '상태는 필요한 컴포넌트들이 공유할 수 있는 가장 가까운 공통 부모에 두는 것이 기본 판단 기준입니다.'),
+        ('Next.js 14 제품 개발 실전', 'Next.js App Router에서 서버 컴포넌트와 클라이언트 컴포넌트의 역할 구분으로 맞는 것은 무엇인가요?', '서버 컴포넌트는 서버 데이터 조회와 렌더링에 강하고, 클라이언트 컴포넌트는 브라우저 상호작용 상태를 담당합니다.'),
+        ('Flutter로 MVP 앱 출시하기', 'Flutter 화면을 구현할 때 상태 변경 범위를 줄이는 이유로 가장 적절한 것은 무엇인가요?', '상태 변경 범위를 좁히면 필요한 위젯만 다시 그리도록 설계할 수 있어 화면 관리가 단순해집니다.'),
+        ('ChatGPT API와 RAG 서비스 만들기', 'RAG 파이프라인의 핵심 흐름으로 가장 적절한 것은 무엇인가요?', '문서를 검색 가능한 단위로 나누고 임베딩한 뒤, 검색 결과를 프롬프트에 넣어 답변을 생성합니다.'),
+        ('SQL로 끝내는 데이터 분석 기본기', 'GROUP BY와 윈도우 함수의 차이로 가장 올바른 설명은 무엇인가요?', 'GROUP BY는 행을 그룹별 결과로 줄이고, 윈도우 함수는 원래 행을 유지하면서 집계 값을 함께 계산합니다.'),
+        ('개발자 이력서와 기술 면접 패키지', '프로젝트 경험을 이력서 문장으로 바꿀 때 가장 좋은 방식은 무엇인가요?', '문제, 행동, 결과를 연결하고 가능한 경우 수치나 근거를 붙이면 경험의 설득력이 높아집니다.')
+)
+SELECT
+    q.quiz_id,
+    'MULTIPLE_CHOICE',
+    seed.question_text,
+    seed.explanation,
+    10,
+    2,
+    NULL,
+    FALSE,
+    TIMESTAMP '2026-04-01 10:35:00',
+    TIMESTAMP '2026-04-01 10:35:00'
+FROM catalog_quiz_question_seed seed
+JOIN roadmap_nodes rn ON rn.sub_topics = seed.course_title
+                     AND rn.node_type = 'QUIZ'
+                     AND rn.title LIKE '[CATALOG]%'
+JOIN quizzes q ON q.node_id = rn.node_id
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM quiz_questions qq
+    WHERE qq.quiz_id = q.quiz_id
+      AND qq.display_order = 2
+);
+
+INSERT INTO quiz_question_options (
+    question_id, option_text, is_correct, display_order,
+    is_deleted, created_at, updated_at
+)
+WITH catalog_quiz_option_seed(course_title, option_text, is_correct, display_order) AS (
+    VALUES
+        ('실무 Spring Boot 백엔드 입문', 'HTTP 요청과 응답을 받고 Service로 비즈니스 흐름을 위임한다', TRUE, 1),
+        ('실무 Spring Boot 백엔드 입문', '데이터베이스 테이블을 직접 생성하고 인덱스를 관리한다', FALSE, 2),
+        ('실무 Spring Boot 백엔드 입문', 'JVM 메모리 영역을 직접 할당하고 해제한다', FALSE, 3),
+        ('실무 Spring Boot 백엔드 입문', '프론트엔드 화면 상태를 렌더링한다', FALSE, 4),
+        ('Docker & Kubernetes 운영 실전', '이미지는 실행 템플릿이고 컨테이너는 실행된 인스턴스이다', TRUE, 1),
+        ('Docker & Kubernetes 운영 실전', '컨테이너는 이미지를 만들기 전 반드시 먼저 존재해야 한다', FALSE, 2),
+        ('Docker & Kubernetes 운영 실전', '이미지는 실행 중인 프로세스 하나만 의미한다', FALSE, 3),
+        ('Docker & Kubernetes 운영 실전', '이미지와 컨테이너는 항상 같은 ID를 가진다', FALSE, 4),
+        ('React 19 프론트엔드 실전 가이드', '상태를 필요한 컴포넌트들의 가장 가까운 공통 부모에 둔다', TRUE, 1),
+        ('React 19 프론트엔드 실전 가이드', '모든 상태를 전역 저장소에만 둔다', FALSE, 2),
+        ('React 19 프론트엔드 실전 가이드', '하위 컴포넌트마다 같은 상태를 복사해서 둔다', FALSE, 3),
+        ('React 19 프론트엔드 실전 가이드', '상태 위치는 렌더링 결과와 무관하므로 임의로 정한다', FALSE, 4),
+        ('Next.js 14 제품 개발 실전', '서버 컴포넌트는 서버 데이터 조회에, 클라이언트 컴포넌트는 상호작용 상태에 사용한다', TRUE, 1),
+        ('Next.js 14 제품 개발 실전', '모든 컴포넌트에 use client를 붙여야 App Router가 동작한다', FALSE, 2),
+        ('Next.js 14 제품 개발 실전', '서버 컴포넌트는 브라우저 클릭 이벤트를 직접 처리한다', FALSE, 3),
+        ('Next.js 14 제품 개발 실전', '클라이언트 컴포넌트는 절대 props를 받을 수 없다', FALSE, 4),
+        ('Flutter로 MVP 앱 출시하기', '상태 변경 범위를 좁혀 필요한 위젯만 다시 그리도록 설계한다', TRUE, 1),
+        ('Flutter로 MVP 앱 출시하기', '모든 입력값을 하나의 전역 변수에 저장한다', FALSE, 2),
+        ('Flutter로 MVP 앱 출시하기', '빌드 메서드 안에서 네트워크 요청을 무조건 반복 실행한다', FALSE, 3),
+        ('Flutter로 MVP 앱 출시하기', '위젯 트리는 상태 관리와 관계가 없다', FALSE, 4),
+        ('ChatGPT API와 RAG 서비스 만들기', '문서를 청킹하고 임베딩한 뒤 검색 결과를 프롬프트에 넣어 답변을 생성한다', TRUE, 1),
+        ('ChatGPT API와 RAG 서비스 만들기', '모든 문서를 한 번에 프롬프트에 넣고 토큰 제한은 고려하지 않는다', FALSE, 2),
+        ('ChatGPT API와 RAG 서비스 만들기', '검색 단계 없이 항상 모델 파라미터만 늘린다', FALSE, 3),
+        ('ChatGPT API와 RAG 서비스 만들기', '임베딩은 사용자 로그인 토큰을 암호화하는 절차다', FALSE, 4),
+        ('SQL로 끝내는 데이터 분석 기본기', 'GROUP BY는 행을 줄이고 윈도우 함수는 행을 유지한 채 계산한다', TRUE, 1),
+        ('SQL로 끝내는 데이터 분석 기본기', 'GROUP BY와 윈도우 함수는 항상 완전히 같은 결과를 만든다', FALSE, 2),
+        ('SQL로 끝내는 데이터 분석 기본기', '윈도우 함수는 SELECT 문에서 사용할 수 없다', FALSE, 3),
+        ('SQL로 끝내는 데이터 분석 기본기', 'GROUP BY는 정렬만 수행하고 집계는 하지 않는다', FALSE, 4),
+        ('개발자 이력서와 기술 면접 패키지', '문제, 행동, 결과를 연결하고 수치나 근거를 함께 적는다', TRUE, 1),
+        ('개발자 이력서와 기술 면접 패키지', '사용한 기술 이름만 길게 나열한다', FALSE, 2),
+        ('개발자 이력서와 기술 면접 패키지', '팀 프로젝트에서 본인의 역할을 일부러 숨긴다', FALSE, 3),
+        ('개발자 이력서와 기술 면접 패키지', '결과나 배운 점 없이 기능 목록만 적는다', FALSE, 4)
+)
+SELECT
+    qq.question_id,
+    seed.option_text,
+    seed.is_correct,
+    seed.display_order,
+    FALSE,
+    TIMESTAMP '2026-04-01 10:40:00',
+    TIMESTAMP '2026-04-01 10:40:00'
+FROM catalog_quiz_option_seed seed
+JOIN roadmap_nodes rn ON rn.sub_topics = seed.course_title
+                     AND rn.node_type = 'QUIZ'
+                     AND rn.title LIKE '[CATALOG]%'
+JOIN quizzes q ON q.node_id = rn.node_id
+JOIN quiz_questions qq ON qq.quiz_id = q.quiz_id
+                       AND qq.display_order = 2
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM quiz_question_options qo
+    WHERE qo.question_id = qq.question_id
+      AND qo.display_order = seed.display_order
+);
+
+INSERT INTO assignments (
+    node_id, title, description, submission_type, due_at, allowed_file_formats,
+    readme_required, test_required, lint_required, submission_rule_description,
+    total_score, pass_score, is_published, is_active, allow_late_submission,
+    auto_grade_enabled, ai_review_enabled, allow_text_submission,
+    allow_file_submission, allow_url_submission, is_deleted, created_at, updated_at
+)
+SELECT
+    rn.node_id,
+    rn.sub_topics || ' 섹션 실습 과제',
+    rn.content,
+    'MULTIPLE',
+    TIMESTAMP '2026-05-31 23:59:59',
+    'md,pdf,zip,github-url',
+    TRUE,
+    FALSE,
+    FALSE,
+    'GitHub URL, 실행 방법, 결과 캡처 또는 요약 문서를 함께 제출하세요.',
+    100,
+    70,
+    TRUE,
+    TRUE,
+    TRUE,
+    FALSE,
+    TRUE,
+    TRUE,
+    TRUE,
+    TRUE,
+    FALSE,
+    TIMESTAMP '2026-04-01 10:35:00',
+    TIMESTAMP '2026-04-01 10:35:00'
+FROM roadmap_nodes rn
+WHERE rn.title LIKE '[CATALOG]%'
+  AND rn.node_type = 'ASSIGNMENT'
+  AND NOT EXISTS (SELECT 1 FROM assignments a WHERE a.node_id = rn.node_id);
+
+INSERT INTO assignment_rubrics (
+    assignment_id, criteria_name, criteria_description, max_points,
+    display_order, is_deleted, created_at, updated_at
+)
+SELECT
+    a.assignment_id,
+    '요구사항 완성도',
+    '섹션에서 요구한 핵심 기능과 산출물이 실행 가능한 형태로 제출되었습니다.',
+    60,
+    1,
+    FALSE,
+    TIMESTAMP '2026-04-01 10:40:00',
+    TIMESTAMP '2026-04-01 10:40:00'
+FROM assignments a
+JOIN roadmap_nodes rn ON rn.node_id = a.node_id
+WHERE rn.title LIKE '[CATALOG]%'
+  AND NOT EXISTS (
+      SELECT 1 FROM assignment_rubrics ar
+      WHERE ar.assignment_id = a.assignment_id AND ar.display_order = 1
+  );
+
+INSERT INTO assignment_rubrics (
+    assignment_id, criteria_name, criteria_description, max_points,
+    display_order, is_deleted, created_at, updated_at
+)
+SELECT
+    a.assignment_id,
+    '문서화와 회고',
+    '실행 방법, 판단 이유, 막힌 지점과 해결 과정을 README 또는 제출 문서에 정리했습니다.',
+    40,
+    2,
+    FALSE,
+    TIMESTAMP '2026-04-01 10:40:00',
+    TIMESTAMP '2026-04-01 10:40:00'
+FROM assignments a
+JOIN roadmap_nodes rn ON rn.node_id = a.node_id
+WHERE rn.title LIKE '[CATALOG]%'
+  AND NOT EXISTS (
+      SELECT 1 FROM assignment_rubrics ar
+      WHERE ar.assignment_id = a.assignment_id AND ar.display_order = 2
+  );
+
+INSERT INTO course_announcements (
+    course_id, announcement_type, title, content, is_pinned, display_order,
+    published_at, exposure_start_at, exposure_end_at,
+    event_banner_text, event_link, created_at, updated_at
+)
+WITH announcement_seed(course_title) AS (
+    VALUES
+        ('실무 Spring Boot 백엔드 입문'),
+        ('Docker & Kubernetes 운영 실전'),
+        ('React 19 프론트엔드 실전 가이드'),
+        ('Next.js 14 제품 개발 실전'),
+        ('Flutter로 MVP 앱 출시하기'),
+        ('ChatGPT API와 RAG 서비스 만들기'),
+        ('SQL로 끝내는 데이터 분석 기본기'),
+        ('개발자 이력서와 기술 면접 패키지')
+)
+SELECT
+    c.course_id,
+    'NORMAL',
+    a.course_title || ' 커리큘럼 업데이트',
+    '섹션별 마지막 점검 활동과 실습 자료를 포함해 공개했습니다.',
+    FALSE,
+    1,
+    TIMESTAMP '2026-04-09 09:00:00',
+    TIMESTAMP '2026-04-09 09:00:00',
+    NULL,
+    NULL,
+    NULL,
+    TIMESTAMP '2026-04-09 09:00:00',
+    TIMESTAMP '2026-04-09 09:00:00'
+FROM announcement_seed a
+JOIN courses c ON c.title = a.course_title
+WHERE NOT EXISTS (
+    SELECT 1 FROM course_announcements ca
+    WHERE ca.course_id = c.course_id
+      AND ca.title = a.course_title || ' 커리큘럼 업데이트'
+);

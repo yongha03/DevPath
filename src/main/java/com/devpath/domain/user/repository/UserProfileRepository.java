@@ -2,6 +2,8 @@ package com.devpath.domain.user.repository;
 
 import com.devpath.domain.user.entity.UserProfile;
 import com.devpath.domain.user.entity.UserRole;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -12,6 +14,16 @@ import org.springframework.data.repository.query.Param;
 public interface UserProfileRepository extends JpaRepository<UserProfile, Long> {
 
   Optional<UserProfile> findByUserId(Long userId);
+
+  @EntityGraph(attributePaths = "user")
+  @Query(
+      """
+      select up
+      from UserProfile up
+      join up.user u
+      where u.id in :userIds
+      """)
+  List<UserProfile> findAllByUserIdIn(@Param("userIds") Collection<Long> userIds);
 
   // Fetches a publicly visible instructor profile together with the owning user.
   @EntityGraph(attributePaths = "user")

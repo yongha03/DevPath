@@ -842,6 +842,49 @@ aside:hover .sidebar-text {
   transform: rotateY(180deg);
 }
 
+.completion-confetti-piece {
+  position: absolute;
+  top: -10%;
+  border-radius: 999px;
+  opacity: 0;
+  animation-name: completion-confetti-fall;
+  animation-timing-function: ease-out;
+  animation-fill-mode: forwards;
+}
+
+@keyframes completion-confetti-fall {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -40px, 0) rotate(0deg) scale(0.8);
+  }
+  10% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 115vh, 0) rotate(540deg) scale(1.15);
+  }
+}
+
+.completion-fade-enter {
+  animation: completion-fade-up 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.completion-fade-enter-delay {
+  animation: completion-fade-up 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.18s both;
+}
+
+@keyframes completion-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .modal {
   transition:
     opacity 0.2s,

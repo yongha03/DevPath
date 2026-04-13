@@ -1,6 +1,6 @@
 # DevPath Frontend
 
-React, TypeScript, Tailwind CSS, Nginx 기준으로 바로 시작할 수 있게 만든 프런트엔드 시작 프로젝트입니다.
+React, TypeScript, Tailwind CSS, and Nginx frontend for DevPath.
 
 ## Stack
 
@@ -18,23 +18,25 @@ npm install
 npm run dev
 ```
 
-기본 개발 서버는 `http://localhost:5173` 에서 열립니다.
+The frontend dev entrypoint is `http://localhost:8084`.
 
-`/api` 요청은 `http://localhost:8082` 으로 프록시되도록 설정해뒀습니다.
+API and OAuth-related routes are proxied to the backend at `http://localhost:8082`.
 
 ## Docker Dev Hot Reload
 
 Use the dedicated development container when you want immediate frontend reflection without rebuilding the Nginx image every time.
 
 ```bash
-docker compose up frontend-dev
+docker compose up -d
 ```
 
-- URL: `http://localhost` or `http://localhost:5173`
-- Frontend changes: reflected immediately through Vite dev server
+- URL: `http://localhost:8084`
+- Frontend changes: reflected immediately through the Vite dev server
 - Backend API proxy: `http://localhost:8082`
 
-Use `frontend` only for production-style static build testing on `http://localhost:8081`.
+`frontend-dev` is part of the default `docker compose up -d` flow.
+
+Use `frontend` only for production-style static build testing on `http://localhost:8084` with the `frontend-static` profile.
 
 ## Build
 
@@ -43,27 +45,25 @@ cd frontend
 npm run build
 ```
 
-빌드 결과물은 `frontend/dist` 에 생성됩니다.
+The build output is written to `frontend/dist`.
 
 ## Nginx Deploy
 
 ```bash
 cd frontend
 docker build -t devpath-frontend .
-docker run --rm -p 8080:80 devpath-frontend
+docker run --rm -p 8084:80 devpath-frontend
 ```
 
-Nginx 설정은 `frontend/nginx/default.conf` 에 있습니다. SPA 라우팅을 위해 `try_files $uri $uri/ /index.html;` 를 사용합니다.
+Nginx configuration lives in `frontend/nginx/default.conf`.
 
 ## Docker Watch
 
-`http://localhost` 를 유지하면서 프런트 변경을 자동 반영하려면 프로젝트 루트에서 아래 명령을 실행합니다.
+To keep using `http://localhost:8084` while automatically rebuilding the static frontend image, run this from the project root:
 
 ```bash
 docker compose up --build --watch frontend
 ```
-
-이 명령은 실행한 터미널을 점유하고, `frontend` 아래 파일이 바뀌면 프런트 이미지를 자동으로 다시 빌드해서 반영합니다.
 
 ## First Files To Edit
 

@@ -1,4 +1,4 @@
-import { Fragment, StrictMode, type ReactElement } from 'react'
+import { Fragment, type ReactElement } from 'react'
 import { createRoot } from 'react-dom/client'
 import AuthToastViewport from './components/AuthToastViewport'
 import './index.css'
@@ -19,7 +19,7 @@ export function renderPage(page: ReactElement, options?: RenderPageOptions) {
   createRoot(rootElement).render(
     <Fragment>
       <AuthToastViewport />
-      <StrictMode>{page}</StrictMode>
+      {page}
     </Fragment>,
   )
 }

@@ -34,6 +34,36 @@ export interface LearningMaterial {
   sortOrder: number | null
 }
 
+export interface LearningAssignmentRubric {
+  rubricId: number
+  criteriaName: string
+  criteriaDescription: string | null
+  maxPoints: number | null
+  displayOrder: number | null
+}
+
+export interface LearningLessonAssignment {
+  assignmentId: number
+  roadmapNodeId: number | null
+  title: string
+  description: string | null
+  submissionRuleDescription: string | null
+  totalScore: number | null
+  passScore: number | null
+  autoGradeEnabled: boolean | null
+  aiReviewEnabled: boolean | null
+  allowTextSubmission: boolean | null
+  allowFileSubmission: boolean | null
+  allowUrlSubmission: boolean | null
+  readmeRequired: boolean | null
+  testRequired: boolean | null
+  lintRequired: boolean | null
+  allowLateSubmission: boolean | null
+  dueAt: string | null
+  allowedFileFormats: string[]
+  rubrics: LearningAssignmentRubric[]
+}
+
 export interface LearningLesson {
   lessonId: number
   title: string
@@ -47,6 +77,7 @@ export interface LearningLesson {
   isPublished: boolean | null
   sortOrder: number | null
   materials: LearningMaterial[]
+  assignment?: LearningLessonAssignment | null
 }
 
 export interface LearningSection {
@@ -84,6 +115,8 @@ export interface LearningCourseDetail {
   objectives: LearningCourseObjective[]
   targetAudiences: LearningCourseTargetAudience[]
   tags: LearningCourseTag[]
+  isBookmarked: boolean | null
+  isEnrolled: boolean | null
   instructor: LearningCourseInstructor | null
   sections: LearningSection[]
   news: LearningNewsItem[]

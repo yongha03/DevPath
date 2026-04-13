@@ -5,6 +5,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -28,6 +29,17 @@ public interface CourseWishlistRepository extends JpaRepository<CourseWishlist, 
            "WHERE w.user.id = :userId " +
            "ORDER BY w.createdAt DESC")
     List<CourseWishlist> findAllByUserIdWithCourse(@Param("userId") Long userId);
+
+    @Query("""
+        select w.course.courseId
+        from CourseWishlist w
+        where w.user.id = :userId
+          and w.course.courseId in :courseIds
+        """)
+    List<Long> findCourseIdsByUserIdAndCourseIds(
+        @Param("userId") Long userId,
+        @Param("courseIds") Collection<Long> courseIds
+    );
 
     /**
      * 특정 사용자의 찜 개수

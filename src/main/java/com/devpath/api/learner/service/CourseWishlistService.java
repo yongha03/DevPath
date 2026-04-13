@@ -12,7 +12,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
@@ -74,5 +77,13 @@ public class CourseWishlistService {
      */
     public boolean isWishlisted(Long userId, Long courseId) {
         return courseWishlistRepository.existsByUser_IdAndCourse_CourseId(userId, courseId);
+    }
+
+    public Set<Long> getWishlistedCourseIds(Long userId, Collection<Long> courseIds) {
+        if (userId == null || courseIds == null || courseIds.isEmpty()) {
+            return Set.of();
+        }
+
+        return new HashSet<>(courseWishlistRepository.findCourseIdsByUserIdAndCourseIds(userId, courseIds));
     }
 }

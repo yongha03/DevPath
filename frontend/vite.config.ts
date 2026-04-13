@@ -56,7 +56,7 @@ export default defineConfig({
   },
   server: {
     host: true,
-    port: 5173,
+    port: 8084,
     proxy: {
       '/api': proxyToBackend,
       '/oauth2': proxyToBackend,
@@ -69,6 +69,6 @@ export default defineConfig({
   },
   preview: {
     host: true,
-    port: 4173,
+    port: 8084,
   },
 })

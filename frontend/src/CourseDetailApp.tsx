@@ -274,20 +274,32 @@ export default function CourseDetailApp() {
       cancelled = true
       controller.abort()
     }
-  }, [courseId])
+  }, [courseId, session?.accessToken])
 
   useEffect(() => {
     setOpenSectionIds(displayCourse.sections[0] ? [displayCourse.sections[0].sectionId] : [])
   }, [displayCourse.courseId, displayCourse.sections])
 
   useEffect(() => {
+    if (!courseId || loadingCourse) {
+      setLoadingReviews(false)
+      setReviews(fallbackCourseReviews)
+      return
+    }
+
+    if (!course) {
+      setLoadingReviews(false)
+      setReviews(fallbackCourseReviews)
+      return
+    }
+
     let cancelled = false
     const controller = new AbortController()
 
     async function loadReviews() {
       setLoadingReviews(true)
       try {
-        const response = await reviewApi.getByCourse(displayCourse.courseId, controller.signal)
+        const response = await reviewApi.getByCourse(course.courseId, controller.signal)
         if (cancelled) return
         setReviews(response.length ? response : fallbackCourseReviews)
       } catch {
@@ -304,32 +316,16 @@ export default function CourseDetailApp() {
       cancelled = true
       controller.abort()
     }
-  }, [displayCourse.courseId])
+  }, [course, courseId, loadingCourse])
 
   useEffect(() => {
-    if (!session) return
-
-    let cancelled = false
-    const controller = new AbortController()
-
-    async function loadEnrollments() {
-      try {
-        const response = await enrollmentApi.getMyEnrollments(controller.signal)
-        if (cancelled) return
-        setIsEnrolled(response.some((item) => item.courseId === displayCourse.courseId))
-      } catch {
-        if (cancelled) return
-        setIsEnrolled(false)
-      }
+    if (!session) {
+      setIsEnrolled(false)
+      return
     }
 
-    void loadEnrollments()
-
-    return () => {
-      cancelled = true
-      controller.abort()
-    }
-  }, [displayCourse.courseId, session])
+    setIsEnrolled(Boolean(course?.isEnrolled))
+  }, [course?.courseId, course?.isEnrolled, session])
 
   useEffect(() => {
     if (!toastMessage) return
@@ -409,7 +405,7 @@ export default function CourseDetailApp() {
     try {
       await enrollmentApi.enroll(displayCourse.courseId)
       setIsEnrolled(true)
-      setEnrollModalOpen(true)
+      window.location.href = learningHref
     } catch {
       setToastMessage('수강 신청에 실패했습니다.')
     } finally {

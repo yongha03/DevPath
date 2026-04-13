@@ -24,6 +24,10 @@ compute_manifest_hash() {
   printf '%s\n%s\n' "$runtime_fingerprint" "missing-manifest"
 }
 
+dependencies_are_healthy() {
+  node --input-type=module -e "await Promise.all([import('vite'), import('@vitejs/plugin-react'), import('@tailwindcss/vite')])" >/dev/null 2>&1
+}
+
 install_dependencies() {
   echo "[frontend-dev] Installing dependencies..."
   mkdir -p "$APP_DIR/node_modules"
@@ -36,12 +40,20 @@ install_dependencies() {
 ensure_dependencies() {
   current_hash="$(compute_manifest_hash)"
   saved_hash=""
+  needs_install="false"
 
   if [ -f "$STAMP_FILE" ]; then
     saved_hash="$(cat "$STAMP_FILE")"
   fi
 
   if [ ! -d "$APP_DIR/node_modules" ] || [ "$current_hash" != "$saved_hash" ]; then
+    needs_install="true"
+  elif ! dependencies_are_healthy; then
+    echo "[frontend-dev] Detected broken node_modules. Reinstalling dependencies..."
+    needs_install="true"
+  fi
+
+  if [ "$needs_install" = "true" ]; then
     install_dependencies
   fi
 }
@@ -64,4 +76,4 @@ cd "$APP_DIR"
 ensure_dependencies
 watch_manifests &
 
-exec npm run dev -- --host 0.0.0.0 --port 5173
+exec npm run dev -- --host 0.0.0.0 --port 8084

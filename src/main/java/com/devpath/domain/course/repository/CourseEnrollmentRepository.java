@@ -2,6 +2,7 @@ package com.devpath.domain.course.repository;
 
 import com.devpath.domain.course.entity.CourseEnrollment;
 import com.devpath.domain.course.entity.EnrollmentStatus;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -47,6 +48,17 @@ public interface CourseEnrollmentRepository extends JpaRepository<CourseEnrollme
         order by e.enrolledAt desc
         """)
     List<CourseEnrollment> findAllByCourseInstructorIdOrderByEnrolledAtDesc(@Param("instructorId") Long instructorId);
+
+    @Query("""
+        select e.course.courseId
+        from CourseEnrollment e
+        where e.user.id = :userId
+          and e.course.courseId in :courseIds
+        """)
+    List<Long> findCourseIdsByUserIdAndCourseIds(
+        @Param("userId") Long userId,
+        @Param("courseIds") Collection<Long> courseIds
+    );
 
     long countByUser_IdAndStatus(Long userId, EnrollmentStatus status);
 

@@ -48,6 +48,8 @@ public class SecurityConfig {
                 auth.requestMatchers(
                         "/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**", "/webjars/**")
                     .permitAll()
+                    .requestMatchers("/samples/**")
+                    .permitAll()
                     .requestMatchers("/api/auth/signup", "/api/auth/login", "/api/auth/reissue")
                     .permitAll()
                     .requestMatchers("/oauth2/**", "/login/oauth2/**")

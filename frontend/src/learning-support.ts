@@ -68,6 +68,8 @@ export const fallbackCourseDetail: LearningCourseDetail = {
     { tagId: 1, tagName: 'Java', proficiencyLevel: 3 },
     { tagId: 2, tagName: 'Spring Boot', proficiencyLevel: 3 },
   ],
+  isBookmarked: false,
+  isEnrolled: false,
   instructor: {
     instructorId: 7,
     channelName: 'Hong Backend Lab',
@@ -233,6 +235,8 @@ export function normalizeCourseDetail(course: LearningCourseDetail): LearningCou
     objectives: course.objectives ?? [],
     targetAudiences: course.targetAudiences ?? [],
     tags: course.tags ?? [],
+    isBookmarked: course.isBookmarked ?? false,
+    isEnrolled: course.isEnrolled ?? false,
     sections: (course.sections ?? []).map((section) => ({
       ...section,
       lessons: (section.lessons ?? []).map((lesson) => ({ ...lesson, materials: lesson.materials ?? [] })),

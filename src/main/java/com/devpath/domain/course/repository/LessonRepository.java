@@ -17,6 +17,14 @@ public interface LessonRepository extends JpaRepository<Lesson, Long> {
     List<Lesson> findAllBySectionCourseCourseId(Long courseId);
 
     @Query("""
+        select l
+        from Lesson l
+        where l.section.sectionId in :sectionIds
+        order by l.section.sectionId asc, l.orderIndex asc, l.lessonId asc
+        """)
+    List<Lesson> findAllBySectionIdsInDisplayOrder(@Param("sectionIds") Collection<Long> sectionIds);
+
+    @Query("""
         select count(l)
         from Lesson l
         where l.section.course.instructorId = :instructorId
