@@ -16,6 +16,7 @@ export interface DashboardStudyGroupItem {
   maxMembers: number | null
   joinedAt: string | null
   plannedEndDate: string | null
+  currentMemberCount: number | null
 }
 
 export interface DashboardStudyGroup {

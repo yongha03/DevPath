@@ -107,6 +107,8 @@ public class LearnerDashboardService {
         List<DashboardStudyGroupResponse.StudyGroupItem> groups = activeMemberships.stream()
                 .map(member -> {
                     StudyGroup group = member.getStudyGroup();
+                    int memberCount = (int) studyGroupMemberRepository
+                            .countByStudyGroupIdAndJoinStatus(group.getId(), StudyGroupJoinStatus.APPROVED);
                     return DashboardStudyGroupResponse.StudyGroupItem.builder()
                             .groupId(group.getId())
                             .name(group.getName())
@@ -114,6 +116,7 @@ public class LearnerDashboardService {
                             .maxMembers(group.getMaxMembers())
                             .joinedAt(member.getJoinedAt())
                             .plannedEndDate(group.getPlannedEndDate())
+                            .currentMemberCount(memberCount)
                             .build();
                 })
                 .toList();

@@ -46,5 +46,8 @@ public class DashboardStudyGroupResponse {
 
         @Schema(description = "예정 종료일", example = "2026-03-01T00:00:00")
         private LocalDateTime plannedEndDate;
+
+        @Schema(description = "현재 승인된 멤버 수", example = "4")
+        private Integer currentMemberCount;
     }
 }

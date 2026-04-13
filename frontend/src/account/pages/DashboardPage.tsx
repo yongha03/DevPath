@@ -53,6 +53,7 @@ const fallbackState: DashboardState = {
         maxMembers: 5,
         joinedAt: '2026-01-15T00:00:00',
         plannedEndDate: null,
+      currentMemberCount: null,
       },
     ],
   },
@@ -157,6 +158,16 @@ function buildSidebarNodes(nodes: RoadmapNodeItem[]) {
   const currentIndex = sorted.findIndex((n) => n.status === 'IN_PROGRESS')
   const start = currentIndex >= 0 ? Math.max(0, currentIndex - 2) : 0
   return sorted.slice(start, start + 5)
+}
+
+function formatRelativeTime(createdAt: string | null | undefined): string {
+  if (!createdAt) return ''
+  const diffMs = Date.now() - new Date(createdAt).getTime()
+  const minutes = Math.floor(diffMs / (1000 * 60))
+  if (minutes < 60) return `${Math.max(1, minutes)}분 전`
+  const hours = Math.floor(diffMs / (1000 * 60 * 60))
+  if (hours < 24) return `${hours}시간 전`
+  return `${Math.floor(diffMs / (1000 * 60 * 60 * 24))}일 전`
 }
 
 function calcDDay(plannedEndDate: string | null | undefined): string {
@@ -267,7 +278,6 @@ export default function DashboardPage({ session }: { session: AuthSession }) {
 
   const completedCourses =
     state.enrollments.filter((item) => item.status === 'COMPLETED').length || Number(state.summary.completedNodes ?? 14)
-  const totalCourses = Math.max(state.enrollments.length, 120)
   const proofCardCount = state.historySummary.proofCardCount ?? 0
   const studyTime = formatStudyTime(state.summary.totalStudyHours)
   const recentEnrollment =
@@ -317,9 +327,9 @@ export default function DashboardPage({ session }: { session: AuthSession }) {
               </div>
               <div className="mt-2 flex items-baseline gap-1">
                 <span className="text-2xl font-extrabold text-gray-900">{completedCourses}</span>
-                <span className="text-sm font-medium text-gray-400">/ {totalCourses}</span>
+                <span className="text-sm font-medium text-gray-400">개 완료</span>
               </div>
-              <p className="mt-1 text-[10px] text-gray-400">상위 15% 달성</p>
+              <p className="mt-1 text-[10px] text-gray-400">수강 중 {state.enrollments.length}개</p>
             </div>
 
             <div className="relative rounded-2xl border border-gray-200 bg-white px-5 py-4 shadow-sm">
@@ -445,9 +455,11 @@ export default function DashboardPage({ session }: { session: AuthSession }) {
                 <div className="mt-4 flex -space-x-2">
                   <img className="h-8 w-8 rounded-full border-2 border-white bg-gray-200" src="https://api.dicebear.com/7.x/avataaars/svg?seed=1" alt="m1" />
                   <img className="h-8 w-8 rounded-full border-2 border-white bg-gray-200" src="https://api.dicebear.com/7.x/avataaars/svg?seed=2" alt="m2" />
-                  <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-gray-100 text-[10px] font-bold text-gray-500">
-                    +2
-                  </div>
+                  {(studyGroup.currentMemberCount ?? 0) > 2 && (
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-gray-100 text-[10px] font-bold text-gray-500">
+                      +{(studyGroup.currentMemberCount ?? 0) - 2}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -491,7 +503,7 @@ export default function DashboardPage({ session }: { session: AuthSession }) {
                     <div className={`mt-1.5 h-1.5 w-1.5 rounded-full ${index === 0 ? 'bg-orange-400' : 'bg-gray-300'}`} />
                     <div>
                       <p className="line-clamp-1 text-sm text-gray-700 transition group-hover:text-brand">{item.message}</p>
-                      <p className="mt-0.5 text-[10px] text-gray-400">{index === 0 ? '댓글 3개 · 2시간 전' : '댓글 12개 · 어제'}</p>
+                      <p className="mt-0.5 text-[10px] text-gray-400">{formatRelativeTime(item.createdAt)}</p>
                     </div>
                   </li>
                 ))}
