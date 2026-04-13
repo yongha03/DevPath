@@ -9,47 +9,6 @@ type ProofCardViewItem = ProofCardGalleryItem & {
   score: number
 }
 
-const fallbackItems: ProofCardViewItem[] = [
-  {
-    proofCardId: 1,
-    title: 'Java 기초 문법',
-    nodeTitle: 'Java Fundamentals',
-    issuedAt: '2025-12-10T00:00:00',
-    tags: [
-      { tagId: 1, tagName: 'JVM', evidenceType: 'QUIZ' },
-      { tagId: 2, tagName: 'Collection', evidenceType: 'QUIZ' },
-      { tagId: 3, tagName: 'Lambda', evidenceType: 'QUIZ' },
-    ],
-    type: 'language',
-    score: 92,
-  },
-  {
-    proofCardId: 2,
-    title: '운영체제 (OS)',
-    nodeTitle: 'Operating System',
-    issuedAt: '2026-01-20T00:00:00',
-    tags: [
-      { tagId: 4, tagName: 'Process', evidenceType: 'QUIZ' },
-      { tagId: 5, tagName: 'Thread', evidenceType: 'QUIZ' },
-      { tagId: 6, tagName: 'Deadlock', evidenceType: 'QUIZ' },
-    ],
-    type: 'cs',
-    score: 88,
-  },
-  {
-    proofCardId: 3,
-    title: 'Spring Boot 핵심',
-    nodeTitle: 'Spring Boot Core',
-    issuedAt: '2026-02-01T00:00:00',
-    tags: [
-      { tagId: 7, tagName: 'DI', evidenceType: 'PROJECT' },
-      { tagId: 8, tagName: 'Spring MVC', evidenceType: 'PROJECT' },
-      { tagId: 9, tagName: 'JPA', evidenceType: 'PROJECT' },
-    ],
-    type: 'framework',
-    score: 95,
-  },
-]
 
 function formatShortDate(value: string | null | undefined) {
   if (!value) {
@@ -124,7 +83,7 @@ function cardTheme(type: ProofCardViewItem['type']) {
 }
 
 export default function LearningLogGalleryPage() {
-  const [items, setItems] = useState<ProofCardViewItem[]>(fallbackItems)
+  const [items, setItems] = useState<ProofCardViewItem[]>([])
   const [details, setDetails] = useState<Record<number, ProofCardDetail>>({})
   const [filterOpen, setFilterOpen] = useState(false)
   const [certificateOpen, setCertificateOpen] = useState(false)
@@ -151,7 +110,7 @@ export default function LearningLogGalleryPage() {
           )
         }
       } catch {
-        // API 실패 시에도 기본 카드 목록으로 화면을 유지합니다.
+        // API 실패 시 빈 목록 유지
       }
     }
 
@@ -273,7 +232,13 @@ export default function LearningLogGalleryPage() {
           {message ? <div className="mb-6 text-sm font-bold text-brand">{message}</div> : null}
 
           <div id="cardGrid" className="grid grid-cols-1 gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {visibleCards.map((item) => {
+            {visibleCards.length === 0 ? (
+              <div className="col-span-full flex flex-col items-center justify-center py-20 text-center">
+                <i className="fas fa-id-card text-5xl text-gray-200 mb-4" />
+                <p className="text-sm font-bold text-gray-400">아직 획득한 Proof Card가 없습니다.</p>
+                <p className="mt-1 text-xs text-gray-300">로드맵 노드를 완료하면 Proof Card가 발급됩니다.</p>
+              </div>
+            ) : visibleCards.map((item) => {
               const theme = cardTheme(item.type)
               const detail = details[item.proofCardId]
               const detailTags = detail?.tags.length ? detail.tags : item.tags

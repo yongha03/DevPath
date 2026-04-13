@@ -97,6 +97,7 @@ public class LearnerDashboardService {
                             .status(group.getStatus())
                             .maxMembers(group.getMaxMembers())
                             .joinedAt(member.getJoinedAt())
+                            .plannedEndDate(group.getPlannedEndDate())
                             .build();
                 })
                 .toList();

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { dashboardApi, enrollmentApi, learningHistoryApi, notificationApi, roadmapApi } from '../../lib/api'
+import { dashboardApi, enrollmentApi, learningHistoryApi, notificationApi, proofCardApi, roadmapApi } from '../../lib/api'
 import { LearnerContentRow, LearnerPageShell, MyMenuSidebar } from '../template'
 import type { AuthSession } from '../../types/auth'
 import type {
@@ -9,6 +9,7 @@ import type {
   HeatmapEntry,
   LearningHistorySummary,
   NotificationItem,
+  ProofCardGalleryItem,
 } from '../../types/learner'
 import type { RoadmapDetail, RoadmapNodeItem } from '../../types/roadmap'
 
@@ -20,6 +21,7 @@ type DashboardState = {
   historySummary: LearningHistorySummary
   enrollments: Enrollment[]
   roadmap: RoadmapDetail | null
+  proofCards: ProofCardGalleryItem[]
 }
 
 const fallbackState: DashboardState = {
@@ -48,6 +50,7 @@ const fallbackState: DashboardState = {
         status: 'IN_PROGRESS',
         maxMembers: 5,
         joinedAt: '2026-01-15T00:00:00',
+        plannedEndDate: null,
       },
     ],
   },
@@ -111,6 +114,7 @@ const fallbackState: DashboardState = {
     },
   ],
   roadmap: null,
+  proofCards: [],
 }
 
 function formatStudyTime(hoursValue: number | null | undefined) {
@@ -126,13 +130,12 @@ function formatStudyTime(hoursValue: number | null | undefined) {
 
 function buildWeeklyBars(heatmap: HeatmapEntry[]) {
   const labels = ['월', '화', '수', '목', '금', '토', '일']
-  const fallbackHeights = [30, 60, 20, 80, 40, 10, 10]
   const recent = heatmap.slice(-7)
 
   return labels.map((label, index) => {
     const item = recent[index]
     const activity = item?.activityLevel ?? 0
-    const height = item ? Math.max(10, Math.min(80, activity * 16)) : fallbackHeights[index]
+    const height = item ? Math.max(10, Math.min(80, activity * 16)) : 0
 
     return {
       label,
@@ -151,6 +154,14 @@ function buildSidebarNodes(nodes: RoadmapNodeItem[]) {
   const currentIndex = sorted.findIndex((n) => n.status === 'IN_PROGRESS')
   const start = currentIndex >= 0 ? Math.max(0, currentIndex - 2) : 0
   return sorted.slice(start, start + 5)
+}
+
+function calcDDay(plannedEndDate: string | null | undefined): string {
+  if (!plannedEndDate) return ''
+  const diff = Math.ceil((new Date(plannedEndDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+  if (diff < 0) return '종료'
+  if (diff === 0) return 'D-Day'
+  return `D-${diff}`
 }
 
 function statusClass(status: string | null | undefined) {
@@ -179,6 +190,7 @@ export default function DashboardPage({ session }: { session: AuthSession }) {
         notificationResult,
         historySummaryResult,
         enrollmentResult,
+        proofCardsResult,
       ] = await Promise.allSettled([
         dashboardApi.getSummary(signal),
         dashboardApi.getHeatmap(signal),
@@ -186,6 +198,7 @@ export default function DashboardPage({ session }: { session: AuthSession }) {
         notificationApi.getMine(signal),
         learningHistoryApi.getSummary(signal),
         enrollmentApi.getMyEnrollments(signal),
+        proofCardApi.getGallery(signal),
       ])
 
       setState((current) => ({
@@ -218,6 +231,10 @@ export default function DashboardPage({ session }: { session: AuthSession }) {
             ? enrollmentResult.value
             : current.enrollments,
         roadmap: current.roadmap,
+        proofCards:
+          proofCardsResult.status === 'fulfilled' && proofCardsResult.value.length
+            ? proofCardsResult.value
+            : current.proofCards,
       }))
     }
 
@@ -242,7 +259,7 @@ export default function DashboardPage({ session }: { session: AuthSession }) {
   const completedCourses =
     state.enrollments.filter((item) => item.status === 'COMPLETED').length || Number(state.summary.completedNodes ?? 14)
   const totalCourses = Math.max(state.enrollments.length, 120)
-  const proofCardCount = state.historySummary.proofCardCount || 3
+  const proofCardCount = state.historySummary.proofCardCount ?? 0
   const studyTime = formatStudyTime(state.summary.totalStudyHours)
   const recentEnrollment =
     [...state.enrollments]
@@ -250,6 +267,7 @@ export default function DashboardPage({ session }: { session: AuthSession }) {
     fallbackState.enrollments[0]
   const weeklyBars = buildWeeklyBars(state.heatmap)
   const studyGroup = state.studyGroup.groups[0] ?? fallbackState.studyGroup.groups[0]
+  const dDay = calcDDay(studyGroup.plannedEndDate)
   const communityItems = state.notifications.slice(0, 2)
   const roadmapProgress = state.roadmap?.progressRate ?? Math.max(0, Math.min(100, recentEnrollment.progressPercentage ?? 60))
   const sidebarNodes = state.roadmap ? buildSidebarNodes(state.roadmap.nodes) : []
@@ -405,10 +423,14 @@ export default function DashboardPage({ session }: { session: AuthSession }) {
                     <span className="whitespace-nowrap text-sm font-bold text-gray-900">{studyGroup.name}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className={`shrink-0 rounded border px-2 py-0.5 text-xs font-bold ${statusClass(studyGroup.status)}`}>
-                      D-14
-                    </span>
-                    <p className="whitespace-nowrap text-[11px] text-gray-500">Next: 2/10(월) 14:00</p>
+                    {dDay && (
+                      <span className={`shrink-0 rounded border px-2 py-0.5 text-xs font-bold ${statusClass(studyGroup.status)}`}>
+                        {dDay}
+                      </span>
+                    )}
+                    <p className="whitespace-nowrap text-[11px] text-gray-500">
+                      {studyGroup.status === 'IN_PROGRESS' ? '진행 중' : '모집 중'}
+                    </p>
                   </div>
                 </div>
                 <div className="mt-4 flex -space-x-2">
@@ -472,42 +494,44 @@ export default function DashboardPage({ session }: { session: AuthSession }) {
             <div className="h-full rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
               <div className="mb-4 flex items-center justify-between">
                 <h3 className="text-sm font-bold text-gray-900">보유 스킬 (Proof)</h3>
-                <span className="cursor-pointer text-xs text-gray-400 hover:text-brand">전체</span>
+                <a href="learning-log-gallery.html" className="text-xs text-gray-400 hover:text-brand">전체</a>
               </div>
               <div className="space-y-3">
-                <div className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 p-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-blue-500 shadow-sm">
-                      <i className="fas fa-network-wired" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-gray-900">Network</p>
-                    </div>
+                {state.proofCards.length > 0 ? (
+                  state.proofCards.slice(0, 2).map((card, index) => {
+                    const colors = [
+                      { icon: 'text-blue-500', bg: 'bg-blue-50', badge: 'text-blue-600 bg-blue-50' },
+                      { icon: 'text-purple-500', bg: 'bg-purple-50', badge: 'text-purple-600 bg-purple-50' },
+                    ]
+                    const color = colors[index % colors.length]
+                    const firstTag = card.tags?.[0]?.tagName ?? card.nodeTitle
+                    const issuedDate = card.issuedAt
+                      ? new Date(card.issuedAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
+                      : ''
+                    return (
+                      <div key={card.proofCardId} className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 p-3">
+                        <div className="flex items-center gap-3">
+                          <div className={`flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white shadow-sm ${color.icon}`}>
+                            <i className="fas fa-certificate" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-gray-900 line-clamp-1">{firstTag}</p>
+                            <p className="text-[10px] text-gray-400">{card.nodeTitle}</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${color.badge}`}>Proof</span>
+                          {issuedDate && <p className="mt-0.5 text-[10px] text-gray-400">{issuedDate}</p>}
+                        </div>
+                      </div>
+                    )
+                  })
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-6 text-center">
+                    <i className="fas fa-medal text-2xl text-gray-200 mb-2" />
+                    <p className="text-xs text-gray-400">아직 획득한 Proof Card가<br />없습니다.</p>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-gray-900">
-                      92 <span className="text-[10px] text-gray-400">/100</span>
-                    </p>
-                    <p className="text-[10px] font-bold text-blue-600">Excellent</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 p-3">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-gray-200 bg-white text-purple-500 shadow-sm">
-                      <i className="fas fa-database" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-gray-900">SQL</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-gray-900">
-                      85 <span className="text-[10px] text-gray-400">/100</span>
-                    </p>
-                    <p className="text-[10px] font-bold text-purple-600">Good</p>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
 

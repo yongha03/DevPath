@@ -43,5 +43,8 @@ public class DashboardStudyGroupResponse {
 
         @Schema(description = "가입 승인 시각")
         private LocalDateTime joinedAt;
+
+        @Schema(description = "예정 종료일", example = "2026-03-01T00:00:00")
+        private LocalDateTime plannedEndDate;
     }
 }

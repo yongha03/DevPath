@@ -29,6 +29,9 @@ public class StudyGroup {
     @Column(name = "max_members", nullable = false)
     private Integer maxMembers;
 
+    @Column(name = "planned_end_date")
+    private LocalDateTime plannedEndDate;
+
     @Column(name = "is_deleted", nullable = false)
     @Builder.Default
     private Boolean isDeleted = false;
