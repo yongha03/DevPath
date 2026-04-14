@@ -8,6 +8,7 @@ import com.devpath.api.evaluation.dto.response.AiQuizDraftResponse;
 import com.devpath.api.evaluation.dto.response.AiQuizEvidenceResponse;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
+import com.devpath.common.provider.GeminiProvider;
 import com.devpath.domain.learning.entity.QuestionType;
 import com.devpath.domain.learning.entity.Quiz;
 import com.devpath.domain.learning.entity.QuizQuestion;
@@ -19,6 +20,8 @@ import com.devpath.domain.roadmap.repository.RoadmapNodeRepository;
 import com.devpath.domain.user.entity.User;
 import com.devpath.domain.user.entity.UserRole;
 import com.devpath.domain.user.repository.UserRepository;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -27,13 +30,17 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class AiQuizDraftService {
+
+  private static final ObjectMapper MAPPER = new ObjectMapper();
 
   private final AtomicLong draftSequence = new AtomicLong(1L);
   private final AtomicLong draftQuestionSequence = new AtomicLong(1L);
@@ -44,6 +51,7 @@ public class AiQuizDraftService {
   private final UserRepository userRepository;
   private final RoadmapNodeRepository roadmapNodeRepository;
   private final QuizRepository quizRepository;
+  private final GeminiProvider geminiProvider;
 
   public AiQuizDraftResponse createDraft(Long userId, CreateAiQuizDraftRequest request) {
     validateInstructor(userId);
@@ -59,7 +67,7 @@ public class AiQuizDraftService {
     draft.sourceTimestamp = request.getSourceTimestamp();
     draft.status = DraftStatus.DRAFT.name();
     draft.createdAt = LocalDateTime.now();
-    draft.questions = generateMockQuestions(request);
+    draft.questions = generateQuestionsWithAi(request);
 
     draftStore.put(draft.draftId, draft);
     return toDraftResponse(draft);
@@ -295,7 +303,173 @@ public class AiQuizDraftService {
     return quizType;
   }
 
-  private List<DraftQuestionState> generateMockQuestions(CreateAiQuizDraftRequest request) {
+  private List<DraftQuestionState> generateQuestionsWithAi(CreateAiQuizDraftRequest request) {
+    String prompt = buildPrompt(request);
+    String raw = geminiProvider.generate(prompt);
+
+    if (raw == null) {
+      log.warn("[AiQuizDraftService] Gemini API 응답 없음. Fallback 실행.");
+      return generateFallbackQuestions(request);
+    }
+
+    return parseGeminiResponse(raw, request);
+  }
+
+  private String buildPrompt(CreateAiQuizDraftRequest request) {
+    int questionCount = request.getQuestionCount() == null ? 3 : request.getQuestionCount();
+    int difficultyLevel = request.getDifficultyLevel() == null ? 2 : request.getDifficultyLevel();
+
+    String difficultyLabel;
+    if (difficultyLevel == 1) {
+      difficultyLabel = "1 (초급 - 기본 개념 이해 수준)";
+    } else if (difficultyLevel == 3) {
+      difficultyLabel = "3 (고급 - 심화 응용 및 분석 수준)";
+    } else {
+      difficultyLabel = "2 (중급 - 개념 적용 수준)";
+    }
+
+    String questionTypeInstruction;
+    if (request.getPreferredQuestionType() == QuestionType.MULTIPLE_CHOICE) {
+      questionTypeInstruction = "모두 객관식(MULTIPLE_CHOICE)으로 생성하세요.";
+    } else if (request.getPreferredQuestionType() == QuestionType.TRUE_FALSE) {
+      questionTypeInstruction = "모두 OX형(TRUE_FALSE)으로 생성하세요.";
+    } else if (request.getPreferredQuestionType() == QuestionType.SHORT_ANSWER) {
+      questionTypeInstruction = "모두 주관식(SHORT_ANSWER)으로 생성하세요.";
+    } else {
+      questionTypeInstruction = "MULTIPLE_CHOICE, TRUE_FALSE, SHORT_ANSWER 유형을 적절히 혼합하여 생성하세요.";
+    }
+
+    return "당신은 IT 교육 퀴즈 전문가입니다. 아래 강의 내용을 분석하여 퀴즈 문항을 생성하세요.\n\n"
+        + "[입력 정보]\n"
+        + "- 강의 내용: " + request.getSourceText() + "\n"
+        + "- 문항 수: " + questionCount + "개\n"
+        + "- 난이도: " + difficultyLabel + "\n"
+        + "- 문항 유형: " + questionTypeInstruction + "\n\n"
+        + "[출력 형식]\n"
+        + "아래 JSON 배열만 반환하세요. 설명, 코드블록(```), 기타 텍스트 없이 순수 JSON 배열만 출력하세요.\n\n"
+        + "[\n"
+        + "  {\n"
+        + "    \"questionType\": \"MULTIPLE_CHOICE\",\n"
+        + "    \"questionText\": \"문제 내용\",\n"
+        + "    \"explanation\": \"해설 (왜 이 답이 정답인지)\",\n"
+        + "    \"options\": [\n"
+        + "      { \"optionText\": \"보기 내용\", \"correct\": true },\n"
+        + "      { \"optionText\": \"보기 내용\", \"correct\": false }\n"
+        + "    ]\n"
+        + "  }\n"
+        + "]\n\n"
+        + "[유형별 제약사항]\n"
+        + "- MULTIPLE_CHOICE: options 정확히 4개, correct true인 항목 정확히 1개\n"
+        + "- TRUE_FALSE: options 정확히 2개, 첫 번째 { \"optionText\": \"O\", \"correct\": true }, 두 번째 { \"optionText\": \"X\", \"correct\": false }\n"
+        + "- SHORT_ANSWER: options 정확히 1개, 핵심 키워드를 optionText에, correct true\n\n"
+        + "[주의사항]\n"
+        + "- 반드시 강의 내용에 근거한 문제만 출력하세요.\n"
+        + "- 난이도에 맞게 문제 복잡도를 조절하세요.\n"
+        + "- questionType 값은 반드시 MULTIPLE_CHOICE, TRUE_FALSE, SHORT_ANSWER 중 하나여야 합니다.";
+  }
+
+  private List<DraftQuestionState> parseGeminiResponse(String raw, CreateAiQuizDraftRequest request) {
+    try {
+      String jsonArray = extractJsonArray(raw);
+      if (jsonArray == null) {
+        log.warn("[AiQuizDraftService] Gemini 응답에서 JSON 배열 추출 실패. Fallback 실행.");
+        return generateFallbackQuestions(request);
+      }
+
+      JsonNode rootNode = MAPPER.readTree(jsonArray);
+      if (!rootNode.isArray()) {
+        log.warn("[AiQuizDraftService] Gemini 응답이 배열 형식이 아님. Fallback 실행.");
+        return generateFallbackQuestions(request);
+      }
+
+      List<DraftQuestionState> questions = new ArrayList<>();
+      int index = 1;
+      for (JsonNode questionNode : rootNode) {
+        DraftQuestionState question = parseQuestionNode(questionNode, index);
+        if (question == null) {
+          log.warn("[AiQuizDraftService] {}번째 문항 파싱 실패. Fallback 실행.", index);
+          return generateFallbackQuestions(request);
+        }
+        questions.add(question);
+        index++;
+      }
+
+      if (questions.isEmpty()) {
+        log.warn("[AiQuizDraftService] Gemini가 빈 배열을 반환. Fallback 실행.");
+        return generateFallbackQuestions(request);
+      }
+
+      validateDraftQuestions(questions);
+      return questions;
+
+    } catch (Exception e) {
+      log.warn("[AiQuizDraftService] Gemini 응답 파싱 실패: {}. Fallback 실행.", e.getMessage());
+      return generateFallbackQuestions(request);
+    }
+  }
+
+  private String extractJsonArray(String raw) {
+    if (raw == null || raw.isBlank()) {
+      return null;
+    }
+    int start = raw.indexOf('[');
+    int end = raw.lastIndexOf(']');
+    if (start == -1 || end == -1 || start >= end) {
+      return null;
+    }
+    return raw.substring(start, end + 1);
+  }
+
+  private DraftQuestionState parseQuestionNode(JsonNode node, int displayOrder) {
+    try {
+      String questionTypeStr = node.path("questionType").asText(null);
+      String questionText = node.path("questionText").asText(null);
+
+      if (questionTypeStr == null || questionText == null || questionText.isBlank()) {
+        return null;
+      }
+
+      QuestionType questionType;
+      try {
+        questionType = QuestionType.valueOf(questionTypeStr);
+      } catch (IllegalArgumentException e) {
+        return null;
+      }
+
+      DraftQuestionState question = new DraftQuestionState();
+      question.draftQuestionId = draftQuestionSequence.getAndIncrement();
+      question.questionType = questionType;
+      question.questionText = questionText;
+      question.explanation = node.path("explanation").asText("");
+      question.points = 5;
+      question.displayOrder = displayOrder;
+      question.options = new ArrayList<>();
+
+      JsonNode optionsNode = node.path("options");
+      if (!optionsNode.isArray()) {
+        return null;
+      }
+
+      for (JsonNode optionNode : optionsNode) {
+        DraftOptionState option = new DraftOptionState();
+        option.draftOptionId = draftOptionSequence.getAndIncrement();
+        option.optionText = optionNode.path("optionText").asText(null);
+        option.correct = optionNode.path("correct").asBoolean(false);
+        option.displayOrder = question.options.size() + 1;
+
+        if (isBlank(option.optionText)) {
+          return null;
+        }
+        question.options.add(option);
+      }
+
+      return question;
+    } catch (Exception e) {
+      return null;
+    }
+  }
+
+  private List<DraftQuestionState> generateFallbackQuestions(CreateAiQuizDraftRequest request) {
     int questionCount = request.getQuestionCount() == null ? 3 : request.getQuestionCount();
     String keyword = extractKeyword(request.getSourceText());
 

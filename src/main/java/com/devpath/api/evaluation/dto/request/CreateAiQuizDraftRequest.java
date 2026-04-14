@@ -49,6 +49,11 @@ public class CreateAiQuizDraftRequest {
   @Schema(description = "선호 문항 유형", example = "MULTIPLE_CHOICE")
   private QuestionType preferredQuestionType;
 
+  @Min(1)
+  @Max(3)
+  @Schema(description = "난이도 (1=초급, 2=중급, 3=고급)", example = "2")
+  private Integer difficultyLevel;
+
   @Builder
   public CreateAiQuizDraftRequest(
       Long nodeId,
@@ -58,7 +63,8 @@ public class CreateAiQuizDraftRequest {
       String sourceText,
       String sourceTimestamp,
       Integer questionCount,
-      QuestionType preferredQuestionType) {
+      QuestionType preferredQuestionType,
+      Integer difficultyLevel) {
     this.nodeId = nodeId;
     this.title = title;
     this.description = description;
@@ -67,5 +73,6 @@ public class CreateAiQuizDraftRequest {
     this.sourceTimestamp = sourceTimestamp;
     this.questionCount = questionCount;
     this.preferredQuestionType = preferredQuestionType;
+    this.difficultyLevel = difficultyLevel;
   }
 }
