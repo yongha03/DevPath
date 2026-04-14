@@ -23,9 +23,11 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -34,6 +36,7 @@ public class AssignmentSubmissionService {
     private final UserRepository userRepository;
     private final AssignmentRepository assignmentRepository;
     private final SubmissionRepository submissionRepository;
+    private final SubmissionGradingService submissionGradingService;
 
     // 학습자가 실제 과제를 제출하고 제출 이력을 생성한다.
     public SubmissionResponse createSubmission(Long userId, Long assignmentId, CreateSubmissionRequest request) {
@@ -83,6 +86,13 @@ public class AssignmentSubmissionService {
         }
 
         Submission saved = submissionRepository.save(submission);
+
+        try {
+            submissionGradingService.autoGradeOnSubmit(saved);
+        } catch (Exception e) {
+            log.warn("[AssignmentSubmissionService] AI 자동 채점 실패, 제출은 유지됨. submissionId={}, error={}", saved.getId(), e.getMessage());
+        }
+
         return SubmissionResponse.from(saved);
     }
 

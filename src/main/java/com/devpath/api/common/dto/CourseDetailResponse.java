@@ -297,9 +297,6 @@ public class CourseDetailResponse {
         @Schema(description = "합격 점수", example = "80")
         private Integer passScore;
 
-        @Schema(description = "자동 채점 여부", example = "true")
-        private Boolean autoGradeEnabled;
-
         @Schema(description = "AI 리뷰 여부", example = "false")
         private Boolean aiReviewEnabled;
 

@@ -210,7 +210,6 @@ function resolveLessonAssignment(item: LearningLesson | null | undefined): Learn
     submissionRuleDescription: null,
     totalScore: null,
     passScore: null,
-    autoGradeEnabled: true,
     aiReviewEnabled: true,
     allowTextSubmission: true,
     allowFileSubmission: true,

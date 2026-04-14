@@ -299,7 +299,7 @@ export default function CourseDetailApp() {
     async function loadReviews() {
       setLoadingReviews(true)
       try {
-        const response = await reviewApi.getByCourse(course.courseId, controller.signal)
+        const response = await reviewApi.getByCourse(course!.courseId, controller.signal)
         if (cancelled) return
         setReviews(response.length ? response : fallbackCourseReviews)
       } catch {

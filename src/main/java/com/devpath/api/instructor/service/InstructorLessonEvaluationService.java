@@ -258,7 +258,6 @@ public class InstructorLessonEvaluationService {
     boolean allowTextSubmission = resolveFlag(request.getAllowTextSubmission(), true);
     boolean allowFileSubmission = resolveFlag(request.getAllowFileSubmission(), true);
     boolean allowUrlSubmission = resolveFlag(request.getAllowUrlSubmission(), false);
-    boolean autoGradeEnabled = resolveFlag(request.getAutoGradeEnabled(), true);
     boolean aiReviewEnabled = resolveFlag(request.getAiReviewEnabled(), false);
 
     List<InstructorLessonEvaluationDto.AssignmentRubricInput> rubricInputs =
@@ -266,10 +265,7 @@ public class InstructorLessonEvaluationService {
             ? List.of()
             : request.getRubrics().stream().filter(this::hasRubricContent).toList();
 
-    int totalScore =
-        autoGradeEnabled
-            ? rubricInputs.stream().mapToInt(item -> defaultNumber(item.getMaxPoints(), 0)).sum()
-            : defaultNumber(request.getTotalScore(), 100);
+    int totalScore = rubricInputs.stream().mapToInt(item -> defaultNumber(item.getMaxPoints(), 0)).sum();
     int passScore = Math.min(defaultNumber(request.getPassScore(), Math.min(totalScore, 80)), totalScore);
 
     if (assignment == null) {
@@ -290,7 +286,6 @@ public class InstructorLessonEvaluationService {
               .isPublished(true)
               .isActive(true)
               .allowLateSubmission(false)
-              .autoGradeEnabled(autoGradeEnabled)
               .aiReviewEnabled(aiReviewEnabled)
               .allowTextSubmission(allowTextSubmission)
               .allowFileSubmission(allowFileSubmission)
@@ -318,7 +313,6 @@ public class InstructorLessonEvaluationService {
         false);
     assignment.updateEditorSettings(
         passScore,
-        autoGradeEnabled,
         aiReviewEnabled,
         allowTextSubmission,
         allowFileSubmission,
@@ -557,7 +551,6 @@ public class InstructorLessonEvaluationService {
           .description(defaultIfBlank(lesson.getDescription(), ""))
           .totalScore(100)
           .passScore(80)
-          .autoGradeEnabled(true)
           .aiReviewEnabled(false)
           .allowTextSubmission(true)
           .allowFileSubmission(true)
@@ -585,10 +578,6 @@ public class InstructorLessonEvaluationService {
             assignment.getPassScore() == null
                 ? Math.min(defaultNumber(assignment.getTotalScore(), 100), 80)
                 : assignment.getPassScore())
-        .autoGradeEnabled(
-            assignment.getAutoGradeEnabled() == null
-                ? !activeRubrics.isEmpty()
-                : assignment.getAutoGradeEnabled())
         .aiReviewEnabled(Boolean.TRUE.equals(assignment.getAiReviewEnabled()))
         .allowTextSubmission(submissionFlags.allowTextSubmission())
         .allowFileSubmission(submissionFlags.allowFileSubmission())

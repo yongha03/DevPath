@@ -474,7 +474,6 @@ public class LearnerCourseService {
                 .submissionRuleDescription(assignment.getSubmissionRuleDescription())
                 .totalScore(assignment.getTotalScore())
                 .passScore(assignment.getPassScore())
-                .autoGradeEnabled(assignment.getAutoGradeEnabled())
                 .aiReviewEnabled(assignment.getAiReviewEnabled())
                 .allowTextSubmission(submissionFlags.allowTextSubmission())
                 .allowFileSubmission(submissionFlags.allowFileSubmission())

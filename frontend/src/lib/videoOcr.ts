@@ -201,7 +201,7 @@ function binarize(d: Uint8ClampedArray, t: number): void {
   }
 }
 
-function sharpen(d: Uint8ClampedArray, w: number, h: number): Uint8ClampedArray {
+function sharpen(d: Uint8ClampedArray, w: number, h: number): Uint8ClampedArray<ArrayBuffer> {
   const src = d, out = new Uint8ClampedArray(d.length)
   const k = [0, -1, 0, -1, 5, -1, 0, -1, 0]
   for (let y = 1; y < h - 1; y++) {

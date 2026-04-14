@@ -1,134 +1,158 @@
 package com.devpath.api.evaluation.service;
 
-import com.devpath.api.evaluation.dto.request.GradeSubmissionRequest;
 import com.devpath.api.evaluation.dto.response.SubmissionGradeResponse;
-import com.devpath.common.exception.CustomException;
-import com.devpath.common.exception.ErrorCode;
+import com.devpath.common.provider.GeminiProvider;
 import com.devpath.domain.learning.entity.Rubric;
 import com.devpath.domain.learning.entity.Submission;
 import com.devpath.domain.learning.repository.RubricRepository;
-import com.devpath.domain.learning.repository.SubmissionRepository;
-import com.devpath.domain.user.entity.User;
-import com.devpath.domain.user.entity.UserRole;
-import com.devpath.domain.user.repository.UserRepository;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional
 public class SubmissionGradingService {
 
-    private final UserRepository userRepository;
-    private final SubmissionRepository submissionRepository;
+    private static final ObjectMapper MAPPER = new ObjectMapper();
+
     private final RubricRepository rubricRepository;
+    private final GeminiProvider geminiProvider;
 
-    // 제출물을 루브릭 기준으로 채점하고 총점을 계산해 저장한다.
-    public SubmissionGradeResponse gradeSubmission(Long userId, Long submissionId, GradeSubmissionRequest request) {
-        User instructor = validateInstructor(userId);
-        Submission submission = getSubmission(submissionId);
-
+    // 제출 직후 자동으로 호출되는 AI 채점 메서드.
+    public void autoGradeOnSubmit(Submission submission) {
         List<Rubric> rubrics = rubricRepository.findAllByAssignmentIdAndIsDeletedFalseOrderByDisplayOrderAsc(
                 submission.getAssignment().getId()
         );
 
         if (rubrics.isEmpty()) {
-            throw new CustomException(ErrorCode.INVALID_INPUT, "등록된 루브릭이 없어 채점할 수 없습니다.");
+            log.warn("[SubmissionGradingService] 루브릭 없음, AI 채점 생략. submissionId={}", submission.getId());
+            return;
         }
 
-        validateRubricScoreRequest(rubrics, request);
+        String submissionContent = buildSubmissionContent(submission);
+        String prompt = buildGradingPrompt(submissionContent, rubrics);
+        String raw = geminiProvider.generate(prompt);
 
-        Map<Long, Rubric> rubricMap = rubrics.stream()
-                .collect(Collectors.toMap(Rubric::getId, Function.identity()));
+        List<SubmissionGradeResponse.RubricGradeItem> rubricGradeItems;
+        if (raw != null) {
+            rubricGradeItems = parseGradingResponse(raw, rubrics);
+        } else {
+            log.warn("[SubmissionGradingService] Gemini API 응답 없음. Fallback 채점 실행. submissionId={}", submission.getId());
+            rubricGradeItems = fallbackGradeItems(rubrics);
+        }
 
-        List<SubmissionGradeResponse.RubricGradeItem> rubricGradeItems = request.getRubricScores().stream()
-                .map(scoreRequest -> {
-                    Rubric rubric = rubricMap.get(scoreRequest.getRubricId());
+        int totalScore = rubricGradeItems.stream()
+                .mapToInt(SubmissionGradeResponse.RubricGradeItem::getEarnedPoints)
+                .sum();
 
-                    if (scoreRequest.getEarnedPoints() > rubric.getMaxPoints()) {
-                        throw new CustomException(
-                                ErrorCode.INVALID_INPUT,
-                                "루브릭 '" + rubric.getCriteriaName() + "'의 점수가 최대 점수를 초과했습니다."
-                        );
-                    }
+        submission.startGrading(null);
+        submission.grade(null, totalScore, null, null);
+    }
 
-                    return SubmissionGradeResponse.RubricGradeItem.builder()
-                            .rubricId(rubric.getId())
-                            .criteriaName(rubric.getCriteriaName())
-                            .maxPoints(rubric.getMaxPoints())
-                            .earnedPoints(scoreRequest.getEarnedPoints())
-                            .build();
-                })
+    private String buildSubmissionContent(Submission submission) {
+        StringBuilder sb = new StringBuilder();
+        if (submission.getSubmissionText() != null && !submission.getSubmissionText().isBlank()) {
+            sb.append(submission.getSubmissionText());
+        }
+        if (submission.getSubmissionUrl() != null && !submission.getSubmissionUrl().isBlank()) {
+            if (!sb.isEmpty()) sb.append("\n");
+            sb.append("제출 URL: ").append(submission.getSubmissionUrl());
+        }
+        return sb.isEmpty() ? "(제출 내용 없음)" : sb.toString();
+    }
+
+    private String buildGradingPrompt(String submissionContent, List<Rubric> rubrics) {
+        StringBuilder rubricSection = new StringBuilder();
+        for (Rubric rubric : rubrics) {
+            rubricSection.append("- rubricId: ").append(rubric.getId())
+                    .append(", 기준명: ").append(rubric.getCriteriaName())
+                    .append(", 최대점수: ").append(rubric.getMaxPoints());
+            if (rubric.getCriteriaDescription() != null && !rubric.getCriteriaDescription().isBlank()) {
+                rubricSection.append(", 평가키워드: ").append(rubric.getCriteriaDescription());
+            }
+            rubricSection.append("\n");
+        }
+
+        return "당신은 IT 교육 과제 채점 전문가입니다. 아래 제출물을 루브릭 기준에 따라 채점하세요.\n\n"
+                + "[제출물 내용]\n" + submissionContent + "\n\n"
+                + "[루브릭 목록]\n" + rubricSection + "\n"
+                + "[출력 형식]\n"
+                + "아래 JSON 배열만 반환하세요. 설명, 코드블록(```), 기타 텍스트 없이 순수 JSON 배열만 출력하세요.\n\n"
+                + "[\n"
+                + "  { \"rubricId\": 1, \"earnedPoints\": 8 }\n"
+                + "]\n\n"
+                + "[제약사항]\n"
+                + "- earnedPoints는 0 이상 해당 루브릭의 최대점수 이하여야 합니다.\n"
+                + "- 모든 루브릭에 대해 점수를 반드시 포함하세요.\n"
+                + "- 평가키워드가 제출물에 포함되어 있으면 가산 요소로 반영하세요.";
+    }
+
+    private List<SubmissionGradeResponse.RubricGradeItem> parseGradingResponse(String raw, List<Rubric> rubrics) {
+        try {
+            int start = raw.indexOf('[');
+            int end = raw.lastIndexOf(']');
+            if (start == -1 || end == -1 || start >= end) {
+                log.warn("[SubmissionGradingService] Gemini 응답에서 JSON 배열 추출 실패. Fallback 실행.");
+                return fallbackGradeItems(rubrics);
+            }
+
+            JsonNode rootNode = MAPPER.readTree(raw.substring(start, end + 1));
+            if (!rootNode.isArray()) {
+                return fallbackGradeItems(rubrics);
+            }
+
+            Map<Long, Rubric> rubricMap = rubrics.stream()
+                    .collect(Collectors.toMap(Rubric::getId, Function.identity()));
+            List<SubmissionGradeResponse.RubricGradeItem> items = new ArrayList<>();
+
+            for (JsonNode node : rootNode) {
+                long rubricId = node.path("rubricId").asLong(-1);
+                int earnedPoints = node.path("earnedPoints").asInt(0);
+                Rubric rubric = rubricMap.get(rubricId);
+                if (rubric == null) continue;
+
+                int clamped = Math.max(0, Math.min(earnedPoints, rubric.getMaxPoints()));
+                items.add(SubmissionGradeResponse.RubricGradeItem.builder()
+                        .rubricId(rubric.getId())
+                        .criteriaName(rubric.getCriteriaName())
+                        .maxPoints(rubric.getMaxPoints())
+                        .earnedPoints(clamped)
+                        .build());
+            }
+
+            if (items.size() != rubrics.size()) {
+                log.warn("[SubmissionGradingService] Gemini 응답 루브릭 수 불일치. Fallback 실행.");
+                return fallbackGradeItems(rubrics);
+            }
+
+            return items;
+
+        } catch (Exception e) {
+            log.warn("[SubmissionGradingService] Gemini 응답 파싱 실패: {}. Fallback 실행.", e.getMessage());
+            return fallbackGradeItems(rubrics);
+        }
+    }
+
+    // Gemini 실패 시 각 루브릭의 절반 점수를 부여한다.
+    private List<SubmissionGradeResponse.RubricGradeItem> fallbackGradeItems(List<Rubric> rubrics) {
+        return rubrics.stream()
+                .map(rubric -> SubmissionGradeResponse.RubricGradeItem.builder()
+                        .rubricId(rubric.getId())
+                        .criteriaName(rubric.getCriteriaName())
+                        .maxPoints(rubric.getMaxPoints())
+                        .earnedPoints(rubric.getMaxPoints() / 2)
+                        .build())
                 .toList();
-
-        int totalScore = 0;
-        for (SubmissionGradeResponse.RubricGradeItem item : rubricGradeItems) {
-            totalScore += item.getEarnedPoints();
-        }
-
-        // 채점 시작 상태를 거친 뒤 최종 채점 결과를 저장한다.
-        submission.startGrading(instructor);
-        submission.grade(
-                instructor,
-                totalScore,
-                submission.getIndividualFeedback(),
-                submission.getCommonFeedback()
-        );
-
-        return SubmissionGradeResponse.builder()
-                .submissionId(submission.getId())
-                .graderId(instructor.getId())
-                .totalScore(submission.getTotalScore())
-                .submissionStatus(submission.getSubmissionStatus())
-                .gradedAt(submission.getGradedAt())
-                .rubricGrades(rubricGradeItems)
-                .build();
     }
 
-    // 강사 역할인지 검증한다.
-    private User validateInstructor(Long userId) {
-        User instructor = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-
-        if (instructor.getRole() != UserRole.ROLE_INSTRUCTOR) {
-            throw new CustomException(ErrorCode.FORBIDDEN, "강사만 제출물을 채점할 수 있습니다.");
-        }
-
-        if (!Boolean.TRUE.equals(instructor.getIsActive())) {
-            throw new CustomException(ErrorCode.FORBIDDEN, "비활성 사용자입니다.");
-        }
-
-        return instructor;
-    }
-
-    // 제출 엔티티를 조회한다.
-    private Submission getSubmission(Long submissionId) {
-        return submissionRepository.findByIdAndIsDeletedFalse(submissionId)
-                .orElseThrow(() -> new CustomException(ErrorCode.RESOURCE_NOT_FOUND, "제출물을 찾을 수 없습니다."));
-    }
-
-    // 요청된 루브릭 점수 목록이 실제 과제 루브릭과 1대1로 대응하는지 검증한다.
-    private void validateRubricScoreRequest(List<Rubric> rubrics, GradeSubmissionRequest request) {
-        Set<Long> rubricIds = rubrics.stream()
-                .map(Rubric::getId)
-                .collect(Collectors.toSet());
-
-        Set<Long> requestedRubricIds = request.getRubricScores().stream()
-                .map(GradeSubmissionRequest.RubricScoreRequest::getRubricId)
-                .collect(Collectors.toSet());
-
-        if (rubricIds.size() != request.getRubricScores().size()) {
-            throw new CustomException(ErrorCode.INVALID_INPUT, "모든 루브릭에 대한 점수를 전달해야 합니다.");
-        }
-
-        if (!rubricIds.equals(requestedRubricIds)) {
-            throw new CustomException(ErrorCode.INVALID_INPUT, "루브릭 점수 요청에 유효하지 않은 rubricId가 포함되어 있습니다.");
-        }
-    }
 }

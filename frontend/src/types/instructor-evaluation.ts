@@ -78,7 +78,6 @@ export interface InstructorAssignmentEditor {
   description: string
   totalScore: number
   passScore: number
-  autoGradeEnabled: boolean
   aiReviewEnabled: boolean
   allowTextSubmission: boolean
   allowFileSubmission: boolean
@@ -101,8 +100,6 @@ export interface SaveInstructorAssignmentEditorRequest {
   description: string
   totalScore: number
   passScore: number
-  autoGradeEnabled: boolean
-  aiReviewEnabled: boolean
   allowTextSubmission: boolean
   allowFileSubmission: boolean
   allowUrlSubmission: boolean
