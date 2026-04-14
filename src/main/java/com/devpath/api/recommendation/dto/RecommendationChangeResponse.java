@@ -73,6 +73,9 @@ public class RecommendationChangeResponse {
         @Schema(description = "Change status", example = "APPLIED")
         private String changeStatus;
 
+        @Schema(description = "Change type (ADD / MODIFY / DELETE)", example = "ADD")
+        private String nodeChangeType;
+
         @Schema(description = "Decision status", example = "APPLIED")
         private String decisionStatus;
 

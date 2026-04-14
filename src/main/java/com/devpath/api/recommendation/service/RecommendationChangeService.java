@@ -177,6 +177,7 @@ public class RecommendationChangeService {
                 .nodeId(recommendationChange.getRoadmapNode().getNodeId())
                 .nodeTitle(recommendationChange.getRoadmapNode().getTitle())
                 .changeStatus(recommendationChange.getChangeStatus().name())
+                .nodeChangeType(recommendationChange.getNodeChangeType().name())
                 .decisionStatus(recommendationChange.getDecisionStatus().name())
                 .updatedAt(recommendationChange.getUpdatedAt())
                 .build())

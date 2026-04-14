@@ -292,6 +292,7 @@ export default function CourseDetailApp() {
       setReviews(fallbackCourseReviews)
       return
     }
+    const currentCourseId = course.courseId
 
     let cancelled = false
     const controller = new AbortController()
@@ -299,7 +300,7 @@ export default function CourseDetailApp() {
     async function loadReviews() {
       setLoadingReviews(true)
       try {
-        const response = await reviewApi.getByCourse(course!.courseId, controller.signal)
+        const response = await reviewApi.getByCourse(currentCourseId, controller.signal)
         if (cancelled) return
         setReviews(response.length ? response : fallbackCourseReviews)
       } catch {

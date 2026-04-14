@@ -2,6 +2,33 @@
 
 :root {
   --header-height: 64px;
+  --changes-panel-width: 400px;
+  --roadmap-node-width: 380px;
+  --roadmap-side-node-width: 330px;
+  --roadmap-row-min-height: 146px;
+  --roadmap-row-gap: 34px;
+  --roadmap-lane-gap: 48px;
+  --roadmap-line-color: #cbd5e1;
+}
+
+/* ── 메인 레이아웃 ── */
+.roadmap-main {
+  max-width: 1400px;
+  margin-left: auto;
+  margin-right: auto;
+  transition:
+    max-width 0.3s ease,
+    margin 0.3s ease,
+    padding-left 0.3s ease,
+    padding-right 0.3s ease;
+}
+
+.roadmap-main.panel-open {
+  max-width: calc(100% - var(--changes-panel-width));
+  margin-left: 0;
+  margin-right: var(--changes-panel-width);
+  padding-left: 24px;
+  padding-right: 24px;
 }
 
 /* ── 헤더 ── */
@@ -21,13 +48,13 @@
   background: white;
   border: 2px solid #334155;
   padding: 14px 20px;
-  border-radius: 12px;
+  border-radius: 8px;
   font-weight: 700;
   font-size: 0.95rem;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
   transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
-  width: 380px;
+  width: var(--roadmap-node-width);
   text-align: left;
   display: flex;
   flex-direction: column;
@@ -40,27 +67,110 @@
   border-color: #00c471;
 }
 
-/* 노드 위아래 척추 연결선 */
-.node-box::before {
-  content: '';
-  position: absolute;
-  left: 50%; bottom: calc(100% + 1px);
-  width: 3px; height: 79px;
-  background: #cbd5e1;
-  transform: translateX(-50%);
-  z-index: 0;
+.roadmap-canvas-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding: 8px 16px 32px;
 }
-.node-box::after {
-  content: '';
-  position: absolute;
-  left: 50%; top: calc(100% + 1px);
-  width: 3px; height: 79px;
-  background: #cbd5e1;
-  transform: translateX(-50%);
-  z-index: 0;
+
+.roadmap-graph {
+  position: relative;
+  display: grid;
+  grid-template-columns:
+    var(--roadmap-side-node-width)
+    var(--roadmap-node-width)
+    var(--roadmap-side-node-width);
+  column-gap: var(--roadmap-lane-gap);
+  row-gap: var(--roadmap-row-gap);
+  align-items: center;
+  justify-items: center;
+  width: max-content;
+  min-width: calc(
+    var(--roadmap-side-node-width) * 2 +
+    var(--roadmap-node-width) +
+    var(--roadmap-lane-gap) * 2
+  );
+  margin: 0 auto;
+  padding: 32px 0 72px;
 }
-.node-first .node-box::before { display: none; }
-.node-last .node-box::after { display: none; }
+
+.roadmap-edge-layer {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.roadmap-edge {
+  fill: none;
+  stroke: var(--roadmap-line-color);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.roadmap-edge.roadmap-edge-suggestion {
+  stroke: #3b82f6;
+  stroke-dasharray: 8 8;
+}
+
+.roadmap-edge-theme-review {
+  stroke: #ea580c;
+}
+
+.roadmap-edge-theme-advanced {
+  stroke: #4338ca;
+}
+
+.roadmap-edge-theme-suggestion {
+  stroke: #3b82f6;
+}
+
+.roadmap-slot {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  transform: translateY(var(--slot-offset-y, 0));
+}
+
+.roadmap-slot-official-branch {
+  align-self: stretch;
+}
+
+.roadmap-slot-official-branch .node-box,
+.roadmap-slot-applied-branch .node-box,
+.roadmap-slot-suggested-branch .node-box,
+.roadmap-slot-ghost-add.roadmap-lane-side-left .node-box,
+.roadmap-slot-ghost-add.roadmap-lane-side-right .node-box {
+  width: var(--roadmap-side-node-width);
+}
+
+.roadmap-slot-suggested-branch .node-box {
+  border: 3px dashed #3b82f6 !important;
+  background: #eff6ff !important;
+  color: #1e40af;
+  animation: pulse-blue 2s infinite;
+}
+
+.roadmap-slot-official-branch.roadmap-lane-right,
+.roadmap-slot-applied-branch.roadmap-lane-right,
+.roadmap-slot-applied-branch.roadmap-lane-side-right,
+.roadmap-slot-suggested-branch.roadmap-lane-right,
+.roadmap-slot-suggested-branch.roadmap-lane-side-right {
+  justify-content: flex-start;
+}
+
+.roadmap-slot-official-branch.roadmap-lane-left,
+.roadmap-slot-applied-branch.roadmap-lane-left,
+.roadmap-slot-applied-branch.roadmap-lane-side-left,
+.roadmap-slot-suggested-branch.roadmap-lane-left,
+.roadmap-slot-suggested-branch.roadmap-lane-side-left {
+  justify-content: flex-end;
+}
 
 /* ── 노드 상태 색상 ── */
 .status-done    { background: #f0fdf4; border-color: #00c471; color: #166534; }
@@ -144,7 +254,7 @@
 /* ── 노드 내부 요소 ── */
 .node-header      { display: flex; align-items: center; justify-content: space-between; width: 100%; }
 .node-title-group { display: flex; align-items: center; gap: 8px; font-size: 1.05rem; }
-.node-desc        { font-size: 0.75rem; font-weight: 500; opacity: 0.7; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.node-desc        { font-size: 0.75rem; font-weight: 500; opacity: 0.7; margin-top: 4px; white-space: normal; overflow-wrap: anywhere; line-height: 1.4; }
 .meta-tag         { background: rgba(0,0,0,0.06); padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: normal; }
 .node-meta        { display: flex; gap: 4px; margin-left: auto; }
 
@@ -163,78 +273,11 @@
   white-space: nowrap;
 }
 
-/* ── 로드맵 행 레이아웃 ── */
-.roadmap-row {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  width: 100%;
-  position: relative;
-  margin-bottom: 80px;
-}
-
-/* ── 가로 연결선 (spine → sub-group) ── */
-.connector {
-  position: absolute; top: 50%; transform: translateY(-50%);
-  height: 2px; width: 40px; background: #cbd5e1;
-  z-index: 10; border-radius: 1px;
-}
-.connector.left  { right: 50%; margin-right: 190px; }
-.connector.right { left: 50%;  margin-left: 190px; }
-
-/* ── 서브노드 그룹 ── */
-.sub-group {
-  position: absolute; top: 50%; transform: translateY(-50%);
-  display: flex; flex-direction: column; gap: 12px;
-  z-index: 10;
-}
-.sub-group.right { left: 50%;  margin-left: 230px; align-items: flex-start; padding-left: 20px; }
-.sub-group.left  { right: 50%; margin-right: 230px; align-items: flex-end;   padding-right: 20px; }
-
-/* 서브그룹 수직 줄기 */
-.sub-group::before {
-  content: ''; position: absolute;
-  top: 18px; bottom: 18px; width: 2px;
-  background: #cbd5e1; border-radius: 1px;
-}
-.sub-group.right::before { left: 0; }
-.sub-group.left::before  { right: 0; }
-.sub-group:has(> .sub-row:only-child)::before { display: none; }
-
-/* 서브노드 행 */
-.sub-row {
-  display: flex; align-items: center; gap: 6px;
-  position: relative; height: 36px;
-}
-.sub-row::after {
-  content: ''; position: absolute;
-  top: 50%; transform: translateY(-50%);
-  width: 20px; height: 2px;
-  background: #cbd5e1; border-radius: 1px;
-}
-.sub-group.right .sub-row::after { left: -20px; }
-.sub-group.left  .sub-row::after { right: -20px; }
-
-/* ── 서브노드 칩 ── */
-.sub-node {
-  background: #fff; border: 1px solid #cbd5e1;
-  color: #475569; padding: 8px 14px;
-  font-size: 0.8rem; border-radius: 99px;
-  position: relative; display: inline-flex;
-  align-items: center; justify-content: center;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
-  transition: all 0.2s; cursor: pointer;
-  font-weight: 600; height: 36px;
-  box-sizing: border-box; z-index: 20;
-}
-.sub-node:hover  { transform: scale(1.05); border-color: #00c471; color: #00c471; background: #f0fdf4; }
-.sub-node.checked { background: #dcfce7; border-color: #00c471; color: #166534; }
-
 /* ── 변경사항 패널 ── */
 .changes-panel {
   position: fixed; right: 0;
   top: var(--header-height); bottom: 0;
-  width: 400px;
+  width: var(--changes-panel-width);
   background: white;
   border-left: 1px solid #e5e7eb;
   box-shadow: -4px 0 24px rgba(0,0,0,0.08);
@@ -327,81 +370,18 @@
   backdrop-filter: blur(2px);
 }
 
-/* ── 분기 트리 레이아웃 ── */
-.tree-branch-container {
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  width: 100%;
-  position: relative;
-  /* 진입·출구 수직선은 인접 spine node의 ::after / ::before 가 담당하므로
-     container 자체 pseudo-element 없음 — 이중 생성 방지 */
-  margin-bottom: 80px;
-}
+@media (max-width: 960px) {
+  .roadmap-main.panel-open {
+    max-width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 0;
+    padding-right: 0;
+  }
 
-/* 가지 열 */
-.tree-branch {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 80px;
-  flex: 1;
-  max-width: 460px;
-  position: relative;
-  padding: 16px 12px 16px;
-}
-
-/* 가지 내부 수직 연결선 (노드가 2개 이상일 때만) */
-.tree-branch::before {
-  content: '';
-  position: absolute;
-  /* 첫 노드 중심 ~ 마지막 노드 중심 연결 */
-  top: calc(16px + 56px);      /* padding-top + 노드 반높이 */
-  bottom: calc(16px + 56px);
-  left: 50%;
-  width: 3px;
-  background: #cbd5e1;
-  transform: translateX(-50%);
-  z-index: 0;
-}
-.tree-branch:has(.roadmap-row:only-child)::before { display: none; }
-
-/* 분기 내 노드의 spine 수직선(::before/::after) 숨김 */
-.tree-branch .roadmap-row .node-box::before,
-.tree-branch .roadmap-row .node-box::after { display: none; }
-
-/* 중앙 분기점 ─ 수평선으로 spine 중심 ↔ 각 가지 연결 */
-/* 왼쪽 가지: 가지 오른쪽 끝(=center)에서 container 중앙으로 */
-.tree-branch.branch-left::after {
-  content: '';
-  position: absolute;
-  top: calc(16px + 56px);      /* 첫 노드 수직 중심 */
-  right: -3px;
-  width: 50%;
-  height: 3px;
-  background: #cbd5e1;
-  z-index: 1;
-}
-/* 오른쪽 가지: container 중앙에서 가지 왼쪽 끝으로 */
-.tree-branch.branch-right::after {
-  content: '';
-  position: absolute;
-  top: calc(16px + 56px);
-  left: -3px;
-  width: 50%;
-  height: 3px;
-  background: #cbd5e1;
-  z-index: 1;
-}
-
-/* 분기 구분선 (가운데 수직 기둥) */
-.branch-divider {
-  width: 3px;
-  background: #cbd5e1;
-  margin: 0;
-  border-radius: 0;
-  /* 높이는 두 가지 중 더 큰 쪽에 맞춤 */
-  align-self: stretch;
+  .changes-panel {
+    width: min(var(--changes-panel-width), 100vw);
+  }
 }
 
 /* ── 헤더 네비게이션 ── */

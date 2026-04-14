@@ -1,4 +1,4 @@
-export type NodeStatus = 'COMPLETED' | 'IN_PROGRESS' | 'LOCKED' | 'PENDING'
+export type NodeStatus = 'COMPLETED' | 'IN_PROGRESS' | 'LOCKED' | 'PENDING' | 'NOT_STARTED'
 export type ChangeType = 'ADD' | 'MODIFY' | 'DELETE'
 export type DecisionStatus = 'PENDING' | 'APPLIED' | 'IGNORED'
 
@@ -48,7 +48,8 @@ export interface RecommendationChangeHistory {
   changeId: number
   nodeId: number
   nodeTitle: string
-  nodeChangeType: ChangeType
+  nodeChangeType?: ChangeType
+  changeStatus?: string
   decisionStatus: DecisionStatus
   updatedAt: string
 }

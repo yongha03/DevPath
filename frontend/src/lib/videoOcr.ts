@@ -224,7 +224,7 @@ function preprocessForTesseract(canvas: HTMLCanvasElement): string {
   const ctx = canvas.getContext('2d')!
   const { width: w, height: h } = canvas
   const img = ctx.getImageData(0, 0, w, h)
-  let d = img.data
+  let d: Uint8ClampedArray = img.data
 
   toGrayscale(d)
   autoInvert(d, w * h)

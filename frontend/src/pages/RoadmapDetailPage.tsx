@@ -1,4 +1,4 @@
-import React, { type CSSProperties, useEffect, useRef, useState } from 'react'
+import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
 import { roadmapApi } from '../lib/api'
 import type { ProofCardSummary } from '../types/learner'
 import type {
@@ -12,6 +12,22 @@ import type {
 
 // ── 헬퍼 ─────────────────────────────────────────────────────────────────────
 
+function isPendingNodeStatus(status: NodeStatus) {
+  return status === 'PENDING' || status === 'NOT_STARTED'
+}
+
+function normalizeChangeType(type?: string | null): ChangeType | null {
+  if (type === 'ADD' || type === 'MODIFY' || type === 'DELETE') return type
+  return null
+}
+
+function inferHistoryChangeType(history: RecommendationChangeHistory): ChangeType | null {
+  const normalized = normalizeChangeType(history.nodeChangeType)
+  if (normalized) return normalized
+  if (/^\[(복습|심화)\]/.test(history.nodeTitle)) return 'ADD'
+  return null
+}
+
 function getNodeBoxClass(status: NodeStatus, change?: RecommendationChange): string {
   if (change) {
     if (change.nodeChangeType === 'ADD')    return 'node-box node-change-add'
@@ -21,204 +37,50 @@ function getNodeBoxClass(status: NodeStatus, change?: RecommendationChange): str
   if (status === 'COMPLETED')   return 'node-box status-done'
   if (status === 'IN_PROGRESS') return 'node-box status-active'
   if (status === 'LOCKED')      return 'node-box status-locked'
-  return 'node-box'  // PENDING: 기본 스타일 (클릭 가능)
+  return 'node-box'  // PENDING/NOT_STARTED: 기본 스타일 (클릭 가능)
 }
 
-function getChangeItemClass(type: ChangeType) {
+function getChangeItemClass(type?: ChangeType | null) {
   if (type === 'ADD')    return 'change-item new'
   if (type === 'MODIFY') return 'change-item modified'
-  return 'change-item delete'
+  if (type === 'DELETE') return 'change-item delete'
+  return 'change-item'
 }
 
-function changeBadgeStyle(type: ChangeType): CSSProperties {
+function changeBadgeStyle(type?: ChangeType | null): CSSProperties {
   if (type === 'ADD')    return { background: '#3b82f6' }
   if (type === 'MODIFY') return { background: '#f59e0b' }
-  return { background: '#ef4444' }
+  if (type === 'DELETE') return { background: '#ef4444' }
+  return { background: '#64748b' }
 }
 
-function changeTypeLabel(type: ChangeType) {
+function changeTypeLabel(type?: ChangeType | null) {
   if (type === 'ADD')    return '추가 제안'
   if (type === 'MODIFY') return '수정 제안'
-  return '삭제 제안'
+  if (type === 'DELETE') return '삭제 제안'
+  return '변경 제안'
 }
 
-function changeTypeIcon(type: ChangeType) {
+function changeTypeIcon(type?: ChangeType | null) {
   if (type === 'ADD')    return 'fa-plus'
   if (type === 'MODIFY') return 'fa-edit'
-  return 'fa-trash'
+  if (type === 'DELETE') return 'fa-trash'
+  return 'fa-history'
 }
 
-function changeChipStyle(type: ChangeType): string {
+function changeChipStyle(type?: ChangeType | null): string {
   if (type === 'ADD')    return 'text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded'
   if (type === 'MODIFY') return 'text-xs font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded'
-  return 'text-xs font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded'
+  if (type === 'DELETE') return 'text-xs font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded'
+  return 'text-xs font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded'
 }
 
-function changeChipLabel(type: ChangeType) {
+function changeChipLabel(type?: ChangeType | null) {
   if (type === 'ADD')    return '추가'
   if (type === 'MODIFY') return '수정'
-  return '삭제'
+  if (type === 'DELETE') return '삭제'
+  return '변경'
 }
-
-// ── 진단 퀴즈 분기 노드 컴포넌트 — GhostBranchSection과 동일한 수평 분기 레이아웃 ──
-
-interface DiagnosisBranchSectionProps {
-  branchNodes: RoadmapNodeItem[]
-  onNodeClick?: (node: RoadmapNodeItem) => void
-}
-
-function DiagnosisBranchSection({ branchNodes, onNodeClick }: DiagnosisBranchSectionProps) {
-  if (branchNodes.length === 0) return null
-  return (
-    <>
-      {branchNodes.map((node, i) => {
-        const isReview  = node.branchType === 'REVIEW'
-        const side      = i % 2 === 0 ? 'right' : 'left'
-        const lineColor = isReview ? '#ea580c' : node.branchType === 'ADVANCED' ? '#7c3aed' : '#3b82f6'
-        const badgeBg   = isReview ? '#fff7ed' : node.branchType === 'ADVANCED' ? '#faf5ff' : '#eff6ff'
-        const badgeColor = lineColor
-        const badgeBorder = isReview ? '#fdba74' : node.branchType === 'ADVANCED' ? '#c4b5fd' : '#93c5fd'
-        const badgeLabel = isReview ? '↩ 복습' : node.branchType === 'ADVANCED' ? '↗ 심화' : '✨ AI 추천'
-
-        return (
-          <div key={node.customNodeId} className="roadmap-row" style={{ minHeight: '160px' }}>
-            {/* 척추 유지용 투명 노드 */}
-            <div
-              className="node-box"
-              style={{ background: 'transparent', border: 'none', boxShadow: 'none', cursor: 'default', pointerEvents: 'none', color: 'transparent' }}
-            />
-
-            {/* 수평 연결선 */}
-            <div
-              style={{
-                position: 'absolute', top: '50%', transform: 'translateY(-50%)',
-                ...(side === 'right' ? { left: '50%', marginLeft: '190px' } : { right: '50%', marginRight: '190px' }),
-                width: '40px', height: '2px',
-                background: lineColor,
-                zIndex: 10,
-              }}
-            />
-
-            {/* 풀사이즈 분기 node-box — 일반 노드와 동일한 크기 */}
-            <div
-              className={getNodeBoxClass(node.status)}
-              style={{
-                position: 'absolute', top: '50%', transform: 'translateY(-50%)',
-                ...(side === 'right' ? { left: '50%', marginLeft: '230px' } : { right: '50%', marginRight: '230px' }),
-                borderColor: lineColor,
-              }}
-              onClick={() => {
-                if (node.status === 'LOCKED') { alert('이전 노드를 먼저 완료해야 합니다.'); return }
-                onNodeClick?.(node)
-              }}
-            >
-              <div className="rule-badge" style={{ background: badgeBg, color: badgeColor, borderColor: badgeBorder }}>
-                {badgeLabel}
-              </div>
-              <div className="node-header">
-                <div className="node-title-group">
-                  {node.status === 'COMPLETED'   && <i className="fas fa-check-circle" style={{ color: '#00c471' }} />}
-                  {node.status === 'IN_PROGRESS' && <i className="fas fa-spinner" style={{ color: lineColor }} />}
-                  {node.status === 'LOCKED'      && <i className="fas fa-lock text-slate-400" />}
-                  {node.status === 'PENDING'     && <i className="fas fa-circle text-slate-300" />}
-                  <span>{node.title}</span>
-                </div>
-              </div>
-              {node.content && <div className="node-desc">{node.content}</div>}
-              {node.subTopics && node.subTopics.length > 0 && (
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {node.subTopics.map(t => (
-                    <span key={t} className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">{t}</span>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        )
-      })}
-    </>
-  )
-}
-
-// ── Ghost 추가 제안 분기 노드 (진단 퀴즈) — 척추에서 수평 분기 ─────────────────
-
-interface GhostBranchSectionProps {
-  changes: RecommendationChange[]
-  processing: boolean
-  onApply: (id: number) => void
-  onIgnore: (id: number) => void
-}
-
-function GhostBranchSection({ changes, processing, onApply, onIgnore }: GhostBranchSectionProps) {
-  if (changes.length === 0) return null
-  return (
-    <>
-      {changes.map((change, i) => {
-        const side = i % 2 === 0 ? 'right' : 'left'
-        return (
-          <div key={change.changeId} className="roadmap-row" style={{ minHeight: '160px' }}>
-            {/* 척추 유지용 투명 노드 — 테두리/배경 없이 ::before/::after 척추선만 살림 */}
-            <div
-              className="node-box"
-              style={{ background: 'transparent', border: 'none', boxShadow: 'none', cursor: 'default', pointerEvents: 'none', color: 'transparent' }}
-            />
-
-            {/* 수평 점선 연결선 */}
-            <div
-              style={{
-                position: 'absolute', top: '50%', transform: 'translateY(-50%)',
-                ...(side === 'right' ? { left: '50%', marginLeft: '190px' } : { right: '50%', marginRight: '190px' }),
-                width: '40px', height: '2px',
-                borderTop: '2px dashed #3b82f6',
-                zIndex: 10,
-              }}
-            />
-
-            {/* 풀사이즈 ghost node-box — 기본 노드와 동일한 크기 */}
-            <div
-              className="node-box node-change-add"
-              style={{
-                position: 'absolute', top: '50%', transform: 'translateY(-50%)',
-                ...(side === 'right' ? { left: '50%', marginLeft: '230px' } : { right: '50%', marginRight: '230px' }),
-                cursor: 'default', color: '#1e40af',
-              }}
-            >
-              <ChangeLabel change={change} />
-              <div className="rule-badge" style={{ background: '#eff6ff', color: '#1e40af', borderColor: '#3b82f6' }}>
-                ✨ AI 추천
-              </div>
-              <div className="node-header">
-                <div className="node-title-group">
-                  <i className="fas fa-plus-circle text-blue-500" />
-                  <span>{change.nodeTitle}</span>
-                </div>
-              </div>
-              {change.reason && <div className="node-desc">{change.reason}</div>}
-              <div className="flex gap-2 mt-2">
-                <button
-                  disabled={processing}
-                  onClick={() => onApply(change.changeId)}
-                  className="text-xs bg-blue-500 text-white px-3 py-1 rounded-lg font-bold hover:bg-blue-600 disabled:opacity-50"
-                >
-                  추가 적용
-                </button>
-                <button
-                  disabled={processing}
-                  onClick={() => onIgnore(change.changeId)}
-                  className="text-xs bg-white text-gray-500 px-3 py-1 rounded-lg font-bold border border-gray-300 hover:bg-gray-100 disabled:opacity-50"
-                >
-                  무시
-                </button>
-              </div>
-            </div>
-          </div>
-        )
-      })}
-    </>
-  )
-}
-
-// ── 서브 컴포넌트들 ───────────────────────────────────────────────────────────
 
 interface ProofCardBadgeProps {
   card: ProofCardSummary
@@ -273,75 +135,414 @@ function ChangeLabel({ change }: ChangeLabelProps) {
   )
 }
 
-interface NodeRowProps {
-  node: RoadmapNodeItem
-  index: number
-  isFirst: boolean
-  isLast: boolean
-  proofCard?: ProofCardSummary
-  pendingChange?: RecommendationChange
-  onNodeClick?: (node: RoadmapNodeItem) => void
+type RoadmapLane = 'side-left' | 'left' | 'center' | 'right' | 'side-right'
+type LayoutSlotKind = 'main-spine' | 'official-branch' | 'applied-branch' | 'suggested-branch' | 'ghost-add'
+type LayoutEdgeKind = 'spine' | 'branch' | 'split' | 'merge' | 'applied-branch' | 'suggestion'
+type EdgeTheme = 'default' | 'review' | 'advanced' | 'suggestion'
+
+const ROADMAP_LANE_COLUMN: Record<RoadmapLane, number> = {
+  'side-left': 1,
+  left: 1,
+  center: 2,
+  right: 3,
+  'side-right': 3,
 }
 
-interface GhostAddNodeProps {
-  change: RecommendationChange
-  index: number
-  isLast: boolean
-  processing: boolean
-  onApply: (id: number) => void
-  onIgnore: (id: number) => void
+type LayoutSpineItem =
+  | { kind: 'node'; node: RoadmapNodeItem }
+  | { kind: 'add'; change: RecommendationChange }
+
+interface BranchBadgeMeta {
+  label: string
+  background: string
+  color: string
+  borderColor: string
+  theme: EdgeTheme
 }
-function GhostAddNode({ change, index, isLast, processing, onApply, onIgnore }: GhostAddNodeProps) {
-  const side = index % 2 === 0 ? 'right' : 'left'
-  return (
-    <div className={`roadmap-row${isLast ? ' node-last' : ''}`}>
-      <div className="node-box node-change-add" style={{ color: '#1e40af' }}>
-        <ChangeLabel change={change} />
-        <div className="rule-badge" style={{ background: '#eff6ff', color: '#1e40af', borderColor: '#3b82f6' }}>
-          ✨ 신규
-        </div>
-        <div className="node-header">
-          <div className="node-title-group">
-            <i className="fas fa-plus-circle text-blue-500" />
-            <span>{change.nodeTitle}</span>
-          </div>
-        </div>
-        <div className="node-desc">{change.contextSummary}</div>
-        <div className="flex gap-2 mt-2">
-          <button
-            disabled={processing}
-            onClick={() => onApply(change.changeId)}
-            className="text-xs bg-blue-500 text-white px-3 py-1 rounded-lg font-bold hover:bg-blue-600 disabled:opacity-50"
-          >
-            추가 적용
-          </button>
-          <button
-            disabled={processing}
-            onClick={() => onIgnore(change.changeId)}
-            className="text-xs bg-white text-gray-500 px-3 py-1 rounded-lg font-bold border border-gray-300 hover:bg-gray-100 disabled:opacity-50"
-          >
-            무시
-          </button>
-        </div>
-      </div>
-      <div className={`connector ${side}`} style={{ opacity: 0.3 }} />
-    </div>
+
+interface LayoutSlot {
+  id: string
+  kind: LayoutSlotKind
+  lane: RoadmapLane
+  row: number
+  stackOffset?: number
+  node?: RoadmapNodeItem
+  change?: RecommendationChange
+  badge?: BranchBadgeMeta
+}
+
+interface LayoutEdge {
+  id: string
+  from: string
+  to: string
+  kind: LayoutEdgeKind
+  theme: EdgeTheme
+}
+
+interface RoadmapLayout {
+  slots: LayoutSlot[]
+  edges: LayoutEdge[]
+  rowCount: number
+}
+
+interface SlotRect {
+  x: number
+  y: number
+  top: number
+  right: number
+  bottom: number
+  left: number
+  width: number
+  height: number
+}
+
+function getBranchBadgeMeta(branchType?: string | null): BranchBadgeMeta {
+  if (branchType === 'REVIEW') {
+    return {
+      label: '복습',
+      background: '#fff7ed',
+      color: '#ea580c',
+      borderColor: '#fdba74',
+      theme: 'review',
+    }
+  }
+  if (branchType === 'ADVANCED') {
+    return {
+      label: '심화',
+      background: '#eef2ff',
+      color: '#4338ca',
+      borderColor: '#a5b4fc',
+      theme: 'advanced',
+    }
+  }
+  return {
+    label: 'AI 추천',
+    background: '#eff6ff',
+    color: '#1e40af',
+    borderColor: '#93c5fd',
+    theme: 'suggestion',
+  }
+}
+
+function getSuggestionBadgeMeta(change: RecommendationChange): BranchBadgeMeta {
+  const sourceText = `${change.nodeTitle} ${change.reason} ${change.contextSummary}`.toLowerCase()
+  if (sourceText.includes('복습') || sourceText.includes('review')) {
+    return getBranchBadgeMeta('REVIEW')
+  }
+  if (sourceText.includes('심화') || sourceText.includes('advanced')) {
+    return getBranchBadgeMeta('ADVANCED')
+  }
+  return getBranchBadgeMeta(null)
+}
+
+function getOfficialBranchBadgeMeta(branchGroup: number): BranchBadgeMeta {
+  return {
+    label: `분기 ${branchGroup}`,
+    background: '#f0f9ff',
+    color: '#0369a1',
+    borderColor: '#7dd3fc',
+    theme: 'default',
+  }
+}
+
+function sortRoadmapNodes(nodes: RoadmapNodeItem[]) {
+  return [...nodes].sort((a, b) => a.sortOrder - b.sortOrder || a.customNodeId - b.customNodeId)
+}
+
+function sortChanges(changes: RecommendationChange[]) {
+  return [...changes].sort(
+    (a, b) => (a.nodeSortOrder ?? 9999) - (b.nodeSortOrder ?? 9999) || a.changeId - b.changeId,
   )
 }
 
-function NodeRow({ node, index, isFirst, isLast, proofCard, pendingChange, onNodeClick }: NodeRowProps) {
-  const side = index % 2 === 0 ? 'right' : 'left'
-  const boxClass = [
-    getNodeBoxClass(node.status, pendingChange),
-    isFirst ? 'node-first' : '',
-    isLast ? 'node-last' : '',
-  ].filter(Boolean).join(' ')
+function makeLayoutSlotId(item: LayoutSpineItem) {
+  return item.kind === 'node' ? `node-${item.node.customNodeId}` : `add-${item.change.changeId}`
+}
 
-  const wrapClass = [
-    'roadmap-row',
-    isFirst ? 'node-first' : '',
-    isLast ? 'node-last' : '',
-  ].filter(Boolean).join(' ')
+function getLayoutSpineOrder(item: LayoutSpineItem) {
+  return item.kind === 'node' ? item.node.sortOrder : item.change.nodeSortOrder ?? 9999
+}
+
+function makeLayoutSpineItems(nodes: RoadmapNodeItem[], adds: RecommendationChange[]): LayoutSpineItem[] {
+  return [
+    ...nodes.map((node) => ({ kind: 'node' as const, node })),
+    ...adds.map((change) => ({ kind: 'add' as const, change })),
+  ].sort((a, b) => getLayoutSpineOrder(a) - getLayoutSpineOrder(b))
+}
+
+function getOfficialBranchLane(groupIndex: number): RoadmapLane {
+  return groupIndex % 2 === 0 ? 'left' : 'right'
+}
+
+const OFFICIAL_BRANCH_OFFSET_Y = 40
+const POST_BRANCH_SPINE_OFFSET_Y = 88
+
+function buildRoadmapLayout(nodes: RoadmapNodeItem[], changes: RecommendationChange[]): RoadmapLayout {
+  const slots: LayoutSlot[] = []
+  const edges: LayoutEdge[] = []
+  const sortedNodes = sortRoadmapNodes(nodes)
+  const suggestedBranchNodes = sortedNodes.filter((node) => node.isBranch)
+  const structuralNodes = sortedNodes.filter((node) => !node.isBranch)
+  const officialBranchNodes = structuralNodes.filter((node) => node.branchGroup != null)
+  const officialBranchGroups = Array.from(
+    new Set(
+      officialBranchNodes
+        .map((node) => node.branchGroup)
+        .filter((branchGroup): branchGroup is number => branchGroup != null),
+    ),
+  ).sort((a, b) => a - b)
+  const hasOfficialBranch = officialBranchGroups.length > 0
+  const branchOrders = officialBranchNodes.map((node) => node.sortOrder)
+  const minBranchOrder = hasOfficialBranch ? Math.min(...branchOrders) : Infinity
+  const maxBranchOrder = hasOfficialBranch ? Math.max(...branchOrders) : -Infinity
+  const spineNodes = structuralNodes.filter((node) => node.branchGroup == null)
+  const addChanges = sortChanges(changes.filter((change) => change.nodeChangeType === 'ADD'))
+  const branchAddChanges = addChanges.filter((change) => change.branchFromNodeId != null)
+  const spineAddChanges = addChanges.filter((change) => change.branchFromNodeId == null)
+  const suggestedNodesBySource = new Map<number, RoadmapNodeItem[]>()
+  const suggestedAddsBySource = new Map<number, RecommendationChange[]>()
+  const usedBranchRows = new Set<number>()
+  let row = 1
+  let rowCount = 1
+  let previousCenterSlotId: string | null = null
+
+  suggestedBranchNodes.forEach((node) => {
+    if (node.branchFromNodeId == null) return
+    const items = suggestedNodesBySource.get(node.branchFromNodeId) ?? []
+    items.push(node)
+    suggestedNodesBySource.set(node.branchFromNodeId, items)
+  })
+
+  branchAddChanges.forEach((change) => {
+    if (change.branchFromNodeId == null) return
+    const items = suggestedAddsBySource.get(change.branchFromNodeId) ?? []
+    items.push(change)
+    suggestedAddsBySource.set(change.branchFromNodeId, items)
+  })
+
+  function addSlot(slot: LayoutSlot) {
+    slots.push(slot)
+    rowCount = Math.max(rowCount, slot.row)
+    return slot
+  }
+
+  function addEdge(from: string | null | undefined, to: string | null | undefined, kind: LayoutEdgeKind, theme: EdgeTheme = 'default') {
+    if (!from || !to) return
+    edges.push({ id: `${kind}-${from}-${to}-${edges.length}`, from, to, kind, theme })
+  }
+
+  function addCenteredSlot(slot: Omit<LayoutSlot, 'lane' | 'row'>, edgeKind: LayoutEdgeKind, theme: EdgeTheme = 'default') {
+    const centeredSlot = addSlot({
+      ...slot,
+      lane: 'center',
+      row,
+    })
+    addEdge(previousCenterSlotId, centeredSlot.id, edgeKind, theme)
+    previousCenterSlotId = centeredSlot.id
+    row += 1
+    return centeredSlot
+  }
+
+  function reserveBranchRow(preferredRow: number) {
+    let branchRow = preferredRow
+    while (usedBranchRows.has(branchRow)) {
+      branchRow += 1
+    }
+    usedBranchRows.add(branchRow)
+    return branchRow
+  }
+
+  function addBranchSlot(
+    sourceSlot: LayoutSlot,
+    slot: Omit<LayoutSlot, 'lane' | 'row'>,
+    offset: number,
+    edgeKind: LayoutEdgeKind = 'suggestion',
+    theme: EdgeTheme = 'suggestion',
+  ) {
+    const branchSlot = addSlot({
+      ...slot,
+      lane: 'right',
+      row: reserveBranchRow(sourceSlot.row + offset),
+      stackOffset: slot.stackOffset ?? sourceSlot.stackOffset,
+    })
+    addEdge(sourceSlot.id, branchSlot.id, edgeKind, theme)
+    return branchSlot
+  }
+
+  function addSuggestedNode(node: RoadmapNodeItem, sourceSlot: LayoutSlot, offset: number) {
+    const badge = getBranchBadgeMeta(node.branchType)
+    addBranchSlot(sourceSlot, {
+      id: `suggested-node-${node.customNodeId}`,
+      kind: 'applied-branch',
+      node,
+      badge,
+    }, offset, 'applied-branch', badge.theme)
+  }
+
+  function addSuggestedChange(change: RecommendationChange, sourceSlot: LayoutSlot, offset: number) {
+    addBranchSlot(sourceSlot, {
+      id: `suggested-add-${change.changeId}`,
+      kind: 'suggested-branch',
+      change,
+      badge: getSuggestionBadgeMeta(change),
+    }, offset)
+  }
+
+  function addSuggestions(sourceOriginalNodeId: number, sourceSlot: LayoutSlot) {
+    const suggestedNodes = suggestedNodesBySource.get(sourceOriginalNodeId) ?? []
+    const suggestedAdds = suggestedAddsBySource.get(sourceOriginalNodeId) ?? []
+    let offset = 0
+
+    suggestedNodes.forEach((node) => {
+      addSuggestedNode(node, sourceSlot, offset)
+      offset += 1
+    })
+    suggestedAdds.forEach((change) => {
+      addSuggestedChange(change, sourceSlot, offset)
+      offset += 1
+    })
+  }
+
+  function addSpineItem(
+    item: LayoutSpineItem,
+    options: { connectFromPrevious?: boolean; edgeKind?: LayoutEdgeKind; theme?: EdgeTheme; stackOffset?: number } = {},
+  ) {
+    const {
+      connectFromPrevious = true,
+      edgeKind = item.kind === 'node' ? 'spine' : 'suggestion',
+      theme = item.kind === 'add' ? 'suggestion' : 'default',
+      stackOffset,
+    } = options
+    const id = makeLayoutSlotId(item)
+    if (!connectFromPrevious) previousCenterSlotId = null
+    const sourceSlot = addCenteredSlot({
+      id,
+      kind: item.kind === 'node' ? 'main-spine' : 'ghost-add',
+      stackOffset,
+      node: item.kind === 'node' ? item.node : undefined,
+      change: item.kind === 'add' ? item.change : undefined,
+      badge: item.kind === 'add' ? getSuggestionBadgeMeta(item.change) : undefined,
+    }, edgeKind, theme)
+    if (item.kind === 'node') {
+      addSuggestions(item.node.originalNodeId, sourceSlot)
+    }
+    return sourceSlot
+  }
+
+  function addOfficialBranchGroup(
+    branchGroup: number,
+    lane: RoadmapLane,
+    branchStartRow: number,
+    splitSourceSlotId: string | null,
+  ): string | null {
+    const groupNodes = officialBranchNodes
+      .filter((node) => node.branchGroup === branchGroup)
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.customNodeId - b.customNodeId)
+    let previousBranchSlotId: string | null = null
+    let lastBranchSlotId: string | null = null
+
+    groupNodes.forEach((node, index) => {
+      const branchSlot = addSlot({
+        id: `node-${node.customNodeId}`,
+        kind: 'official-branch',
+        lane,
+        row: branchStartRow + index,
+        stackOffset: OFFICIAL_BRANCH_OFFSET_Y,
+        node: {
+          ...node,
+          branchGroup: node.branchGroup ?? branchGroup,
+        },
+        badge: getOfficialBranchBadgeMeta(branchGroup),
+      })
+      usedBranchRows.add(branchSlot.row)
+
+      if (index === 0) {
+        addEdge(splitSourceSlotId, branchSlot.id, 'split')
+      } else {
+        addEdge(previousBranchSlotId, branchSlot.id, 'branch')
+      }
+
+      previousBranchSlotId = branchSlot.id
+      lastBranchSlotId = branchSlot.id
+      addSuggestions(node.originalNodeId, branchSlot)
+    })
+
+    return lastBranchSlotId
+  }
+
+  const preSpineNodes = hasOfficialBranch
+    ? spineNodes.filter((node) => node.sortOrder < minBranchOrder)
+    : spineNodes
+  const postSpineNodes = hasOfficialBranch
+    ? spineNodes.filter((node) => node.sortOrder > maxBranchOrder)
+    : []
+  const preSpineAdds = hasOfficialBranch
+    ? spineAddChanges.filter((change) => (change.nodeSortOrder ?? 9999) < minBranchOrder)
+    : spineAddChanges
+  const postSpineAdds = hasOfficialBranch
+    ? spineAddChanges.filter((change) => (change.nodeSortOrder ?? 9999) >= minBranchOrder)
+    : []
+
+  makeLayoutSpineItems(preSpineNodes, preSpineAdds).forEach((item) => {
+    addSpineItem(item)
+  })
+
+  if (hasOfficialBranch) {
+    const branchStartRow = row
+    const splitSourceSlotId = previousCenterSlotId
+    const branchEndSlotIds = officialBranchGroups
+      .map((branchGroup, index) => addOfficialBranchGroup(
+        branchGroup,
+        getOfficialBranchLane(index),
+        branchStartRow,
+        splitSourceSlotId,
+      ))
+      .filter((slotId): slotId is string => slotId != null)
+    const maxBranchDepth = Math.max(
+      0,
+      ...officialBranchGroups.map((branchGroup) => (
+        officialBranchNodes.filter((node) => node.branchGroup === branchGroup).length
+      )),
+    )
+    row = Math.max(branchStartRow + maxBranchDepth, rowCount + 1)
+
+    const postSpineItems = makeLayoutSpineItems(postSpineNodes, postSpineAdds)
+    if (branchEndSlotIds.length > 0 && postSpineItems.length > 0) {
+      const mergeSlot = addSpineItem(postSpineItems[0], {
+        connectFromPrevious: false,
+        stackOffset: POST_BRANCH_SPINE_OFFSET_Y,
+      })
+      branchEndSlotIds.forEach((slotId) => addEdge(slotId, mergeSlot.id, 'merge'))
+      postSpineItems.slice(1).forEach((item) => {
+        addSpineItem(item, { stackOffset: POST_BRANCH_SPINE_OFFSET_Y })
+      })
+    } else {
+      postSpineItems.forEach((item) => {
+        addSpineItem(item, { stackOffset: POST_BRANCH_SPINE_OFFSET_Y })
+      })
+    }
+  }
+
+  return { slots, edges, rowCount }
+}
+
+interface RoadmapNodeCardProps {
+  node: RoadmapNodeItem
+  proofCard?: ProofCardSummary
+  proofSide: 'left' | 'right'
+  pendingChange?: RecommendationChange
+  badge?: BranchBadgeMeta
+  onNodeClick?: (node: RoadmapNodeItem) => void
+}
+
+function RoadmapNodeCard({ node, proofCard, proofSide, pendingChange, badge, onNodeClick }: RoadmapNodeCardProps) {
+  const visibleBadge = badge ?? {
+    label: '필수',
+    background: '#ecfdf5',
+    color: '#166534',
+    borderColor: '#00c471',
+    theme: 'default' as const,
+  }
 
   function handleClick() {
     if (node.status === 'LOCKED') {
@@ -352,97 +553,342 @@ function NodeRow({ node, index, isFirst, isLast, proofCard, pendingChange, onNod
   }
 
   return (
-    <div className={wrapClass}>
-      <div className={boxClass} onClick={handleClick}>
-        {/* 변경사항 라벨 */}
-        {pendingChange && <ChangeLabel change={pendingChange} />}
-
-        {/* Proof Card 배지 */}
-        {proofCard && node.status === 'COMPLETED' && (
-          <ProofCardBadge card={proofCard} side={side === 'right' ? 'left' : 'right'} />
-        )}
-
-        {/* 필수/선택 배지 */}
-        <div className="rule-badge rule-all">✅ 필수</div>
-
-        {/* 노드 헤더 */}
-        <div className="node-header">
-          <div className="node-title-group">
-            {node.status === 'COMPLETED' && (
-              <i className="fas fa-check-circle" style={{ color: '#00c471' }} />
-            )}
-            {node.status === 'IN_PROGRESS' && (
-              <i className="fas fa-spinner" style={{ color: '#eab308' }} />
-            )}
-            {node.status === 'LOCKED' && (
-              <i className="fas fa-lock" style={{ color: '#94a3b8' }} />
-            )}
-            {node.status === 'PENDING' && (
-              <i className="fas fa-circle" style={{ color: '#cbd5e1' }} />
-            )}
-            <span>{node.title}</span>
-          </div>
-          {node.status === 'IN_PROGRESS' && (
-            <div className="node-meta">
-              <span className="meta-tag">진행중</span>
-            </div>
+    <div className={getNodeBoxClass(node.status, pendingChange)} onClick={handleClick}>
+      {pendingChange && <ChangeLabel change={pendingChange} />}
+      {proofCard && node.status === 'COMPLETED' && (
+        <ProofCardBadge card={proofCard} side={proofSide} />
+      )}
+      <div
+        className="rule-badge"
+        style={{
+          background: visibleBadge.background,
+          color: visibleBadge.color,
+          borderColor: visibleBadge.borderColor,
+        }}
+      >
+        {visibleBadge.label}
+      </div>
+      <div className="node-header">
+        <div className="node-title-group">
+          {node.status === 'COMPLETED' && (
+            <i className="fas fa-check-circle" style={{ color: '#00c471' }} />
           )}
+          {node.status === 'IN_PROGRESS' && (
+            <i className="fas fa-spinner" style={{ color: '#eab308' }} />
+          )}
+          {node.status === 'LOCKED' && (
+            <i className="fas fa-lock" style={{ color: '#94a3b8' }} />
+          )}
+          {isPendingNodeStatus(node.status) && (
+            <i className="fas fa-circle" style={{ color: '#cbd5e1' }} />
+          )}
+          <span>{node.title}</span>
         </div>
-
-        {/* 노드 설명 */}
-        {node.content && <div className="node-desc">{node.content}</div>}
-
-        {/* 서브토픽 칩 */}
-        {node.subTopics && node.subTopics.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-2">
-            {node.subTopics.map((t) => (
-              <span
-                key={t}
-                className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200"
-              >
-                {t}
-              </span>
-            ))}
+        {node.status === 'IN_PROGRESS' && (
+          <div className="node-meta">
+            <span className="meta-tag">진행중</span>
           </div>
         )}
-
-        {/* 진행률 바 (IN_PROGRESS 전용) */}
-        {node.status === 'IN_PROGRESS' && (
-          <div className="progress-container">
-            <div className="node-progress-bg">
-              <div
-                className="node-progress-bar"
-                style={{
-                  width: `${node.requiredTagsSatisfied ? 100 : Math.round((node.lessonCompletionRate ?? 0) * 100)}%`,
-                }}
-              />
-            </div>
-            <span className="progress-pct">
-              {node.requiredTagsSatisfied ? '100%' : `${Math.round((node.lessonCompletionRate ?? 0) * 100)}%`}
-            </span>
+        {isPendingNodeStatus(node.status) && (
+          <div className="node-meta">
+            <span className="meta-tag">대기중</span>
           </div>
         )}
       </div>
-
-      {/* 가로 연결선 + 서브노드 — Proof Card 태그를 서브노드로 표시 */}
-      {proofCard && node.status === 'COMPLETED' && (
-        <>
-          <div className={`connector ${side}`} />
-          <div className={`sub-group ${side}`}>
-            <div className="sub-row">
-              <div className="sub-node checked">
-                <i className="fas fa-check text-xs mr-1" />
-                증명 완료
-              </div>
-            </div>
+      {node.content && <div className="node-desc">{node.content}</div>}
+      {node.subTopics && node.subTopics.length > 0 && (
+        <div className="flex flex-wrap gap-1 mt-2">
+          {node.subTopics.map((topic) => (
+            <span
+              key={topic}
+              className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200"
+            >
+              {topic}
+            </span>
+          ))}
+        </div>
+      )}
+      {node.status === 'IN_PROGRESS' && (
+        <div className="progress-container">
+          <div className="node-progress-bg">
+            <div
+              className="node-progress-bar"
+              style={{
+                width: `${node.requiredTagsSatisfied ? 100 : Math.round((node.lessonCompletionRate ?? 0) * 100)}%`,
+              }}
+            />
           </div>
-        </>
+          <span className="progress-pct">
+            {node.requiredTagsSatisfied ? '100%' : `${Math.round((node.lessonCompletionRate ?? 0) * 100)}%`}
+          </span>
+        </div>
       )}
     </div>
   )
 }
 
-// ── 노드 드로어 ───────────────────────────────────────────────────────────────
+interface GhostAddCardProps {
+  change: RecommendationChange
+  processing: boolean
+  badge?: BranchBadgeMeta
+  onApply: (id: number) => void
+  onIgnore: (id: number) => void
+}
+
+function GhostAddCard({ change, processing, badge, onApply, onIgnore }: GhostAddCardProps) {
+  const visibleBadge = badge ?? getBranchBadgeMeta(null)
+
+  return (
+    <div className="node-box node-change-add" style={{ color: '#1e40af' }}>
+      <ChangeLabel change={change} />
+      <div
+        className="rule-badge"
+        style={{
+          background: visibleBadge.background,
+          color: visibleBadge.color,
+          borderColor: visibleBadge.borderColor,
+        }}
+      >
+        {visibleBadge.label}
+      </div>
+      <div className="node-header">
+        <div className="node-title-group">
+          <i className="fas fa-plus-circle text-blue-500" />
+          <span>{change.nodeTitle}</span>
+        </div>
+      </div>
+      <div className="node-desc">{change.contextSummary || change.reason}</div>
+      <div className="flex gap-2 mt-2">
+        <button
+          disabled={processing}
+          onClick={() => onApply(change.changeId)}
+          className="text-xs bg-blue-500 text-white px-3 py-1 rounded-lg font-bold hover:bg-blue-600 disabled:opacity-50"
+        >
+          추가 적용
+        </button>
+        <button
+          disabled={processing}
+          onClick={() => onIgnore(change.changeId)}
+          className="text-xs bg-white text-gray-500 px-3 py-1 rounded-lg font-bold border border-gray-300 hover:bg-gray-100 disabled:opacity-50"
+        >
+          무시
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function areSlotRectsEqual(left: Record<string, SlotRect>, right: Record<string, SlotRect>) {
+  const leftKeys = Object.keys(left)
+  const rightKeys = Object.keys(right)
+  if (leftKeys.length !== rightKeys.length) return false
+  return leftKeys.every((key) => {
+    const a = left[key]
+    const b = right[key]
+    return b && a.x === b.x && a.y === b.y && a.top === b.top && a.right === b.right
+      && a.bottom === b.bottom && a.left === b.left && a.width === b.width && a.height === b.height
+  })
+}
+
+function makeEdgePath(edge: LayoutEdge, rects: Record<string, SlotRect>) {
+  const from = rects[edge.from]
+  const to = rects[edge.to]
+  if (!from || !to) return null
+
+  if (edge.kind === 'suggestion' || edge.kind === 'applied-branch') {
+    if (Math.abs(from.x - to.x) < 2) {
+      return `M ${from.x} ${from.bottom} L ${to.x} ${to.top}`
+    }
+    const exitsRight = to.x >= from.x
+    const startX = exitsRight ? from.right : from.left
+    const startY = from.y
+    const endX = exitsRight ? to.left : to.right
+    const endY = to.y
+    if (Math.abs(startY - endY) < 2) {
+      return `M ${startX} ${startY} L ${endX} ${endY}`
+    }
+    const midX = startX + (endX - startX) / 2
+    return `M ${startX} ${startY} L ${midX} ${startY} L ${midX} ${endY} L ${endX} ${endY}`
+  }
+
+  const startX = from.x
+  const startY = from.bottom
+  const endX = to.x
+  const endY = to.top
+  if (Math.abs(startX - endX) < 2) {
+    return `M ${startX} ${startY} L ${endX} ${endY}`
+  }
+
+  if (edge.kind === 'split') {
+    const splitBusY = startY + 46
+    const midY = splitBusY < endY ? splitBusY : endY - 24
+    return `M ${startX} ${startY} L ${startX} ${midY} L ${endX} ${midY} L ${endX} ${endY}`
+  }
+
+  if (edge.kind === 'merge') {
+    const mergeBusY = endY - 46
+    const midY = mergeBusY > startY ? mergeBusY : startY + 24
+    return `M ${startX} ${startY} L ${startX} ${midY} L ${endX} ${midY} L ${endX} ${endY}`
+  }
+
+  const midY = startY + Math.max(28, (endY - startY) / 2)
+  return `M ${startX} ${startY} L ${startX} ${midY} L ${endX} ${midY} L ${endX} ${endY}`
+}
+
+interface RoadmapGraphProps {
+  layout: RoadmapLayout
+  proofCardByNodeId: Record<number, ProofCardSummary | undefined>
+  changeByNodeId: Record<number, RecommendationChange | undefined>
+  processing: boolean
+  onNodeClick: (node: RoadmapNodeItem) => void
+  onApply: (id: number) => void
+  onIgnore: (id: number) => void
+}
+
+function RoadmapGraph({
+  layout,
+  proofCardByNodeId,
+  changeByNodeId,
+  processing,
+  onNodeClick,
+  onApply,
+  onIgnore,
+}: RoadmapGraphProps) {
+  const graphRef = useRef<HTMLDivElement | null>(null)
+  const slotRefs = useRef(new Map<string, HTMLDivElement>())
+  const [slotRects, setSlotRects] = useState<Record<string, SlotRect>>({})
+  const [graphSize, setGraphSize] = useState({ width: 0, height: 0 })
+
+  useEffect(() => {
+    function measure() {
+      const graph = graphRef.current
+      if (!graph) return
+      const graphRect = graph.getBoundingClientRect()
+      const nextRects: Record<string, SlotRect> = {}
+
+      slotRefs.current.forEach((element, id) => {
+        const rect = element.getBoundingClientRect()
+        nextRects[id] = {
+          x: Math.round(rect.left - graphRect.left + rect.width / 2),
+          y: Math.round(rect.top - graphRect.top + rect.height / 2),
+          top: Math.round(rect.top - graphRect.top),
+          right: Math.round(rect.right - graphRect.left),
+          bottom: Math.round(rect.bottom - graphRect.top),
+          left: Math.round(rect.left - graphRect.left),
+          width: Math.round(rect.width),
+          height: Math.round(rect.height),
+        }
+      })
+
+      const nextGraphSize = {
+        width: Math.round(graphRect.width),
+        height: Math.round(graphRect.height),
+      }
+      setGraphSize((current) => current.width === nextGraphSize.width && current.height === nextGraphSize.height
+        ? current
+        : nextGraphSize)
+      setSlotRects((current) => areSlotRectsEqual(current, nextRects) ? current : nextRects)
+    }
+
+    measure()
+    const resizeObserver = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(measure)
+    if (resizeObserver) {
+      if (graphRef.current) resizeObserver.observe(graphRef.current)
+      slotRefs.current.forEach((element) => resizeObserver.observe(element))
+    }
+    window.addEventListener('resize', measure)
+
+    return () => {
+      resizeObserver?.disconnect()
+      window.removeEventListener('resize', measure)
+    }
+  }, [layout])
+
+  function registerSlot(id: string) {
+    return (element: HTMLDivElement | null) => {
+      if (element) {
+        slotRefs.current.set(id, element)
+      } else {
+        slotRefs.current.delete(id)
+      }
+    }
+  }
+
+  function renderSlot(slot: LayoutSlot) {
+    const proofSide: 'left' | 'right' = slot.lane === 'right' || slot.lane === 'side-right' ? 'left' : 'right'
+    if (slot.node) {
+      return (
+        <RoadmapNodeCard
+          node={slot.node}
+          proofCard={proofCardByNodeId[slot.node.originalNodeId]}
+          proofSide={proofSide}
+          pendingChange={changeByNodeId[slot.node.originalNodeId]}
+          badge={slot.badge}
+          onNodeClick={onNodeClick}
+        />
+      )
+    }
+    if (slot.change) {
+      return (
+        <GhostAddCard
+          change={slot.change}
+          processing={processing}
+          badge={slot.badge}
+          onApply={onApply}
+          onIgnore={onIgnore}
+        />
+      )
+    }
+    return null
+  }
+
+  return (
+    <div className="roadmap-canvas-scroll">
+      <div
+        ref={graphRef}
+        className="roadmap-graph"
+        style={{
+          gridTemplateRows: `repeat(${Math.max(layout.rowCount, 1)}, minmax(var(--roadmap-row-min-height), auto))`,
+        }}
+      >
+        <svg
+          className="roadmap-edge-layer"
+          width={graphSize.width}
+          height={graphSize.height}
+          viewBox={`0 0 ${graphSize.width} ${graphSize.height}`}
+          aria-hidden="true"
+        >
+          {layout.edges.map((edge) => {
+            const path = makeEdgePath(edge, slotRects)
+            if (!path) return null
+            return (
+              <path
+                key={edge.id}
+                d={path}
+                className={`roadmap-edge roadmap-edge-${edge.kind} roadmap-edge-theme-${edge.theme}`}
+              />
+            )
+          })}
+        </svg>
+
+        {layout.slots.map((slot) => (
+          <div
+            key={slot.id}
+            ref={registerSlot(slot.id)}
+            className={`roadmap-slot roadmap-slot-${slot.kind} roadmap-lane-${slot.lane}`}
+            style={{
+              gridColumn: ROADMAP_LANE_COLUMN[slot.lane],
+              gridRow: slot.row,
+              '--slot-offset-y': `${slot.stackOffset ?? 0}px`,
+            } as CSSProperties}
+          >
+            {renderSlot(slot)}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
 
 interface NodeDrawerProps {
   node: RoadmapNodeItem | null
@@ -684,20 +1130,23 @@ function ChangesPanel({
             {histories.length === 0 && (
               <div className="text-center text-xs text-gray-400 py-8">적용된 변경사항이 없습니다.</div>
             )}
-            {histories.map((h) => (
-              <div key={h.changeId} className="bg-white rounded-lg border border-gray-200 p-3">
-                <div className="flex items-center gap-2 mb-1">
-                  <span className={changeChipStyle(h.nodeChangeType)}>{changeChipLabel(h.nodeChangeType)}</span>
-                  <span className="text-xs text-gray-400">
-                    {h.decisionStatus === 'APPLIED' ? '✅ 적용됨' : '🚫 무시됨'}
-                  </span>
+            {histories.map((h) => {
+              const historyChangeType = inferHistoryChangeType(h)
+              return (
+                <div key={h.changeId} className="bg-white rounded-lg border border-gray-200 p-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className={changeChipStyle(historyChangeType)}>{changeChipLabel(historyChangeType)}</span>
+                    <span className="text-xs text-gray-400">
+                      {h.decisionStatus === 'APPLIED' ? '적용됨' : '무시됨'}
+                    </span>
+                  </div>
+                  <p className="font-bold text-sm text-gray-800">{h.nodeTitle}</p>
+                  <p className="text-xs text-gray-400 mt-1">
+                    {new Date(h.updatedAt).toLocaleDateString('ko-KR')}
+                  </p>
                 </div>
-                <p className="font-bold text-sm text-gray-800">{h.nodeTitle}</p>
-                <p className="text-xs text-gray-400 mt-1">
-                  {new Date(h.updatedAt).toLocaleDateString('ko-KR')}
-                </p>
-              </div>
-            ))}
+              )
+            })}
           </div>
         )}
       </div>
@@ -798,7 +1247,7 @@ export default function RoadmapDetailPage() {
       .finally(() => setLoading(false))
 
     return () => abortRef.current?.abort()
-  }, [customRoadmapId])
+  }, [customRoadmapId, originalRoadmapId])
 
   // ── 이벤트 핸들러 ────────────────────────────────────────────────────────────
 
@@ -896,25 +1345,26 @@ export default function RoadmapDetailPage() {
 
   // ── 파생 데이터 ──────────────────────────────────────────────────────────────
 
-  const proofCardByNodeId = Object.fromEntries(proofCards.map((p) => [p.nodeId, p]))
-  const changeByNodeId = Object.fromEntries(
-    changes
-      .filter((c) => c.nodeChangeType !== 'ADD')
-      .map((c) => [c.nodeId, c]),
+  const proofCardByNodeId = useMemo(
+    () => Object.fromEntries(proofCards.map((p) => [p.nodeId, p])) as Record<number, ProofCardSummary | undefined>,
+    [proofCards],
+  )
+  const changeByNodeId = useMemo(
+    () => Object.fromEntries(
+      changes
+        .filter((c) => c.nodeChangeType !== 'ADD')
+        .map((c) => [c.nodeId, c]),
+    ) as Record<number, RecommendationChange | undefined>,
+    [changes],
   )
   const addChanges = changes.filter((c) => c.nodeChangeType === 'ADD')
-  // branchFromNodeId가 있는 ADD는 spine 인터리빙 대신 ghost 분기로 렌더
-  const ghostBranchByFromNodeId = new Map<number, RecommendationChange[]>()
-  addChanges.filter(c => c.branchFromNodeId != null).forEach(c => {
-    const arr = ghostBranchByFromNodeId.get(c.branchFromNodeId!) ?? []
-    arr.push(c)
-    ghostBranchByFromNodeId.set(c.branchFromNodeId!, arr)
-  })
-  const addChangesForSpine = addChanges.filter(c => c.branchFromNodeId == null)
-
   const totalNodes = (roadmap?.nodes.length ?? 0) + addChanges.length
   const doneNodes  = roadmap?.nodes.filter((n) => n.status === 'COMPLETED').length ?? 0
   const progressPct = roadmap ? Math.round(roadmap.progressRate) : 0
+  const roadmapLayout = useMemo(
+    () => buildRoadmapLayout(roadmap?.nodes ?? [], changes),
+    [roadmap?.nodes, changes],
+  )
 
   // ── 렌더 ─────────────────────────────────────────────────────────────────────
 
@@ -945,78 +1395,6 @@ export default function RoadmapDetailPage() {
       </div>
     )
   }
-
-  const sortedNodes = [...roadmap.nodes].sort((a, b) => a.sortOrder - b.sortOrder)
-
-  // ── 진단 퀴즈 분기 노드 분리 ───────────────────────────────────────────────
-  const diagnosisBranchNodes = sortedNodes.filter(n => n.isBranch)
-  const mainSpineNodes = sortedNodes.filter(n => !n.isBranch)
-  const diagnosisBranchByOriginalNodeId = new Map<number, RoadmapNodeItem[]>()
-  diagnosisBranchNodes.forEach(n => {
-    if (n.branchFromNodeId == null) return
-    const arr = diagnosisBranchByOriginalNodeId.get(n.branchFromNodeId) ?? []
-    arr.push(n)
-    diagnosisBranchByOriginalNodeId.set(n.branchFromNodeId, arr)
-  })
-
-  // ── 분기 레이아웃 계산 ─────────────────────────────────────────────────────
-  const leftBranchNodes  = mainSpineNodes.filter((n) => n.branchGroup === 1)
-  const rightBranchNodes = mainSpineNodes.filter((n) => n.branchGroup === 2)
-  const hasBranch = leftBranchNodes.length > 0 || rightBranchNodes.length > 0
-
-  const branchSortOrders = new Set(
-    [...leftBranchNodes, ...rightBranchNodes].map((n) => n.sortOrder),
-  )
-  const preSpineNodes  = hasBranch ? mainSpineNodes.filter((n) => n.branchGroup == null && !branchSortOrders.has(n.sortOrder) && n.sortOrder < Math.min(...branchSortOrders)) : mainSpineNodes
-  const postSpineNodes = hasBranch ? mainSpineNodes.filter((n) => n.branchGroup == null && !branchSortOrders.has(n.sortOrder) && n.sortOrder > Math.max(...branchSortOrders)) : []
-
-  // 연속 인덱스 맵 (렌더 중 mutation 방지)
-  const nodeIndexMap = new Map<number, number>()
-  let _idx = 0
-  ;(hasBranch ? preSpineNodes : mainSpineNodes).forEach((n) => { nodeIndexMap.set(n.customNodeId, _idx++) })
-  if (hasBranch) {
-    const branchStart = _idx
-    leftBranchNodes.forEach((n, i) => nodeIndexMap.set(n.customNodeId, branchStart + i))
-    rightBranchNodes.forEach((n, i) => nodeIndexMap.set(n.customNodeId, branchStart + i))
-    _idx += Math.max(leftBranchNodes.length, rightBranchNodes.length)
-    postSpineNodes.forEach((n) => { nodeIndexMap.set(n.customNodeId, _idx++) })
-  }
-  const addChangesStartIdx = _idx
-
-  // ADD 변경사항을 nodeSortOrder 기준으로 정렬 후 분기 전/후로 분류
-  type SpineItem =
-    | { kind: 'node'; node: RoadmapNodeItem }
-    | { kind: 'add'; change: RecommendationChange }
-
-  const minBranchOrder = hasBranch ? Math.min(...branchSortOrders) : Infinity
-  const maxBranchOrder = hasBranch ? Math.max(...branchSortOrders) : -Infinity
-  const sortedAddChanges = [...addChangesForSpine].sort(
-    (a, b) => (a.nodeSortOrder ?? 999) - (b.nodeSortOrder ?? 999),
-  )
-  const preAddChanges  = hasBranch
-    ? sortedAddChanges.filter((c) => (c.nodeSortOrder ?? 999) < minBranchOrder)
-    : sortedAddChanges
-  const postAddChanges = hasBranch
-    ? sortedAddChanges.filter((c) => (c.nodeSortOrder ?? 999) > maxBranchOrder)
-    : []
-
-  const makeSpineItems = (nodes: RoadmapNodeItem[], adds: RecommendationChange[]): SpineItem[] =>
-    [
-      ...nodes.map((n) => ({ kind: 'node' as const, node: n })),
-      ...adds.map((c) => ({ kind: 'add' as const, change: c })),
-    ].sort((a, b) => {
-      const aOrd = a.kind === 'node' ? a.node.sortOrder : (a.change.nodeSortOrder ?? 999)
-      const bOrd = b.kind === 'node' ? b.node.sortOrder : (b.change.nodeSortOrder ?? 999)
-      return aOrd - bOrd
-    })
-
-  const preSpineItems  = makeSpineItems(hasBranch ? preSpineNodes : sortedNodes, preAddChanges)
-  const postSpineItems = makeSpineItems(postSpineNodes, postAddChanges)
-
-  // [DEBUG] 브라우저 콘솔에서 확인 후 삭제
-  console.log('[DEBUG] hasBranch:', hasBranch, 'minBranchOrder:', minBranchOrder, 'maxBranchOrder:', maxBranchOrder)
-  console.log('[DEBUG] addChanges:', addChanges.map(c => ({ title: c.nodeTitle, nodeSortOrder: c.nodeSortOrder, type: c.nodeChangeType })))
-  console.log('[DEBUG] preAddChanges:', preAddChanges.length, 'postAddChanges:', postAddChanges.length)
 
   return (
     <div className="overflow-x-hidden text-gray-800">
@@ -1133,7 +1511,7 @@ export default function RoadmapDetailPage() {
       />
 
       {/* ── 메인 콘텐츠 ───────────────────────────────────────────────────────── */}
-      <main className="relative pt-28 pb-24 w-full max-w-[1400px] mx-auto min-h-screen">
+      <main className={`roadmap-main${panelOpen ? ' panel-open' : ''} relative pt-28 pb-24 w-full min-h-screen`}>
 
         {/* 로드맵 카테고리 라벨 */}
         <div className="fixed left-8 top-[76px] z-[60]">
@@ -1146,7 +1524,7 @@ export default function RoadmapDetailPage() {
         <div className="relative flex flex-col items-center w-full">
 
           {/* ── 정보 아코디언 ────────────────────────────────────────────────── */}
-          <div className="w-full max-w-4xl px-4 mb-16 relative z-20">
+          <div className="w-full max-w-4xl px-4 mt-8 mb-16 relative z-20">
             <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
               <div
                 className="flex justify-between items-center p-4 cursor-pointer hover:bg-gray-50 transition"
@@ -1174,113 +1552,16 @@ export default function RoadmapDetailPage() {
           </div>
 
           {/* ── 로드맵 트리 ─────────────────────────────────────────────────── */}
-          <div className="relative w-full">
+          <RoadmapGraph
+            layout={roadmapLayout}
+            proofCardByNodeId={proofCardByNodeId}
+            changeByNodeId={changeByNodeId}
+            processing={processing}
+            onNodeClick={setDrawerNode}
+            onApply={handleApply}
+            onIgnore={handleIgnore}
+          />
 
-            {/* 척추 앞부분 (ADD ghost 노드 포함) */}
-            {preSpineItems.map((item, i) => {
-              if (item.kind === 'add') {
-                const change = item.change
-                return <GhostAddNode key={`add-${change.changeId}`} change={change} index={i} isLast={false} processing={processing} onApply={handleApply} onIgnore={handleIgnore} />
-              }
-              const node = item.node
-              const idx = nodeIndexMap.get(node.customNodeId) ?? 0
-              const diagnosisBranches = diagnosisBranchByOriginalNodeId.get(node.originalNodeId) ?? []
-              const ghostChanges = ghostBranchByFromNodeId.get(node.originalNodeId) ?? []
-              return (
-                <React.Fragment key={node.customNodeId}>
-                  <NodeRow
-                    node={node}
-                    index={idx}
-                    isFirst={idx === 0}
-                    isLast={false}
-                    proofCard={proofCardByNodeId[node.originalNodeId]}
-                    pendingChange={changeByNodeId[node.originalNodeId]}
-                    onNodeClick={setDrawerNode}
-                  />
-                  <DiagnosisBranchSection branchNodes={diagnosisBranches} onNodeClick={setDrawerNode} />
-                  <GhostBranchSection changes={ghostChanges} processing={processing} onApply={handleApply} onIgnore={handleIgnore} />
-                </React.Fragment>
-              )
-            })}
-
-            {/* 분기 구간 */}
-            {hasBranch && (() => {
-              return (
-                <div
-                  className={[
-                    'tree-branch-container',
-                    preSpineNodes.length === 0 ? 'branch-first' : '',
-                    postSpineItems.length === 0 ? 'branch-last' : '',
-                  ].filter(Boolean).join(' ')}
-                >
-                  {/* 왼쪽 가지 */}
-                  <div className="tree-branch branch-left">
-                    {leftBranchNodes.map((node) => (
-                      <NodeRow
-                        key={node.customNodeId}
-                        node={node}
-                        index={nodeIndexMap.get(node.customNodeId) ?? 0}
-                        isFirst={false}
-                        isLast={false}
-                        proofCard={proofCardByNodeId[node.originalNodeId]}
-                        pendingChange={changeByNodeId[node.originalNodeId]}
-                        onNodeClick={setDrawerNode}
-                      />
-                    ))}
-                  </div>
-
-                  <div className="branch-divider" />
-
-                  {/* 오른쪽 가지 */}
-                  <div className="tree-branch branch-right">
-                    {rightBranchNodes.map((node) => (
-                      <NodeRow
-                        key={node.customNodeId}
-                        node={node}
-                        index={nodeIndexMap.get(node.customNodeId) ?? 0}
-                        isFirst={false}
-                        isLast={false}
-                        proofCard={proofCardByNodeId[node.originalNodeId]}
-                        pendingChange={changeByNodeId[node.originalNodeId]}
-                        onNodeClick={setDrawerNode}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )
-            })()}
-
-            {/* 척추 뒷부분 (ADD ghost 노드 포함) */}
-            {postSpineItems.map((item, i) => {
-              const isLast = i === postSpineItems.length - 1
-              if (item.kind === 'add') {
-                const change = item.change
-                return <GhostAddNode key={`add-${change.changeId}`} change={change} index={addChangesStartIdx + i} isLast={isLast} processing={processing} onApply={handleApply} onIgnore={handleIgnore} />
-              }
-              const node = item.node
-              const idx = nodeIndexMap.get(node.customNodeId) ?? 0
-              const diagnosisBranches = diagnosisBranchByOriginalNodeId.get(node.originalNodeId) ?? []
-              const ghostChanges = ghostBranchByFromNodeId.get(node.originalNodeId) ?? []
-              return (
-                <React.Fragment key={node.customNodeId}>
-                  <NodeRow
-                    node={node}
-                    index={idx}
-                    isFirst={false}
-                    isLast={isLast && addChangesForSpine.length === 0}
-                    proofCard={proofCardByNodeId[node.originalNodeId]}
-                    pendingChange={changeByNodeId[node.originalNodeId]}
-                    onNodeClick={setDrawerNode}
-                  />
-                  <DiagnosisBranchSection branchNodes={diagnosisBranches} onNodeClick={setDrawerNode} />
-                  <GhostBranchSection changes={ghostChanges} processing={processing} onApply={handleApply} onIgnore={handleIgnore} />
-                </React.Fragment>
-              )
-            })}
-
-          </div>
-
-          {/* ── 완료 섹션 ──────────────────────────────────────────────────── */}
           <div className="flex justify-center items-center py-8 relative z-20">
             {progressPct === 100 ? (
               <div className="text-center">
