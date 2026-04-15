@@ -85,6 +85,12 @@ public class MyRoadmapDto {
     @Schema(example = "Backend Master Roadmap")
     private String title;
 
+    @Schema(description = "상세 안내 제목")
+    private String infoTitle;
+
+    @Schema(description = "상세 안내 본문 HTML")
+    private String infoContent;
+
     @Schema(example = "0")
     private Integer progressRate;
 
@@ -99,12 +105,16 @@ public class MyRoadmapDto {
         Long customRoadmapId,
         Long originalRoadmapId,
         String title,
+        String infoTitle,
+        String infoContent,
         Integer progressRate,
         LocalDateTime createdAt,
         List<NodeItem> nodes) {
       this.customRoadmapId = customRoadmapId;
       this.originalRoadmapId = originalRoadmapId;
       this.title = title;
+      this.infoTitle = infoTitle;
+      this.infoContent = infoContent;
       this.progressRate = progressRate;
       this.createdAt = createdAt;
       this.nodes = nodes;
@@ -120,6 +130,8 @@ public class MyRoadmapDto {
           .customRoadmapId(customRoadmap.getId())
           .originalRoadmapId(customRoadmap.getOriginalRoadmap().getRoadmapId())
           .title(customRoadmap.getTitle())
+          .infoTitle(customRoadmap.getOriginalRoadmap().getInfoTitle())
+          .infoContent(customRoadmap.getOriginalRoadmap().getInfoContent())
           .progressRate(customRoadmap.getProgressRate())
           .createdAt(customRoadmap.getCreatedAt())
           .nodes(

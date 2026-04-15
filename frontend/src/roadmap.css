@@ -273,6 +273,62 @@
   white-space: nowrap;
 }
 
+/* ── 로드맵 정보 아코디언 HTML 렌더링 ── */
+.roadmap-info-html .p-6 { padding: 1.14rem 1.24rem; }
+.roadmap-info-html .text-sm { font-size: 0.875rem; }
+.roadmap-info-html .text-base { font-size: 0.95rem; }
+.roadmap-info-html .leading-relaxed { line-height: 1.625; }
+.roadmap-info-html .space-y-6 > * + * { margin-top: 1.08rem; }
+.roadmap-info-html .space-y-1 > * + * { margin-top: 0.16rem; }
+.roadmap-info-html .mb-2 { margin-bottom: 0.38rem; }
+.roadmap-info-html .mb-4 { margin-bottom: 0.74rem; }
+.roadmap-info-html .block { display: block; }
+.roadmap-info-html .font-bold { font-weight: 700; }
+.roadmap-info-html .text-gray-900 { color: #111827; }
+.roadmap-info-html .text-gray-800 { color: #1f2937; }
+.roadmap-info-html .text-gray-700 { color: #374151; }
+.roadmap-info-html .text-gray-600 { color: #4b5563; }
+.roadmap-info-html .bg-yellow-100 { background: #fef3c7; }
+.roadmap-info-html .bg-white { background: #ffffff; }
+.roadmap-info-html .px-1 { padding-left: 0.2rem; padding-right: 0.2rem; }
+.roadmap-info-html .p-5 { padding: 0.96rem 1.06rem; }
+.roadmap-info-html .rounded { border-radius: 0.25rem; }
+.roadmap-info-html .rounded-xl { border-radius: 0.8rem; }
+.roadmap-info-html .border { border: 1px solid #e5e7eb; }
+.roadmap-info-html .border-gray-200 { border-color: #e5e7eb; }
+.roadmap-info-html .shadow-sm { box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05); }
+.roadmap-info-html .list-disc { list-style-type: disc; }
+.roadmap-info-html .pl-5 { padding-left: 0.95rem; }
+.roadmap-info-html .mr-1 { margin-right: 0.25rem; }
+.roadmap-info-html .text-\[\#00C471\] { color: #00c471; }
+.roadmap-info-html p,
+.roadmap-info-html li,
+.roadmap-info-html strong,
+.roadmap-info-html span {
+  letter-spacing: -0.01em;
+}
+.roadmap-info-html p {
+  font-size: 0.91rem;
+  line-height: 1.68;
+  color: #374151;
+  margin: 0;
+}
+.roadmap-info-html strong {
+  font-weight: 700;
+  color: #111827;
+}
+.roadmap-info-html ul {
+  margin: 0;
+}
+.roadmap-info-html li {
+  font-size: 0.89rem;
+  line-height: 1.6;
+  color: #4b5563;
+}
+.roadmap-info-html i {
+  font-size: 0.85rem;
+}
+
 /* ── 변경사항 패널 ── */
 .changes-panel {
   position: fixed; right: 0;

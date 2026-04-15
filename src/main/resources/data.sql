@@ -301,6 +301,29 @@ WHERE u.email = 'admin@devpath.com'
       WHERE title = 'Backend Master Roadmap'
   );
 
+UPDATE roadmaps
+SET info_title = '백엔드 개발이란 무엇인가요?',
+    info_content = $$<div class="p-6 text-sm text-gray-700 leading-relaxed space-y-6">
+  <div>
+    <p class="mb-2"><span class="font-bold text-gray-900">백엔드 개발</span>은 웹 개발의 서버 측 부분을 의미하며, 서버 로직, 데이터베이스 및 API를 생성하고 관리하는 데 중점을 둡니다.</p>
+    <p>사용자 인증, 권한 부여 및 사용자 요청 처리를 포함하며, 일반적으로 <span class="font-bold text-gray-800 bg-yellow-100 px-1 rounded">Python, Java, Ruby, PHP, JavaScript(Node.js) 및 .NET</span> 과 같은 백엔드 개발 언어를 사용합니다.</p>
+  </div>
+  <div>
+    <strong class="block text-gray-900 text-base mb-2">👨‍💻 백엔드 개발자는 무슨 일을 하나요?</strong>
+    <p class="mb-4">백엔드 개발자는 웹 애플리케이션의 서버 측 구성 요소를 개발하고 유지 관리하는 데 집중합니다. 주로 <strong>서버 측 API 개발, 데이터베이스 운영 처리</strong>, 그리고 백엔드 시스템이 많은 트래픽을 효율적으로 처리할 수 있도록 보장하는 역할을 담당합니다.</p>
+    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+      <strong class="block text-[#00C471] mb-2"><i class="fas fa-check-circle mr-1"></i> 주요 업무</strong>
+      <ul class="list-disc pl-5 space-y-1 text-gray-600">
+        <li><strong>외부 서비스 통합:</strong> 결제 게이트웨이 및 클라우드 서비스와 같은 외부 서비스 통합</li>
+        <li><strong>성능 최적화:</strong> 시스템 성능 및 확장성(Scalability) 향상</li>
+        <li><strong>데이터 보안:</strong> 데이터 처리 및 보안에 매우 중요한 역할을 수행</li>
+        <li><strong>협업 지원:</strong> 프론트엔드 개발자가 원활한 사용자 경험을 제공할 수 있도록 지원하는 핵심 역할</li>
+      </ul>
+    </div>
+  </div>
+</div>$$
+WHERE title = 'Backend Master Roadmap';
+
 INSERT INTO roadmaps (creator_id, title, description, is_official, is_public, is_deleted, created_at)
 SELECT
     u.user_id,

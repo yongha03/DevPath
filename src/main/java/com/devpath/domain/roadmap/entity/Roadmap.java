@@ -23,6 +23,12 @@ public class Roadmap {
   @Column(columnDefinition = "TEXT")
   private String description;
 
+  @Column(name = "info_title", columnDefinition = "TEXT")
+  private String infoTitle;
+
+  @Column(name = "info_content", columnDefinition = "TEXT")
+  private String infoContent;
+
   @ManyToOne(fetch = FetchType.LAZY) // 지연 로딩 필수
   @JoinColumn(name = "creator_id")
   private User creator;

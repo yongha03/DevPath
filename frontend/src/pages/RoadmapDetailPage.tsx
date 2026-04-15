@@ -1,4 +1,5 @@
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
+import RoadmapInfoContent from '../components/RoadmapInfoContent'
 import { roadmapApi } from '../lib/api'
 import type { ProofCardSummary } from '../types/learner'
 import type {
@@ -1532,21 +1533,12 @@ export default function RoadmapDetailPage() {
               >
                 <div className="flex items-center gap-2 font-bold text-gray-800">
                   <i className="fas fa-info-circle text-gray-400" />
-                  이 로드맵이란 무엇인가요?
+                  {roadmap.infoTitle?.trim() || roadmap.title}
                 </div>
                 <i className={`fas fa-chevron-down text-gray-400 chevron${infoOpen ? ' rotate' : ''}`} />
               </div>
               <div className={`info-accordion${infoOpen ? ' open' : ''} bg-gray-50 border-t border-gray-100`}>
-                <div className="p-6 text-sm text-gray-700 leading-relaxed space-y-3">
-                  <p>
-                    <strong className="text-gray-900">{roadmap.title}</strong>는 DevPath에서 제공하는
-                    학습 로드맵입니다. AI가 학습 이력을 분석해 노드 변경사항을 제안하며,
-                    각 노드를 완료하면 <strong>Proof Card</strong>가 발급됩니다.
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    생성일: {new Date(roadmap.createdAt).toLocaleDateString('ko-KR')}
-                  </p>
-                </div>
+                <RoadmapInfoContent content={roadmap.infoContent} />
               </div>
             </div>
           </div>

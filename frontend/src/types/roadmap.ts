@@ -23,6 +23,8 @@ export interface RoadmapDetail {
   customRoadmapId: number
   originalRoadmapId: number
   title: string
+  infoTitle?: string | null
+  infoContent?: string | null
   progressRate: number
   createdAt: string
   nodes: RoadmapNodeItem[]
