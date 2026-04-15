@@ -295,7 +295,7 @@ function prepareSections(sections: EditorSection[]) {
         .map<PreparedLesson>((lesson) => ({
           localId: lesson.localId,
           lessonId: lesson.lessonId,
-          title: lesson.title.trim(),
+          title: lesson.title.trim() || (lesson.kind === 'quiz' ? '새 퀴즈' : lesson.kind === 'assignment' ? '새 과제' : ''),
           kind: lesson.kind,
           description: lesson.description.trim() || null,
           videoUrl: lesson.videoUrl.trim() || null,
@@ -1132,20 +1132,40 @@ export default function CourseEditorPage() {
                             />
                             <button
                               type="button"
-                              onClick={() => {
+                              onClick={async () => {
                                 if (lesson.kind === 'lecture') {
                                   promptLessonVideo(section.localId, lesson.localId, lesson.videoUrl)
                                   return
                                 }
                                 const editorCourseId = getCourseIdFromUrl()
+                                let activeLessonId = lesson.lessonId
+
+                                if (!activeLessonId) {
+                                  setSaving(true)
+                                  setActionError(null)
+                                  try {
+                                    const { lessonIdByLocalId } = await persistCourse()
+                                    activeLessonId = lessonIdByLocalId[lesson.localId]
+                                  } catch (err) {
+                                    setActionError(err instanceof Error ? err.message : '강의를 저장하지 못했습니다.')
+                                    setSaving(false)
+                                    return
+                                  }
+                                  setSaving(false)
+                                }
+
+                                if (!activeLessonId) {
+                                  return
+                                }
+
                                 const editorHref = buildLessonEditorHref(
                                   lesson.kind === 'quiz' ? 'quiz' : 'assignment',
                                   {
+                                    lessonId: activeLessonId,
                                     lessonTitle: lesson.title,
                                     courseId: editorCourseId,
                                   },
                                 )
-
                                 window.location.assign(editorHref)
                               }}
                               className={`rounded px-3 py-1.5 text-xs font-bold transition ${meta.buttonTone}`}

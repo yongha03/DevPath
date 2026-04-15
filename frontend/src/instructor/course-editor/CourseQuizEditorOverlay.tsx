@@ -298,9 +298,12 @@ export default function CourseQuizEditorOverlay({ lessonId, lessonTitle, onClose
         difficultyLevel,
         keywords,
       }
+      console.log('[AI Quiz] 생성 요청 시작 →', { lessonId, ...payload })
       const generated = await instructorLessonEvaluationApi.generateQuizDraft(lessonId, payload)
+      console.log('[AI Quiz] 생성 완료 ←', { questionCount: generated.questions.length, quizType: generated.quizType })
       setDraft(normalizeEditor(generated))
     } catch (nextError) {
+      console.error('[AI Quiz] 생성 실패 ✗', nextError)
       setError(nextError instanceof Error ? nextError.message : '퀴즈 초안 생성에 실패했습니다.')
     } finally {
       setGenerating(false)

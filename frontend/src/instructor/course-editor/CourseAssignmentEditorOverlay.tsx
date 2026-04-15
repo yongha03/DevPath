@@ -116,11 +116,7 @@ export default function CourseAssignmentEditorOverlay({ lessonId, lessonTitle, o
     setDraft((current) => (current ? recipe(current) : current))
   }
 
-  function recalculateTotal(nextRubrics: RubricDraft[], autoGradeEnabled: boolean, current: AssignmentEditorDraft) {
-    if (!autoGradeEnabled) {
-      return current.totalScore
-    }
-
+  function recalculateTotal(nextRubrics: RubricDraft[]) {
     return nextRubrics.reduce((sum, rubric) => sum + Math.max(rubric.maxPoints || 0, 0), 0)
   }
 
@@ -134,7 +130,7 @@ export default function CourseAssignmentEditorOverlay({ lessonId, lessonTitle, o
         rubric.localId === rubricLocalId ? { ...rubric, [field]: value } : rubric,
       )
 
-      const nextTotal = recalculateTotal(nextRubrics, current.autoGradeEnabled, current)
+      const nextTotal = recalculateTotal(nextRubrics)
 
       return {
         ...current,
@@ -148,7 +144,7 @@ export default function CourseAssignmentEditorOverlay({ lessonId, lessonTitle, o
   function addRubric() {
     updateDraft((current) => {
       const nextRubrics = [...current.rubrics, createRubric()]
-      const nextTotal = recalculateTotal(nextRubrics, current.autoGradeEnabled, current)
+      const nextTotal = recalculateTotal(nextRubrics)
       return { ...current, rubrics: nextRubrics, totalScore: nextTotal }
     })
     pushToast('새 평가 기준을 추가했습니다.')
@@ -158,7 +154,7 @@ export default function CourseAssignmentEditorOverlay({ lessonId, lessonTitle, o
     updateDraft((current) => {
       const nextRubrics = current.rubrics.filter((rubric) => rubric.localId !== rubricLocalId)
       const safeRubrics = nextRubrics.length > 0 ? nextRubrics : [createRubric()]
-      const nextTotal = recalculateTotal(safeRubrics, current.autoGradeEnabled, current)
+      const nextTotal = recalculateTotal(safeRubrics)
       return {
         ...current,
         rubrics: safeRubrics,
@@ -202,25 +198,6 @@ export default function CourseAssignmentEditorOverlay({ lessonId, lessonTitle, o
     pushToast('첨부 파일을 삭제했습니다.')
   }
 
-  function toggleAutoGrade() {
-    updateDraft((current) => {
-      const nextEnabled = !current.autoGradeEnabled
-      const nextTotal = recalculateTotal(current.rubrics, nextEnabled, current)
-      return {
-        ...current,
-        autoGradeEnabled: nextEnabled,
-        totalScore: nextEnabled ? nextTotal : current.totalScore,
-        passScore: Math.min(current.passScore, Math.max(nextEnabled ? nextTotal : current.totalScore, 0)),
-      }
-    })
-    pushToast(draft?.autoGradeEnabled ? '자동 채점 기능을 비활성화했습니다.' : '자동 채점 기능을 활성화했습니다.')
-  }
-
-  function toggleAiReview() {
-    updateDraft((current) => ({ ...current, aiReviewEnabled: !current.aiReviewEnabled }))
-    pushToast(draft?.aiReviewEnabled ? 'AI 코드 리뷰를 비활성화했습니다.' : 'AI 코드 리뷰를 활성화했습니다.')
-  }
-
   function insertFormat(prefix: string, suffix: string) {
     const target = textareaRef.current
     if (!target || !draft) {
@@ -256,8 +233,6 @@ export default function CourseAssignmentEditorOverlay({ lessonId, lessonTitle, o
         description: draft.description,
         totalScore: draft.totalScore,
         passScore: draft.passScore,
-        autoGradeEnabled: draft.autoGradeEnabled,
-        aiReviewEnabled: draft.aiReviewEnabled,
         allowTextSubmission: draft.allowTextSubmission,
         allowFileSubmission: draft.allowFileSubmission,
         allowUrlSubmission: draft.allowUrlSubmission,
@@ -485,28 +460,15 @@ export default function CourseAssignmentEditorOverlay({ lessonId, lessonTitle, o
               <div className="flex items-center justify-between rounded-t-2xl border-b border-gray-100 bg-gray-50/50 p-6">
                 <div>
                   <h2 className="flex items-center gap-2 text-lg font-extrabold text-gray-900">
-                    <i className="fas fa-robot text-[#00C471]" /> 자동 채점 시스템
+                    <i className="fas fa-robot text-[#00C471]" /> AI 자동 채점 시스템
                   </h2>
                   <p className="mt-1 text-xs font-medium text-gray-500">
-                    설정한 키워드와 점수 기준으로 자동 채점합니다.
+                    루브릭 기준과 키워드를 바탕으로 AI가 자동 채점합니다.
                   </p>
-                </div>
-
-                <div className="flex items-center gap-3 rounded-full border border-gray-200 bg-white px-4 py-2 shadow-sm">
-                  <span className="text-xs font-bold text-gray-700">{draft.autoGradeEnabled ? '자동 채점 켜짐' : '자동 채점 꺼짐'}</span>
-                  <button
-                    type="button"
-                    onClick={toggleAutoGrade}
-                    className={`relative h-6 w-10 rounded-full transition ${draft.autoGradeEnabled ? 'bg-[#00C471]' : 'bg-gray-300'}`}
-                  >
-                    <span
-                      className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition ${draft.autoGradeEnabled ? 'right-0.5' : 'left-0.5'}`}
-                    />
-                  </button>
                 </div>
               </div>
 
-              <div className={`p-6 transition ${draft.autoGradeEnabled ? '' : 'pointer-events-none opacity-50 grayscale'}`}>
+              <div className="p-6">
                 <div className="space-y-4">
                   {draft.rubrics.map((rubric, index) => (
                     <div key={rubric.localId} className="group flex items-start gap-4 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
@@ -560,36 +522,6 @@ export default function CourseAssignmentEditorOverlay({ lessonId, lessonTitle, o
                   <i className="fas fa-plus" /> 평가 기준 추가하기
                 </button>
 
-                <div className="relative mt-8 overflow-hidden rounded-xl border border-gray-200 bg-white p-5 transition">
-                  <div className={`absolute inset-0 bg-gradient-to-r from-blue-50 to-indigo-50 transition ${draft.aiReviewEnabled ? 'opacity-100' : 'opacity-0'}`} />
-                  <div className="relative flex flex-col items-start gap-4 md:flex-row md:items-center">
-                    <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border text-xl transition ${draft.aiReviewEnabled ? 'border-blue-500 bg-blue-600 text-white' : 'border-blue-100 bg-blue-50 text-blue-500'}`}>
-                      <i className="fas fa-magic" />
-                    </div>
-                    <div className="flex-1">
-                      <div className="mb-1 flex items-center gap-2">
-                        <h4 className={`text-sm font-extrabold ${draft.aiReviewEnabled ? 'text-blue-900' : 'text-gray-900'}`}>AI 코드 리뷰</h4>
-                        <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[9px] font-extrabold uppercase text-blue-600">
-                          Premium
-                        </span>
-                      </div>
-                      <p className="text-xs font-medium leading-relaxed text-gray-500">
-                        키워드 매칭을 넘어 코드 구조와 예외 처리까지 분석하는 상세 피드백을 제공합니다.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={toggleAiReview}
-                      className={`w-full rounded-xl px-5 py-2.5 text-xs font-bold transition md:w-auto ${
-                        draft.aiReviewEnabled
-                          ? 'bg-blue-600 text-white shadow-lg shadow-blue-200'
-                          : 'border-2 border-blue-500 bg-white text-blue-600 hover:bg-blue-50'
-                      }`}
-                    >
-                      {draft.aiReviewEnabled ? '활성화됨' : '활성화 켜기'}
-                    </button>
-                  </div>
-                </div>
               </div>
             </div>
 
@@ -598,18 +530,16 @@ export default function CourseAssignmentEditorOverlay({ lessonId, lessonTitle, o
                 <div className="mb-2 flex items-end justify-between">
                   <label className="block text-sm font-extrabold text-gray-800">총 배점 합계</label>
                   <span className="text-[10px] font-bold text-gray-400">
-                    {draft.autoGradeEnabled ? '루브릭 점수가 자동 합산됩니다.' : '직접 입력하세요.'}
+                    루브릭 점수가 자동 합산됩니다.
                   </span>
                 </div>
                 <div className="relative">
                   <input
                     value={draft.totalScore}
                     onChange={(event) => setDraft({ ...draft, totalScore: Number(event.target.value || 0) })}
-                    readOnly={draft.autoGradeEnabled}
+                    readOnly={true}
                     type="number"
-                    className={`w-full rounded-xl border border-gray-200 py-3 pl-4 pr-12 text-right text-lg font-black text-gray-900 outline-none transition ${
-                      draft.autoGradeEnabled ? 'bg-gray-50' : 'bg-white focus:border-[#00C471]'
-                    }`}
+                    className="w-full rounded-xl border border-gray-200 py-3 pl-4 pr-12 text-right text-lg font-black text-gray-900 outline-none transition bg-gray-50"
                   />
                   <span className="absolute right-4 top-3.5 text-sm font-bold text-gray-500">점</span>
                 </div>

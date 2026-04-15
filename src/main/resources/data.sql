@@ -11192,7 +11192,7 @@ INSERT INTO assignments (
     node_id, title, description, submission_type, due_at, allowed_file_formats,
     readme_required, test_required, lint_required, submission_rule_description,
     total_score, pass_score, is_published, is_active, allow_late_submission,
-    auto_grade_enabled, ai_review_enabled, allow_text_submission,
+    ai_review_enabled, allow_text_submission,
     allow_file_submission, allow_url_submission, is_deleted, created_at, updated_at
 )
 SELECT
@@ -11211,7 +11211,6 @@ SELECT
     TRUE,
     TRUE,
     TRUE,
-    FALSE,
     TRUE,
     TRUE,
     TRUE,

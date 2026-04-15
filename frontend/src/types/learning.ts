@@ -50,7 +50,6 @@ export interface LearningLessonAssignment {
   submissionRuleDescription: string | null
   totalScore: number | null
   passScore: number | null
-  autoGradeEnabled: boolean | null
   aiReviewEnabled: boolean | null
   allowTextSubmission: boolean | null
   allowFileSubmission: boolean | null

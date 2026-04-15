@@ -104,7 +104,6 @@ public class InstructorLessonEvaluationDto {
     private String description;
     private Integer totalScore;
     private Integer passScore;
-    private Boolean autoGradeEnabled;
     private Boolean aiReviewEnabled;
     private Boolean allowTextSubmission;
     private Boolean allowFileSubmission;
@@ -140,7 +139,6 @@ public class InstructorLessonEvaluationDto {
     private String description;
     private Integer totalScore;
     private Integer passScore;
-    private Boolean autoGradeEnabled;
     private Boolean aiReviewEnabled;
     private Boolean allowTextSubmission;
     private Boolean allowFileSubmission;

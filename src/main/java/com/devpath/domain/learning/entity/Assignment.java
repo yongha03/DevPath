@@ -96,9 +96,6 @@ public class Assignment {
     @Column(name = "allow_late_submission", nullable = false)
     private Boolean allowLateSubmission = false;
 
-    @Column(name = "auto_grade_enabled")
-    private Boolean autoGradeEnabled;
-
     @Column(name = "ai_review_enabled")
     private Boolean aiReviewEnabled;
 
@@ -149,7 +146,6 @@ public class Assignment {
             Boolean isPublished,
             Boolean isActive,
             Boolean allowLateSubmission,
-            Boolean autoGradeEnabled,
             Boolean aiReviewEnabled,
             Boolean allowTextSubmission,
             Boolean allowFileSubmission,
@@ -173,7 +169,6 @@ public class Assignment {
         this.isPublished = isPublished == null ? false : isPublished;
         this.isActive = isActive == null ? true : isActive;
         this.allowLateSubmission = allowLateSubmission == null ? false : allowLateSubmission;
-        this.autoGradeEnabled = autoGradeEnabled;
         this.aiReviewEnabled = aiReviewEnabled;
         this.allowTextSubmission = allowTextSubmission;
         this.allowFileSubmission = allowFileSubmission;
@@ -225,14 +220,12 @@ public class Assignment {
 
     public void updateEditorSettings(
             Integer passScore,
-            Boolean autoGradeEnabled,
             Boolean aiReviewEnabled,
             Boolean allowTextSubmission,
             Boolean allowFileSubmission,
             Boolean allowUrlSubmission
     ) {
         this.passScore = passScore;
-        this.autoGradeEnabled = autoGradeEnabled;
         this.aiReviewEnabled = aiReviewEnabled;
         this.allowTextSubmission = allowTextSubmission;
         this.allowFileSubmission = allowFileSubmission;
