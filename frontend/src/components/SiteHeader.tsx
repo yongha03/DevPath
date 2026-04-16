@@ -54,9 +54,9 @@ export default function SiteHeader({
     : []
   const containerStyle: CSSProperties = {
     maxWidth: `${siteHeaderTuning.maxWidthPx}px`,
-    paddingLeft: `${siteHeaderTuning.horizontalPaddingPx}px`,
-    paddingRight: `${siteHeaderTuning.horizontalPaddingPx}px`,
-    gap: `${siteHeaderTuning.containerGapPx}px`,
+    paddingLeft: `clamp(16px, 3vw, ${siteHeaderTuning.horizontalPaddingPx}px)`,
+    paddingRight: `clamp(16px, 3vw, ${siteHeaderTuning.horizontalPaddingPx}px)`,
+    gap: `clamp(12px, 2vw, ${siteHeaderTuning.containerGapPx}px)`,
     ...getMoveStyle(siteHeaderTuning.headerGroup),
   }
   const brandSlotStyle: CSSProperties = {
@@ -126,7 +126,7 @@ export default function SiteHeader({
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-2 md:w-60">
+          <div className="ml-auto flex min-w-0 items-center justify-end gap-2 md:ml-0 md:w-60 md:flex-none">
             <div className="hidden md:block" style={userStyle}>
               {session ? (
                 <AccountUserMenu session={session} profileImage={profileImage} onLogout={onLogout} />

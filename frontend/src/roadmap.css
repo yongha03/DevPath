@@ -1,13 +1,13 @@
 /* index.css에서 Pretendard, body font-family 이미 선언 */
 
 :root {
-  --header-height: 64px;
-  --changes-panel-width: 400px;
-  --roadmap-node-width: 380px;
-  --roadmap-side-node-width: 330px;
+  --header-height: var(--app-header-height, 64px);
+  --changes-panel-width: min(400px, 100vw);
+  --roadmap-node-width: clamp(280px, 34vw, 380px);
+  --roadmap-side-node-width: clamp(250px, 30vw, 330px);
   --roadmap-row-min-height: 146px;
-  --roadmap-row-gap: 34px;
-  --roadmap-lane-gap: 48px;
+  --roadmap-row-gap: clamp(24px, 4vw, 34px);
+  --roadmap-lane-gap: clamp(24px, 5vw, 48px);
   --roadmap-line-color: #cbd5e1;
 }
 
@@ -404,8 +404,8 @@
   position: fixed;
   right: 0;
   top: var(--header-height);
-  height: calc(100vh - var(--header-height));
-  width: 500px;
+  height: calc(100dvh - var(--header-height));
+  width: min(500px, 100vw);
   background: white;
   box-shadow: -4px 0 32px rgba(0,0,0,0.12);
   z-index: 200;

@@ -34,7 +34,7 @@ export default function InstructorSidebar({
   }, [])
 
   return (
-    <aside className="hidden h-[calc(100vh-64px)] w-64 shrink-0 border-r border-gray-200 bg-white lg:flex lg:flex-col">
+    <aside className="hidden h-[calc(100dvh_-_var(--app-header-height))] w-64 shrink-0 border-r border-gray-200 bg-white lg:flex lg:flex-col">
       <div className="pt-4" />
       <nav className="hide-scroll flex-1 space-y-1 overflow-y-auto px-4 py-6">
         {sections.map((section) => (

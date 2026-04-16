@@ -56,12 +56,12 @@ const BEST_PRACTICES = [
 
 function RoadmapHubPage() {
   return (
-    <div className="h-screen overflow-hidden bg-gray-50 text-gray-900">
+    <div className="h-screen min-w-0 overflow-hidden bg-gray-50 text-gray-900">
       <div className="hub-header-rail" />
 
       <div className="flex h-screen min-w-0 flex-1 flex-col overflow-hidden">
         <header className="hub-header">
-          <div className="mx-auto flex h-full w-full max-w-[1600px] items-center gap-8 px-8">
+          <div className="app-responsive-container flex h-full items-center gap-4 lg:gap-8">
             <div
               className="hidden w-60 items-center px-4 lg:flex"
               style={{ transform: 'translateX(var(--logo-nudge))' }}
@@ -76,7 +76,7 @@ function RoadmapHubPage() {
               </a>
             </div>
 
-            <div className="flex flex-1 items-center justify-center gap-10 text-sm font-bold text-gray-500">
+            <div className="hidden flex-1 items-center justify-center gap-10 text-sm font-bold text-gray-500 md:flex">
               <a href="roadmap-hub.html" className="border-b-2 border-brand pb-1 text-brand transition">
                 로드맵
               </a>
@@ -86,10 +86,9 @@ function RoadmapHubPage() {
               <a href="job-matching.html" className="transition hover:text-brand">채용분석</a>
             </div>
 
-            <div className="flex w-60 items-center justify-end gap-2">
+            <div className="ml-auto flex min-w-0 items-center justify-end gap-2 md:w-60">
               <div
                 className="flex cursor-pointer items-center gap-2"
-                style={{ transform: 'translateX(120px)' }}
                 onClick={() => { window.location.href = 'profile.html' }}
               >
                 <span className="text-sm font-bold text-gray-700">나(사용자)</span>

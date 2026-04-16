@@ -19,7 +19,7 @@ export function renderPage(page: ReactElement, options?: RenderPageOptions) {
   createRoot(rootElement).render(
     <Fragment>
       <AuthToastViewport />
-      {page}
+      <div className="app-viewport">{page}</div>
     </Fragment>,
   )
 }
