@@ -73,6 +73,25 @@ function getMenuIconClassName(key: string) {
 const menuDescriptionClassName =
   'mt-0.5 truncate text-xs leading-5 text-gray-500 transition-colors group-hover:text-gray-600'
 
+function MenuText({
+  title,
+  description,
+}: {
+  title: string
+  description?: string
+}) {
+  return (
+    <div className="min-w-0">
+      <div className="text-sm font-bold text-gray-900">{title}</div>
+      {description ? (
+        <div className={menuDescriptionClassName} title={description}>
+          {description}
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
 export default function AccountUserMenu({
   session,
   profileImage,
@@ -160,62 +179,61 @@ export default function AccountUserMenu({
             </div>
           </div>
 
-          <div className="grid gap-1 p-2">
+          <ul className="grid gap-1 p-2">
             {instructorMenuItem ? (
-              <a
-                href={instructorMenuItem.href}
-                onClick={() => setOpen(false)}
-                className={getMenuItemClassName(instructorChannelActive)}
-              >
-                <div className={getMenuIconClassName(instructorMenuItem.key)}>
-                  <i className={instructorMenuItem.icon} />
-                </div>
-                <div className="min-w-0">
-                  <div className="text-sm font-bold text-gray-900">{instructorMenuItem.shortLabel}</div>
-                  <div className={menuDescriptionClassName} title={instructorMenuItem.description}>
-                    {instructorMenuItem.description}
+              <li>
+                <a
+                  href={instructorMenuItem.href}
+                  onClick={() => setOpen(false)}
+                  className={getMenuItemClassName(instructorChannelActive)}
+                >
+                  <div className={getMenuIconClassName(instructorMenuItem.key)}>
+                    <i className={instructorMenuItem.icon} />
                   </div>
-                </div>
-              </a>
+                  <MenuText title={instructorMenuItem.shortLabel} description={instructorMenuItem.description} />
+                </a>
+              </li>
             ) : null}
             {accountNavItems.map((item) => {
               const active = currentPageKey === item.key
 
               return (
-                <a
-                  key={item.key}
-                  href={item.href}
-                  onClick={() => setOpen(false)}
-                  className={getMenuItemClassName(active)}
-                >
-                  <div className={getMenuIconClassName(item.key)}>
-                    <i className={item.icon} />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-sm font-bold text-gray-900">{item.shortLabel}</div>
-                    <div className={menuDescriptionClassName} title={item.description}>
-                      {item.description}
+                <li key={item.key}>
+                  <a
+                    href={item.href}
+                    onClick={() => setOpen(false)}
+                    className={getMenuItemClassName(active)}
+                  >
+                    <div className={getMenuIconClassName(item.key)}>
+                      <i className={item.icon} />
                     </div>
-                  </div>
-                </a>
+                    <MenuText title={item.shortLabel} description={item.description} />
+                  </a>
+                </li>
               )
             })}
-          </div>
+          </ul>
 
           <div className="border-t border-gray-100 p-2">
-            <button
-              type="button"
-              onClick={async () => {
-                setOpen(false)
-                await onLogout?.()
-              }}
-              className={`${getMenuItemClassName(false)} w-full text-left text-sm font-bold text-gray-700`}
-            >
-              <div className={getMenuIconClassName('logout')}>
-                <i className="fas fa-arrow-right-from-bracket" />
-              </div>
-              {'\uB85C\uADF8\uC544\uC6C3'}
-            </button>
+            <ul className="grid gap-1">
+              <li>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    setOpen(false)
+                    await onLogout?.()
+                  }}
+                  className={`${getMenuItemClassName(false)} w-full items-center text-left`}
+                >
+                  <div className={getMenuIconClassName('logout')}>
+                    <i className="fas fa-arrow-right-from-bracket" />
+                  </div>
+                  <div className="translate-y-2">
+                    <MenuText title={'\uB85C\uADF8\uC544\uC6C3'} />
+                  </div>
+                </button>
+              </li>
+            </ul>
           </div>
         </div>
       ) : null}
