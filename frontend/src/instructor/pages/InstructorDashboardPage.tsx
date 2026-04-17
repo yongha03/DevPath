@@ -1,4 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  CategoryScale,
+  Chart as ChartJS,
+  Filler,
+  LinearScale,
+  LineController,
+  LineElement,
+  PointElement,
+  Tooltip,
+} from 'chart.js'
 import { ErrorCard, LoadingCard, formatNumber } from '../../account/ui'
 import {
   instructorAnalyticsApi,
@@ -20,6 +30,8 @@ import type {
 } from '../../types/instructor'
 
 type DashboardTabKey = 'learning' | 'mentoring'
+
+ChartJS.register(CategoryScale, LinearScale, LineController, LineElement, PointElement, Filler, Tooltip)
 
 const EMPTY_REVIEW_SUMMARY: InstructorReviewSummary = {
   totalReviews: 0,
@@ -95,10 +107,10 @@ function DashboardTabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-[10px] border px-[18px] py-2 text-sm font-medium transition duration-200 ${
+      className={`inline-flex h-[32px] items-center rounded-[8px] px-[14px] text-[12px] font-semibold leading-none transition duration-200 ${
         active
-          ? 'border-gray-900 bg-gray-900 font-semibold text-white shadow-[0_2px_6px_rgba(0,0,0,0.08)]'
-          : 'border-transparent bg-transparent text-gray-500 hover:bg-gray-100 hover:text-gray-900'
+          ? 'bg-white text-gray-900 shadow-[0_1px_4px_rgba(0,0,0,0.06)]'
+          : 'text-gray-500 hover:bg-white/60 hover:text-gray-900'
       }`}
     >
       {children}
@@ -265,7 +277,74 @@ function buildInsightText({
 }
 
 function DropOffTrendChart({ items }: { items: InstructorAnalyticsDropOffItem[] }) {
-  const chartItems = items.slice(0, 6)
+  const canvasRef = useRef<HTMLCanvasElement | null>(null)
+  const chartItems = useMemo(() => items.slice(0, 6), [items])
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+
+    if (!canvas || chartItems.length === 0) {
+      return
+    }
+
+    const labels = chartItems.map((_, index) => `섹션 ${index + 1}`)
+    const chart = new ChartJS(canvas, {
+      type: 'line',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: '누적 이탈률 (%)',
+            data: chartItems.map((item) => clampPercent(item.dropOffRate)),
+            borderColor: '#3B82F6',
+            backgroundColor: 'rgba(59, 130, 246, 0.1)',
+            fill: true,
+            tension: 0.4,
+            pointBackgroundColor: '#FFFFFF',
+            pointBorderColor: '#3B82F6',
+            pointBorderWidth: 2,
+            pointRadius: 4,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              title: (tooltipItems) => {
+                const index = tooltipItems[0]?.dataIndex ?? 0
+                return chartItems[index]?.lessonTitle ?? labels[index] ?? ''
+              },
+              label: (context) => `누적 이탈률 ${Math.round(Number(context.parsed.y) || 0)}%`,
+            },
+          },
+        },
+        scales: {
+          y: {
+            beginAtZero: true,
+            grid: { color: '#F3F4F6' },
+            ticks: {
+              color: '#6B7280',
+              font: { family: 'Pretendard', size: 10 },
+              callback: (value) => `${value}%`,
+            },
+          },
+          x: {
+            grid: { display: false },
+            ticks: {
+              color: '#6B7280',
+              font: { family: 'Pretendard', weight: 500, size: 11 },
+            },
+          },
+        },
+      },
+    })
+
+    return () => chart.destroy()
+  }, [chartItems])
 
   if (chartItems.length === 0) {
     return (
@@ -277,47 +356,9 @@ function DropOffTrendChart({ items }: { items: InstructorAnalyticsDropOffItem[] 
     )
   }
 
-  const width = 360
-  const height = 160
-  const paddingX = 24
-  const paddingTop = 18
-  const paddingBottom = 28
-  const graphWidth = width - paddingX * 2
-  const graphHeight = height - paddingTop - paddingBottom
-  const maxValue = Math.max(...chartItems.map((item) => item.dropOffRate), 1)
-  const points = chartItems.map((item, index) => {
-    const x = chartItems.length === 1 ? width / 2 : paddingX + (graphWidth / (chartItems.length - 1)) * index
-    const y = paddingTop + graphHeight - (clampPercent(item.dropOffRate) / maxValue) * graphHeight
-    return { x, y, item }
-  })
-  const linePoints = points.map((point) => `${point.x},${point.y}`).join(' ')
-  const areaPoints = `${points[0].x},${height - paddingBottom} ${linePoints} ${points[points.length - 1].x},${height - paddingBottom}`
-
   return (
-    <div>
-      <svg viewBox={`0 0 ${width} ${height}`} className="h-44 w-full" role="img" aria-label="강의 이탈률 추이">
-        <line x1={paddingX} y1={height - paddingBottom} x2={width - paddingX} y2={height - paddingBottom} stroke="#E5E7EB" strokeWidth="1" />
-        <line x1={paddingX} y1={paddingTop} x2={paddingX} y2={height - paddingBottom} stroke="#E5E7EB" strokeWidth="1" />
-        <polygon points={areaPoints} fill="#EFF6FF" />
-        <polyline points={linePoints} fill="none" stroke="#3B82F6" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-        {points.map((point) => (
-          <g key={point.item.lessonId}>
-            <circle cx={point.x} cy={point.y} r="4" fill="#FFFFFF" stroke="#3B82F6" strokeWidth="2" />
-            <text x={point.x} y={point.y - 10} textAnchor="middle" className="fill-gray-500 text-[10px] font-semibold">
-              {formatPercent(point.item.dropOffRate)}
-            </text>
-          </g>
-        ))}
-      </svg>
-      <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${chartItems.length}, minmax(0, 1fr))` }}>
-        {chartItems.map((item) => (
-          <div key={item.lessonId} className="min-w-0 text-center">
-            <p className="truncate text-[11px] font-medium text-gray-500" title={item.lessonTitle}>
-              {item.lessonTitle}
-            </p>
-          </div>
-        ))}
-      </div>
+    <div className="relative h-[160px] min-h-[140px] w-full flex-1">
+      <canvas ref={canvasRef} className="!h-full !w-full" aria-label="강의 이탈률 추이" />
     </div>
   )
 }
@@ -748,12 +789,15 @@ function LearningDashboardContent({
   pendingReviews,
   stalledLearners,
   sortedDropOffs,
+  selectedDropOffCourseId,
+  dropOffLoading,
   analytics,
   insightText,
   publishedCourseCount,
   totalStudents,
   averageProgress,
   onReply,
+  onDropOffCourseChange,
 }: {
   unansweredQuestions: InstructorQnaInboxItem[]
   sortedUnansweredQuestions: InstructorQnaInboxItem[]
@@ -764,12 +808,15 @@ function LearningDashboardContent({
   pendingReviews: InstructorReviewListItem[]
   stalledLearners: InstructorAnalyticsStudentItem[]
   sortedDropOffs: InstructorAnalyticsDropOffItem[]
+  selectedDropOffCourseId: number | null
+  dropOffLoading: boolean
   analytics: InstructorAnalyticsDashboard
   insightText: string
   publishedCourseCount: number
   totalStudents: number
   averageProgress: number
   onReply: (question: InstructorQnaInboxItem) => void
+  onDropOffCourseChange: (courseId: number | null) => void
 }) {
   return (
     <div>
@@ -796,15 +843,29 @@ function LearningDashboardContent({
           </article>
 
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            <article className={`${SOFT_PANEL} flex min-h-[240px] flex-col p-5`}>
+            <article className={`${SOFT_PANEL} flex flex-col p-5`}>
               <div className="mb-4 flex items-center justify-between gap-3">
                 <h3 className="flex items-center gap-2 text-[14px] font-semibold text-gray-900">
                   <i className="fas fa-chart-area text-blue-500" />
                   이탈 위험 분석
                 </h3>
-                <span className="rounded-md border border-gray-200 bg-white px-2 py-1 text-[11px] font-medium text-gray-500">
-                  전체 강의
-                </span>
+                <select
+                  className="cursor-pointer rounded border border-gray-200 bg-white p-1.5 text-[12px] font-medium text-gray-600 shadow-sm outline-none transition focus:border-brand disabled:cursor-wait disabled:opacity-60"
+                  value={selectedDropOffCourseId === null ? 'all' : String(selectedDropOffCourseId)}
+                  disabled={dropOffLoading}
+                  aria-label="이탈 위험 분석 강의 선택"
+                  onChange={(event) => {
+                    const nextValue = event.target.value
+                    onDropOffCourseChange(nextValue === 'all' ? null : Number(nextValue))
+                  }}
+                >
+                  <option value="all">전체 강의</option>
+                  {analytics.courseOptions.map((course) => (
+                    <option key={course.courseId} value={course.courseId}>
+                      {course.title}
+                    </option>
+                  ))}
+                </select>
               </div>
               <DropOffTrendChart items={sortedDropOffs} />
             </article>
@@ -1024,12 +1085,16 @@ function MentoringDashboardContent({ mentoringBoard }: { mentoringBoard: Instruc
 }
 
 export default function InstructorDashboardPage({ session }: { session: AuthSession }) {
+  const dropOffRequestIdRef = useRef(0)
   const [activeTab, setActiveTab] = useState<DashboardTabKey>('learning')
   const [courses, setCourses] = useState<InstructorCourseListItem[]>([])
   const [reviewSummary, setReviewSummary] = useState<InstructorReviewSummary>(EMPTY_REVIEW_SUMMARY)
   const [reviews, setReviews] = useState<InstructorReviewListItem[]>([])
   const [unansweredQuestions, setUnansweredQuestions] = useState<InstructorQnaInboxItem[]>([])
   const [analytics, setAnalytics] = useState<InstructorAnalyticsDashboard>(EMPTY_ANALYTICS_DASHBOARD)
+  const [selectedDropOffCourseId, setSelectedDropOffCourseId] = useState<number | null>(null)
+  const [dropOffItems, setDropOffItems] = useState<InstructorAnalyticsDropOffItem[]>([])
+  const [dropOffLoading, setDropOffLoading] = useState(false)
   const [mentoringBoard, setMentoringBoard] = useState<InstructorMentoringBoard>(EMPTY_MENTORING_BOARD)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -1082,7 +1147,10 @@ export default function InstructorDashboardPage({ session }: { session: AuthSess
         setReviews(reviewsResult.status === 'fulfilled' ? reviewsResult.value : [])
         setUnansweredQuestions(qnaResult.status === 'fulfilled' ? qnaResult.value : [])
         setMentoringBoard(mentoringBoardResult.status === 'fulfilled' ? mentoringBoardResult.value : EMPTY_MENTORING_BOARD)
-        setAnalytics(analyticsResult.status === 'fulfilled' ? analyticsResult.value : EMPTY_ANALYTICS_DASHBOARD)
+
+        const nextAnalytics = analyticsResult.status === 'fulfilled' ? analyticsResult.value : EMPTY_ANALYTICS_DASHBOARD
+        setAnalytics(nextAnalytics)
+        setDropOffItems(nextAnalytics.dropOffs)
 
         if (failures.length > 0) {
           setLoadWarning('일부 강사 데이터만 불러왔습니다. 새로고침하면 누락된 항목을 다시 요청합니다.')
@@ -1134,9 +1202,39 @@ export default function InstructorDashboardPage({ session }: { session: AuthSess
     [analytics.students],
   )
   const sortedDropOffs = useMemo(
-    () => [...analytics.dropOffs].sort((left, right) => right.dropOffRate - left.dropOffRate),
-    [analytics.dropOffs],
+    () => [...dropOffItems].sort((left, right) => right.dropOffRate - left.dropOffRate),
+    [dropOffItems],
   )
+
+  async function handleDropOffCourseChange(courseId: number | null) {
+    setSelectedDropOffCourseId(courseId)
+
+    const requestId = dropOffRequestIdRef.current + 1
+    dropOffRequestIdRef.current = requestId
+    setDropOffLoading(true)
+
+    try {
+      const nextAnalytics = await instructorAnalyticsApi.getDashboard(courseId ?? undefined)
+
+      if (dropOffRequestIdRef.current !== requestId) {
+        return
+      }
+
+      setDropOffItems(nextAnalytics.dropOffs)
+    } catch (dropOffError) {
+      if (dropOffRequestIdRef.current === requestId) {
+        setLoadWarning(
+          dropOffError instanceof Error
+            ? dropOffError.message
+            : '선택한 강의의 이탈 위험 데이터를 불러오지 못했습니다.',
+        )
+      }
+    } finally {
+      if (dropOffRequestIdRef.current === requestId) {
+        setDropOffLoading(false)
+      }
+    }
+  }
 
   function openQuickReply(question: InstructorQnaInboxItem) {
     setSelectedQuestion(question)
@@ -1230,7 +1328,7 @@ export default function InstructorDashboardPage({ session }: { session: AuthSess
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="inline-flex w-fit rounded-[12px] bg-[#F3F4F6] p-1">
             <DashboardTabButton active={activeTab === 'learning'} onClick={() => setActiveTab('learning')}>
               강의 운영
             </DashboardTabButton>
@@ -1259,12 +1357,15 @@ export default function InstructorDashboardPage({ session }: { session: AuthSess
             pendingReviews={pendingReviews}
             stalledLearners={stalledLearners}
             sortedDropOffs={sortedDropOffs}
+            selectedDropOffCourseId={selectedDropOffCourseId}
+            dropOffLoading={dropOffLoading}
             analytics={analytics}
             insightText={insightText}
             publishedCourseCount={publishedCourseCount}
             totalStudents={totalStudents}
             averageProgress={averageProgress}
             onReply={openQuickReply}
+            onDropOffCourseChange={handleDropOffCourseChange}
           />
         ) : (
           <MentoringDashboardContent mentoringBoard={mentoringBoard} />

@@ -18,6 +18,15 @@
   }
 }
 
+.sidebar-sticky-content {
+  position: sticky;
+  top: calc(var(--app-header-height) + 24px);
+  display: flex;
+  max-height: calc(100dvh - var(--app-header-height) - 48px);
+  flex: 1;
+  flex-direction: column;
+}
+
 .sidebar-nav {
   flex: 1;
   overflow-y: auto;

@@ -66,60 +66,62 @@ export default function InstructorSidebar({
   return (
     <>
       <aside className="instructor-sidebar">
-        <nav className="sidebar-nav hide-scroll">
-          {sections.map((section) => (
-            <div key={section} className="sidebar-section">
-              <p className="sidebar-section-title">{section}</p>
-              <ul className="sidebar-menu-list">
-                {instructorNavItems
-                  .filter((item) => item.section === section)
-                  .map((item) => {
-                    const active = item.key === currentPageKey
-                    const badge = item.key === 'qna' && unansweredCount != null && unansweredCount > 0
-                      ? String(unansweredCount)
-                      : null
+        <div className="sidebar-sticky-content">
+          <nav className="sidebar-nav hide-scroll">
+            {sections.map((section) => (
+              <div key={section} className="sidebar-section">
+                <p className="sidebar-section-title">{section}</p>
+                <ul className="sidebar-menu-list">
+                  {instructorNavItems
+                    .filter((item) => item.section === section)
+                    .map((item) => {
+                      const active = item.key === currentPageKey
+                      const badge = item.key === 'qna' && unansweredCount != null && unansweredCount > 0
+                        ? String(unansweredCount)
+                        : null
 
-                    return (
-                      <li key={item.key}>
-                        <a
-                          href={item.href}
-                          className={`sidebar-menu-item theme-${sidebarMenuThemes[item.key]} ${active ? 'active' : ''}`}
-                          aria-current={active ? 'page' : undefined}
-                        >
-                          <span className="menu-icon">
-                            <i className={item.icon} />
-                          </span>
-                          <span className="menu-label">{item.label}</span>
-                          {badge ? <span className="menu-badge">{badge}</span> : null}
-                        </a>
-                      </li>
-                    )
-                  })}
-              </ul>
-            </div>
-          ))}
-        </nav>
+                      return (
+                        <li key={item.key}>
+                          <a
+                            href={item.href}
+                            className={`sidebar-menu-item theme-${sidebarMenuThemes[item.key]} ${active ? 'active' : ''}`}
+                            aria-current={active ? 'page' : undefined}
+                          >
+                            <span className="menu-icon">
+                              <i className={item.icon} />
+                            </span>
+                            <span className="menu-label">{item.label}</span>
+                            {badge ? <span className="menu-badge">{badge}</span> : null}
+                          </a>
+                        </li>
+                      )
+                    })}
+                </ul>
+              </div>
+            ))}
+          </nav>
 
-        <div className="sidebar-footer">
-          <button type="button" className="help-button" onClick={() => setIsGuideOpen(true)}>
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="18"
-              height="18"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-            >
-              <circle cx="12" cy="12" r="10" />
-              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
-              <path d="M12 17h.01" />
-            </svg>
-            강사 가이드
-          </button>
+          <div className="sidebar-footer">
+            <button type="button" className="help-button" onClick={() => setIsGuideOpen(true)}>
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="18"
+                height="18"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                aria-hidden="true"
+              >
+                <circle cx="12" cy="12" r="10" />
+                <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                <path d="M12 17h.01" />
+              </svg>
+              강사 가이드
+            </button>
+          </div>
         </div>
       </aside>
 

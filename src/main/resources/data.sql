@@ -54,7 +54,7 @@ INSERT INTO users (email, password, name, role_name, is_active, created_at, upda
 SELECT
     'learner@devpath.com',
     '$2a$10$xh6.EW/FRzJBWfxqpdXh2uTVoepPhUxQRUH5OEwk90IpYeKjegkj.',
-    'Learner Kim',
+    '김하늘',
     'ROLE_LEARNER',
     TRUE,
     NOW(),
@@ -69,7 +69,7 @@ INSERT INTO users (email, password, name, role_name, is_active, created_at, upda
 SELECT
     'instructor@devpath.com',
     '$2a$10$xh6.EW/FRzJBWfxqpdXh2uTVoepPhUxQRUH5OEwk90IpYeKjegkj.',
-    'Instructor Hong',
+    '홍지훈',
     'ROLE_INSTRUCTOR',
     TRUE,
     NOW(),
@@ -84,7 +84,7 @@ INSERT INTO users (email, password, name, role_name, is_active, created_at, upda
 SELECT
     'admin@devpath.com',
     '$2a$10$xh6.EW/FRzJBWfxqpdXh2uTVoepPhUxQRUH5OEwk90IpYeKjegkj.',
-    'Admin Park',
+    '박서연',
     'ROLE_ADMIN',
     TRUE,
     NOW(),
@@ -117,7 +117,7 @@ INSERT INTO user_profiles (
 SELECT
     u.user_id,
     NULL,
-    'Hong Backend Lab',
+    '홍지훈 백엔드 연구소',
     'Spring Boot와 Security를 실전 중심으로 가르치는 강사입니다.',
     '010-0000-0001',
     'https://github.com/instructor-hong',
@@ -148,7 +148,7 @@ INSERT INTO user_profiles (
 SELECT
     u.user_id,
     NULL,
-    'DevPath Admin',
+    'DevPath 관리자',
     'DevPath 플랫폼 운영과 학습 경험 개선을 담당하고 있습니다.',
     '010-0000-0002',
     'https://github.com/admin-park',
@@ -167,7 +167,7 @@ WHERE u.email = 'admin@devpath.com'
 UPDATE user_profiles up
 SET
     profile_image = NULL,
-    channel_name = 'Hong Backend Lab',
+    channel_name = '홍지훈 백엔드 연구소',
     bio = 'Spring Boot와 Security를 실전 중심으로 가르치는 강사입니다.',
     github_url = 'https://github.com/instructor-hong',
     blog_url = 'https://blog.devpath.com/hong',
@@ -180,7 +180,7 @@ WHERE up.user_id = u.user_id
 UPDATE user_profiles up
 SET
     profile_image = NULL,
-    channel_name = 'DevPath Admin',
+    channel_name = 'DevPath 관리자',
     bio = 'DevPath 플랫폼 운영과 학습 경험 개선을 담당하고 있습니다.',
     github_url = 'https://github.com/admin-park',
     blog_url = 'https://blog.devpath.com/admin',
@@ -2161,7 +2161,7 @@ INSERT INTO users (
 )
 SELECT 'restricted-user@devpath.com',
        '$2a$10$RcdWJBwl.kuttYmqm/BN..6aZKeLNlq9DiNFHbZgZxfTzzNDD33o2',
-       'Restricted Learner', 'ROLE_LEARNER', FALSE, 'RESTRICTED',
+       '정민재', 'ROLE_LEARNER', FALSE, 'RESTRICTED',
        '2026-02-01 00:00:00', '2026-02-15 00:00:00'
 WHERE NOT EXISTS (
     SELECT 1 FROM users WHERE email = 'restricted-user@devpath.com'
@@ -2172,7 +2172,7 @@ INSERT INTO users (
 )
 SELECT 'deactivated-user@devpath.com',
        '$2a$10$RcdWJBwl.kuttYmqm/BN..6aZKeLNlq9DiNFHbZgZxfTzzNDD33o2',
-       'Deactivated Learner', 'ROLE_LEARNER', FALSE, 'DEACTIVATED',
+       '오서연', 'ROLE_LEARNER', FALSE, 'DEACTIVATED',
        '2026-02-01 00:00:00', '2026-02-16 00:00:00'
 WHERE NOT EXISTS (
     SELECT 1 FROM users WHERE email = 'deactivated-user@devpath.com'
@@ -2183,7 +2183,7 @@ INSERT INTO users (
 )
 SELECT 'withdrawn-user@devpath.com',
        '$2a$10$RcdWJBwl.kuttYmqm/BN..6aZKeLNlq9DiNFHbZgZxfTzzNDD33o2',
-       'Withdrawn Learner', 'ROLE_LEARNER', FALSE, 'WITHDRAWN',
+       '강도윤', 'ROLE_LEARNER', FALSE, 'WITHDRAWN',
        '2026-02-01 00:00:00', '2026-02-17 00:00:00'
 WHERE NOT EXISTS (
     SELECT 1 FROM users WHERE email = 'withdrawn-user@devpath.com'
@@ -2386,7 +2386,7 @@ INSERT INTO users (email, password, name, role_name, is_active, created_at, upda
 SELECT
     'learner2@devpath.com',
     '$2a$10$RcdWJBwl.kuttYmqm/BN..6aZKeLNlq9DiNFHbZgZxfTzzNDD33o2',
-    'Learner Park',
+    '박지민',
     'ROLE_LEARNER',
     TRUE,
     NOW(),
@@ -2401,7 +2401,7 @@ INSERT INTO users (email, password, name, role_name, is_active, created_at, upda
 SELECT
     'learner3@devpath.com',
     '$2a$10$RcdWJBwl.kuttYmqm/BN..6aZKeLNlq9DiNFHbZgZxfTzzNDD33o2',
-    'Learner Lee',
+    '이서준',
     'ROLE_LEARNER',
     TRUE,
     NOW(),
@@ -8778,7 +8778,7 @@ INSERT INTO users (email, password, name, role_name, is_active, created_at, upda
 SELECT
     'learner4@devpath.com',
     '$2a$10$RcdWJBwl.kuttYmqm/BN..6aZKeLNlq9DiNFHbZgZxfTzzNDD33o2',
-    'Learner Choi',
+    '최유진',
     'ROLE_LEARNER',
     TRUE,
     NOW(),
@@ -10513,7 +10513,7 @@ INSERT INTO user_profiles (
 SELECT
     u.user_id,
     'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=400&q=80',
-    'Frontend Craft',
+    '프론트엔드 크래프트',
     'React, Next.js, Flutter로 제품 출시까지 이어지는 프론트엔드 강의를 만듭니다.',
     '프론트엔드 구조 설계, UI 품질, 모바일 앱 출시까지 실무 흐름으로 다루는 채널입니다.',
     NULL, NULL,
@@ -10534,7 +10534,7 @@ INSERT INTO user_profiles (
 SELECT
     u.user_id,
     'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
-    'AI Data Lab',
+    'AI 데이터 연구소',
     'LLM 서비스, 데이터 분석, 커리어 준비를 실습 중심으로 안내합니다.',
     'AI 서비스 구현, 데이터 분석 기본기, 개발자 커리어 문서화를 함께 다루는 채널입니다.',
     NULL, NULL,
@@ -10546,6 +10546,18 @@ SELECT
 FROM users u
 WHERE u.email = 'data@devpath.com'
   AND NOT EXISTS (SELECT 1 FROM user_profiles up WHERE up.user_id = u.user_id);
+
+UPDATE user_profiles up
+SET
+    channel_name = CASE u.email
+        WHEN 'frontend@devpath.com' THEN '프론트엔드 크래프트'
+        WHEN 'data@devpath.com' THEN 'AI 데이터 연구소'
+        ELSE up.channel_name
+    END,
+    updated_at = NOW()
+FROM users u
+WHERE up.user_id = u.user_id
+  AND u.email IN ('frontend@devpath.com', 'data@devpath.com');
 
 INSERT INTO tags (name, category, is_official, is_deleted)
 WITH catalog_tags(name, category) AS (
@@ -11301,4 +11313,324 @@ WHERE NOT EXISTS (
     SELECT 1 FROM course_announcements ca
     WHERE ca.course_id = c.course_id
       AND ca.title = a.course_title || ' 커리큘럼 업데이트'
+);
+
+UPDATE users
+SET
+    name = CASE email
+        WHEN 'learner@devpath.com' THEN '김하늘'
+        WHEN 'learner2@devpath.com' THEN '박지민'
+        WHEN 'learner3@devpath.com' THEN '이서준'
+        WHEN 'learner4@devpath.com' THEN '최유진'
+        WHEN 'restricted-user@devpath.com' THEN '정민재'
+        WHEN 'deactivated-user@devpath.com' THEN '오서연'
+        WHEN 'withdrawn-user@devpath.com' THEN '강도윤'
+        WHEN 'instructor@devpath.com' THEN '홍지훈'
+        WHEN 'admin@devpath.com' THEN '박서연'
+        ELSE name
+    END,
+    updated_at = NOW()
+WHERE email IN (
+    'learner@devpath.com',
+    'learner2@devpath.com',
+    'learner3@devpath.com',
+    'learner4@devpath.com',
+    'restricted-user@devpath.com',
+    'deactivated-user@devpath.com',
+    'withdrawn-user@devpath.com',
+    'instructor@devpath.com',
+    'admin@devpath.com'
+);
+
+-- [CATALOG] frontend@devpath.com 강사 대시보드 활동 데이터
+INSERT INTO course_enrollments (
+    user_id, course_id, status, enrolled_at, completed_at, progress_percentage, last_accessed_at
+)
+WITH frontend_enrollment_seed(
+    learner_email, course_title, status, enrolled_at, completed_at, progress_percentage, last_accessed_at
+) AS (
+    VALUES
+        ('learner@devpath.com', 'React 19 프론트엔드 실전 가이드', 'ACTIVE', TIMESTAMP '2026-04-02 10:00:00', CAST(NULL AS TIMESTAMP), 18, TIMESTAMP '2026-04-05 21:10:00'),
+        ('learner2@devpath.com', 'React 19 프론트엔드 실전 가이드', 'COMPLETED', TIMESTAMP '2026-04-02 11:00:00', TIMESTAMP '2026-04-16 20:20:00', 100, TIMESTAMP '2026-04-16 20:20:00'),
+        ('learner3@devpath.com', 'React 19 프론트엔드 실전 가이드', 'ACTIVE', TIMESTAMP '2026-04-03 10:30:00', CAST(NULL AS TIMESTAMP), 34, TIMESTAMP '2026-04-07 19:30:00'),
+        ('learner4@devpath.com', 'React 19 프론트엔드 실전 가이드', 'ACTIVE', TIMESTAMP '2026-04-04 14:10:00', CAST(NULL AS TIMESTAMP), 52, TIMESTAMP '2026-04-15 22:10:00'),
+        ('learner@devpath.com', 'Next.js 14 제품 개발 실전', 'ACTIVE', TIMESTAMP '2026-04-04 09:20:00', CAST(NULL AS TIMESTAMP), 12, TIMESTAMP '2026-04-04 22:40:00'),
+        ('learner2@devpath.com', 'Next.js 14 제품 개발 실전', 'ACTIVE', TIMESTAMP '2026-04-05 13:00:00', CAST(NULL AS TIMESTAMP), 44, TIMESTAMP '2026-04-09 18:20:00'),
+        ('learner3@devpath.com', 'Next.js 14 제품 개발 실전', 'COMPLETED', TIMESTAMP '2026-04-05 15:40:00', TIMESTAMP '2026-04-16 21:00:00', 100, TIMESTAMP '2026-04-16 21:00:00'),
+        ('learner4@devpath.com', 'Next.js 14 제품 개발 실전', 'ACTIVE', TIMESTAMP '2026-04-06 10:15:00', CAST(NULL AS TIMESTAMP), 27, TIMESTAMP '2026-04-08 20:00:00'),
+        ('learner@devpath.com', 'Flutter로 MVP 앱 출시하기', 'ACTIVE', TIMESTAMP '2026-04-06 09:00:00', CAST(NULL AS TIMESTAMP), 9, TIMESTAMP '2026-04-03 23:10:00'),
+        ('learner2@devpath.com', 'Flutter로 MVP 앱 출시하기', 'ACTIVE', TIMESTAMP '2026-04-07 12:20:00', CAST(NULL AS TIMESTAMP), 63, TIMESTAMP '2026-04-14 21:30:00'),
+        ('learner3@devpath.com', 'Flutter로 MVP 앱 출시하기', 'ACTIVE', TIMESTAMP '2026-04-07 19:00:00', CAST(NULL AS TIMESTAMP), 28, TIMESTAMP '2026-04-08 22:45:00'),
+        ('learner4@devpath.com', 'Flutter로 MVP 앱 출시하기', 'COMPLETED', TIMESTAMP '2026-04-08 11:10:00', TIMESTAMP '2026-04-16 19:10:00', 100, TIMESTAMP '2026-04-16 19:10:00')
+)
+SELECT
+    u.user_id,
+    c.course_id,
+    seed.status,
+    seed.enrolled_at,
+    seed.completed_at,
+    seed.progress_percentage,
+    seed.last_accessed_at
+FROM frontend_enrollment_seed seed
+JOIN users u ON u.email = seed.learner_email
+JOIN courses c ON c.title = seed.course_title
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM course_enrollments ce
+    WHERE ce.user_id = u.user_id
+      AND ce.course_id = c.course_id
+);
+
+INSERT INTO lesson_progress (
+    user_id, lesson_id, progress_percent, progress_seconds,
+    default_playback_rate, is_pip_enabled, is_completed,
+    last_watched_at, created_at, updated_at
+)
+WITH frontend_progress_seed(
+    learner_email, course_title, lesson_title, progress_percent,
+    progress_seconds, default_playback_rate, is_pip_enabled, is_completed, last_watched_at
+) AS (
+    VALUES
+        ('learner@devpath.com', 'React 19 프론트엔드 실전 가이드', '컴포넌트 경계와 상태 배치', 100, 900, 1.25, TRUE, TRUE, TIMESTAMP '2026-04-04 21:00:00'),
+        ('learner@devpath.com', 'React 19 프론트엔드 실전 가이드', 'Actions와 폼 처리 패턴', 35, 430, 1.00, FALSE, FALSE, TIMESTAMP '2026-04-05 21:10:00'),
+        ('learner2@devpath.com', 'React 19 프론트엔드 실전 가이드', '컴포넌트 경계와 상태 배치', 100, 900, 1.25, TRUE, TRUE, TIMESTAMP '2026-04-12 20:00:00'),
+        ('learner2@devpath.com', 'React 19 프론트엔드 실전 가이드', 'Actions와 폼 처리 패턴', 100, 960, 1.25, TRUE, TRUE, TIMESTAMP '2026-04-13 20:30:00'),
+        ('learner2@devpath.com', 'React 19 프론트엔드 실전 가이드', 'Tailwind 유틸리티 설계', 100, 840, 1.25, TRUE, TRUE, TIMESTAMP '2026-04-15 20:10:00'),
+        ('learner2@devpath.com', 'React 19 프론트엔드 실전 가이드', 'Playwright로 사용자 흐름 테스트', 100, 1020, 1.25, TRUE, TRUE, TIMESTAMP '2026-04-16 20:20:00'),
+        ('learner3@devpath.com', 'React 19 프론트엔드 실전 가이드', '컴포넌트 경계와 상태 배치', 80, 720, 1.00, FALSE, FALSE, TIMESTAMP '2026-04-06 19:00:00'),
+        ('learner3@devpath.com', 'React 19 프론트엔드 실전 가이드', 'Actions와 폼 처리 패턴', 25, 310, 1.00, FALSE, FALSE, TIMESTAMP '2026-04-07 19:30:00'),
+        ('learner4@devpath.com', 'React 19 프론트엔드 실전 가이드', '컴포넌트 경계와 상태 배치', 100, 900, 1.10, FALSE, TRUE, TIMESTAMP '2026-04-12 21:30:00'),
+        ('learner4@devpath.com', 'React 19 프론트엔드 실전 가이드', 'Tailwind 유틸리티 설계', 55, 460, 1.10, FALSE, FALSE, TIMESTAMP '2026-04-15 22:10:00'),
+        ('learner@devpath.com', 'Next.js 14 제품 개발 실전', '라우팅과 레이아웃 구조 설계', 40, 360, 1.00, FALSE, FALSE, TIMESTAMP '2026-04-04 22:40:00'),
+        ('learner2@devpath.com', 'Next.js 14 제품 개발 실전', '라우팅과 레이아웃 구조 설계', 100, 900, 1.25, TRUE, TRUE, TIMESTAMP '2026-04-08 18:00:00'),
+        ('learner2@devpath.com', 'Next.js 14 제품 개발 실전', '서버 컴포넌트와 캐싱 전략', 45, 480, 1.00, FALSE, FALSE, TIMESTAMP '2026-04-09 18:20:00'),
+        ('learner3@devpath.com', 'Next.js 14 제품 개발 실전', '라우팅과 레이아웃 구조 설계', 100, 900, 1.25, TRUE, TRUE, TIMESTAMP '2026-04-14 20:10:00'),
+        ('learner3@devpath.com', 'Next.js 14 제품 개발 실전', '서버 컴포넌트와 캐싱 전략', 100, 1080, 1.25, TRUE, TRUE, TIMESTAMP '2026-04-15 20:30:00'),
+        ('learner3@devpath.com', 'Next.js 14 제품 개발 실전', '인증과 권한 처리', 100, 960, 1.25, TRUE, TRUE, TIMESTAMP '2026-04-16 20:40:00'),
+        ('learner4@devpath.com', 'Next.js 14 제품 개발 실전', '라우팅과 레이아웃 구조 설계', 55, 500, 1.00, FALSE, FALSE, TIMESTAMP '2026-04-08 20:00:00'),
+        ('learner@devpath.com', 'Flutter로 MVP 앱 출시하기', '위젯 트리와 상태 관리', 20, 170, 1.00, FALSE, FALSE, TIMESTAMP '2026-04-03 23:10:00'),
+        ('learner2@devpath.com', 'Flutter로 MVP 앱 출시하기', '위젯 트리와 상태 관리', 100, 840, 1.10, FALSE, TRUE, TIMESTAMP '2026-04-12 21:20:00'),
+        ('learner2@devpath.com', 'Flutter로 MVP 앱 출시하기', '라우팅과 폼 검증', 80, 720, 1.10, FALSE, FALSE, TIMESTAMP '2026-04-14 21:30:00'),
+        ('learner3@devpath.com', 'Flutter로 MVP 앱 출시하기', '위젯 트리와 상태 관리', 60, 500, 1.00, FALSE, FALSE, TIMESTAMP '2026-04-07 22:10:00'),
+        ('learner3@devpath.com', 'Flutter로 MVP 앱 출시하기', '라우팅과 폼 검증', 10, 90, 1.00, FALSE, FALSE, TIMESTAMP '2026-04-08 22:45:00'),
+        ('learner4@devpath.com', 'Flutter로 MVP 앱 출시하기', '위젯 트리와 상태 관리', 100, 840, 1.25, TRUE, TRUE, TIMESTAMP '2026-04-13 19:10:00'),
+        ('learner4@devpath.com', 'Flutter로 MVP 앱 출시하기', '라우팅과 폼 검증', 100, 900, 1.25, TRUE, TRUE, TIMESTAMP '2026-04-14 19:40:00'),
+        ('learner4@devpath.com', 'Flutter로 MVP 앱 출시하기', 'REST API 연동과 에러 처리', 100, 960, 1.25, TRUE, TRUE, TIMESTAMP '2026-04-15 19:30:00')
+)
+SELECT
+    u.user_id,
+    l.lesson_id,
+    seed.progress_percent,
+    seed.progress_seconds,
+    seed.default_playback_rate,
+    seed.is_pip_enabled,
+    seed.is_completed,
+    seed.last_watched_at,
+    seed.last_watched_at,
+    seed.last_watched_at
+FROM frontend_progress_seed seed
+JOIN users u ON u.email = seed.learner_email
+JOIN courses c ON c.title = seed.course_title
+JOIN course_sections cs ON cs.course_id = c.course_id
+JOIN lessons l ON l.section_id = cs.section_id AND l.title = seed.lesson_title
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM lesson_progress lp
+    WHERE lp.user_id = u.user_id
+      AND lp.lesson_id = l.lesson_id
+);
+
+INSERT INTO quiz_attempts (
+    quiz_id, learner_id, score, max_score, started_at, completed_at,
+    time_spent_seconds, is_passed, attempt_number, is_deleted, created_at, updated_at
+)
+WITH frontend_quiz_attempt_seed(
+    learner_email, course_title, score, max_score, started_at,
+    completed_at, time_spent_seconds, is_passed, attempt_number
+) AS (
+    VALUES
+        ('learner@devpath.com', 'React 19 프론트엔드 실전 가이드', 55, 100, TIMESTAMP '2026-04-06 19:00:00', TIMESTAMP '2026-04-06 19:08:00', 480, FALSE, 1),
+        ('learner2@devpath.com', 'React 19 프론트엔드 실전 가이드', 92, 100, TIMESTAMP '2026-04-13 20:00:00', TIMESTAMP '2026-04-13 20:06:00', 360, TRUE, 1),
+        ('learner3@devpath.com', 'React 19 프론트엔드 실전 가이드', 68, 100, TIMESTAMP '2026-04-07 20:00:00', TIMESTAMP '2026-04-07 20:09:00', 540, FALSE, 1),
+        ('learner2@devpath.com', 'Next.js 14 제품 개발 실전', 74, 100, TIMESTAMP '2026-04-09 19:00:00', TIMESTAMP '2026-04-09 19:08:00', 500, TRUE, 1),
+        ('learner3@devpath.com', 'Next.js 14 제품 개발 실전', 88, 100, TIMESTAMP '2026-04-15 21:00:00', TIMESTAMP '2026-04-15 21:07:00', 420, TRUE, 1),
+        ('learner3@devpath.com', 'Flutter로 MVP 앱 출시하기', 48, 100, TIMESTAMP '2026-04-08 23:00:00', TIMESTAMP '2026-04-08 23:10:00', 600, FALSE, 1),
+        ('learner4@devpath.com', 'Flutter로 MVP 앱 출시하기', 95, 100, TIMESTAMP '2026-04-14 20:00:00', TIMESTAMP '2026-04-14 20:06:00', 360, TRUE, 1)
+)
+SELECT
+    q.quiz_id,
+    u.user_id,
+    seed.score,
+    seed.max_score,
+    seed.started_at,
+    seed.completed_at,
+    seed.time_spent_seconds,
+    seed.is_passed,
+    seed.attempt_number,
+    FALSE,
+    seed.started_at,
+    seed.completed_at
+FROM frontend_quiz_attempt_seed seed
+JOIN users u ON u.email = seed.learner_email
+JOIN roadmap_nodes rn ON rn.sub_topics = seed.course_title
+                   AND rn.node_type = 'QUIZ'
+                   AND rn.title LIKE '[CATALOG]%'
+JOIN quizzes q ON q.node_id = rn.node_id
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM quiz_attempts qa
+    WHERE qa.quiz_id = q.quiz_id
+      AND qa.learner_id = u.user_id
+      AND qa.attempt_number = seed.attempt_number
+      AND qa.is_deleted = FALSE
+);
+
+INSERT INTO assignment_submissions (
+    assignment_id, learner_id, grader_id, submission_text, submission_url,
+    is_late, submission_status, submitted_at, graded_at,
+    readme_passed, test_passed, lint_passed, file_format_passed,
+    quality_score, total_score, individual_feedback, common_feedback,
+    is_deleted, created_at, updated_at
+)
+WITH frontend_submission_seed(
+    learner_email, course_title, submission_text, submission_url,
+    is_late, submission_status, submitted_at, graded_at,
+    readme_passed, test_passed, lint_passed, file_format_passed,
+    quality_score, total_score, individual_feedback, common_feedback
+) AS (
+    VALUES
+        ('learner2@devpath.com', 'React 19 프론트엔드 실전 가이드', '대시보드 필터와 Playwright 흐름을 제출했습니다.', 'https://github.com/devpath/frontend-react-dashboard-a', FALSE, 'GRADED', TIMESTAMP '2026-04-14 20:00:00', TIMESTAMP '2026-04-15 10:00:00', TRUE, TRUE, TRUE, TRUE, 91, 88, '테스트 흐름이 안정적입니다.', '프론트엔드 실습 과제 피드백'),
+        ('learner3@devpath.com', 'React 19 프론트엔드 실전 가이드', '상태 배치와 Tailwind 스타일링 결과를 정리했습니다.', 'https://github.com/devpath/frontend-react-dashboard-b', FALSE, 'GRADED', TIMESTAMP '2026-04-08 20:00:00', TIMESTAMP '2026-04-09 11:00:00', TRUE, FALSE, TRUE, TRUE, 62, 58, '폼 오류 케이스 테스트가 부족합니다.', '프론트엔드 실습 과제 피드백'),
+        ('learner3@devpath.com', 'Next.js 14 제품 개발 실전', '예약 상세 페이지와 SEO 점검표를 제출했습니다.', 'https://github.com/devpath/frontend-next-product-a', FALSE, 'GRADED', TIMESTAMP '2026-04-16 20:00:00', TIMESTAMP '2026-04-16 22:00:00', TRUE, TRUE, TRUE, TRUE, 89, 86, '캐싱 기준 설명이 좋습니다.', 'Next.js 제품 실습 과제 피드백'),
+        ('learner2@devpath.com', 'Next.js 14 제품 개발 실전', '인증 처리와 이미지 최적화 내용을 제출했습니다.', 'https://github.com/devpath/frontend-next-product-b', TRUE, 'GRADED', TIMESTAMP '2026-04-10 20:00:00', TIMESTAMP '2026-04-11 10:00:00', TRUE, TRUE, FALSE, TRUE, 71, 64, '메타데이터 누락 항목을 보강해야 합니다.', 'Next.js 제품 실습 과제 피드백'),
+        ('learner4@devpath.com', 'Flutter로 MVP 앱 출시하기', '스토어 제출용 MVP 화면과 빌드 체크리스트입니다.', 'https://github.com/devpath/frontend-flutter-mvp-a', FALSE, 'GRADED', TIMESTAMP '2026-04-15 18:00:00', TIMESTAMP '2026-04-16 09:30:00', TRUE, TRUE, TRUE, TRUE, 94, 92, '권한 설명과 빌드 문서가 명확합니다.', 'Flutter MVP 실습 과제 피드백'),
+        ('learner3@devpath.com', 'Flutter로 MVP 앱 출시하기', '가입 화면 폼 검증과 API 실패 처리까지 제출했습니다.', 'https://github.com/devpath/frontend-flutter-mvp-b', FALSE, 'GRADED', TIMESTAMP '2026-04-09 22:00:00', TIMESTAMP '2026-04-10 12:00:00', TRUE, FALSE, TRUE, TRUE, 66, 61, '에러 상태 화면을 더 분리하면 좋습니다.', 'Flutter MVP 실습 과제 피드백')
+)
+SELECT
+    a.assignment_id,
+    lu.user_id,
+    iu.user_id,
+    seed.submission_text,
+    seed.submission_url,
+    seed.is_late,
+    seed.submission_status,
+    seed.submitted_at,
+    seed.graded_at,
+    seed.readme_passed,
+    seed.test_passed,
+    seed.lint_passed,
+    seed.file_format_passed,
+    seed.quality_score,
+    seed.total_score,
+    seed.individual_feedback,
+    seed.common_feedback,
+    FALSE,
+    seed.submitted_at,
+    seed.graded_at
+FROM frontend_submission_seed seed
+JOIN users lu ON lu.email = seed.learner_email
+JOIN users iu ON iu.email = 'frontend@devpath.com'
+JOIN roadmap_nodes rn ON rn.sub_topics = seed.course_title
+                   AND rn.node_type = 'ASSIGNMENT'
+                   AND rn.title LIKE '[CATALOG]%'
+JOIN assignments a ON a.node_id = rn.node_id
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM assignment_submissions s
+    WHERE s.assignment_id = a.assignment_id
+      AND s.learner_id = lu.user_id
+      AND s.submission_url = seed.submission_url
+      AND s.is_deleted = FALSE
+);
+
+INSERT INTO qna_questions (
+    user_id, template_type, difficulty, title, content,
+    adopted_answer_id, course_id, lecture_timestamp,
+    qna_status, view_count, is_deleted, created_at, updated_at
+)
+WITH frontend_qna_seed(
+    learner_email, course_title, template_type, difficulty,
+    title, content, lecture_timestamp, view_count, created_at
+) AS (
+    VALUES
+        ('learner@devpath.com', 'React 19 프론트엔드 실전 가이드', 'IMPLEMENTATION', 'MEDIUM', 'Actions와 폼 처리에서 낙관적 업데이트 롤백은 어디에 두나요?', '폼 제출 실패 시 서버 에러 메시지와 로컬 상태를 함께 되돌리는 위치가 헷갈립니다.', '00:12:40', 18, TIMESTAMP '2026-04-14 09:20:00'),
+        ('learner2@devpath.com', 'React 19 프론트엔드 실전 가이드', 'DEBUGGING', 'HARD', 'Playwright 로그인 플로우 테스트가 CI에서만 실패합니다', '로컬에서는 통과하는데 CI에서 세션 쿠키가 유지되지 않아 다음 화면으로 넘어가지 않습니다.', '00:31:10', 24, TIMESTAMP '2026-04-15 13:10:00'),
+        ('learner3@devpath.com', 'React 19 프론트엔드 실전 가이드', 'STUDY', 'EASY', 'Tailwind 유틸리티가 길어질 때 컴포넌트를 어떻게 나누면 좋을까요?', '버튼과 카드에 클래스가 많아졌을 때 어느 기준으로 컴포넌트를 분리해야 하는지 궁금합니다.', '00:18:05', 11, TIMESTAMP '2026-04-16 10:30:00'),
+        ('learner4@devpath.com', 'React 19 프론트엔드 실전 가이드', 'CODE_REVIEW', 'MEDIUM', '대시보드 카드 컴포넌트 분리 기준을 봐주세요', '필터 카드와 통계 카드가 props 구조는 비슷한데 스타일이 달라서 같은 컴포넌트로 묶어도 되는지 고민됩니다.', '00:44:20', 7, TIMESTAMP '2026-04-13 18:45:00'),
+        ('learner@devpath.com', 'Next.js 14 제품 개발 실전', 'IMPLEMENTATION', 'MEDIUM', '서버 컴포넌트에서 쿠키 기반 인증을 읽는 위치가 궁금합니다', 'layout에서 세션을 읽는 방식과 page 단위로 읽는 방식 중 어떤 기준으로 나누는지 알고 싶습니다.', '00:16:25', 16, TIMESTAMP '2026-04-14 11:40:00'),
+        ('learner2@devpath.com', 'Next.js 14 제품 개발 실전', 'STUDY', 'MEDIUM', 'revalidatePath와 router.refresh를 언제 구분해서 쓰나요?', '서버 액션 이후 목록을 갱신할 때 두 방법을 같이 써야 하는지 기준이 애매합니다.', '00:27:50', 21, TIMESTAMP '2026-04-15 16:20:00'),
+        ('learner3@devpath.com', 'Next.js 14 제품 개발 실전', 'DEBUGGING', 'HARD', '이미지 최적화 후 LCP가 오히려 느려졌습니다', 'next/image로 바꾼 뒤 첫 화면 이미지가 늦게 표시됩니다. priority와 sizes 설정 기준을 알고 싶습니다.', '00:39:15', 29, TIMESTAMP '2026-04-16 14:00:00'),
+        ('learner4@devpath.com', 'Next.js 14 제품 개발 실전', 'PROJECT', 'MEDIUM', '메타데이터 템플릿을 여러 상세 페이지에 공통 적용하고 싶습니다', '제품 상세, 검색 결과, 프로필 페이지에서 title 규칙을 재사용하려면 어느 레이어에 두는 게 좋을까요?', '00:48:30', 9, TIMESTAMP '2026-04-12 20:10:00'),
+        ('learner@devpath.com', 'Flutter로 MVP 앱 출시하기', 'STUDY', 'EASY', '상태 관리에서 Riverpod을 꼭 써야 하나요?', '작은 MVP 앱에서도 기본 StatefulWidget만 쓰면 나중에 유지보수가 어려워지는지 궁금합니다.', '00:10:45', 13, TIMESTAMP '2026-04-16 09:10:00'),
+        ('learner2@devpath.com', 'Flutter로 MVP 앱 출시하기', 'DEBUGGING', 'MEDIUM', 'Android 빌드에서 권한 안내 문구가 반영되지 않습니다', 'AndroidManifest와 store 설명 문구를 수정했는데 빌드 결과에서 이전 문구가 계속 보입니다.', '00:42:10', 17, TIMESTAMP '2026-04-15 19:20:00'),
+        ('learner3@devpath.com', 'Flutter로 MVP 앱 출시하기', 'IMPLEMENTATION', 'MEDIUM', '폼 검증 에러 메시지를 화면마다 재사용하고 싶습니다', '가입, 로그인, 문의 화면에서 같은 검증 규칙을 쓰는데 위젯 분리와 함수 분리 중 어떤 방식이 좋을까요?', '00:21:55', 10, TIMESTAMP '2026-04-14 22:35:00'),
+        ('learner4@devpath.com', 'Flutter로 MVP 앱 출시하기', 'PROJECT', 'EASY', '스토어 제출용 권한 설명 문구를 어디서 관리하나요?', '카메라와 파일 접근 권한 설명을 코드와 제출 문서에서 함께 관리하는 방법이 궁금합니다.', '00:55:00', 8, TIMESTAMP '2026-04-13 15:50:00')
+)
+SELECT
+    u.user_id,
+    seed.template_type,
+    seed.difficulty,
+    seed.title,
+    seed.content,
+    NULL,
+    c.course_id,
+    seed.lecture_timestamp,
+    'UNANSWERED',
+    seed.view_count,
+    FALSE,
+    seed.created_at,
+    seed.created_at
+FROM frontend_qna_seed seed
+JOIN users u ON u.email = seed.learner_email
+JOIN courses c ON c.title = seed.course_title
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM qna_questions q
+    WHERE q.title = seed.title
+      AND q.user_id = u.user_id
+      AND q.course_id = c.course_id
+);
+
+INSERT INTO review (
+    course_id, learner_id, rating, content, status,
+    is_hidden, is_deleted, issue_tags_raw, created_at, updated_at
+)
+WITH frontend_review_seed(
+    learner_email, course_title, rating, content,
+    status, is_hidden, issue_tags_raw, created_at
+) AS (
+    VALUES
+        ('learner@devpath.com', 'React 19 프론트엔드 실전 가이드', 5, '상태 위치를 판단하는 기준이 실제 화면 예제로 연결돼서 이해하기 쉬웠습니다.', 'UNANSWERED', FALSE, CAST(NULL AS TEXT), TIMESTAMP '2026-04-16 19:20:00'),
+        ('learner2@devpath.com', 'React 19 프론트엔드 실전 가이드', 4, 'Playwright 실습은 좋았는데 예제 코드 버전이 영상과 조금 달라 확인이 필요합니다.', 'UNANSWERED', FALSE, '예제_코드_버전_차이,설명_보강_필요', TIMESTAMP '2026-04-15 21:10:00'),
+        ('learner3@devpath.com', 'React 19 프론트엔드 실전 가이드', 3, 'Tailwind 설명 중 화면 캡처와 실제 클래스명이 다른 구간이 있었습니다.', 'UNANSWERED', FALSE, '화면_캡처_불일치', TIMESTAMP '2026-04-14 18:40:00'),
+        ('learner4@devpath.com', 'React 19 프론트엔드 실전 가이드', 5, '대시보드 화면을 작은 단위로 나누는 기준이 실무에 바로 적용하기 좋았습니다.', 'UNANSWERED', FALSE, CAST(NULL AS TEXT), TIMESTAMP '2026-04-13 20:25:00'),
+        ('learner@devpath.com', 'Next.js 14 제품 개발 실전', 4, '서버 컴포넌트와 캐시 흐름은 좋았고 이미지 최적화 설명이 조금 더 있으면 좋겠습니다.', 'UNANSWERED', FALSE, '이미지_최적화_설명_보강', TIMESTAMP '2026-04-16 12:30:00'),
+        ('learner2@devpath.com', 'Next.js 14 제품 개발 실전', 5, 'App Router 기준으로 제품 화면을 끝까지 만드는 흐름이 잘 잡혀 있습니다.', 'UNANSWERED', FALSE, CAST(NULL AS TEXT), TIMESTAMP '2026-04-15 17:50:00'),
+        ('learner3@devpath.com', 'Next.js 14 제품 개발 실전', 3, '자료 링크 하나가 열리지 않고 메타데이터 예제 파일 위치가 영상과 달랐습니다.', 'UNANSWERED', FALSE, '링크_오류,자료_업데이트_필요', TIMESTAMP '2026-04-14 23:15:00'),
+        ('learner4@devpath.com', 'Next.js 14 제품 개발 실전', 4, '인증과 권한 처리 파트가 실습 중심이라 따라가기 좋았습니다.', 'UNANSWERED', FALSE, CAST(NULL AS TEXT), TIMESTAMP '2026-04-13 13:10:00'),
+        ('learner@devpath.com', 'Flutter로 MVP 앱 출시하기', 4, 'MVP 출시 체크리스트가 도움이 됐고 권한 설명 문구 예시가 더 있으면 좋겠습니다.', 'UNANSWERED', FALSE, '앱_권한_설명_보강', TIMESTAMP '2026-04-16 08:40:00'),
+        ('learner2@devpath.com', 'Flutter로 MVP 앱 출시하기', 5, '웹 개발자 입장에서 Flutter 앱 구조를 이해하기 쉽게 설명해줍니다.', 'UNANSWERED', FALSE, CAST(NULL AS TEXT), TIMESTAMP '2026-04-15 10:25:00'),
+        ('learner3@devpath.com', 'Flutter로 MVP 앱 출시하기', 2, '빌드 환경 버전 차이 때문에 실습이 막혔고 오류 재현 순서가 더 필요합니다.', 'UNANSWERED', FALSE, '빌드_환경_버전_차이,오류_재현_필요', TIMESTAMP '2026-04-14 09:35:00'),
+        ('learner4@devpath.com', 'Flutter로 MVP 앱 출시하기', 5, '위젯 분리와 폼 검증 흐름을 짧은 MVP 예제로 익히기 좋았습니다.', 'UNANSWERED', FALSE, CAST(NULL AS TEXT), TIMESTAMP '2026-04-13 19:00:00')
+)
+SELECT
+    c.course_id,
+    u.user_id,
+    seed.rating,
+    seed.content,
+    seed.status,
+    seed.is_hidden,
+    FALSE,
+    seed.issue_tags_raw,
+    seed.created_at,
+    seed.created_at
+FROM frontend_review_seed seed
+JOIN users u ON u.email = seed.learner_email
+JOIN courses c ON c.title = seed.course_title
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM review r
+    WHERE r.course_id = c.course_id
+      AND r.learner_id = u.user_id
+      AND r.is_deleted = FALSE
 );
