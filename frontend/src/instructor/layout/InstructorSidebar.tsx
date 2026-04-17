@@ -16,21 +16,35 @@ export default function InstructorSidebar({
 
   useEffect(() => {
     const controller = new AbortController()
-    Promise.all([
-      instructorQnaApi.getInbox('UNANSWERED', controller.signal),
-      instructorCourseApi.getCourses(controller.signal),
-    ])
-      .then(([items, courses]) => {
-        const publishedCourseIds = new Set(
-          buildInstructorCourseOptions(courses).map(([id]) => Number(id)),
-        )
-        const count = items.filter(
-          (item) => item.courseId !== null && publishedCourseIds.has(item.courseId),
-        ).length
-        setUnansweredCount(count)
-      })
-      .catch(() => {})
-    return () => controller.abort()
+
+    function loadUnansweredCount() {
+      Promise.all([
+        instructorQnaApi.getInbox('UNANSWERED', controller.signal),
+        instructorCourseApi.getCourses(controller.signal),
+      ])
+        .then(([items, courses]) => {
+          if (controller.signal.aborted) {
+            return
+          }
+
+          const publishedCourseIds = new Set(
+            buildInstructorCourseOptions(courses).map(([id]) => Number(id)),
+          )
+          const count = items.filter(
+            (item) => item.courseId !== null && publishedCourseIds.has(item.courseId),
+          ).length
+          setUnansweredCount(count)
+        })
+        .catch(() => {})
+    }
+
+    loadUnansweredCount()
+    window.addEventListener('devpath:instructor-qna-updated', loadUnansweredCount)
+
+    return () => {
+      controller.abort()
+      window.removeEventListener('devpath:instructor-qna-updated', loadUnansweredCount)
+    }
   }, [])
 
   return (
