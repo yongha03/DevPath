@@ -1,5 +1,9 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
 
+// ────────────────────────────────────────────
+// 타입 정의
+// ────────────────────────────────────────────
+
 interface SkillModule {
   id: string
   title: string
@@ -9,6 +13,23 @@ interface SkillModule {
   bgColor: string
   topics: string[]
 }
+
+interface BuilderNode {
+  instanceId: string
+  module: SkillModule
+  sortOrder: number        // 타임라인 위치 (1부터)
+  branchGroup: number | null  // null=척추, 1=왼쪽, 2=오른쪽
+}
+
+interface TimelineRow {
+  sortOrder: number
+  nodes: BuilderNode[]
+  isBranching: boolean
+}
+
+// ────────────────────────────────────────────
+// 모듈 데이터베이스 (하드코딩 — 추후 API 연동)
+// ────────────────────────────────────────────
 
 const DB: Record<string, SkillModule[]> = {
   frontend: [
@@ -98,14 +119,48 @@ const CATEGORY_OPTIONS = [
   { value: 'blockchain', label: '블록체인 (Blockchain)' },
 ]
 
+function makeInstanceId() {
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+}
+
+// ────────────────────────────────────────────
+// 메인 컴포넌트
+// ────────────────────────────────────────────
+
 function MyRoadmapBuilderPage() {
   const [category, setCategory] = useState('backend')
   const [search, setSearch] = useState('')
-  const [nodes, setNodes] = useState<SkillModule[]>([])
+  const [nodes, setNodes] = useState<BuilderNode[]>([])
+  const [branchTarget, setBranchTarget] = useState<number | null>(null)
   const mainRef = useRef<HTMLDivElement>(null)
 
-  const usedIds = useMemo(() => new Set(nodes.map((n) => n.id)), [nodes])
+  // 이미 사용된 모듈 ID 집합
+  const usedIds = useMemo(() => new Set(nodes.map((n) => n.module.id)), [nodes])
 
+  // 현재 최대 sortOrder
+  const maxSortOrder = useMemo(
+    () => (nodes.length === 0 ? 0 : Math.max(...nodes.map((n) => n.sortOrder))),
+    [nodes],
+  )
+
+  // sortOrder 기준으로 rows 그룹화
+  const rows = useMemo<TimelineRow[]>(() => {
+    const map = new Map<number, BuilderNode[]>()
+    for (const node of nodes) {
+      const arr = map.get(node.sortOrder) ?? []
+      arr.push(node)
+      map.set(node.sortOrder, arr)
+    }
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a - b)
+      .map(([sortOrder, rowNodes]) => ({
+        sortOrder,
+        nodes: [...rowNodes].sort((a, b) => (a.branchGroup ?? 0) - (b.branchGroup ?? 0)),
+        isBranching: rowNodes.some((n) => n.branchGroup !== null),
+      }))
+  }, [nodes])
+
+  // 좌측 패널 필터링
   const filteredItems = useMemo(() => {
     const items = DB[category] ?? []
     const q = search.toLowerCase()
@@ -118,30 +173,103 @@ function MyRoadmapBuilderPage() {
     )
   }, [category, search])
 
+  // C-2: 모듈 추가 (척추 or 분기)
   const handleAdd = useCallback(
     (module: SkillModule) => {
       if (usedIds.has(module.id)) return
-      setNodes((prev) => [...prev, module])
-      setTimeout(() => {
-        mainRef.current?.scrollTo({ top: mainRef.current.scrollHeight, behavior: 'smooth' })
-      }, 50)
+
+      if (branchTarget === null) {
+        // 척추 노드 추가
+        setNodes((prev) => [
+          ...prev,
+          { instanceId: makeInstanceId(), module, sortOrder: maxSortOrder + 1, branchGroup: null },
+        ])
+        setTimeout(() => {
+          mainRef.current?.scrollTo({ top: mainRef.current.scrollHeight, behavior: 'smooth' })
+        }, 50)
+      } else {
+        // 분기 추가: 기존 척추를 branchGroup=1로 전환, 새 모듈을 branchGroup=2로 추가
+        setNodes((prev) => {
+          const updated = prev.map((n) =>
+            n.sortOrder === branchTarget && n.branchGroup === null
+              ? { ...n, branchGroup: 1 }
+              : n,
+          )
+          return [
+            ...updated,
+            { instanceId: makeInstanceId(), module, sortOrder: branchTarget, branchGroup: 2 },
+          ]
+        })
+        setBranchTarget(null)
+      }
     },
-    [usedIds],
+    [usedIds, branchTarget, maxSortOrder],
   )
 
-  const handleRemove = useCallback((id: string) => {
-    setNodes((prev) => prev.filter((n) => n.id !== id))
+  // C-2: 분기 모드 진입
+  const handleBranchActivate = useCallback(
+    (sortOrder: number) => {
+      const rowNodes = nodes.filter((n) => n.sortOrder === sortOrder)
+      if (rowNodes.some((n) => n.branchGroup !== null)) {
+        alert('이미 분기가 존재하는 위치입니다. 분기는 위치당 최대 2개까지 가능합니다.')
+        return
+      }
+      setBranchTarget(sortOrder)
+    },
+    [nodes],
+  )
+
+  // C-2: 노드 삭제 + 후처리
+  const handleRemove = useCallback((instanceId: string) => {
+    setNodes((prev) => {
+      const target = prev.find((n) => n.instanceId === instanceId)
+      if (!target) return prev
+
+      const { sortOrder, branchGroup } = target
+      const sameRow = prev.filter((n) => n.sortOrder === sortOrder && n.instanceId !== instanceId)
+
+      let updated: BuilderNode[]
+
+      if (branchGroup === null) {
+        // 척추 노드 삭제 → 해당 sortOrder 이후 전체 -1 재정렬
+        updated = prev
+          .filter((n) => n.instanceId !== instanceId)
+          .map((n) => (n.sortOrder > sortOrder ? { ...n, sortOrder: n.sortOrder - 1 } : n))
+      } else {
+        // 분기 노드 삭제
+        const remaining = sameRow
+        if (remaining.length === 1) {
+          // 분기 하나 남음 → 척추로 복원
+          updated = prev
+            .filter((n) => n.instanceId !== instanceId)
+            .map((n) => (n.sortOrder === sortOrder ? { ...n, branchGroup: null } : n))
+        } else {
+          // 분기 둘 다 삭제되는 경우 (이미 마지막 하나)
+          updated = prev
+            .filter((n) => n.instanceId !== instanceId)
+            .map((n) => (n.sortOrder > sortOrder ? { ...n, sortOrder: n.sortOrder - 1 } : n))
+        }
+      }
+
+      return updated
+    })
   }, [])
 
   const handleClear = useCallback(() => {
     if (nodes.length === 0) return
     if (window.confirm('진행 중인 커리큘럼 설계를 모두 초기화하시겠습니까?')) {
       setNodes([])
+      setBranchTarget(null)
     }
   }, [nodes.length])
 
+  // ────────────────────────────────────────────
+  // 렌더
+  // ────────────────────────────────────────────
+
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-[#F8FAFC] text-[#0F172A]">
+
       {/* 헤더 */}
       <header className="z-50 flex h-16 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-6 shadow-sm">
         <div className="flex items-center gap-3">
@@ -154,8 +282,7 @@ function MyRoadmapBuilderPage() {
         </div>
         <div className="flex items-center gap-4">
           <div className="rounded-lg border border-gray-200 bg-gray-100 px-3 py-1.5 text-sm font-bold text-gray-500">
-            총{' '}
-            <span className="font-black text-[#00C471]">{nodes.length}</span> 챕터
+            총 <span className="font-black text-[#00C471]">{rows.length}</span> 챕터
           </div>
           <button
             type="button"
@@ -175,8 +302,10 @@ function MyRoadmapBuilderPage() {
       </header>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* 좌측 사이드바 */}
+
+        {/* ── 좌측 사이드바 ── */}
         <aside className="z-10 flex w-80 flex-col border-r border-gray-200 bg-white shadow-lg md:w-96">
+
           {/* 카테고리 선택 */}
           <div className="shrink-0 border-b border-gray-200 bg-gray-50 p-4">
             <label className="mb-2 block text-[10px] font-black uppercase tracking-widest text-gray-400">
@@ -185,13 +314,11 @@ function MyRoadmapBuilderPage() {
             <div className="relative">
               <select
                 value={category}
-                onChange={(e) => setCategory(e.target.value)}
+                onChange={(e) => { setCategory(e.target.value); setBranchTarget(null) }}
                 className="w-full cursor-pointer appearance-none rounded-lg border border-gray-300 bg-white px-3 py-2.5 pr-8 text-sm font-bold text-gray-900 shadow-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#00C471]"
               >
                 {CATEGORY_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </option>
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400">
@@ -199,6 +326,30 @@ function MyRoadmapBuilderPage() {
               </div>
             </div>
           </div>
+
+          {/* C-3: 분기 모드 배너 */}
+          {branchTarget !== null && (
+            <div className="shrink-0 border-b border-amber-200 bg-amber-50 px-4 py-3">
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-xs font-black text-amber-700">
+                    <i className="fas fa-code-branch mr-1" />
+                    {branchTarget}번 위치에 분기 추가 중
+                  </p>
+                  <p className="mt-0.5 text-[11px] text-amber-600">
+                    왼쪽 모듈을 클릭하면 분기 노드로 추가됩니다.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setBranchTarget(null)}
+                  className="shrink-0 rounded-md border border-amber-300 bg-white px-2 py-1 text-[11px] font-bold text-amber-600 transition hover:bg-amber-100"
+                >
+                  취소
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* 검색 */}
           <div className="shrink-0 border-b border-gray-100 bg-white p-4">
@@ -218,6 +369,7 @@ function MyRoadmapBuilderPage() {
           <div className="flex-1 space-y-3 overflow-y-auto bg-gray-50 p-4">
             {filteredItems.map((module) => {
               const isUsed = usedIds.has(module.id)
+              const isAvailableForBranch = branchTarget !== null && !isUsed
               return (
                 <div
                   key={module.id}
@@ -226,15 +378,15 @@ function MyRoadmapBuilderPage() {
                     'group flex cursor-pointer items-start gap-3 rounded-xl border bg-white p-[14px] shadow-[0_1px_2px_rgba(0,0,0,0.02)] transition-all duration-200',
                     isUsed
                       ? 'cursor-not-allowed border-dashed border-[#CBD5E1] bg-[#F1F5F9] opacity-60'
-                      : 'border-[#E2E8F0] hover:-translate-y-0.5 hover:border-[#00C471] hover:shadow-[0_4px_12px_rgba(0,196,113,0.1)] active:scale-[0.98]',
+                      : isAvailableForBranch
+                        ? 'border-amber-300 hover:-translate-y-0.5 hover:border-amber-400 hover:shadow-[0_4px_12px_rgba(245,158,11,0.15)]'
+                        : 'border-[#E2E8F0] hover:-translate-y-0.5 hover:border-[#00C471] hover:shadow-[0_4px_12px_rgba(0,196,113,0.1)] active:scale-[0.98]',
                   ].join(' ')}
                 >
-                  <div
-                    className={[
-                      'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-100',
-                      isUsed ? 'bg-gray-100' : `${module.bgColor} transition-transform group-hover:scale-110`,
-                    ].join(' ')}
-                  >
+                  <div className={[
+                    'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-100',
+                    isUsed ? 'bg-gray-100' : `${module.bgColor} transition-transform group-hover:scale-110`,
+                  ].join(' ')}>
                     <i className={`${module.icon} ${isUsed ? 'text-gray-400' : module.color} text-lg`} />
                   </div>
                   <div className="min-w-0 flex-1">
@@ -247,7 +399,9 @@ function MyRoadmapBuilderPage() {
                       </span>
                     </div>
                     <p className="line-clamp-2 text-[11px] leading-tight text-gray-400">
-                      <span className={`font-semibold ${isUsed ? 'text-gray-400' : 'text-[#00C471]'}`}>포함:</span>{' '}
+                      <span className={`font-semibold ${isUsed ? 'text-gray-400' : isAvailableForBranch ? 'text-amber-500' : 'text-[#00C471]'}`}>
+                        {isAvailableForBranch ? '+ 분기:' : '포함:'}
+                      </span>{' '}
                       {module.topics.join(', ')}
                     </p>
                   </div>
@@ -256,7 +410,7 @@ function MyRoadmapBuilderPage() {
                       <i className="fas fa-check" />
                     </div>
                   ) : (
-                    <i className="fas fa-plus-circle mt-2 text-gray-300 transition-colors group-hover:text-[#00C471]" />
+                    <i className={`mt-2 fas ${isAvailableForBranch ? 'fa-code-branch text-amber-400' : 'fa-plus-circle text-gray-300 group-hover:text-[#00C471]'} transition-colors`} />
                   )}
                 </div>
               )
@@ -264,11 +418,8 @@ function MyRoadmapBuilderPage() {
           </div>
         </aside>
 
-        {/* 메인 캔버스 */}
-        <main
-          ref={mainRef}
-          className="builder-dot-pattern relative flex-1 overflow-y-auto p-8"
-        >
+        {/* ── 메인 캔버스 ── */}
+        <main ref={mainRef} className="builder-dot-pattern relative flex-1 overflow-y-auto p-8">
           <div className="mx-auto max-w-3xl">
             <div className="mb-12 text-center">
               <h2 className="text-2xl font-extrabold text-gray-900">My Learning Roadmap</h2>
@@ -278,6 +429,7 @@ function MyRoadmapBuilderPage() {
             </div>
 
             <div className="builder-timeline relative pb-40 pl-8">
+
               {/* 시작 노드 */}
               <div className="relative z-10 mb-10 flex items-center">
                 <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-4 border-white bg-gray-900 text-white shadow-xl ring-1 ring-gray-100">
@@ -289,52 +441,47 @@ function MyRoadmapBuilderPage() {
                   <p className="mt-1 text-sm text-gray-500">
                     왼쪽 목록에서 원하는 챕터를{' '}
                     <strong className="text-[#00C471]">클릭</strong>하여 추가하세요.
+                    척추 노드의 <i className="fas fa-code-branch text-amber-400" /> 버튼으로 분기를 만들 수 있습니다.
                   </p>
                 </div>
               </div>
 
-              {/* 추가된 노드 목록 */}
-              {nodes.map((node, index) => (
-                <div
-                  key={`${node.id}-${index}`}
-                  className="group relative z-10 mb-8 flex items-start builder-step-enter"
-                >
-                  <div className="z-10 flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 border-[#00C471] bg-white text-xl font-black text-[#00C471] shadow-lg transition-colors duration-300 group-hover:border-red-400 group-hover:bg-red-50 group-hover:text-red-500">
-                    {index + 1}
-                  </div>
-                  <div className="relative ml-8 w-full cursor-pointer rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#00C471] hover:shadow-xl">
-                    <div className="absolute -left-2 top-7 h-4 w-4 -translate-y-1/2 rotate-45 border-b border-l border-gray-200 bg-white transition-colors duration-300 group-hover:border-[#00C471]" />
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); handleRemove(node.id) }}
-                      className="absolute right-4 top-4 z-20 scale-90 text-gray-300 opacity-0 transition-all group-hover:scale-100 group-hover:opacity-100 hover:text-red-500"
-                    >
-                      <i className="fas fa-trash-alt text-lg" />
-                    </button>
-                    <div className="flex items-start gap-4">
-                      <div className={`mt-1 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-gray-100 text-2xl shadow-inner ${node.bgColor}`}>
-                        <i className={`${node.icon} ${node.color}`} />
+              {/* C-4: rows 렌더링 */}
+              {rows.map((row) => (
+                <div key={row.sortOrder} className="group relative z-10 mb-8 builder-step-enter">
+                  {row.isBranching ? (
+                    // ── 분기 row ──
+                    <div className="flex items-start">
+                      {/* 번호 */}
+                      <div className="z-10 flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 border-amber-400 bg-white text-xl font-black text-amber-500 shadow-lg">
+                        {row.sortOrder}
                       </div>
-                      <div className="min-w-0 flex-1 pr-8">
-                        <div className="mb-2 flex flex-wrap items-center gap-2">
-                          <h3 className="text-lg font-bold text-gray-900">{node.title}</h3>
-                          <span className="rounded-full border border-gray-200 bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-500">
-                            {node.category}
-                          </span>
-                        </div>
-                        <div className="mt-3 flex flex-wrap gap-1.5">
-                          {node.topics.map((topic) => (
-                            <span
-                              key={topic}
-                              className="inline-flex items-center rounded-md border border-gray-200 bg-gray-100 px-2 py-1 text-[10px] font-medium text-gray-600 shadow-sm"
-                            >
-                              # {topic}
-                            </span>
-                          ))}
-                        </div>
+                      {/* 두 카드 나란히 */}
+                      <div className="ml-8 grid flex-1 grid-cols-2 gap-4">
+                        {row.nodes.map((node, idx) => (
+                          <BranchCard
+                            key={node.instanceId}
+                            node={node}
+                            label={idx === 0 ? 'A' : 'B'}
+                            onRemove={handleRemove}
+                          />
+                        ))}
                       </div>
                     </div>
-                  </div>
+                  ) : (
+                    // ── 척추 row ──
+                    <div className="flex items-start">
+                      <div className="z-10 flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 border-[#00C471] bg-white text-xl font-black text-[#00C471] shadow-lg transition-colors duration-300 group-hover:border-red-400 group-hover:bg-red-50 group-hover:text-red-500">
+                        {row.sortOrder}
+                      </div>
+                      <SpineCard
+                        node={row.nodes[0]}
+                        onRemove={handleRemove}
+                        onBranch={handleBranchActivate}
+                        isBranchActive={branchTarget === row.sortOrder}
+                      />
+                    </div>
+                  )}
                 </div>
               ))}
 
@@ -348,9 +495,137 @@ function MyRoadmapBuilderPage() {
                   왼쪽 패널에서 학습할 모듈을 클릭하세요
                 </div>
               </div>
+
             </div>
           </div>
         </main>
+      </div>
+    </div>
+  )
+}
+
+// ────────────────────────────────────────────
+// C-5: 척추 카드 컴포넌트
+// ────────────────────────────────────────────
+
+function SpineCard({
+  node,
+  onRemove,
+  onBranch,
+  isBranchActive,
+}: {
+  node: BuilderNode
+  onRemove: (id: string) => void
+  onBranch: (sortOrder: number) => void
+  isBranchActive: boolean
+}) {
+  const { module, sortOrder, instanceId } = node
+  return (
+    <div className="group/card relative ml-8 w-full cursor-pointer rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-[#00C471] hover:shadow-xl">
+      <div className="absolute -left-2 top-7 h-4 w-4 -translate-y-1/2 rotate-45 border-b border-l border-gray-200 bg-white transition-colors duration-300 group-hover/card:border-[#00C471]" />
+
+      {/* 액션 버튼 */}
+      <div className="absolute right-4 top-4 z-20 flex items-center gap-2 opacity-0 transition-all group-hover/card:opacity-100">
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onBranch(sortOrder) }}
+          title="이 위치에 분기 추가"
+          className={[
+            'rounded-md px-2 py-1 text-[11px] font-bold transition',
+            isBranchActive
+              ? 'bg-amber-100 text-amber-600'
+              : 'text-amber-400 hover:bg-amber-50 hover:text-amber-500',
+          ].join(' ')}
+        >
+          <i className="fas fa-code-branch mr-1" />분기
+        </button>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onRemove(instanceId) }}
+          className="text-gray-300 transition hover:text-red-500"
+        >
+          <i className="fas fa-trash-alt text-lg" />
+        </button>
+      </div>
+
+      <div className="flex items-start gap-4">
+        <div className={`mt-1 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl border border-gray-100 text-2xl shadow-inner ${module.bgColor}`}>
+          <i className={`${module.icon} ${module.color}`} />
+        </div>
+        <div className="min-w-0 flex-1 pr-24">
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <h3 className="text-lg font-bold text-gray-900">{module.title}</h3>
+            <span className="rounded-full border border-gray-200 bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-500">
+              {module.category}
+            </span>
+          </div>
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {module.topics.map((topic) => (
+              <span key={topic} className="inline-flex items-center rounded-md border border-gray-200 bg-gray-100 px-2 py-1 text-[10px] font-medium text-gray-600 shadow-sm">
+                # {topic}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ────────────────────────────────────────────
+// C-5: 분기 카드 컴포넌트
+// ────────────────────────────────────────────
+
+const BRANCH_COLORS: Record<string, { border: string; badge: string; dot: string }> = {
+  A: { border: 'border-amber-300 hover:border-amber-400', badge: 'bg-amber-100 text-amber-600', dot: 'border-amber-300 bg-white' },
+  B: { border: 'border-purple-300 hover:border-purple-400', badge: 'bg-purple-100 text-purple-600', dot: 'border-purple-300 bg-white' },
+}
+
+function BranchCard({
+  node,
+  label,
+  onRemove,
+}: {
+  node: BuilderNode
+  label: 'A' | 'B'
+  onRemove: (id: string) => void
+}) {
+  const { module, instanceId } = node
+  const colors = BRANCH_COLORS[label]
+  return (
+    <div className={`group/card relative cursor-pointer rounded-2xl border bg-white p-4 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg ${colors.border}`}>
+      {/* 분기 라벨 뱃지 */}
+      <span className={`absolute -top-2.5 left-4 rounded-full px-2 py-0.5 text-[10px] font-black ${colors.badge}`}>
+        {label}
+      </span>
+      {/* 삭제 버튼 */}
+      <button
+        type="button"
+        onClick={(e) => { e.stopPropagation(); onRemove(instanceId) }}
+        className="absolute right-3 top-3 z-10 text-gray-300 opacity-0 transition-all group-hover/card:opacity-100 hover:text-red-500"
+      >
+        <i className="fas fa-trash-alt" />
+      </button>
+
+      <div className="flex items-start gap-3 pt-1">
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-gray-100 text-xl shadow-inner ${module.bgColor}`}>
+          <i className={`${module.icon} ${module.color}`} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+            <h3 className="text-sm font-bold text-gray-900">{module.title}</h3>
+            <span className="rounded-full border border-gray-200 bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold text-gray-500">
+              {module.category}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {module.topics.map((topic) => (
+              <span key={topic} className="inline-flex items-center rounded-md border border-gray-200 bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-600">
+                # {topic}
+              </span>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   )
