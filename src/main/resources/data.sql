@@ -11302,3 +11302,277 @@ WHERE NOT EXISTS (
     WHERE ca.course_id = c.course_id
       AND ca.title = a.course_title || ' 커리큘럼 업데이트'
 );
+
+-- =============================================
+-- 로드맵 빌더 모듈 데이터 (builder_modules)
+-- =============================================
+
+-- frontend (6)
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'cs-net', 'frontend', '인터넷 & 네트워크', 'fas fa-globe', 'text-blue-500', 'bg-blue-50',
+       '["HTTP/HTTPS","DNS 작동원리","도메인 & 호스팅"]', 1
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'cs-net' AND category = 'frontend');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'fe-html', 'frontend', 'HTML / CSS', 'fab fa-html5', 'text-orange-500', 'bg-orange-50',
+       '["시맨틱 태그","Flexbox & Grid","반응형 웹","SEO 기초"]', 2
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'fe-html' AND category = 'frontend');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'fe-js', 'frontend', 'JavaScript', 'fab fa-js', 'text-yellow-500', 'bg-yellow-50',
+       '["ES6+","DOM 조작","비동기(Promise/Async)","이벤트 루프"]', 3
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'fe-js' AND category = 'frontend');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'fe-ts', 'frontend', 'TypeScript', 'fas fa-file-code', 'text-blue-600', 'bg-blue-50',
+       '["정적 타이핑","인터페이스","제네릭"]', 4
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'fe-ts' AND category = 'frontend');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'fe-react', 'frontend', 'React', 'fab fa-react', 'text-cyan-500', 'bg-cyan-50',
+       '["컴포넌트 생명주기","React Hooks","상태 관리","라우팅"]', 5
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'fe-react' AND category = 'frontend');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'fe-next', 'frontend', 'Next.js', 'fas fa-n', 'text-black', 'bg-gray-200',
+       '["SSR / SSG","App Router","API Routes","최적화"]', 6
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'fe-next' AND category = 'frontend');
+
+-- backend (8)
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'cs-net', 'backend', '인터넷 & 네트워크', 'fas fa-globe', 'text-blue-500', 'bg-blue-50',
+       '["TCP/IP","HTTP 메서드","CORS","웹 소켓"]', 1
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'cs-net' AND category = 'backend');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'cs-os', 'backend', 'OS 및 일반 지식', 'fas fa-terminal', 'text-gray-700', 'bg-gray-200',
+       '["터미널 명령어","프로세스와 스레드","메모리 관리","동시성"]', 2
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'cs-os' AND category = 'backend');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'be-java', 'backend', 'Java Programming', 'fab fa-java', 'text-red-500', 'bg-red-50',
+       '["객체지향(OOP)","JVM 메모리 구조","컬렉션 프레임워크","스트림 API"]', 3
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'be-java' AND category = 'backend');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'be-spring', 'backend', 'Spring Boot', 'fas fa-leaf', 'text-green-500', 'bg-green-50',
+       '["의존성 주입(DI)","AOP","Spring MVC","JPA / Hibernate"]', 4
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'be-spring' AND category = 'backend');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'db-rdb', 'backend', '관계형 데이터베이스', 'fas fa-database', 'text-indigo-500', 'bg-indigo-50',
+       '["PostgreSQL / MySQL","정규화","트랜잭션(ACID)","인덱스 최적화"]', 5
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'db-rdb' AND category = 'backend');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'be-api', 'backend', 'API 설계', 'fas fa-network-wired', 'text-purple-500', 'bg-purple-50',
+       '["RESTful 설계","GraphQL","JWT 인증","OAuth 2.0"]', 6
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'be-api' AND category = 'backend');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'be-redis', 'backend', 'Redis & 캐싱', 'fas fa-memory', 'text-red-500', 'bg-red-50',
+       '["In-Memory DB","세션 관리","캐싱 전략","Pub/Sub"]', 7
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'be-redis' AND category = 'backend');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'infra-docker', 'backend', 'Docker', 'fab fa-docker', 'text-blue-600', 'bg-blue-50',
+       '["컨테이너화","Dockerfile","Docker Compose","볼륨 관리"]', 8
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'infra-docker' AND category = 'backend');
+
+-- devops (5)
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'cs-os', 'devops', 'Linux Administration', 'fab fa-linux', 'text-black', 'bg-gray-200',
+       '["쉘 스크립트","권한 관리(chmod)","시스템 모니터링","SSH"]', 1
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'cs-os' AND category = 'devops');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'infra-docker', 'devops', 'Docker 심화', 'fab fa-docker', 'text-blue-600', 'bg-blue-50',
+       '["멀티스테이지 빌드","네트워크 브릿지","이미지 경량화"]', 2
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'infra-docker' AND category = 'devops');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'do-cicd', 'devops', 'CI/CD 파이프라인', 'fas fa-sync-alt', 'text-teal-500', 'bg-teal-50',
+       '["GitHub Actions","Jenkins","파이프라인 구축","자동 배포"]', 3
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'do-cicd' AND category = 'devops');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'do-k8s', 'devops', 'Kubernetes', 'fas fa-dharmachakra', 'text-blue-500', 'bg-blue-50',
+       '["Pod & Service","Deployment","Ingress","Helm Chart"]', 4
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'do-k8s' AND category = 'devops');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'do-aws', 'devops', 'AWS 인프라', 'fab fa-aws', 'text-orange-400', 'bg-orange-50',
+       '["EC2 & VPC","S3 스토리지","IAM 권한","RDS & ElastiCache"]', 5
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'do-aws' AND category = 'devops');
+
+-- fullstack (5)
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'fe-react', 'fullstack', 'React / Next.js', 'fab fa-react', 'text-cyan-500', 'bg-cyan-50',
+       '["클라이언트 UI","상태 관리","서버 사이드 렌더링"]', 1
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'fe-react' AND category = 'fullstack');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'fs-node', 'fullstack', 'Node.js / Express', 'fab fa-node-js', 'text-green-600', 'bg-green-50',
+       '["JavaScript 런타임","미들웨어","REST API 구축"]', 2
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'fs-node' AND category = 'fullstack');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'be-spring', 'fullstack', 'Spring Boot (선택)', 'fas fa-leaf', 'text-green-500', 'bg-green-50',
+       '["엔터프라이즈 백엔드","JPA 연동","보안 설정"]', 3
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'be-spring' AND category = 'fullstack');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'db-rdb', 'fullstack', 'PostgreSQL', 'fas fa-database', 'text-indigo-500', 'bg-indigo-50',
+       '["RDBMS 기본","데이터 모델링"]', 4
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'db-rdb' AND category = 'fullstack');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'infra-docker', 'fullstack', 'Docker', 'fab fa-docker', 'text-blue-600', 'bg-blue-50',
+       '["풀스택 앱 컨테이너화","Compose 연동"]', 5
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'infra-docker' AND category = 'fullstack');
+
+-- ai (5)
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'ai-py', 'ai', 'Python Programming', 'fab fa-python', 'text-blue-500', 'bg-blue-50',
+       '["데이터 타입","Numpy","Pandas","데이터 전처리"]', 1
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'ai-py' AND category = 'ai');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'ai-math', 'ai', '수학 및 통계', 'fas fa-square-root-alt', 'text-gray-700', 'bg-gray-200',
+       '["선형대수학","미적분","확률과 통계"]', 2
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'ai-math' AND category = 'ai');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'ai-ml', 'ai', 'Machine Learning', 'fas fa-robot', 'text-orange-500', 'bg-orange-50',
+       '["Scikit-learn","지도 학습","비지도 학습","모델 평가"]', 3
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'ai-ml' AND category = 'ai');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'ai-dl', 'ai', 'Deep Learning', 'fas fa-brain', 'text-purple-500', 'bg-purple-50',
+       '["PyTorch / TensorFlow","신경망 기초","CNN","RNN / LSTM"]', 4
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'ai-dl' AND category = 'ai');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'ai-nlp', 'ai', 'NLP & LLM', 'fas fa-language', 'text-green-600', 'bg-green-50',
+       '["트랜스포머 아키텍처","Hugging Face","프롬프트 엔지니어링","RAG"]', 5
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'ai-nlp' AND category = 'ai');
+
+-- data_engineer (5)
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'ai-py', 'data_engineer', 'Python / Scala', 'fab fa-python', 'text-blue-500', 'bg-blue-50',
+       '["데이터 파이프라인 개발","분산 처리 기초"]', 1
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'ai-py' AND category = 'data_engineer');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'db-rdb', 'data_engineer', 'Advanced SQL', 'fas fa-database', 'text-indigo-500', 'bg-indigo-50',
+       '["복잡한 조인","윈도우 함수","쿼리 실행 계획 튜닝"]', 2
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'db-rdb' AND category = 'data_engineer');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'de-dw', 'data_engineer', 'Data Warehouse', 'fas fa-cubes', 'text-blue-400', 'bg-blue-50',
+       '["BigQuery","Snowflake","데이터 마트 설계"]', 3
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'de-dw' AND category = 'data_engineer');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'de-spark', 'data_engineer', 'Apache Spark', 'fas fa-bolt', 'text-orange-500', 'bg-orange-50',
+       '["RDD","Spark SQL","대용량 데이터 변환"]', 4
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'de-spark' AND category = 'data_engineer');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'de-kafka', 'data_engineer', 'Apache Kafka', 'fas fa-stream', 'text-black', 'bg-gray-200',
+       '["이벤트 스트리밍","Pub/Sub 구조","실시간 파이프라인"]', 5
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'de-kafka' AND category = 'data_engineer');
+
+-- android (5)
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'app-kt', 'android', 'Kotlin Programming', 'fas fa-code', 'text-purple-600', 'bg-purple-50',
+       '["코틀린 문법","Null 안정성","컬렉션 및 람다"]', 1
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'app-kt' AND category = 'android');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'app-and', 'android', 'Android Studio', 'fab fa-android', 'text-green-500', 'bg-green-50',
+       '["IDE 활용","Gradle 빌드","에뮬레이터"]', 2
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'app-and' AND category = 'android');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'app-ui', 'android', 'Jetpack Compose', 'fas fa-layer-group', 'text-blue-500', 'bg-blue-50',
+       '["선언형 UI","상태 호이스팅","애니메이션","레이아웃"]', 3
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'app-ui' AND category = 'android');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'app-coroutine', 'android', 'Coroutines & Flow', 'fas fa-water', 'text-cyan-500', 'bg-cyan-50',
+       '["비동기 프로그래밍","백그라운드 스레드","데이터 스트림"]', 4
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'app-coroutine' AND category = 'android');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'app-arch', 'android', 'Architecture (MVVM)', 'fas fa-project-diagram', 'text-orange-500', 'bg-orange-50',
+       '["ViewModel","LiveData","의존성 주입(Hilt)"]', 5
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'app-arch' AND category = 'android');
+
+-- ios (4)
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'app-swift', 'ios', 'Swift Programming', 'fab fa-apple', 'text-black', 'bg-gray-200',
+       '["옵셔널","구조체와 클래스","프로토콜 지향 프로그래밍"]', 1
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'app-swift' AND category = 'ios');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'app-swiftui', 'ios', 'SwiftUI', 'fas fa-layer-group', 'text-blue-500', 'bg-blue-50',
+       '["선언형 뷰","상태 관리(@State)","네비게이션"]', 2
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'app-swiftui' AND category = 'ios');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'app-combine', 'ios', 'Combine', 'fas fa-stream', 'text-purple-500', 'bg-purple-50',
+       '["Publisher / Subscriber","데이터 바인딩"]', 3
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'app-combine' AND category = 'ios');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'app-coredata', 'ios', 'Core Data', 'fas fa-database', 'text-indigo-500', 'bg-indigo-50',
+       '["로컬 데이터 저장","엔티티 관리","마이그레이션"]', 4
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'app-coredata' AND category = 'ios');
+
+-- game (5)
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'game-math', 'game', '3D Math & Physics', 'fas fa-square-root-alt', 'text-gray-700', 'bg-gray-200',
+       '["벡터와 행렬","쿼터니언 회전","충돌 처리","물리 엔진"]', 1
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'game-math' AND category = 'game');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'game-cs', 'game', 'C# Programming', 'fas fa-code', 'text-purple-600', 'bg-purple-50',
+       '["C# 문법","이벤트와 델리게이트","가비지 컬렉션"]', 2
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'game-cs' AND category = 'game');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'game-unity', 'game', 'Unity Engine', 'fab fa-unity', 'text-black', 'bg-gray-200',
+       '["컴포넌트 패턴","씬 관리","애니메이터","UI 시스템"]', 3
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'game-unity' AND category = 'game');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'game-cpp', 'game', 'C++ Programming', 'fas fa-file-code', 'text-blue-600', 'bg-blue-50',
+       '["포인터와 참조","메모리 관리","STL 라이브러리"]', 4
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'game-cpp' AND category = 'game');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'game-unreal', 'game', 'Unreal Engine', 'fas fa-gamepad', 'text-orange-500', 'bg-orange-50',
+       '["블루프린트","액터 시스템","메테리얼 에디터"]', 5
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'game-unreal' AND category = 'game');
+
+-- blockchain (4)
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'bc-crypto', 'blockchain', 'Cryptography', 'fas fa-key', 'text-yellow-600', 'bg-yellow-50',
+       '["해시 함수","공개키/개인키","디지털 서명"]', 1
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'bc-crypto' AND category = 'blockchain');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'bc-basics', 'blockchain', 'Blockchain Basics', 'fas fa-link', 'text-gray-700', 'bg-gray-200',
+       '["P2P 네트워크","합의 알고리즘(PoW/PoS)","분산 원장"]', 2
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'bc-basics' AND category = 'blockchain');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'bc-sol', 'blockchain', 'Solidity', 'fab fa-ethereum', 'text-purple-500', 'bg-purple-50',
+       '["EVM","토큰 표준(ERC-20)","가스비 최적화"]', 3
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'bc-sol' AND category = 'blockchain');
+
+INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, topics, sort_order)
+SELECT 'bc-web3', 'blockchain', 'Web3.js / Ethers.js', 'fas fa-plug', 'text-blue-500', 'bg-blue-50',
+       '["DApp 구축","지갑 연동(Metamask)","RPC 통신"]', 4
+WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'bc-web3' AND category = 'blockchain');

@@ -38,6 +38,9 @@ public enum ErrorCode {
   WISHLIST_NOT_FOUND(HttpStatus.NOT_FOUND, "찜한 강의를 찾을 수 없습니다."),
   ENROLLMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "수강 이력을 찾을 수 없습니다."),
 
+  BUILDER_MODULE_NOT_FOUND(HttpStatus.NOT_FOUND, "빌더 모듈을 찾을 수 없습니다."),
+  MY_ROADMAP_NOT_FOUND(HttpStatus.NOT_FOUND, "나만의 로드맵을 찾을 수 없습니다."),
+
   ROADMAP_NOT_FOUND(HttpStatus.NOT_FOUND, "로드맵을 찾을 수 없습니다."),
   CUSTOM_ROADMAP_NOT_FOUND(HttpStatus.NOT_FOUND, "커스텀 로드맵을 찾을 수 없습니다."),
   CUSTOM_ROADMAP_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 해당 사용자의 로드맵을 복사했습니다."),
