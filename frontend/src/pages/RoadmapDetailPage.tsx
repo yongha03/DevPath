@@ -217,7 +217,7 @@ function getBranchBadgeMeta(branchType?: string | null): BranchBadgeMeta {
     }
   }
   return {
-    label: 'AI 추천',
+    label: '추천',
     background: '#eff6ff',
     color: '#1e40af',
     borderColor: '#93c5fd',

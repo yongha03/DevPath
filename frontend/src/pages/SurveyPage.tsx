@@ -217,8 +217,8 @@ function SurveyPage() {
               나에게 맞는 개발 로드맵 찾기
             </h1>
             <p className="mx-auto mb-10 max-w-xl text-lg text-gray-600">
-              몇 가지 간단한 질문에 답해주시면, 당신의 성향과 목표에 가장 적합한 기술 로드맵을 AI
-              알고리즘이 분석하여 추천해 드립니다.
+              몇 가지 간단한 질문에 답해주시면, 당신의 성향과 목표에 가장 적합한 기술 로드맵을
+              추천해 드립니다.
             </p>
             <button
               type="button"
@@ -316,7 +316,7 @@ function SurveyPage() {
       </main>
 
       <footer className="mt-auto border-t border-gray-200 py-6 text-center text-sm text-gray-500">
-        &copy; 2024 DevPath. All rights reserved.
+        &copy; 2026 DevPath. All rights reserved.
       </footer>
     </div>
   )
