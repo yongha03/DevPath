@@ -1,5 +1,6 @@
 package com.devpath.api.admin.service;
 
+import com.devpath.api.admin.dto.governance.AdminRoadmapNodeSummaryResponse;
 import com.devpath.api.admin.dto.governance.NodeCompletionRuleRequest;
 import com.devpath.api.admin.dto.governance.NodePrerequisitesRequest;
 import com.devpath.api.admin.dto.governance.NodeRequiredTagsRequest;
@@ -29,6 +30,7 @@ import java.util.Set;
 @Service
 @RequiredArgsConstructor
 @Transactional
+// 공식 로드맵 노드의 태그, 유형, 완료 조건을 관리한다.
 public class AdminNodeGovernanceService {
 
     private static final Set<String> ALLOWED_NODE_TYPES =
@@ -40,6 +42,35 @@ public class AdminNodeGovernanceService {
     private final PrerequisiteRepository prerequisiteRepository;
     private final NodeCompletionRuleRepository nodeCompletionRuleRepository;
 
+    @Transactional(readOnly = true)
+    // 관리자 표에 필요한 노드와 필수 조건 정보를 한 번에 조합한다.
+    public List<AdminRoadmapNodeSummaryResponse> getNodes() {
+        List<RoadmapNode> nodes = roadmapNodeRepository.findAllOfficialPublicNodes();
+
+        if (nodes.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> nodeIds = nodes.stream().map(RoadmapNode::getNodeId).toList();
+        Map<Long, List<String>> requiredTagsByNodeId = buildRequiredTagsMap(nodeIds);
+        Map<Long, NodeCompletionRule> completionRulesByNodeId = nodeCompletionRuleRepository
+                .findAllByNodeNodeIdIn(nodeIds)
+                .stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        rule -> rule.getNode().getNodeId(),
+                        rule -> rule,
+                        (left, right) -> left,
+                        LinkedHashMap::new));
+
+        return nodes.stream()
+                .map(node -> toAdminRoadmapNodeSummary(
+                        node,
+                        requiredTagsByNodeId.getOrDefault(node.getNodeId(), List.of()),
+                        completionRulesByNodeId.get(node.getNodeId())))
+                .toList();
+    }
+
+    // 노드 필수 태그를 전체 교체 방식으로 갱신한다.
     public void updateRequiredTags(Long nodeId, NodeRequiredTagsRequest request) {
         RoadmapNode node = getNode(nodeId);
         List<String> tagNames = request != null && request.getRequiredTags() != null
@@ -97,6 +128,7 @@ public class AdminNodeGovernanceService {
         prerequisiteRepository.saveAll(prerequisites);
     }
 
+    // 노드 완료 규칙은 없으면 생성하고 있으면 같은 레코드를 갱신한다.
     public void updateCompletionRule(Long nodeId, NodeCompletionRuleRequest request) {
         RoadmapNode node = getNode(nodeId);
         String criteriaType = normalizeRequiredValue(
@@ -175,5 +207,47 @@ public class AdminNodeGovernanceService {
         }
 
         return value.trim().toUpperCase();
+    }
+
+    // 노드별 필수 태그 이름을 표 렌더링용 맵으로 모은다.
+    private Map<Long, List<String>> buildRequiredTagsMap(List<Long> nodeIds) {
+        Map<Long, List<String>> requiredTagsByNodeId = new LinkedHashMap<>();
+
+        for (NodeRequiredTagRepository.NodeRequiredTagNameProjection projection :
+                nodeRequiredTagRepository.findTagNamesByNodeIds(nodeIds)) {
+            requiredTagsByNodeId
+                    .computeIfAbsent(projection.getNodeId(), ignored -> new java.util.ArrayList<>())
+                    .add(projection.getTagName());
+        }
+
+        return requiredTagsByNodeId;
+    }
+
+    private AdminRoadmapNodeSummaryResponse toAdminRoadmapNodeSummary(
+            RoadmapNode node,
+            List<String> requiredTags,
+            NodeCompletionRule completionRule) {
+        Integer requiredProgressRate = null;
+        if (completionRule != null) {
+            try {
+                requiredProgressRate = Integer.valueOf(completionRule.getCriteriaValue());
+            } catch (NumberFormatException ignored) {
+                requiredProgressRate = null;
+            }
+        }
+
+        return AdminRoadmapNodeSummaryResponse.builder()
+                .nodeId(node.getNodeId())
+                .roadmapId(node.getRoadmap().getRoadmapId())
+                .roadmapTitle(node.getRoadmap().getTitle())
+                .title(node.getTitle())
+                .nodeType(node.getNodeType())
+                .required(!requiredTags.isEmpty())
+                .requiredTagCount(requiredTags.size())
+                .requiredTags(requiredTags)
+                .completionRuleDescription(
+                        completionRule == null ? null : completionRule.getCriteriaType())
+                .requiredProgressRate(requiredProgressRate)
+                .build();
     }
 }

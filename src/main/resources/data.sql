@@ -53,7 +53,7 @@ WHERE NOT EXISTS (
 INSERT INTO users (email, password, name, role_name, is_active, created_at, updated_at)
 SELECT
     'learner@devpath.com',
-    '$2a$10$xh6.EW/FRzJBWfxqpdXh2uTVoepPhUxQRUH5OEwk90IpYeKjegkj.',
+    '$2a$10$lEubudcVnsxZ6EAO3.joFOPndlLjv9.bi5FcO4z59a74fCMjqZA.O',
     '김하늘',
     'ROLE_LEARNER',
     TRUE,
@@ -97,7 +97,11 @@ WHERE NOT EXISTS (
 
 UPDATE users
 SET password = '$2a$10$xh6.EW/FRzJBWfxqpdXh2uTVoepPhUxQRUH5OEwk90IpYeKjegkj.'
-WHERE email IN ('learner@devpath.com', 'instructor@devpath.com', 'admin@devpath.com');
+WHERE email IN ('learner@devpath.com', 'instructor@devpath.com');
+
+UPDATE users
+SET password = '$2a$10$lEubudcVnsxZ6EAO3.joFOPndlLjv9.bi5FcO4z59a74fCMjqZA.O'
+WHERE email = 'admin@devpath.com';
 
 -- ============================================================
 -- 3. User Profiles
@@ -11712,3 +11716,143 @@ WHERE NOT EXISTS (
     FROM settlement_hold sh
     WHERE sh.settlement_id = s.id
 );
+
+-- [CATALOG] 사용자 신고 접수 시드 데이터
+INSERT INTO moderation_report (
+    reporter_user_id,
+    target_user_id,
+    content_id,
+    reason,
+    status,
+    action_taken,
+    resolved_by,
+    resolved_at,
+    created_at
+)
+SELECT
+    reporter.user_id,
+    target.user_id,
+    NULL,
+    '프로젝트 채팅에서 반복적인 비방 메시지를 보냈습니다.',
+    'PENDING',
+    NULL,
+    NULL,
+    NULL,
+    TIMESTAMP '2026-04-15 09:20:00'
+FROM users reporter
+JOIN users target ON target.email = 'learner3@devpath.com'
+WHERE reporter.email = 'learner2@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM moderation_report mr
+      WHERE mr.reporter_user_id = reporter.user_id
+        AND mr.target_user_id = target.user_id
+        AND mr.content_id IS NULL
+        AND mr.reason = '프로젝트 채팅에서 반복적인 비방 메시지를 보냈습니다.'
+  );
+
+INSERT INTO moderation_report (
+    reporter_user_id,
+    target_user_id,
+    content_id,
+    reason,
+    status,
+    action_taken,
+    resolved_by,
+    resolved_at,
+    created_at
+)
+SELECT
+    reporter.user_id,
+    author.user_id,
+    r.id,
+    '수강 후기 내용에 개인 연락처가 그대로 노출되어 있습니다.',
+    'PENDING',
+    NULL,
+    NULL,
+    NULL,
+    TIMESTAMP '2026-04-15 14:10:00'
+FROM users reporter
+JOIN users author ON author.email = 'learner2@devpath.com'
+JOIN courses c ON c.title = 'React 19 프론트엔드 실전 가이드'
+JOIN review r ON r.course_id = c.course_id
+             AND r.learner_id = author.user_id
+             AND r.is_deleted = FALSE
+WHERE reporter.email = 'learner3@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM moderation_report mr
+      WHERE mr.reporter_user_id = reporter.user_id
+        AND mr.content_id = r.id
+        AND mr.reason = '수강 후기 내용에 개인 연락처가 그대로 노출되어 있습니다.'
+  );
+
+INSERT INTO moderation_report (
+    reporter_user_id,
+    target_user_id,
+    content_id,
+    reason,
+    status,
+    action_taken,
+    resolved_by,
+    resolved_at,
+    created_at
+)
+SELECT
+    reporter.user_id,
+    author.user_id,
+    r.id,
+    '후기 문구가 강의와 무관한 외부 홍보성 내용으로 보입니다.',
+    'PENDING',
+    NULL,
+    NULL,
+    NULL,
+    TIMESTAMP '2026-04-16 11:45:00'
+FROM users reporter
+JOIN users author ON author.email = 'learner3@devpath.com'
+JOIN courses c ON c.title = 'Flutter로 MVP 앱 출시하기'
+JOIN review r ON r.course_id = c.course_id
+             AND r.learner_id = author.user_id
+             AND r.is_deleted = FALSE
+WHERE reporter.email = 'learner2@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM moderation_report mr
+      WHERE mr.reporter_user_id = reporter.user_id
+        AND mr.content_id = r.id
+        AND mr.reason = '후기 문구가 강의와 무관한 외부 홍보성 내용으로 보입니다.'
+  );
+
+INSERT INTO moderation_report (
+    reporter_user_id,
+    target_user_id,
+    content_id,
+    reason,
+    status,
+    action_taken,
+    resolved_by,
+    resolved_at,
+    created_at
+)
+SELECT
+    reporter.user_id,
+    target.user_id,
+    NULL,
+    '프로필 소개에 외부 연락처 유도가 반복되어 관리자 검토 후 경고 처리했습니다.',
+    'RESOLVED',
+    'WARNING',
+    admin_user.user_id,
+    TIMESTAMP '2026-04-14 18:20:00',
+    TIMESTAMP '2026-04-14 12:00:00'
+FROM users reporter
+JOIN users target ON target.email = 'frontend@devpath.com'
+JOIN users admin_user ON admin_user.email = 'admin@devpath.com'
+WHERE reporter.email = 'learner3@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM moderation_report mr
+      WHERE mr.reporter_user_id = reporter.user_id
+        AND mr.target_user_id = target.user_id
+        AND mr.content_id IS NULL
+        AND mr.reason = '프로필 소개에 외부 연락처 유도가 반복되어 관리자 검토 후 경고 처리했습니다.'
+  );

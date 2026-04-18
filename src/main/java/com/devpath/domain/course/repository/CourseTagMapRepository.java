@@ -12,6 +12,16 @@ public interface CourseTagMapRepository extends JpaRepository<CourseTagMap, Long
   @EntityGraph(attributePaths = "tag")
   List<CourseTagMap> findAllByCourseCourseId(Long courseId);
 
+  @EntityGraph(attributePaths = {"course", "tag"})
+  @Query(
+      """
+            select ctm
+            from CourseTagMap ctm
+            order by ctm.course.courseId asc, ctm.tag.name asc
+            """)
+  // 관리자 대시보드 카테고리 집계를 위해 강의와 태그를 함께 읽는다.
+  List<CourseTagMap> findAllWithCourseAndTag();
+
   @Query(
       """
             select t.name
@@ -30,6 +40,7 @@ public interface CourseTagMapRepository extends JpaRepository<CourseTagMap, Long
             where ctm.course.courseId in :courseIds
             order by ctm.course.courseId asc, ctm.tag.name asc
             """)
+  // 여러 강의의 태그를 한 번에 읽어 병합 로직과 표 구성을 단순화한다.
   List<CourseTagMap> findAllByCourseCourseIdInOrderByCourseAndTagName(@Param("courseIds") Collection<Long> courseIds);
 
   List<CourseTagMap> findAllByTagTagId(Long tagId);

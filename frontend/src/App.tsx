@@ -3,7 +3,12 @@ import AccountUserMenu from './components/AccountUserMenu'
 import AuthModal, { type AuthView } from './components/AuthModal'
 import SiteHeader from './components/SiteHeader'
 import { authApi, userApi } from './lib/api'
-import { AUTH_SESSION_SYNC_EVENT, clearStoredAuthSession, readStoredAuthSession } from './lib/auth-session'
+import {
+  AUTH_SESSION_SYNC_EVENT,
+  clearStoredAuthSession,
+  getPostLoginRedirect,
+  readStoredAuthSession,
+} from './lib/auth-session'
 
 const headerLinks = [
   { key: 'roadmap', href: 'roadmap-hub.html', label: '로드맵' },
@@ -17,7 +22,7 @@ const instructorHeaderLink = { key: 'instructorDashboard', href: 'instructor-das
 
 type HeaderMoveKey = 'brandGroup' | 'navGroup'
 
-// Edit these values directly when you want to move each header group.
+// 헤더 각 영역의 위치를 미세 조정할 때 사용하는 오프셋이다.
 const headerMoveOffsets: Record<HeaderMoveKey, { x: number; y: number }> = {
   brandGroup: { x: 7.5, y: 0 },
   navGroup: { x: -10, y: 0 },
@@ -207,8 +212,16 @@ function App() {
     setAuthView(null)
   }
 
+  // 관리자 세션은 일반 홈 대신 전용 대시보드로 즉시 이동시킨다.
   function handleAuthenticated() {
-    setSession(readStoredAuthSession())
+    const nextSession = readStoredAuthSession()
+
+    if (nextSession?.role === 'ROLE_ADMIN') {
+      window.location.replace(getPostLoginRedirect(nextSession.role))
+      return
+    }
+
+    setSession(nextSession)
     closeAuthModal()
   }
 

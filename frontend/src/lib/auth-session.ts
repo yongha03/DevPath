@@ -28,6 +28,7 @@ function decodeBase64Url(value: string) {
 }
 
 export function parseTokenClaims(accessToken: string): AuthTokenClaims {
+  // 액세스 토큰에서 사용자 식별자와 권한 정보를 꺼낸다.
   try {
     const [, payload] = accessToken.split('.')
 
@@ -122,6 +123,7 @@ function isSessionExpired(session: AuthSession, nowMs = Date.now()) {
 }
 
 function scheduleSessionExpiry(session: AuthSession) {
+  // 토큰 만료 시점에 맞춰 세션 정리 동작을 예약한다.
   clearExpiryTimer()
 
   if (!session.exp) {
@@ -161,6 +163,7 @@ export function persistAuthSession(
 }
 
 export function readStoredAuthSession(): AuthSession | null {
+  // 저장된 세션을 읽을 때마다 만료 여부를 다시 점검한다.
   const session = getStoredSessionRaw()
 
   if (!session) {
@@ -244,8 +247,10 @@ export function getRoleLabel(role: string | null) {
 }
 
 export function getPostLoginRedirect(role: string | null) {
+  // 관리자만 전용 HTML 엔트리로 보내고 나머지는 홈으로 유지한다.
   switch (role) {
     case 'ROLE_ADMIN':
+      return '/admin-dashboard.html'
     case 'ROLE_INSTRUCTOR':
     case 'ROLE_LEARNER':
     default:

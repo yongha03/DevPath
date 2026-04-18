@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DevPath Admin</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="stylesheet" href="/vendor/fontawesome/css/all.min.css" />
+    <link rel="stylesheet" href="/vendor/fontawesome/css/devpath-compat.css" />
+    <style>
+      @import url('https://cdn.jsdelivr.net/gh/sunn-us/SUIT/fonts/variable/woff2/SUIT-variable.css');
+
+      body {
+        font-family: 'SUIT Variable', sans-serif;
+        letter-spacing: -0.015em;
+      }
+
+      ::-webkit-scrollbar {
+        width: 6px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 10px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+      }
+
+      .chart-container {
+        position: relative;
+        height: 300px;
+        width: 100%;
+      }
+
+      .doughnut-container {
+        position: relative;
+        height: 250px;
+        width: 100%;
+      }
+    </style>
+    <script type="module" src="/src/admin-dashboard.ts"></script>
+  </head>
+  <body class="flex h-screen overflow-hidden bg-[#F8FAFC] text-slate-800">
+    <aside class="z-10 flex w-64 flex-col border-r border-slate-800 bg-[#0F172A] text-white shadow-2xl">
+      <div class="flex h-16 items-center justify-between border-b border-slate-800/80 px-6">
+        <h1 class="text-xl font-black tracking-tight text-indigo-400">
+          DevPath
+          <span class="ml-1 rounded border border-slate-700 px-1.5 py-0.5 text-[10px] font-medium tracking-widest text-slate-400 uppercase">
+            Admin
+          </span>
+        </h1>
+      </div>
+
+      <nav class="flex-1 space-y-1 overflow-y-auto px-3 py-6" id="admin-nav">
+        <button
+          data-target="dashboard"
+          class="nav-btn w-full rounded-lg bg-indigo-600 px-4 py-2.5 text-left font-medium text-white shadow-md shadow-indigo-900/40 transition-all duration-200"
+          type="button"
+        >
+          <i class="fas fa-chart-pie w-6 text-center opacity-80"></i> 대시보드
+        </button>
+        <div class="px-4 pt-6 pb-2 text-[10px] font-bold tracking-widest text-slate-500 uppercase">
+          Governance
+        </div>
+        <button
+          data-target="tags"
+          class="nav-btn w-full rounded-lg px-4 py-2.5 text-left font-medium text-slate-400 transition-all duration-200 hover:bg-slate-800/60 hover:text-slate-100"
+          type="button"
+        >
+          <i class="fas fa-tags w-6 text-center opacity-70"></i> 기술 태그 관리
+        </button>
+        <button
+          data-target="roadmaps"
+          class="nav-btn w-full rounded-lg px-4 py-2.5 text-left font-medium text-slate-400 transition-all duration-200 hover:bg-slate-800/60 hover:text-slate-100"
+          type="button"
+        >
+          <i class="fas fa-sitemap w-6 text-center opacity-70"></i> 마스터 로드맵
+        </button>
+        <div class="px-4 pt-6 pb-2 text-[10px] font-bold tracking-widest text-slate-500 uppercase">
+          Monitoring
+        </div>
+        <button
+          data-target="users"
+          class="nav-btn w-full rounded-lg px-4 py-2.5 text-left font-medium text-slate-400 transition-all duration-200 hover:bg-slate-800/60 hover:text-slate-100"
+          type="button"
+        >
+          <i class="fas fa-users w-6 text-center opacity-70"></i> 회원 통합 관리
+        </button>
+        <button
+          data-target="reports"
+          class="nav-btn flex w-full items-center justify-between rounded-lg px-4 py-2.5 text-left font-medium text-slate-400 transition-all duration-200 hover:bg-slate-800/60 hover:text-slate-100"
+          type="button"
+        >
+          <span><i class="fas fa-shield-alt w-6 text-center opacity-70"></i> 검수 및 신고</span>
+          <span
+            id="nav-report-badge"
+            class="flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-bold text-white shadow-sm shadow-rose-900/50"
+          >
+            0
+          </span>
+        </button>
+      </nav>
+
+      <div class="border-t border-slate-800/80 p-4">
+        <button
+          onclick="logout()"
+          class="w-full rounded-lg py-2 text-xs font-medium text-slate-400 transition-colors hover:bg-slate-800/80 hover:text-white"
+          type="button"
+        >
+          <i class="fas fa-sign-out-alt mr-1"></i> 관리자 로그아웃
+        </button>
+      </div>
+    </aside>
+
+    <main class="flex-1 overflow-y-auto" id="main-content">
+      <header class="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-slate-200 bg-white/80 px-8 backdrop-blur-md">
+        <div class="flex items-center gap-3">
+          <h2 class="text-lg font-bold text-slate-800" id="page-title">플랫폼 실시간 현황</h2>
+          <span class="text-slate-300">|</span>
+          <p class="text-xs font-medium text-slate-500" id="page-desc">DevPath 관리자 운영 지표 요약</p>
+        </div>
+        <div class="flex items-center gap-4 text-xs font-medium text-slate-500">
+          <span class="flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1.5">
+            <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-500"></span>
+            System Normal
+          </span>
+          <button
+            onclick="refreshCurrentTab()"
+            class="rounded-md border border-slate-200 bg-white p-1.5 text-slate-400 shadow-sm transition hover:text-indigo-600"
+            title="새로고침"
+            type="button"
+          >
+            <i class="fas fa-sync-alt"></i>
+          </button>
+        </div>
+      </header>
+
+      <div class="mx-auto max-w-[1400px] p-8">
+        <div id="view-dashboard" class="view-section block space-y-6">
+          <div class="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-4">
+            <div class="group relative overflow-hidden rounded-xl border border-slate-200/60 bg-white p-5 shadow-sm">
+              <div class="absolute -top-6 -right-6 h-24 w-24 rounded-full bg-indigo-50 opacity-50 transition-transform group-hover:scale-110"></div>
+              <div class="relative z-10 mb-4 flex items-start justify-between">
+                <div class="text-xs font-bold tracking-wider text-slate-500 uppercase">주간 활성 사용자</div>
+                <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-100 text-indigo-600">
+                  <i class="fas fa-users text-sm"></i>
+                </div>
+              </div>
+              <div class="relative z-10 flex flex-col gap-1">
+                <div class="flex items-baseline gap-2">
+                  <div class="text-3xl font-black tracking-tight text-slate-800" id="weekly-active-users-value">0</div>
+                  <span id="weekly-active-users-change" class="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-bold text-slate-500">
+                    변화 없음
+                  </span>
+                </div>
+                <div class="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                  <div id="weekly-active-users-progress" class="h-1.5 rounded-full bg-indigo-500" style="width: 0%"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="group relative overflow-hidden rounded-xl border border-slate-200/60 bg-white p-5 shadow-sm">
+              <div class="absolute -top-6 -right-6 h-24 w-24 rounded-full bg-amber-50 opacity-50 transition-transform group-hover:scale-110"></div>
+              <div class="relative z-10 mb-4 flex items-start justify-between">
+                <div class="text-xs font-bold tracking-wider text-slate-500 uppercase">강의 검수 대기열</div>
+                <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-amber-100 text-amber-600">
+                  <i class="fas fa-video text-sm"></i>
+                </div>
+              </div>
+              <div class="relative z-10 flex flex-col gap-1">
+                <div class="flex items-baseline gap-2">
+                  <div class="text-3xl font-black tracking-tight text-slate-800">
+                    <span id="pending-course-reviews-value">0</span>
+                    <span class="ml-1 text-sm font-medium text-slate-400" id="pending-course-reviews-suffix">건</span>
+                  </div>
+                  <span id="pending-course-reviews-change" class="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-bold text-slate-500">
+                    검수 대기 없음
+                  </span>
+                </div>
+                <div class="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                  <div id="pending-course-reviews-progress" class="h-1.5 rounded-full bg-amber-400" style="width: 0%"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="group relative overflow-hidden rounded-xl border border-slate-200/60 bg-white p-5 shadow-sm">
+              <div class="absolute -top-6 -right-6 h-24 w-24 rounded-full bg-blue-50 opacity-50 transition-transform group-hover:scale-110"></div>
+              <div class="relative z-10 mb-4 flex items-start justify-between">
+                <div class="text-xs font-bold tracking-wider text-slate-500 uppercase">누적 인증서 발급</div>
+                <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-100 text-blue-600">
+                  <i class="fas fa-certificate text-sm"></i>
+                </div>
+              </div>
+              <div class="relative z-10 flex flex-col gap-1">
+                <div class="flex items-baseline gap-2">
+                  <div class="text-3xl font-black tracking-tight text-slate-800" id="issued-certificates-value">0</div>
+                  <span id="issued-certificates-change" class="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-bold text-slate-500">
+                    이번 주 발급 없음
+                  </span>
+                </div>
+                <div class="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                  <div id="issued-certificates-progress" class="h-1.5 rounded-full bg-blue-500" style="width: 0%"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="group relative overflow-hidden rounded-xl border border-slate-200/60 bg-white p-5 shadow-sm">
+              <div class="absolute -top-6 -right-6 h-24 w-24 rounded-full bg-rose-50 opacity-50 transition-transform group-hover:scale-110"></div>
+              <div class="relative z-10 mb-4 flex items-start justify-between">
+                <div class="text-xs font-bold tracking-wider text-slate-500 uppercase">미처리 신고 내역</div>
+                <div class="flex h-8 w-8 items-center justify-center rounded-lg bg-rose-100 text-rose-600">
+                  <i class="fas fa-shield-alt text-sm"></i>
+                </div>
+              </div>
+              <div class="relative z-10 flex flex-col gap-1">
+                <div class="flex items-baseline gap-2">
+                  <div class="text-3xl font-black tracking-tight text-rose-600">
+                    <span id="pending-reports-value">0</span>
+                    <span class="ml-1 text-sm font-medium text-slate-400" id="pending-reports-suffix">건</span>
+                  </div>
+                  <span id="pending-reports-change" class="rounded bg-slate-100 px-1.5 py-0.5 text-xs font-bold text-slate-500">
+                    대기 신고 없음
+                  </span>
+                </div>
+                <div class="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-slate-100">
+                  <div id="pending-reports-progress" class="h-1.5 rounded-full bg-rose-500" style="width: 0%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            <div class="rounded-xl border border-slate-200/60 bg-white p-6 shadow-sm lg:col-span-2">
+              <div class="mb-6 flex items-center justify-between">
+                <div><h3 class="font-bold text-slate-800">플랫폼 유입 추이</h3></div>
+              </div>
+              <div class="chart-container"><canvas id="trafficChart"></canvas></div>
+            </div>
+            <div class="flex flex-col rounded-xl border border-slate-200/60 bg-white p-6 shadow-sm">
+              <div class="mb-6"><h3 class="font-bold text-slate-800">카테고리별 강의 분포</h3></div>
+              <div class="doughnut-container flex flex-1 items-center justify-center">
+                <canvas id="categoryChart"></canvas>
+              </div>
+              <div id="categoryLegend" class="mt-4 grid grid-cols-2 gap-2 text-xs font-medium text-slate-600"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="view-tags" class="view-section hidden space-y-4">
+          <div class="overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-sm">
+            <div class="flex items-center justify-between border-b border-slate-100 bg-white p-5">
+              <h3 class="text-sm font-bold text-slate-800">전체 태그 데이터베이스</h3>
+              <button onclick="createTag()" class="rounded-md bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-indigo-700" type="button">
+                <i class="fas fa-plus mr-1"></i> 신규 태그 등록
+              </button>
+            </div>
+            <div class="border-b border-slate-100 bg-slate-50/60 px-5 py-4">
+              <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <label class="relative block flex-1">
+                  <i class="fas fa-search pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-xs text-slate-400"></i>
+                  <input
+                    id="tagFilterInput"
+                    class="w-full rounded-lg border border-slate-200 bg-white py-2 pr-3 pl-9 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                    type="text"
+                    placeholder="태그명 또는 설명으로 필터"
+                  />
+                </label>
+                <div id="tagFilterSummary" class="text-xs font-medium text-slate-500">전체 0개</div>
+              </div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full border-collapse text-left">
+                <thead>
+                  <tr>
+                    <th class="border-b border-slate-100 bg-slate-50/50 px-6 py-3 text-[11px] font-bold tracking-wider text-slate-400 uppercase">태그 ID</th>
+                    <th class="border-b border-slate-100 bg-slate-50/50 px-6 py-3 text-[11px] font-bold tracking-wider text-slate-400 uppercase">태그명</th>
+                    <th class="border-b border-slate-100 bg-slate-50/50 px-6 py-3 text-[11px] font-bold tracking-wider text-slate-400 uppercase">설명</th>
+                    <th class="border-b border-slate-100 bg-slate-50/50 px-6 py-3 text-[11px] font-bold tracking-wider text-slate-400 uppercase">상태</th>
+                    <th class="border-b border-slate-100 bg-slate-50/50 px-6 py-3 text-right text-[11px] font-bold tracking-wider text-slate-400 uppercase">관리</th>
+                  </tr>
+                </thead>
+                <tbody id="tagTableBody" class="bg-white text-sm"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="view-roadmaps" class="view-section hidden space-y-4">
+          <div class="overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-sm">
+            <div class="flex items-center justify-between border-b border-slate-100 bg-white p-5">
+              <h3 class="text-sm font-bold text-slate-800">마스터 로드맵 노드</h3>
+            </div>
+            <div class="border-b border-slate-100 bg-slate-50/60 px-5 py-4">
+              <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div class="grid flex-1 gap-3 md:grid-cols-[minmax(0,1fr)_180px]">
+                  <label class="relative block">
+                    <i class="fas fa-search pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-xs text-slate-400"></i>
+                    <input
+                      id="nodeFilterInput"
+                      class="w-full rounded-lg border border-slate-200 bg-white py-2 pr-3 pl-9 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                      type="text"
+                      placeholder="로드맵명 또는 노드명으로 필터"
+                    />
+                  </label>
+                  <select
+                    id="nodeTypeFilter"
+                    class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                  >
+                    <option value="">전체 유형</option>
+                    <option value="CONCEPT">개념</option>
+                    <option value="PRACTICE">실습</option>
+                    <option value="PROJECT">프로젝트</option>
+                    <option value="REVIEW">복습</option>
+                    <option value="EXAM">평가</option>
+                  </select>
+                </div>
+                <div id="nodeFilterSummary" class="text-xs font-medium text-slate-500">전체 0개</div>
+              </div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full border-collapse text-left">
+                <thead>
+                  <tr>
+                    <th class="border-b border-slate-100 bg-slate-50/50 px-6 py-3 text-[11px] font-bold tracking-wider text-slate-400 uppercase">노드 ID</th>
+                    <th class="border-b border-slate-100 bg-slate-50/50 px-6 py-3 text-[11px] font-bold tracking-wider text-slate-400 uppercase">노드명</th>
+                    <th class="border-b border-slate-100 bg-slate-50/50 px-6 py-3 text-[11px] font-bold tracking-wider text-slate-400 uppercase">로드맵 / 유형</th>
+                    <th class="border-b border-slate-100 bg-slate-50/50 px-6 py-3 text-[11px] font-bold tracking-wider text-slate-400 uppercase">필수 정보</th>
+                    <th class="border-b border-slate-100 bg-slate-50/50 px-6 py-3 text-right text-[11px] font-bold tracking-wider text-slate-400 uppercase">관리</th>
+                  </tr>
+                </thead>
+                <tbody id="nodeTableBody" class="bg-white text-sm"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="view-users" class="view-section hidden space-y-4">
+          <div class="overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-sm">
+            <div class="flex items-center justify-between border-b border-slate-100 bg-white p-5">
+              <h3 class="text-sm font-bold text-slate-800">플랫폼 계정 목록</h3>
+            </div>
+            <div class="border-b border-slate-100 bg-slate-50/60 px-5 py-4">
+              <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div class="grid flex-1 gap-3 md:grid-cols-[minmax(0,1fr)_160px_160px]">
+                  <label class="relative block">
+                    <i class="fas fa-search pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-xs text-slate-400"></i>
+                    <input
+                      id="accountFilterInput"
+                      class="w-full rounded-lg border border-slate-200 bg-white py-2 pr-3 pl-9 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                      type="text"
+                      placeholder="이메일 또는 이름으로 필터"
+                    />
+                  </label>
+                  <select
+                    id="accountRoleFilter"
+                    class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                  >
+                    <option value="">전체 권한</option>
+                    <option value="ROLE_ADMIN">관리자</option>
+                    <option value="ROLE_INSTRUCTOR">강사</option>
+                    <option value="ROLE_LEARNER">학습자</option>
+                  </select>
+                  <select
+                    id="accountStatusFilter"
+                    class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                  >
+                    <option value="">전체 상태</option>
+                    <option value="ACTIVE">활성</option>
+                    <option value="RESTRICTED">제한</option>
+                    <option value="INACTIVE">비활성</option>
+                  </select>
+                </div>
+                <div id="accountFilterSummary" class="text-xs font-medium text-slate-500">전체 0개</div>
+              </div>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full border-collapse text-left">
+                <thead>
+                  <tr>
+                    <th class="border-b border-slate-100 bg-slate-50/50 px-6 py-3 text-[11px] font-bold tracking-wider text-slate-400 uppercase">ID</th>
+                    <th class="border-b border-slate-100 bg-slate-50/50 px-6 py-3 text-[11px] font-bold tracking-wider text-slate-400 uppercase">계정</th>
+                    <th class="border-b border-slate-100 bg-slate-50/50 px-6 py-3 text-[11px] font-bold tracking-wider text-slate-400 uppercase">이름</th>
+                    <th class="border-b border-slate-100 bg-slate-50/50 px-6 py-3 text-[11px] font-bold tracking-wider text-slate-400 uppercase">권한</th>
+                    <th class="border-b border-slate-100 bg-slate-50/50 px-6 py-3 text-[11px] font-bold tracking-wider text-slate-400 uppercase">상태</th>
+                    <th class="border-b border-slate-100 bg-slate-50/50 px-6 py-3 text-right text-[11px] font-bold tracking-wider text-slate-400 uppercase">관리</th>
+                  </tr>
+                </thead>
+                <tbody id="accountTableBody" class="bg-white text-sm"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="view-reports" class="view-section hidden space-y-6">
+          <div class="overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-sm">
+            <div class="border-b border-slate-100 bg-white p-5">
+              <h3 class="flex items-center gap-2 text-sm font-bold text-slate-800">
+                <span class="h-2 w-2 rounded-full bg-amber-500"></span> 신규 강의 검수 대기열
+              </h3>
+            </div>
+            <table class="w-full border-collapse text-left">
+              <thead>
+                <tr>
+                  <th class="border-b border-slate-100 bg-slate-50/50 px-6 py-3 text-[11px] font-bold tracking-wider text-slate-400 uppercase">강의 정보</th>
+                  <th class="border-b border-slate-100 bg-slate-50/50 px-6 py-3 text-[11px] font-bold tracking-wider text-slate-400 uppercase">제출자</th>
+                  <th class="border-b border-slate-100 bg-slate-50/50 px-6 py-3 text-right text-[11px] font-bold tracking-wider text-slate-400 uppercase">검수 결정</th>
+                </tr>
+              </thead>
+              <tbody id="courseTableBody" class="bg-white text-sm"></tbody>
+            </table>
+          </div>
+          <div class="overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-sm">
+            <div class="border-b border-slate-100 bg-white p-5">
+              <h3 class="flex items-center gap-2 text-sm font-bold text-slate-800">
+                <span class="h-2 w-2 rounded-full bg-rose-500"></span> 사용자 신고 접수 내역
+              </h3>
+            </div>
+            <table class="w-full border-collapse text-left">
+              <thead>
+                <tr>
+                  <th class="border-b border-slate-100 bg-slate-50/50 px-6 py-3 text-[11px] font-bold tracking-wider text-slate-400 uppercase">신고 대상</th>
+                  <th class="border-b border-slate-100 bg-slate-50/50 px-6 py-3 text-[11px] font-bold tracking-wider text-slate-400 uppercase">신고 사유</th>
+                  <th class="border-b border-slate-100 bg-slate-50/50 px-6 py-3 text-right text-[11px] font-bold tracking-wider text-slate-400 uppercase">관리</th>
+                </tr>
+              </thead>
+              <tbody id="reportTableBody" class="bg-white text-sm"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>
