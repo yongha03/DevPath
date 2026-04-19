@@ -6,6 +6,7 @@ import type {
   AdminRoadmapNode,
   AdminTag,
 } from '../types/admin'
+import type { CourseCatalogMenu } from '../types/course-catalog'
 import type { ApiResponse } from '../types/home'
 import { expireStoredAuthSession, readStoredAuthSession } from './auth-session'
 
@@ -130,6 +131,15 @@ export const adminApi = {
       `/api/admin/moderations/reports?status=${encodeURIComponent(status)}`,
       { method: 'GET', signal },
     )
+  },
+  getCourseCatalogMenu(signal?: AbortSignal) {
+    return request<CourseCatalogMenu>('/api/admin/course-catalog', { method: 'GET', signal })
+  },
+  updateCourseCatalogMenu(payload: CourseCatalogMenu) {
+    return request<CourseCatalogMenu>('/api/admin/course-catalog', {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    })
   },
   blindContent(contentId: number, reason: string) {
     return request<void>(`/api/admin/moderations/contents/${contentId}/blind`, {

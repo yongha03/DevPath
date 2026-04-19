@@ -24,7 +24,7 @@ public class PendingCourseResponse {
                 .instructorId(course.getInstructorId())
                 .instructorName(course.getInstructor() == null ? null : course.getInstructor().getName())
                 .title(course.getTitle())
-                .submittedAt(course.getPublishedAt())
+                .submittedAt(course.getUpdatedAt() != null ? course.getUpdatedAt() : course.getCreatedAt())
                 .build();
     }
 }

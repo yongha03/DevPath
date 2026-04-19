@@ -15,6 +15,7 @@ import com.devpath.api.admin.dto.governance.NodeCompletionRuleRequest;
 import com.devpath.api.admin.dto.governance.NodePrerequisitesRequest;
 import com.devpath.api.admin.dto.governance.NodeRequiredTagsRequest;
 import com.devpath.api.admin.dto.governance.NodeTypeRequest;
+import com.devpath.api.admin.dto.governance.PendingCourseResponse;
 import com.devpath.api.admin.dto.governance.TagMergeRequest;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
@@ -46,6 +47,7 @@ import com.devpath.domain.user.repository.UserRepository;
 import com.devpath.domain.user.repository.UserTechStackRepository;
 import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -111,6 +113,27 @@ class AdminGovernanceServiceIntegrationTest {
 
     assertThat(courseRepository.findById(course.getCourseId())).get().extracting(Course::getStatus)
         .isEqualTo(CourseStatus.DRAFT);
+  }
+
+  @Test
+  @DisplayName("검수 대기 강의 목록은 심사 요청 시각을 반환한다")
+  void getPendingCoursesReturnsSubmittedAt() {
+    User instructor = saveUser("pending-submitted-at@devpath.com", UserRole.ROLE_INSTRUCTOR);
+    Course course = saveCourse(instructor, "Pending Submitted Course", CourseStatus.IN_REVIEW);
+    flushAndClear();
+
+    PendingCourseResponse response =
+        adminCourseGovernanceService.getPendingCourses().stream()
+            .filter(item -> item.getCourseId().equals(course.getCourseId()))
+            .findFirst()
+            .orElseThrow();
+
+    assertThat(response.getSubmittedAt()).isNotNull();
+    assertThat(response.getInstructorName()).isEqualTo(instructor.getName());
+
+    Course persistedCourse = courseRepository.findById(course.getCourseId()).orElseThrow();
+    assertThat(response.getSubmittedAt()).isEqualTo(persistedCourse.getUpdatedAt());
+    assertThat(response.getSubmittedAt()).isAfter(LocalDateTime.now().minusMinutes(1));
   }
 
   @Test

@@ -10460,6 +10460,248 @@ WHERE u.email = 'learner@devpath.com'
 -- ============================================================
 
 -- ============================================================
+-- 강의 목록 메뉴 기본 구성
+-- ============================================================
+WITH lecture_catalog_category_seed(category_key, label, title, icon_class, sort_order, is_active) AS (
+    VALUES
+        ('all', '전체', '전체 강의', 'fas fa-th-large', 0, TRUE),
+        ('dev', '개발', '개발 · 프로그래밍', 'fas fa-laptop-code', 1, TRUE),
+        ('ai', 'AI', '인공지능(AI)', 'fas fa-robot', 2, TRUE),
+        ('data', '데이터', '데이터 사이언스', 'fas fa-database', 3, TRUE),
+        ('infra', '인프라', '인프라 · 보안', 'fas fa-server', 4, TRUE),
+        ('mobile', '모바일', '모바일 앱 개발', 'fas fa-mobile-alt', 5, TRUE),
+        ('career', '커리어', '커리어 · 자기계발', 'fas fa-briefcase', 6, TRUE)
+)
+INSERT INTO lecture_catalog_categories (category_key, label, title, icon_class, sort_order, is_active)
+SELECT seed.category_key, seed.label, seed.title, seed.icon_class, seed.sort_order, seed.is_active
+FROM lecture_catalog_category_seed seed
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM lecture_catalog_categories category
+    WHERE category.category_key = seed.category_key
+);
+
+WITH lecture_catalog_mega_menu_seed(category_key, label, sort_order) AS (
+    VALUES
+        ('dev', '웹 개발 (Web)', 0),
+        ('dev', '프론트엔드', 1),
+        ('dev', '백엔드', 2),
+        ('dev', '풀스택', 3),
+        ('dev', '게임 개발', 4),
+        ('dev', '프로그래밍 언어', 5),
+        ('ai', 'AI Engineer', 0),
+        ('ai', 'Data Scientist', 1),
+        ('ai', '머신러닝 (ML)', 2),
+        ('ai', '딥러닝 (DL)', 3),
+        ('ai', 'ChatGPT / LLM', 4),
+        ('ai', '프롬프트 엔지니어링', 5),
+        ('data', '데이터 분석', 0),
+        ('data', '데이터 엔지니어링', 1),
+        ('data', 'SQL / DB', 2),
+        ('data', 'NoSQL (Mongo)', 3),
+        ('data', '시각화 (Tableau)', 4),
+        ('data', '빅데이터', 5),
+        ('infra', 'DevOps', 0),
+        ('infra', 'AWS / Cloud', 1),
+        ('infra', 'Docker / K8s', 2),
+        ('infra', '보안 (Security)', 3),
+        ('infra', 'Linux / Shell', 4),
+        ('infra', '네트워크', 5),
+        ('mobile', 'Android App', 0),
+        ('mobile', 'iOS App', 1),
+        ('mobile', 'Flutter', 2),
+        ('mobile', 'React Native', 3),
+        ('mobile', 'Kotlin / Swift', 4),
+        ('career', '취업 / 이직', 0),
+        ('career', '이력서 / 면접', 1),
+        ('career', '기획 (PM/PO)', 2),
+        ('career', 'UX / UI 디자인', 3),
+        ('career', '비즈니스 스킬', 4),
+        ('career', '개발자 글쓰기', 5)
+)
+INSERT INTO lecture_catalog_mega_menu_items (category_id, label, sort_order)
+SELECT category.id, seed.label, seed.sort_order
+FROM lecture_catalog_mega_menu_seed seed
+JOIN lecture_catalog_categories category
+    ON category.category_key = seed.category_key
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM lecture_catalog_mega_menu_items item
+    WHERE item.category_id = category.id
+      AND item.label = seed.label
+);
+
+WITH lecture_catalog_group_seed(category_key, name, sort_order) AS (
+    VALUES
+        ('all', '탐색 분야', 0),
+        ('dev', '언어 (Language)', 0),
+        ('dev', '프론트엔드', 1),
+        ('dev', '백엔드', 2),
+        ('dev', 'CS & 기타', 3),
+        ('ai', '직무별', 0),
+        ('ai', '핵심 기술', 1),
+        ('ai', 'LLM & 프롬프트', 2),
+        ('ai', '라이브러리', 3),
+        ('data', '직무별', 0),
+        ('data', '데이터베이스', 1),
+        ('data', '분석 & 시각화', 2),
+        ('data', '빅데이터', 3),
+        ('infra', 'DevOps', 0),
+        ('infra', '컨테이너', 1),
+        ('infra', '시스템', 2),
+        ('infra', '보안', 3),
+        ('mobile', '네이티브', 0),
+        ('mobile', '크로스 플랫폼', 1),
+        ('mobile', '기타', 2),
+        ('career', '매니지먼트', 0),
+        ('career', '기획/디자인', 1),
+        ('career', '취업', 2),
+        ('career', '오피스', 3)
+)
+INSERT INTO lecture_catalog_groups (category_id, name, sort_order)
+SELECT category.id, seed.name, seed.sort_order
+FROM lecture_catalog_group_seed seed
+JOIN lecture_catalog_categories category
+    ON category.category_key = seed.category_key
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM lecture_catalog_groups group_item
+    WHERE group_item.category_id = category.id
+      AND group_item.name = seed.name
+);
+
+WITH lecture_catalog_group_item_seed(category_key, group_name, item_name, linked_category_key, sort_order) AS (
+    VALUES
+        ('all', '탐색 분야', '웹 개발', 'dev', 0),
+        ('all', '탐색 분야', 'AI/머신러닝', 'ai', 1),
+        ('all', '탐색 분야', '데이터 분석', 'data', 2),
+        ('all', '탐색 분야', '인프라', 'infra', 3),
+        ('all', '탐색 분야', '모바일 앱', 'mobile', 4),
+        ('all', '탐색 분야', '커리어', 'career', 5),
+        ('dev', '언어 (Language)', 'Java', NULL, 0),
+        ('dev', '언어 (Language)', 'Python', NULL, 1),
+        ('dev', '언어 (Language)', 'JavaScript', NULL, 2),
+        ('dev', '언어 (Language)', 'TypeScript', NULL, 3),
+        ('dev', '언어 (Language)', 'C++', NULL, 4),
+        ('dev', '언어 (Language)', 'C#', NULL, 5),
+        ('dev', '언어 (Language)', 'Go', NULL, 6),
+        ('dev', '언어 (Language)', 'Rust', NULL, 7),
+        ('dev', '언어 (Language)', 'Kotlin', NULL, 8),
+        ('dev', '언어 (Language)', 'Swift', NULL, 9),
+        ('dev', '프론트엔드', 'React', NULL, 0),
+        ('dev', '프론트엔드', 'Vue.js', NULL, 1),
+        ('dev', '프론트엔드', 'Angular', NULL, 2),
+        ('dev', '프론트엔드', 'Svelte', NULL, 3),
+        ('dev', '프론트엔드', 'Next.js', NULL, 4),
+        ('dev', '프론트엔드', 'HTML/CSS', NULL, 5),
+        ('dev', '프론트엔드', 'Tailwind', NULL, 6),
+        ('dev', '백엔드', 'Spring Boot', NULL, 0),
+        ('dev', '백엔드', 'Node.js', NULL, 1),
+        ('dev', '백엔드', 'Django', NULL, 2),
+        ('dev', '백엔드', 'FastAPI', NULL, 3),
+        ('dev', '백엔드', 'NestJS', NULL, 4),
+        ('dev', '백엔드', 'ASP.NET', NULL, 5),
+        ('dev', '백엔드', 'PHP', NULL, 6),
+        ('dev', 'CS & 기타', '자료구조/알고리즘', NULL, 0),
+        ('dev', 'CS & 기타', '테스트', NULL, 1),
+        ('dev', 'CS & 기타', '게임 개발', NULL, 2),
+        ('dev', 'CS & 기타', '아키텍처', NULL, 3),
+        ('ai', '직무별', 'AI Engineer', NULL, 0),
+        ('ai', '직무별', 'Data Scientist', NULL, 1),
+        ('ai', '직무별', 'MLOps', NULL, 2),
+        ('ai', '직무별', 'Researcher', NULL, 3),
+        ('ai', '핵심 기술', 'Machine Learning', NULL, 0),
+        ('ai', '핵심 기술', 'Deep Learning', NULL, 1),
+        ('ai', '핵심 기술', 'NLP', NULL, 2),
+        ('ai', '핵심 기술', 'Computer Vision', NULL, 3),
+        ('ai', '핵심 기술', 'Reinforcement Learning', NULL, 4),
+        ('ai', 'LLM & 프롬프트', 'ChatGPT', NULL, 0),
+        ('ai', 'LLM & 프롬프트', 'LangChain', NULL, 1),
+        ('ai', 'LLM & 프롬프트', 'Prompt Engineering', NULL, 2),
+        ('ai', 'LLM & 프롬프트', 'RAG', NULL, 3),
+        ('ai', 'LLM & 프롬프트', 'Fine-tuning', NULL, 4),
+        ('ai', '라이브러리', 'PyTorch', NULL, 0),
+        ('ai', '라이브러리', 'TensorFlow', NULL, 1),
+        ('ai', '라이브러리', 'Keras', NULL, 2),
+        ('ai', '라이브러리', 'Scikit-learn', NULL, 3),
+        ('ai', '라이브러리', 'HuggingFace', NULL, 4),
+        ('data', '직무별', 'Data Analyst', NULL, 0),
+        ('data', '직무별', 'Data Engineer', NULL, 1),
+        ('data', '직무별', 'DBA', NULL, 2),
+        ('data', '직무별', 'Big Data Engineer', NULL, 3),
+        ('data', '데이터베이스', 'MySQL', NULL, 0),
+        ('data', '데이터베이스', 'PostgreSQL', NULL, 1),
+        ('data', '데이터베이스', 'Oracle', NULL, 2),
+        ('data', '데이터베이스', 'MongoDB', NULL, 3),
+        ('data', '데이터베이스', 'Redis', NULL, 4),
+        ('data', '데이터베이스', 'Elasticsearch', NULL, 5),
+        ('data', '분석 & 시각화', 'Tableau', NULL, 0),
+        ('data', '분석 & 시각화', 'Power BI', NULL, 1),
+        ('data', '분석 & 시각화', 'Excel', NULL, 2),
+        ('data', '분석 & 시각화', 'Google Analytics', NULL, 3),
+        ('data', '분석 & 시각화', 'Pandas', NULL, 4),
+        ('data', '빅데이터', 'Hadoop', NULL, 0),
+        ('data', '빅데이터', 'Spark', NULL, 1),
+        ('data', '빅데이터', 'Kafka', NULL, 2),
+        ('data', '빅데이터', 'Airflow', NULL, 3),
+        ('data', '빅데이터', 'Data Lake', NULL, 4),
+        ('infra', 'DevOps', 'DevOps General', NULL, 0),
+        ('infra', 'DevOps', 'DevSecOps', NULL, 1),
+        ('infra', 'DevOps', 'AWS', NULL, 2),
+        ('infra', 'DevOps', 'Azure', NULL, 3),
+        ('infra', 'DevOps', 'GCP', NULL, 4),
+        ('infra', 'DevOps', 'System Design', NULL, 5),
+        ('infra', '컨테이너', 'Docker', NULL, 0),
+        ('infra', '컨테이너', 'Kubernetes', NULL, 1),
+        ('infra', '컨테이너', 'Terraform', NULL, 2),
+        ('infra', '컨테이너', 'CI/CD Pipelines', NULL, 3),
+        ('infra', '시스템', 'Linux', NULL, 0),
+        ('infra', '시스템', 'Shell Script', NULL, 1),
+        ('infra', '시스템', 'Network Administration', NULL, 2),
+        ('infra', '보안', 'Cyber Security', NULL, 0),
+        ('infra', '보안', 'Web Hacking', NULL, 1),
+        ('infra', '보안', 'Cloud Security', NULL, 2),
+        ('mobile', '네이티브', 'Android (Kotlin)', NULL, 0),
+        ('mobile', '네이티브', 'iOS (Swift)', NULL, 1),
+        ('mobile', '네이티브', 'SwiftUI', NULL, 2),
+        ('mobile', '네이티브', 'Jetpack Compose', NULL, 3),
+        ('mobile', '크로스 플랫폼', 'Flutter', NULL, 0),
+        ('mobile', '크로스 플랫폼', 'React Native', NULL, 1),
+        ('mobile', '크로스 플랫폼', 'Xamarin', NULL, 2),
+        ('mobile', '기타', 'Mobile Design', NULL, 0),
+        ('mobile', '기타', 'App Store Release', NULL, 1),
+        ('career', '매니지먼트', 'Product Manager', NULL, 0),
+        ('career', '매니지먼트', 'Engineering Manager', NULL, 1),
+        ('career', '매니지먼트', 'Developer Relations', NULL, 2),
+        ('career', '기획/디자인', 'UX / UI Design', NULL, 0),
+        ('career', '기획/디자인', 'Figma', NULL, 1),
+        ('career', '기획/디자인', 'Technical Writer', NULL, 2),
+        ('career', '기획/디자인', 'IT 서비스 기획', NULL, 3),
+        ('career', '취업', '이력서', NULL, 0),
+        ('career', '취업', '자소서', NULL, 1),
+        ('career', '취업', '기술 면접', NULL, 2),
+        ('career', '취업', '포트폴리오', NULL, 3),
+        ('career', '취업', '연봉 협상', NULL, 4),
+        ('career', '오피스', '개발자 글쓰기', NULL, 0),
+        ('career', '오피스', '커뮤니케이션', NULL, 1),
+        ('career', '오피스', '문서화', NULL, 2)
+)
+INSERT INTO lecture_catalog_group_items (group_id, name, linked_category_key, sort_order)
+SELECT group_item.id, seed.item_name, seed.linked_category_key, seed.sort_order
+FROM lecture_catalog_group_item_seed seed
+JOIN lecture_catalog_categories category
+    ON category.category_key = seed.category_key
+JOIN lecture_catalog_groups group_item
+    ON group_item.category_id = category.id
+   AND group_item.name = seed.group_name
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM lecture_catalog_group_items item
+    WHERE item.group_id = group_item.id
+      AND item.name = seed.item_name
+);
+
+-- ============================================================
 -- PUBLIC CATALOG DATA: lecture-list.html 실제 API 노출용 공개 강의
 --   - instructor@devpath.com: 2개
 --   - frontend@devpath.com  : 3개

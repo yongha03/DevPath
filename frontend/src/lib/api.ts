@@ -5,6 +5,7 @@ import type {
   CourseReview,
   CourseWishlistMutationResponse,
 } from '../types/course'
+import type { CourseCatalogMenu } from '../types/course-catalog'
 import type {
   InstructorAnalyticsDashboard,
   InstructorAnnouncementDetail,
@@ -422,6 +423,9 @@ export const enrollmentApi = {
 export const courseApi = {
   getCourses(signal?: AbortSignal) {
     return request<CourseListItem[]>('/api/courses', { method: 'GET', signal }, { auth: true })
+  },
+  getCatalogMenu(signal?: AbortSignal) {
+    return request<CourseCatalogMenu>('/api/courses/catalog-menu', { method: 'GET', signal })
   },
   getCourseDetail(courseId: number, signal?: AbortSignal) {
     return request<LearningCourseDetail>(`/api/courses/${courseId}`, { method: 'GET', signal }, { auth: true })

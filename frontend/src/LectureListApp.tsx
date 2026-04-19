@@ -5,9 +5,10 @@ import {
   fallbackLectureCourses,
   formatCoursePrice,
   getCourseDisplayPrice,
+  getOverviewCategoryKey,
   isFreeCourse,
-  lectureCategoryConfigs,
   matchesLectureTag,
+  normalizeLectureCategoryConfigs,
   normalizeLectureCourses,
   sortLectureCourses,
   type LectureCategoryKey,
@@ -17,6 +18,7 @@ import {
 } from './lecture-list-support'
 import { authApi, courseApi, userApi, wishlistApi } from './lib/api'
 import { AUTH_SESSION_SYNC_EVENT, clearStoredAuthSession, readStoredAuthSession } from './lib/auth-session'
+import type { CourseCatalogMenu } from './types/course-catalog'
 
 function readAuthViewFromLocation(): AuthView | null {
   const value = new URLSearchParams(window.location.search).get('auth')
@@ -48,12 +50,19 @@ function LoadingCards() {
   )
 }
 
+function buildEmptyCatalogMenu(): CourseCatalogMenu {
+  return { categories: [] }
+}
+
 export default function LectureListApp() {
   const [session, setSession] = useState(() => readStoredAuthSession())
   const [profileImage, setProfileImage] = useState<string | null>(null)
   const [authView, setAuthView] = useState<AuthView | null>(() => readAuthViewFromLocation())
   const [rawCourses, setRawCourses] = useState(fallbackLectureCourses)
+  const [catalogMenu, setCatalogMenu] = useState<CourseCatalogMenu>(() => buildEmptyCatalogMenu())
   const [loadingCourses, setLoadingCourses] = useState(true)
+  const [loadingCatalogMenu, setLoadingCatalogMenu] = useState(true)
+  const [catalogMenuError, setCatalogMenuError] = useState<string | null>(null)
   const [selectedCategoryKey, setSelectedCategoryKey] = useState<LectureCategoryKey>('all')
   const [selectedTag, setSelectedTag] = useState<string | null>(null)
   const [difficultyFilter, setDifficultyFilter] = useState<LectureDifficultyFilter>('ALL')
@@ -66,12 +75,17 @@ export default function LectureListApp() {
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const deferredSearchTerm = useDeferredValue(searchTerm.trim().toLowerCase())
 
-  const activeCategory = lectureCategoryConfigs.find((item) => item.key === selectedCategoryKey) ?? lectureCategoryConfigs[0]
-  const desktopMegaMenuCategories = lectureCategoryConfigs.filter((item) => item.key !== 'all')
-  const normalizedCourses = normalizeLectureCourses(rawCourses)
+  const categoryConfigs = normalizeLectureCategoryConfigs(catalogMenu)
+  const overviewCategoryKey = getOverviewCategoryKey(categoryConfigs)
+  const activeCategory =
+    categoryConfigs.find((category) => category.key === selectedCategoryKey)
+    ?? categoryConfigs.find((category) => category.key === overviewCategoryKey)
+    ?? categoryConfigs[0]
+  const desktopMegaMenuCategories = categoryConfigs.filter((category) => category.key !== overviewCategoryKey)
+  const normalizedCourses = normalizeLectureCourses(rawCourses, categoryConfigs)
   const filteredCourses = sortLectureCourses(
     normalizedCourses.filter((course) => {
-      const matchesCategory = selectedCategoryKey === 'all' || course.categoryKey === selectedCategoryKey
+      const matchesCategory = !activeCategory || selectedCategoryKey === overviewCategoryKey || course.categoryKey === selectedCategoryKey
       const matchesDifficulty = difficultyFilter === 'ALL' || course.difficulty === difficultyFilter
       const price = getCourseDisplayPrice(course) ?? 0
       const matchesPrice =
@@ -84,7 +98,7 @@ export default function LectureListApp() {
 
       return (
         matchesCategory
-        && matchesLectureTag(course, selectedCategoryKey, selectedTag)
+        && matchesLectureTag(course, selectedCategoryKey, selectedTag, categoryConfigs)
         && matchesDifficulty
         && matchesPrice
         && matchesSearch
@@ -129,6 +143,36 @@ export default function LectureListApp() {
     return () => controller.abort()
   }, [session])
 
+  // 메뉴 설정과 강의 목록은 서로 독립적으로 불러오고 각각 실패를 처리한다.
+  useEffect(() => {
+    let cancelled = false
+    const controller = new AbortController()
+
+    async function loadCatalogMenu() {
+      setLoadingCatalogMenu(true)
+      setCatalogMenuError(null)
+
+      try {
+        const response = await courseApi.getCatalogMenu(controller.signal)
+        if (cancelled) return
+        setCatalogMenu(response)
+      } catch (error) {
+        if (cancelled) return
+        setCatalogMenu(buildEmptyCatalogMenu())
+        setCatalogMenuError(error instanceof Error ? error.message : '강의 메뉴를 불러오지 못했습니다.')
+      } finally {
+        if (!cancelled) setLoadingCatalogMenu(false)
+      }
+    }
+
+    void loadCatalogMenu()
+
+    return () => {
+      cancelled = true
+      controller.abort()
+    }
+  }, [])
+
   useEffect(() => {
     let cancelled = false
     const controller = new AbortController()
@@ -156,6 +200,17 @@ export default function LectureListApp() {
   }, [session?.accessToken])
 
   useEffect(() => {
+    if (!categoryConfigs.length) {
+      return
+    }
+
+    if (!categoryConfigs.some((category) => category.key === selectedCategoryKey)) {
+      setSelectedCategoryKey(overviewCategoryKey)
+      setSelectedTag(null)
+    }
+  }, [categoryConfigs, overviewCategoryKey, selectedCategoryKey])
+
+  useEffect(() => {
     if (!toastMessage) return
     const timeoutId = window.setTimeout(() => setToastMessage(null), 2200)
     return () => window.clearTimeout(timeoutId)
@@ -169,7 +224,7 @@ export default function LectureListApp() {
         await authApi.logout(currentSession.refreshToken)
       }
     } catch {
-      // Keep client logout flow even when API logout fails.
+      // 서버 로그아웃이 실패해도 클라이언트 세션은 정리한다.
     } finally {
       clearStoredAuthSession()
       setSession(null)
@@ -221,16 +276,16 @@ export default function LectureListApp() {
     try {
       if (nextBookmarked) {
         await wishlistApi.addCourse(courseId)
-        setToastMessage('찜 목록에 추가되었습니다.')
+        setToastMessage('찜 목록에 추가했습니다.')
       } else {
         await wishlistApi.removeCourse(courseId)
-        setToastMessage('찜 목록에서 제거되었습니다.')
+        setToastMessage('찜 목록에서 제거했습니다.')
       }
     } catch {
       setRawCourses((current) => current.map((item) => (
         item.courseId === courseId ? { ...item, isBookmarked: !nextBookmarked } : item
       )))
-      setToastMessage('찜 상태 저장에 실패했습니다.')
+      setToastMessage('찜 상태 변경에 실패했습니다.')
     } finally {
       setPendingBookmarkCourseId(null)
     }
@@ -248,37 +303,52 @@ export default function LectureListApp() {
       <main className="app-main w-full bg-white pb-20">
         <div className="sticky top-16 z-40 border-b border-gray-200 bg-white shadow-sm" onMouseLeave={() => setMegaMenuOpen(false)}>
           <div className="mx-auto max-w-7xl px-6">
-            <div className="grid h-20 grid-cols-7 text-sm">
-              {lectureCategoryConfigs.map((category) => {
-                const active = selectedCategoryKey === category.key
-                const buttonClassName = `lecture-category-btn ${active ? 'active' : ''}`
+            {loadingCatalogMenu ? (
+              <div className="flex h-20 items-center text-sm font-medium text-gray-400">강의 메뉴를 불러오는 중입니다.</div>
+            ) : categoryConfigs.length > 0 ? (
+              <div className="lecture-list-hide-scroll overflow-x-auto">
+                <div
+                  className="grid h-20 min-w-full text-sm"
+                  style={{ gridTemplateColumns: `repeat(${categoryConfigs.length}, minmax(112px, 1fr))` }}
+                >
+                  {categoryConfigs.map((category) => {
+                    const active = selectedCategoryKey === category.key
+                    const buttonClassName = `lecture-category-btn ${active ? 'active' : ''}`
+                    const isOverviewCategory = category.key === overviewCategoryKey
 
-                if (category.key === 'all') {
-                  return (
-                    <div key={category.key} className="relative h-full" onMouseEnter={() => setMegaMenuOpen(true)}>
-                      <button type="button" className={buttonClassName} onClick={() => handleSelectCategory('all')}>
-                        <i className={`${category.icon} text-xl mb-1`} />
+                    if (isOverviewCategory) {
+                      return (
+                        <div key={category.key} className="relative h-full" onMouseEnter={() => setMegaMenuOpen(true)}>
+                          <button type="button" className={buttonClassName} onClick={() => handleSelectCategory(category.key)}>
+                            <i className={`${category.icon} mb-1 text-xl`} />
+                            <span>{category.label}</span>
+                          </button>
+                        </div>
+                      )
+                    }
+
+                    return (
+                      <button key={category.key} type="button" className={buttonClassName} onClick={() => handleSelectCategory(category.key)}>
+                        <i className={`${category.icon} mb-1 text-xl`} />
                         <span>{category.label}</span>
                       </button>
-                    </div>
-                  )
-                }
-
-                return (
-                  <button key={category.key} type="button" className={buttonClassName} onClick={() => handleSelectCategory(category.key)}>
-                    <i className={`${category.icon} text-xl mb-1`} />
-                    <span>{category.label}</span>
-                  </button>
-                )
-              })}
-            </div>
+                    )
+                  })}
+                </div>
+              </div>
+            ) : (
+              <div className="flex h-20 items-center text-sm font-medium text-gray-400">등록된 강의 메뉴가 없습니다.</div>
+            )}
           </div>
 
-          {megaMenuOpen ? (
+          {megaMenuOpen && desktopMegaMenuCategories.length > 0 ? (
             <div className="fixed top-[144px] left-0 right-0 z-50 hidden border-t border-gray-200 bg-white shadow-2xl xl:block">
               <div className="mx-auto max-w-7xl px-6">
-                <div className="grid min-h-[400px] grid-cols-7">
-                  <div className="col-span-1 flex flex-col justify-center border-r border-gray-100 bg-gray-50 px-8">
+                <div
+                  className="grid min-h-[400px]"
+                  style={{ gridTemplateColumns: `240px repeat(${desktopMegaMenuCategories.length}, minmax(0, 1fr))` }}
+                >
+                  <div className="flex flex-col justify-center border-r border-gray-100 bg-gray-50 px-8">
                     <h3 className="mb-2 text-base font-bold text-gray-900">전체 카테고리</h3>
                     <p className="text-xs leading-relaxed text-gray-500">원하는 분야를 선택해보세요.</p>
                   </div>
@@ -288,16 +358,16 @@ export default function LectureListApp() {
                       key={category.key}
                       type="button"
                       onClick={() => handleSelectCategory(category.key)}
-                      className={`col-span-1 flex h-full flex-col px-8 py-7 text-left ${index < desktopMegaMenuCategories.length - 1 ? 'border-r border-gray-100' : ''}`}
+                      className={`flex h-full flex-col px-8 py-7 text-left ${index < desktopMegaMenuCategories.length - 1 ? 'border-r border-gray-100' : ''}`}
                     >
                       <h3 className="mb-4 flex w-full items-center gap-2 border-b-2 border-gray-900 pb-2 text-[15px] font-bold text-gray-900">
                         <i className={`${category.icon} text-brand`} />
                         {category.label}
                       </h3>
                       <ul className="space-y-4 text-[15px] leading-[1.15] text-gray-600">
-                        {category.megaMenuItems.map((tag) => (
-                          <li key={tag}>
-                            <span className="block transition hover:text-brand hover:font-bold">{tag}</span>
+                        {category.megaMenuItems.map((item) => (
+                          <li key={`${category.key}-${item.label}`}>
+                            <span className="block transition hover:text-brand hover:font-bold">{item.label}</span>
                           </li>
                         ))}
                       </ul>
@@ -311,25 +381,33 @@ export default function LectureListApp() {
 
         <div className="border-b border-gray-200 bg-gray-50 py-6 transition-all duration-300">
           <div className="mx-auto max-w-7xl px-6">
-            <div className="space-y-4">
-              {activeCategory.groups.map((group) => (
-                <div key={group.name} className="flex flex-col gap-2 border-b border-gray-100 pb-3 last:border-0 sm:flex-row sm:items-start sm:gap-4">
-                  <span className="w-28 flex-shrink-0 pt-2 text-xs font-bold text-gray-500">{group.name}</span>
-                  <div className="flex flex-wrap gap-2">
-                    {group.tags.map((tag) => (
-                      <button
-                        key={tag}
-                        type="button"
-                        onClick={() => setSelectedTag((current) => (current === tag ? null : tag))}
-                        className={`lecture-sub-tag ${selectedTag === tag ? 'active' : ''}`}
-                      >
-                        {tag}
-                      </button>
-                    ))}
+            {catalogMenuError ? (
+              <div className="mb-5 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+                {catalogMenuError}
+              </div>
+            ) : null}
+
+            {activeCategory ? (
+              <div className="space-y-4">
+                {activeCategory.groups.map((group) => (
+                  <div key={`${activeCategory.key}-${group.name}`} className="flex flex-col gap-2 border-b border-gray-100 pb-3 last:border-0 sm:flex-row sm:items-start sm:gap-4">
+                    <span className="w-28 flex-shrink-0 pt-2 text-xs font-bold text-gray-500">{group.name}</span>
+                    <div className="flex flex-wrap gap-2">
+                      {group.tags.map((tag) => (
+                        <button
+                          key={`${group.name}-${tag.name}`}
+                          type="button"
+                          onClick={() => setSelectedTag((current) => (current === tag.name ? null : tag.name))}
+                          className={`lecture-sub-tag ${selectedTag === tag.name ? 'active' : ''}`}
+                        >
+                          {tag.name}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : null}
 
             <div className="mt-6 flex flex-col items-center justify-between gap-4 border-t border-gray-200 pt-6 md:flex-row">
               <div className="lecture-list-hide-scroll flex w-full items-center gap-3 overflow-x-auto md:w-auto">
@@ -384,7 +462,7 @@ export default function LectureListApp() {
         <div className="mx-auto max-w-7xl px-6 py-8">
           <h2 className="mb-6 flex items-center gap-2 text-xl font-bold text-gray-900">
             <i className="fas fa-layer-group text-brand" />
-            <span>{activeCategory.title}</span>
+            <span>{activeCategory?.title ?? '강의 목록'}</span>
             <span className="ml-1 text-sm font-normal text-gray-400">({filteredCourses.length}개)</span>
           </h2>
 
