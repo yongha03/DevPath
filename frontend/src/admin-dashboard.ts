@@ -12,6 +12,7 @@ import type {
   AdminOfficialRoadmapOption,
   AdminPendingCourse,
   AdminRoadmapNode,
+  AdminRoadmapNodeResource,
   AdminTag,
 } from './types/admin'
 import type {
@@ -37,6 +38,7 @@ type AdminTabKey =
   | 'official-roadmaps'
   | 'roadmap-info'
   | 'roadmaps'
+  | 'node-resources'
   | 'catalog-menu'
   | 'roadmap-hub'
   | 'users'
@@ -47,6 +49,11 @@ type DashboardFilterState = {
   officialRoadmapQuery: string
   roadmapInfoQuery: string
   nodeQuery: string
+  nodeResourceQuery: string
+  nodeResourceRoadmapId: string
+  nodeResourceNodeId: string
+  nodeResourceSourceType: string
+  nodeResourceStatus: string
   nodeHubSectionKey: string
   nodeHubItemKey: string
   nodeRoadmapId: string
@@ -94,7 +101,26 @@ type RoadmapNodePayload = {
   branchGroup: number | null
 }
 
+type RoadmapNodeResourcePayload = {
+  nodeId: number
+  title: string
+  url: string
+  description: string | null
+  sourceType: string
+  sortOrder: number
+  active: boolean
+}
+
 const NODE_HUB_UNLINKED_FILTER = '__UNLINKED__'
+
+const NODE_RESOURCE_SOURCE_TYPES = [
+  { value: 'BLOG', label: '블로그' },
+  { value: 'DOCS', label: '문서' },
+  { value: 'VIDEO', label: '영상' },
+  { value: 'OFFICIAL', label: '공식문서' },
+  { value: 'COURSE', label: '강의' },
+  { value: 'OTHER', label: '기타' },
+]
 
 declare global {
   interface Window {
@@ -111,6 +137,8 @@ declare global {
     updateNodeTags: (nodeId: number) => Promise<void>
     updateNodePrerequisites: (nodeId: number) => Promise<void>
     updateNodeRules: (nodeId: number) => Promise<void>
+    editRoadmapNodeResource: (resourceId: number) => void
+    deleteRoadmapNodeResource: (resourceId: number) => Promise<void>
     toggleAccountStatus: (userId: number, accountStatus: string) => Promise<void>
     approveCourse: (courseId: number) => Promise<void>
     rejectCourse: (courseId: number) => Promise<void>
@@ -158,6 +186,7 @@ const TAB_META: Record<AdminTabKey, { title: string; description: string }> = {
   'official-roadmaps': { title: '공식 로드맵 관리', description: '노드가 연결될 공식 로드맵을 생성, 수정, 삭제합니다.' },
   'roadmap-info': { title: '로드맵 소개 관리', description: '로드맵 상세 상단 소개 아코디언 콘텐츠를 수정합니다.' },
   roadmaps: { title: '마스터 로드맵 노드', description: '공식 로드맵 노드 생성, 수정, 선수 조건과 완료 기준을 관리합니다.' },
+  'node-resources': { title: '노드 추천 자료', description: '로드맵 노드 상세 패널에 노출할 무료 자료 링크를 관리합니다.' },
   'catalog-menu': { title: '강의 목록 메뉴 관리', description: 'lecture-list 상단 카테고리와 필터 구성을 수정합니다.' },
   'roadmap-hub': { title: '로드맵 허브 관리', description: 'roadmap-hub 섹션과 연결 로드맵 구성을 수정합니다.' },
   users: { title: '회원 통합 관리', description: '회원 상태와 권한을 운영 관점에서 관리합니다.' },
@@ -181,6 +210,9 @@ let roadmapInfoLoading = false
 let roadmapInfoSaving = false
 let roadmapInfoError: string | null = null
 let nodeItems: AdminRoadmapNode[] = []
+let nodeResourceItems: AdminRoadmapNodeResource[] = []
+let nodeResourceEditingId: number | null = null
+let nodeResourceSaving = false
 let officialRoadmapOptions: AdminOfficialRoadmapOption[] = []
 let nodeHubCatalog: AdminRoadmapHubCatalog = { sections: [], officialRoadmaps: [] }
 let nodeHubEntriesByRoadmapId = new Map<number, NodeHubEntry[]>()
@@ -205,6 +237,11 @@ const filterState: DashboardFilterState = {
   officialRoadmapQuery: '',
   roadmapInfoQuery: '',
   nodeQuery: '',
+  nodeResourceQuery: '',
+  nodeResourceRoadmapId: '',
+  nodeResourceNodeId: '',
+  nodeResourceSourceType: '',
+  nodeResourceStatus: '',
   nodeHubSectionKey: '',
   nodeHubItemKey: '',
   nodeRoadmapId: '',
@@ -424,6 +461,11 @@ function nodeTypeLabel(nodeType: string | null | undefined) {
     default:
       return nodeType || '미정'
   }
+}
+
+function nodeResourceSourceLabel(sourceType: string | null | undefined) {
+  const normalized = (sourceType ?? '').toUpperCase()
+  return NODE_RESOURCE_SOURCE_TYPES.find((item) => item.value === normalized)?.label ?? '기타'
 }
 
 function formatNodePrerequisites(node: AdminRoadmapNode) {
@@ -1539,6 +1581,525 @@ async function clearRoadmapInfoById(roadmapId: number) {
     roadmapInfoSaving = false
     syncRoadmapInfoFormState()
   }
+}
+
+function getDefaultNodeResourceSortOrder(nodeId: number) {
+  return Math.max(
+    -1,
+    ...nodeResourceItems
+      .filter((resource) => resource.nodeId === nodeId && resource.resourceId !== nodeResourceEditingId)
+      .map((resource) => resource.sortOrder ?? 0),
+  ) + 1
+}
+
+function getNodeResourceRoadmapOptions() {
+  const nodeCounts = new Map<number, number>()
+
+  nodeItems.forEach((node) => {
+    nodeCounts.set(node.roadmapId, (nodeCounts.get(node.roadmapId) ?? 0) + 1)
+  })
+
+  const roadmapOptions = officialRoadmapOptions.length > 0
+    ? officialRoadmapOptions.map((roadmap) => ({
+        roadmapId: roadmap.roadmapId,
+        title: roadmap.title,
+        nodeCount: nodeCounts.get(roadmap.roadmapId) ?? 0,
+      }))
+    : [...new Map(nodeItems.map((node) => [
+        node.roadmapId,
+        {
+          roadmapId: node.roadmapId,
+          title: node.roadmapTitle,
+          nodeCount: nodeCounts.get(node.roadmapId) ?? 0,
+        },
+      ])).values()]
+
+  return roadmapOptions.sort((left, right) => (
+    left.title.localeCompare(right.title, 'ko-KR') || left.roadmapId - right.roadmapId
+  ))
+}
+
+function getNodeResourceRoadmapTitle(roadmapId: number) {
+  return officialRoadmapOptions.find((roadmap) => roadmap.roadmapId === roadmapId)?.title
+    ?? nodeItems.find((node) => node.roadmapId === roadmapId)?.roadmapTitle
+    ?? `로드맵 #${roadmapId}`
+}
+
+function getSortedNodeResourceNodeOptions(roadmapId?: number | null) {
+  return nodeItems
+    .filter((node) => !roadmapId || node.roadmapId === roadmapId)
+    .sort((left, right) => {
+      const roadmapCompare = left.roadmapTitle.localeCompare(right.roadmapTitle, 'ko-KR')
+      if (roadmapCompare !== 0) {
+        return roadmapCompare
+      }
+
+      return (left.sortOrder ?? 0) - (right.sortOrder ?? 0) || left.nodeId - right.nodeId
+    })
+}
+
+function ensureSelectedRoadmapOption(roadmapOptions: Array<{ roadmapId: number; title: string; nodeCount: number }>, selectedRoadmapId?: number | null) {
+  if (!selectedRoadmapId || roadmapOptions.some((roadmap) => roadmap.roadmapId === selectedRoadmapId)) {
+    return roadmapOptions
+  }
+
+  return [
+    ...roadmapOptions,
+    {
+      roadmapId: selectedRoadmapId,
+      title: getNodeResourceRoadmapTitle(selectedRoadmapId),
+      nodeCount: getSortedNodeResourceNodeOptions(selectedRoadmapId).length,
+    },
+  ].sort((left, right) => (
+    left.title.localeCompare(right.title, 'ko-KR') || left.roadmapId - right.roadmapId
+  ))
+}
+
+function ensureSelectedNodeOption(nodeOptions: AdminRoadmapNode[], selectedNodeId?: number | null) {
+  if (!selectedNodeId || nodeOptions.some((node) => node.nodeId === selectedNodeId)) {
+    return nodeOptions
+  }
+
+  const selectedNode = nodeItems.find((node) => node.nodeId === selectedNodeId)
+  return selectedNode ? [...nodeOptions, selectedNode] : nodeOptions
+}
+
+function renderNodeResourceRoadmapOptions(selectedRoadmapId?: number | null) {
+  const select = getElement<HTMLSelectElement>('nodeResourceRoadmapSelect')
+  const roadmapOptions = ensureSelectedRoadmapOption(getNodeResourceRoadmapOptions(), selectedRoadmapId)
+  const currentValue = selectedRoadmapId ?? (select.value ? Number(select.value) : null)
+  const validCurrentValue = roadmapOptions.some((roadmap) => roadmap.roadmapId === currentValue)
+    ? currentValue
+    : null
+
+  select.innerHTML = [
+    '<option value="">로드맵을 선택하세요</option>',
+    ...roadmapOptions.map(
+      (roadmap) => `
+        <option value="${roadmap.roadmapId}" title="${escapeHtml(roadmap.title)}" ${validCurrentValue === roadmap.roadmapId ? 'selected' : ''}>
+          ${escapeHtml(roadmap.title)} (${formatNumber(roadmap.nodeCount)}개 노드)
+        </option>`,
+    ),
+  ].join('')
+  select.value = validCurrentValue ? String(validCurrentValue) : ''
+  updateNodeResourceFormReadouts()
+}
+
+function renderNodeResourceNodeOptions(selectedNodeId?: number | null, selectedRoadmapId?: number | null) {
+  const select = getElement<HTMLSelectElement>('nodeResourceNodeSelect')
+  const roadmapSelect = getElement<HTMLSelectElement>('nodeResourceRoadmapSelect')
+  const roadmapId = selectedRoadmapId ?? (roadmapSelect.value ? Number(roadmapSelect.value) : null)
+  const nodeOptions = roadmapId
+    ? ensureSelectedNodeOption(getSortedNodeResourceNodeOptions(roadmapId), selectedNodeId)
+    : []
+  const currentValue = selectedNodeId ?? (select.value ? Number(select.value) : null)
+  const validCurrentValue = nodeOptions.some((node) => node.nodeId === currentValue) ? currentValue : null
+
+  select.innerHTML = [
+    `<option value="">${roadmapId ? nodeOptions.length > 0 ? '노드를 선택하세요' : '선택한 로드맵에 노드가 없습니다' : '로드맵을 먼저 선택하세요'}</option>`,
+    ...nodeOptions.map(
+      (node) => `
+        <option value="${node.nodeId}" title="${escapeHtml(node.roadmapTitle)} · ${escapeHtml(node.title)}" ${validCurrentValue === node.nodeId ? 'selected' : ''}>
+          ${escapeHtml(formatNodeStructure(node))} · ${escapeHtml(node.title)}
+        </option>`,
+    ),
+  ].join('')
+
+  select.disabled = !roadmapId || nodeOptions.length === 0
+  select.value = validCurrentValue ? String(validCurrentValue) : ''
+  updateNodeResourceFormReadouts()
+}
+
+function renderNodeResourceFormOptions(selectedRoadmapId?: number | null, selectedNodeId?: number | null) {
+  renderNodeResourceRoadmapOptions(selectedRoadmapId)
+  const roadmapSelect = getElement<HTMLSelectElement>('nodeResourceRoadmapSelect')
+  const roadmapId = selectedRoadmapId ?? (roadmapSelect.value ? Number(roadmapSelect.value) : null)
+  renderNodeResourceNodeOptions(selectedNodeId, roadmapId)
+}
+
+function renderNodeResourceFilterOptions() {
+  const roadmapSelect = getElement<HTMLSelectElement>('nodeResourceRoadmapFilter')
+  const nodeSelect = getElement<HTMLSelectElement>('nodeResourceNodeFilter')
+  const sourceSelect = getElement<HTMLSelectElement>('nodeResourceSourceFilter')
+  const statusSelect = getElement<HTMLSelectElement>('nodeResourceStatusFilter')
+  const roadmapOptions = getNodeResourceRoadmapOptions()
+  const roadmapIds = new Set(roadmapOptions.map((roadmap) => String(roadmap.roadmapId)))
+
+  if (filterState.nodeResourceRoadmapId && !roadmapIds.has(filterState.nodeResourceRoadmapId)) {
+    filterState.nodeResourceRoadmapId = ''
+    filterState.nodeResourceNodeId = ''
+  }
+
+  roadmapSelect.innerHTML = [
+    '<option value="">전체 로드맵</option>',
+    ...roadmapOptions.map(
+      (roadmap) => `<option value="${roadmap.roadmapId}" title="${escapeHtml(roadmap.title)}" ${filterState.nodeResourceRoadmapId === String(roadmap.roadmapId) ? 'selected' : ''}>${escapeHtml(roadmap.title)}</option>`,
+    ),
+  ].join('')
+  roadmapSelect.value = filterState.nodeResourceRoadmapId
+
+  const roadmapId = filterState.nodeResourceRoadmapId ? Number(filterState.nodeResourceRoadmapId) : null
+  const nodeOptions = getSortedNodeResourceNodeOptions(roadmapId)
+  const nodeIds = new Set(nodeOptions.map((node) => String(node.nodeId)))
+
+  if (filterState.nodeResourceNodeId && !nodeIds.has(filterState.nodeResourceNodeId)) {
+    filterState.nodeResourceNodeId = ''
+  }
+
+  nodeSelect.innerHTML = [
+    '<option value="">전체 노드</option>',
+    ...nodeOptions.map(
+      (node) => `
+        <option value="${node.nodeId}" title="${escapeHtml(node.roadmapTitle)} · ${escapeHtml(node.title)}" ${filterState.nodeResourceNodeId === String(node.nodeId) ? 'selected' : ''}>
+          ${escapeHtml(node.roadmapTitle)} · ${escapeHtml(node.title)}
+        </option>`,
+    ),
+  ].join('')
+  nodeSelect.value = filterState.nodeResourceNodeId
+  sourceSelect.value = filterState.nodeResourceSourceType
+  statusSelect.value = filterState.nodeResourceStatus
+  updateNodeResourceFilterReadout()
+}
+
+function getSelectLabel(select: HTMLSelectElement) {
+  return select.selectedOptions[0]?.textContent?.replace(/\s+/g, ' ').trim() ?? ''
+}
+
+function updateNodeResourceFormReadouts() {
+  const roadmapSelect = document.getElementById('nodeResourceRoadmapSelect') as HTMLSelectElement | null
+  const nodeSelect = document.getElementById('nodeResourceNodeSelect') as HTMLSelectElement | null
+  const roadmapReadout = document.getElementById('nodeResourceRoadmapReadout')
+  const nodeReadout = document.getElementById('nodeResourceNodeReadout')
+
+  if (!roadmapSelect || !nodeSelect || !roadmapReadout || !nodeReadout) {
+    return
+  }
+
+  const roadmapLabel = roadmapSelect.value ? getSelectLabel(roadmapSelect) : ''
+  const nodeLabel = nodeSelect.value ? getSelectLabel(nodeSelect) : ''
+
+  roadmapSelect.title = roadmapLabel
+  nodeSelect.title = nodeLabel
+  roadmapReadout.textContent = roadmapLabel || '로드맵을 선택하면 전체 이름이 표시됩니다.'
+
+  if (nodeLabel) {
+    nodeReadout.textContent = nodeLabel
+    return
+  }
+
+  nodeReadout.textContent = roadmapSelect.value
+    ? nodeSelect.disabled
+      ? '선택한 로드맵에 등록된 노드가 없습니다.'
+      : '노드를 선택하면 전체 이름이 표시됩니다.'
+    : '로드맵을 먼저 선택하세요.'
+}
+
+function updateNodeResourceFilterReadout() {
+  const filterReadout = document.getElementById('nodeResourceFilterReadout')
+  if (!filterReadout) {
+    return
+  }
+
+  const roadmapSelect = getElement<HTMLSelectElement>('nodeResourceRoadmapFilter')
+  const nodeSelect = getElement<HTMLSelectElement>('nodeResourceNodeFilter')
+  const sourceSelect = getElement<HTMLSelectElement>('nodeResourceSourceFilter')
+  const statusSelect = getElement<HTMLSelectElement>('nodeResourceStatusFilter')
+  const parts = [
+    filterState.nodeResourceQuery.trim() ? `검색어: ${filterState.nodeResourceQuery.trim()}` : '',
+    filterState.nodeResourceRoadmapId ? `로드맵: ${getSelectLabel(roadmapSelect)}` : '',
+    filterState.nodeResourceNodeId ? `노드: ${getSelectLabel(nodeSelect)}` : '',
+    filterState.nodeResourceSourceType ? `유형: ${getSelectLabel(sourceSelect)}` : '',
+    filterState.nodeResourceStatus ? `상태: ${getSelectLabel(statusSelect)}` : '',
+  ].filter(Boolean)
+
+  roadmapSelect.title = getSelectLabel(roadmapSelect)
+  nodeSelect.title = getSelectLabel(nodeSelect)
+  filterReadout.textContent = parts.length > 0
+    ? `적용 중인 필터 · ${parts.join(' · ')}`
+    : '전체 추천 자료를 보고 있습니다.'
+}
+
+function syncNodeResourceFormState() {
+  const form = getElement<HTMLFormElement>('nodeResourceForm')
+  const saveButton = getElement<HTMLButtonElement>('nodeResourceSaveButton')
+  const cancelButton = getElement<HTMLButtonElement>('nodeResourceCancelEdit')
+  const isEditing = nodeResourceEditingId !== null
+
+  form.classList.toggle('opacity-70', nodeResourceSaving)
+  saveButton.disabled = nodeResourceSaving
+  saveButton.classList.toggle('opacity-70', nodeResourceSaving)
+  saveButton.classList.toggle('cursor-not-allowed', nodeResourceSaving)
+  saveButton.innerHTML = nodeResourceSaving
+    ? '<i class="fas fa-circle-notch fa-spin mr-1"></i> 저장 중'
+    : isEditing
+      ? '<i class="fas fa-save mr-1"></i> 변경 저장'
+      : '<i class="fas fa-plus mr-1"></i> 자료 등록'
+  cancelButton.classList.toggle('hidden', !isEditing)
+}
+
+function resetNodeResourceForm() {
+  nodeResourceEditingId = null
+  getElement<HTMLFormElement>('nodeResourceForm').reset()
+  getElement<HTMLSelectElement>('nodeResourceSourceTypeInput').value = 'BLOG'
+  getElement<HTMLInputElement>('nodeResourceActiveInput').checked = true
+  renderNodeResourceFormOptions(null, null)
+  syncNodeResourceFormState()
+  applyNodeResourceFilters()
+}
+
+function setNodeResourceForm(resource: AdminRoadmapNodeResource) {
+  nodeResourceEditingId = resource.resourceId
+  renderNodeResourceFormOptions(resource.roadmapId, resource.nodeId)
+  getElement<HTMLSelectElement>('nodeResourceRoadmapSelect').value = String(resource.roadmapId)
+  getElement<HTMLSelectElement>('nodeResourceNodeSelect').value = String(resource.nodeId)
+  getElement<HTMLInputElement>('nodeResourceTitleInput').value = resource.title
+  getElement<HTMLInputElement>('nodeResourceUrlInput').value = resource.url
+  getElement<HTMLSelectElement>('nodeResourceSourceTypeInput').value = (resource.sourceType ?? 'OTHER').toUpperCase()
+  getElement<HTMLInputElement>('nodeResourceSortOrderInput').value = String(resource.sortOrder ?? 0)
+  getElement<HTMLTextAreaElement>('nodeResourceDescriptionInput').value = resource.description ?? ''
+  getElement<HTMLInputElement>('nodeResourceActiveInput').checked = resource.active
+  syncNodeResourceFormState()
+  applyNodeResourceFilters()
+}
+
+function getNodeResourceFormPayload(): RoadmapNodeResourcePayload | null {
+  const roadmapSelect = getElement<HTMLSelectElement>('nodeResourceRoadmapSelect')
+  const nodeSelect = getElement<HTMLSelectElement>('nodeResourceNodeSelect')
+  const titleInput = getElement<HTMLInputElement>('nodeResourceTitleInput')
+  const urlInput = getElement<HTMLInputElement>('nodeResourceUrlInput')
+  const sourceTypeInput = getElement<HTMLSelectElement>('nodeResourceSourceTypeInput')
+  const sortOrderInput = getElement<HTMLInputElement>('nodeResourceSortOrderInput')
+  const descriptionInput = getElement<HTMLTextAreaElement>('nodeResourceDescriptionInput')
+  const activeInput = getElement<HTMLInputElement>('nodeResourceActiveInput')
+
+  if (!roadmapSelect.value.trim()) {
+    window.alert('자료를 연결할 로드맵을 선택하세요.')
+    roadmapSelect.focus()
+    return null
+  }
+
+  const roadmapId = parseRequiredNumber(roadmapSelect.value, '로드맵 ID는 0 이상의 숫자로 입력하세요.')
+  if (roadmapId === null) {
+    roadmapSelect.focus()
+    return null
+  }
+
+  if (!nodeSelect.value.trim()) {
+    window.alert('자료를 연결할 노드를 선택하세요.')
+    nodeSelect.focus()
+    return null
+  }
+
+  const nodeId = parseRequiredNumber(nodeSelect.value, '노드 ID는 0 이상의 숫자로 입력하세요.')
+  if (nodeId === null) {
+    nodeSelect.focus()
+    return null
+  }
+
+  const selectedNode = nodeItems.find((node) => node.nodeId === nodeId)
+  if (!selectedNode || selectedNode.roadmapId !== roadmapId) {
+    window.alert('선택한 로드맵에 속한 노드를 선택하세요.')
+    nodeSelect.focus()
+    return null
+  }
+
+  const title = titleInput.value.trim()
+  if (!title) {
+    window.alert('자료 제목을 입력하세요.')
+    titleInput.focus()
+    return null
+  }
+
+  const url = urlInput.value.trim()
+  if (!url) {
+    window.alert('자료 링크를 입력하세요.')
+    urlInput.focus()
+    return null
+  }
+
+  try {
+    const parsedUrl = new URL(url)
+    if (parsedUrl.protocol !== 'http:' && parsedUrl.protocol !== 'https:') {
+      throw new Error('invalid protocol')
+    }
+  } catch {
+    window.alert('자료 링크는 http 또는 https URL로 입력하세요.')
+    urlInput.focus()
+    return null
+  }
+
+  const sortOrder = parseRequiredNumber(sortOrderInput.value || '0', '정렬 순서는 0 이상의 숫자로 입력하세요.')
+  if (sortOrder === null) {
+    sortOrderInput.focus()
+    return null
+  }
+
+  return {
+    nodeId,
+    title,
+    url,
+    description: normalizeOptionalString(descriptionInput.value),
+    sourceType: sourceTypeInput.value || 'OTHER',
+    sortOrder,
+    active: activeInput.checked,
+  }
+}
+
+function renderNodeResourceRows(resources: AdminRoadmapNodeResource[]) {
+  const tbody = getElement('nodeResourceTableBody')
+  tbody.innerHTML = resources.length
+    ? resources
+        .map((resource) => {
+          const selected = nodeResourceEditingId === resource.resourceId
+          const statusClass = resource.active
+            ? 'bg-emerald-50 text-emerald-600'
+            : 'bg-slate-100 text-slate-500'
+
+          return `
+            <tr class="border-b border-slate-100 transition-colors ${selected ? 'bg-teal-50/60' : 'hover:bg-slate-50/70'}">
+              <td class="px-5 py-3 align-middle font-mono text-xs whitespace-nowrap text-slate-400">#${resource.resourceId}</td>
+              <td class="px-5 py-3 align-middle">
+                <div class="truncate font-bold text-slate-800">${escapeHtml(resource.nodeTitle)}</div>
+                <div class="mt-1 truncate text-xs text-slate-400">${escapeHtml(resource.roadmapTitle)}</div>
+              </td>
+              <td class="px-5 py-3 align-middle">
+                <div class="truncate font-bold text-slate-800">${escapeHtml(resource.title)}</div>
+                <a href="${escapeHtml(resource.url)}" target="_blank" rel="noreferrer" class="mt-1 block truncate text-xs font-medium text-teal-600 hover:text-teal-700">${escapeHtml(resource.url)}</a>
+                <div class="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">${escapeHtml(resource.description || '설명 없음')}</div>
+              </td>
+              <td class="px-5 py-3 align-middle text-xs text-slate-500">
+                <span class="rounded px-2 py-0.5 text-[10px] font-bold tracking-wide ${statusClass}">${resource.active ? '노출' : '비노출'}</span>
+                <div class="mt-2">순서 ${resource.sortOrder ?? 0}</div>
+                <div class="mt-1">${escapeHtml(nodeResourceSourceLabel(resource.sourceType))}</div>
+              </td>
+              <td class="px-5 py-3 align-middle text-right">
+                <div class="flex flex-wrap justify-end gap-1">
+                  <button onclick="editRoadmapNodeResource(${resource.resourceId})" class="whitespace-nowrap rounded border border-slate-200 bg-white px-2 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50" type="button">수정</button>
+                  <button onclick="deleteRoadmapNodeResource(${resource.resourceId})" class="whitespace-nowrap rounded bg-rose-50 px-2 py-1.5 text-xs font-medium text-rose-600 transition hover:bg-rose-100 hover:text-rose-800" type="button">삭제</button>
+                </div>
+              </td>
+            </tr>`
+        })
+        .join('')
+    : buildEmptyRow(5, '조건에 맞는 추천 자료가 없습니다.')
+}
+
+function applyNodeResourceFilters() {
+  const keyword = normalizeText(filterState.nodeResourceQuery)
+  const roadmapId = filterState.nodeResourceRoadmapId.trim()
+  const nodeId = filterState.nodeResourceNodeId.trim()
+  const sourceType = filterState.nodeResourceSourceType.trim().toUpperCase()
+  const status = filterState.nodeResourceStatus.trim().toUpperCase()
+  const filteredResources = nodeResourceItems.filter((resource) => {
+    const matchesText = matchesKeyword(keyword, [
+      resource.resourceId,
+      resource.nodeId,
+      resource.nodeTitle,
+      resource.roadmapId,
+      resource.roadmapTitle,
+      resource.title,
+      resource.url,
+      resource.description,
+      resource.sourceType,
+    ])
+    const matchesRoadmap = !roadmapId || String(resource.roadmapId) === roadmapId
+    const matchesNode = !nodeId || String(resource.nodeId) === nodeId
+    const matchesSource = !sourceType || (resource.sourceType ?? 'OTHER').toUpperCase() === sourceType
+    const matchesStatus =
+      !status
+      || (status === 'ACTIVE' && resource.active)
+      || (status === 'INACTIVE' && !resource.active)
+
+    return matchesText && matchesRoadmap && matchesNode && matchesSource && matchesStatus
+  })
+
+  renderNodeResourceRows(filteredResources)
+  updateFilterSummary('nodeResourceSummary', nodeResourceItems.length, filteredResources.length)
+  updateNodeResourceFilterReadout()
+}
+
+async function fetchNodeResources() {
+  const tbody = getElement('nodeResourceTableBody')
+  tbody.innerHTML = buildLoadingRow(5)
+
+  try {
+    const [resources, nodes, roadmaps] = await Promise.all([
+      adminApi.getRoadmapNodeResources(),
+      adminApi.getRoadmapNodes(),
+      adminApi.getOfficialRoadmapOptions(),
+    ])
+    nodeResourceItems = resources
+    nodeItems = nodes
+    officialRoadmapOptions = roadmaps
+    roadmapNodeMap = new Map(nodeItems.map((node) => [node.nodeId, node]))
+
+    const editingResource = nodeResourceEditingId
+      ? nodeResourceItems.find((resource) => resource.resourceId === nodeResourceEditingId) ?? null
+      : null
+
+    if (nodeResourceEditingId && !editingResource) {
+      nodeResourceEditingId = null
+    }
+
+    renderNodeResourceFilterOptions()
+
+    if (editingResource) {
+      setNodeResourceForm(editingResource)
+    } else {
+      renderNodeResourceFormOptions(null, null)
+      syncNodeResourceFormState()
+      applyNodeResourceFilters()
+    }
+  } catch (error) {
+    tbody.innerHTML = buildErrorRow(5, error instanceof Error ? error.message : '추천 자료를 불러오지 못했습니다.')
+    updateFilterSummary('nodeResourceSummary', 0, 0)
+  }
+}
+
+async function submitNodeResourceForm() {
+  const payload = getNodeResourceFormPayload()
+  if (!payload) {
+    return
+  }
+
+  nodeResourceSaving = true
+  syncNodeResourceFormState()
+
+  try {
+    if (nodeResourceEditingId === null) {
+      await adminApi.createRoadmapNodeResource(payload)
+      window.alert('추천 자료를 등록했습니다.')
+    } else {
+      await adminApi.updateRoadmapNodeResource(nodeResourceEditingId, payload)
+      window.alert('추천 자료를 수정했습니다.')
+    }
+
+    resetNodeResourceForm()
+    await fetchNodeResources()
+  } finally {
+    nodeResourceSaving = false
+    syncNodeResourceFormState()
+  }
+}
+
+async function deleteNodeResourceById(resourceId: number) {
+  const resource = nodeResourceItems.find((item) => item.resourceId === resourceId)
+  if (!resource) {
+    window.alert('삭제할 추천 자료를 찾지 못했습니다.')
+    return
+  }
+
+  if (!window.confirm(`'${resource.title}' 추천 자료를 삭제하시겠습니까?`)) {
+    return
+  }
+
+  await adminApi.deleteRoadmapNodeResource(resourceId)
+  if (nodeResourceEditingId === resourceId) {
+    resetNodeResourceForm()
+  }
+
+  await fetchNodeResources()
+  window.alert('추천 자료를 삭제했습니다.')
 }
 
 function renderNodeRows(nodes: AdminRoadmapNode[]) {
@@ -2968,6 +3529,9 @@ async function refreshActiveTab() {
     case 'roadmaps':
       await fetchNodes()
       break
+    case 'node-resources':
+      await fetchNodeResources()
+      break
     case 'catalog-menu':
       await fetchCourseCatalogMenu()
       break
@@ -3120,6 +3684,80 @@ function initFilters() {
   nodeTypeFilter.addEventListener('change', () => {
     filterState.nodeType = nodeTypeFilter.value
     applyNodeFilters()
+  })
+
+  const nodeResourceFilterInput = getElement<HTMLInputElement>('nodeResourceFilterInput')
+  nodeResourceFilterInput.addEventListener('input', () => {
+    filterState.nodeResourceQuery = nodeResourceFilterInput.value
+    applyNodeResourceFilters()
+  })
+
+  const nodeResourceRoadmapFilter = getElement<HTMLSelectElement>('nodeResourceRoadmapFilter')
+  nodeResourceRoadmapFilter.addEventListener('change', () => {
+    filterState.nodeResourceRoadmapId = nodeResourceRoadmapFilter.value
+    filterState.nodeResourceNodeId = ''
+    renderNodeResourceFilterOptions()
+    applyNodeResourceFilters()
+  })
+
+  const nodeResourceNodeFilter = getElement<HTMLSelectElement>('nodeResourceNodeFilter')
+  nodeResourceNodeFilter.addEventListener('change', () => {
+    filterState.nodeResourceNodeId = nodeResourceNodeFilter.value
+    applyNodeResourceFilters()
+  })
+
+  const nodeResourceSourceFilter = getElement<HTMLSelectElement>('nodeResourceSourceFilter')
+  nodeResourceSourceFilter.addEventListener('change', () => {
+    filterState.nodeResourceSourceType = nodeResourceSourceFilter.value
+    applyNodeResourceFilters()
+  })
+
+  const nodeResourceStatusFilter = getElement<HTMLSelectElement>('nodeResourceStatusFilter')
+  nodeResourceStatusFilter.addEventListener('change', () => {
+    filterState.nodeResourceStatus = nodeResourceStatusFilter.value
+    applyNodeResourceFilters()
+  })
+
+  getElement<HTMLButtonElement>('nodeResourceFilterReset').addEventListener('click', () => {
+    filterState.nodeResourceQuery = ''
+    filterState.nodeResourceRoadmapId = ''
+    filterState.nodeResourceNodeId = ''
+    filterState.nodeResourceSourceType = ''
+    filterState.nodeResourceStatus = ''
+    nodeResourceFilterInput.value = ''
+    renderNodeResourceFilterOptions()
+    applyNodeResourceFilters()
+  })
+
+  const nodeResourceRoadmapSelect = getElement<HTMLSelectElement>('nodeResourceRoadmapSelect')
+  nodeResourceRoadmapSelect.addEventListener('change', () => {
+    const selectedRoadmapId = nodeResourceRoadmapSelect.value ? Number(nodeResourceRoadmapSelect.value) : null
+    renderNodeResourceNodeOptions(null, selectedRoadmapId)
+    getElement<HTMLInputElement>('nodeResourceSortOrderInput').value = ''
+  })
+
+  const nodeResourceNodeSelect = getElement<HTMLSelectElement>('nodeResourceNodeSelect')
+  nodeResourceNodeSelect.addEventListener('change', () => {
+    const selectedNodeId = nodeResourceNodeSelect.value ? Number(nodeResourceNodeSelect.value) : null
+    const sortOrderInput = getElement<HTMLInputElement>('nodeResourceSortOrderInput')
+    sortOrderInput.value =
+      selectedNodeId === null
+        ? ''
+        : sortOrderInput.value.trim() && nodeResourceEditingId !== null
+          ? sortOrderInput.value
+          : String(getDefaultNodeResourceSortOrder(selectedNodeId))
+  })
+
+  const nodeResourceForm = getElement<HTMLFormElement>('nodeResourceForm')
+  nodeResourceForm.addEventListener('submit', (event) => {
+    event.preventDefault()
+    void runAdminAction(async () => {
+      await submitNodeResourceForm()
+    })
+  })
+
+  getElement<HTMLButtonElement>('nodeResourceCancelEdit').addEventListener('click', () => {
+    resetNodeResourceForm()
   })
 
   const accountFilterInput = getElement<HTMLInputElement>('accountFilterInput')
@@ -3323,6 +3961,22 @@ function installGlobalActions() {
 
       await adminApi.updateRoadmapNode(nodeId, payload)
       await fetchNodes()
+    })
+  }
+
+  window.editRoadmapNodeResource = (resourceId: number) => {
+    const resource = nodeResourceItems.find((item) => item.resourceId === resourceId)
+    if (!resource) {
+      window.alert('수정할 추천 자료를 찾지 못했습니다.')
+      return
+    }
+
+    setNodeResourceForm(resource)
+  }
+
+  window.deleteRoadmapNodeResource = async (resourceId: number) => {
+    await runAdminAction(async () => {
+      await deleteNodeResourceById(resourceId)
     })
   }
 

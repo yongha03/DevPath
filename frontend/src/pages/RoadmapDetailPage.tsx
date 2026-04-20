@@ -62,6 +62,57 @@ function changeTypeLabel(type?: ChangeType | null) {
   return '변경 제안'
 }
 
+function nodeResourceSourceLabel(sourceType?: string | null) {
+  switch ((sourceType ?? '').toUpperCase()) {
+    case 'BLOG':
+      return '블로그'
+    case 'DOCS':
+      return '문서'
+    case 'VIDEO':
+      return '영상'
+    case 'OFFICIAL':
+      return '공식'
+    case 'COURSE':
+      return '강의'
+    default:
+      return '자료'
+  }
+}
+
+type EssentialConcept = {
+  title: string
+  description: string | null
+}
+
+function parseEssentialConcept(topic: string): EssentialConcept {
+  const normalized = topic.trim()
+  const separatorIndex = normalized.indexOf(':')
+
+  if (separatorIndex <= 0) {
+    return { title: normalized, description: null }
+  }
+
+  const title = normalized.slice(0, separatorIndex).trim()
+  const description = normalized.slice(separatorIndex + 1).trim()
+
+  return {
+    title: title || normalized,
+    description: description || null,
+  }
+}
+
+function essentialConceptLabel(topic: string) {
+  return parseEssentialConcept(topic).title
+}
+
+function splitNodeDescription(content?: string | null) {
+  const fallback = '상세 내용 준비 중입니다.'
+  return (content && content.trim() ? content : fallback)
+    .split(/\n+/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean)
+}
+
 function changeTypeIcon(type?: ChangeType | null) {
   if (type === 'ADD')    return 'fa-plus'
   if (type === 'MODIFY') return 'fa-edit'
@@ -604,7 +655,7 @@ function RoadmapNodeCard({ node, proofCard, proofSide, pendingChange, badge, onN
               key={topic}
               className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200"
             >
-              {topic}
+              {essentialConceptLabel(topic)}
             </span>
           ))}
         </div>
@@ -931,13 +982,16 @@ function NodeDrawer({ node, customRoadmapId, originalRoadmapId, onClose, onClear
   }
 
   const canClear = node.status === 'PENDING' || node.status === 'IN_PROGRESS'
+  const resources = node.resources ?? []
+  const descriptionParagraphs = splitNodeDescription(node.content)
+  const concepts = (node.subTopics ?? []).map(parseEssentialConcept).filter((concept) => concept.title.length > 0)
 
   return (
     <>
       <div className="drawer-overlay" onClick={onClose} />
       <aside className={`side-drawer${node ? ' open' : ''}`}>
         <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-start bg-gray-50 shrink-0">
-          <div>
+          <div className="min-w-0">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-[10px] font-bold text-white bg-black px-2 py-1 rounded">Topic</span>
               {node.status === 'COMPLETED' && (
@@ -947,22 +1001,66 @@ function NodeDrawer({ node, customRoadmapId, originalRoadmapId, onClose, onClear
                 <span className="text-[10px] font-bold text-white bg-yellow-400 px-2 py-1 rounded">진행중</span>
               )}
             </div>
-            <h2 className="text-3xl font-bold text-gray-900 leading-tight">{node.title}</h2>
+            <h2 className="text-3xl font-bold text-gray-900 leading-tight break-words">{node.title}</h2>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 p-2">
+          <button onClick={onClose} className="shrink-0 text-gray-400 hover:text-gray-600 p-2">
             <i className="fas fa-times text-xl" />
           </button>
         </div>
         <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
-          <div className="text-gray-700 text-sm leading-7 mb-8">
-            {node.content ?? '상세 내용 준비 중입니다.'}
+          <div className="node-detail-copy">
+            {descriptionParagraphs.map((paragraph) => (
+              <p key={paragraph}>{paragraph}</p>
+            ))}
           </div>
-          <div className="mb-8">
-            <h3 className="font-bold text-sm text-[#00c471] border-b border-gray-100 pb-2 mb-3">
+
+          <section className="node-detail-section">
+            <h3 className="node-detail-section-title">반드시 알아야 할 개념</h3>
+            {concepts.length > 0 ? (
+              <ul className="node-essential-list">
+                {concepts.map((concept) => (
+                  <li key={`${concept.title}-${concept.description ?? ''}`} className="node-essential-item">
+                    <span className="node-essential-name">{concept.title}</span>
+                    {concept.description && (
+                      <span className="node-essential-description">: {concept.description}</span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="node-empty-text">관리자에서 핵심 개념을 등록하면 여기에 표시됩니다.</p>
+            )}
+          </section>
+
+          <section className="node-detail-section">
+            <h3 className="node-resource-heading">
+              <i className="fas fa-heart" />
               추천 무료 자료
             </h3>
-            <p className="text-sm text-gray-400 text-center py-4">추천 자료 준비 중입니다.</p>
-          </div>
+            {resources.length > 0 ? (
+              <div className="node-resource-list">
+                {resources.map((resource) => (
+                  <a
+                    key={resource.resourceId}
+                    href={resource.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="node-resource-row"
+                  >
+                    <div className="node-resource-main">
+                      <span className="node-resource-title">{resource.title}</span>
+                      {resource.description && (
+                        <p className="node-resource-description">{resource.description}</p>
+                      )}
+                    </div>
+                    <span className="node-resource-badge">{nodeResourceSourceLabel(resource.sourceType)}</span>
+                  </a>
+                ))}
+              </div>
+            ) : (
+              <p className="node-empty-text">추천 자료 준비 중입니다.</p>
+            )}
+          </section>
         </div>
         <div className="p-6 border-t border-gray-100 bg-white space-y-3 shrink-0 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
           {canClear && (
