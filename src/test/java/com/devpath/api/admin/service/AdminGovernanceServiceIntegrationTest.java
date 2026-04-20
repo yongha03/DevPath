@@ -16,6 +16,7 @@ import com.devpath.api.admin.dto.governance.NodePrerequisitesRequest;
 import com.devpath.api.admin.dto.governance.NodeRequiredTagsRequest;
 import com.devpath.api.admin.dto.governance.NodeTypeRequest;
 import com.devpath.api.admin.dto.governance.PendingCourseResponse;
+import com.devpath.api.admin.dto.governance.RoadmapNodeUpsertRequest;
 import com.devpath.api.admin.dto.governance.TagMergeRequest;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
@@ -161,6 +162,62 @@ class AdminGovernanceServiceIntegrationTest {
 
     assertThat(roadmapNodeRepository.findById(node.getNodeId())).get().extracting(RoadmapNode::getNodeType)
         .isEqualTo("PROJECT");
+  }
+
+  @Test
+  @DisplayName("공식 로드맵에 새 노드를 생성한다")
+  void createNodePersistsOfficialRoadmapNode() {
+    Roadmap roadmap = saveOfficialRoadmap("Create Node Roadmap");
+
+    adminNodeGovernanceService.createNode(
+        roadmapNodeUpsertRequest(
+            roadmap.getRoadmapId(),
+            "Cache Strategy",
+            "Redis 캐시 전략을 학습합니다.",
+            "practice",
+            7,
+            "Redis,Cache",
+            1));
+    flushAndClear();
+
+    RoadmapNode node =
+        roadmapNodeRepository.findByRoadmapOrderBySortOrderAsc(roadmap).stream()
+            .filter(item -> item.getTitle().equals("Cache Strategy"))
+            .findFirst()
+            .orElseThrow();
+
+    assertThat(node.getNodeType()).isEqualTo("PRACTICE");
+    assertThat(node.getSortOrder()).isEqualTo(7);
+    assertThat(node.getSubTopics()).isEqualTo("Redis,Cache");
+    assertThat(node.getBranchGroup()).isEqualTo(1);
+  }
+
+  @Test
+  @DisplayName("공식 로드맵 노드의 기본 정보를 수정한다")
+  void updateNodeChangesOfficialRoadmapNodeFields() {
+    Roadmap roadmap = saveOfficialRoadmap("Update Node Roadmap");
+    RoadmapNode node = saveNode(roadmap, "Old Node", "CONCEPT", 1);
+
+    adminNodeGovernanceService.updateNode(
+        node.getNodeId(),
+        roadmapNodeUpsertRequest(
+            roadmap.getRoadmapId(),
+            "Updated Node",
+            "수정된 노드 설명",
+            "project",
+            3,
+            "Project,Deploy",
+            null));
+    flushAndClear();
+
+    RoadmapNode updatedNode = roadmapNodeRepository.findById(node.getNodeId()).orElseThrow();
+
+    assertThat(updatedNode.getTitle()).isEqualTo("Updated Node");
+    assertThat(updatedNode.getContent()).isEqualTo("수정된 노드 설명");
+    assertThat(updatedNode.getNodeType()).isEqualTo("PROJECT");
+    assertThat(updatedNode.getSortOrder()).isEqualTo(3);
+    assertThat(updatedNode.getSubTopics()).isEqualTo("Project,Deploy");
+    assertThat(updatedNode.getBranchGroup()).isNull();
   }
 
   @Test
@@ -421,6 +478,25 @@ class AdminGovernanceServiceIntegrationTest {
   private NodeTypeRequest updateNodeTypeRequest(String nodeType) {
     NodeTypeRequest request = newInstance(NodeTypeRequest.class);
     ReflectionTestUtils.setField(request, "nodeType", nodeType);
+    return request;
+  }
+
+  private RoadmapNodeUpsertRequest roadmapNodeUpsertRequest(
+      Long roadmapId,
+      String title,
+      String content,
+      String nodeType,
+      Integer sortOrder,
+      String subTopics,
+      Integer branchGroup) {
+    RoadmapNodeUpsertRequest request = newInstance(RoadmapNodeUpsertRequest.class);
+    ReflectionTestUtils.setField(request, "roadmapId", roadmapId);
+    ReflectionTestUtils.setField(request, "title", title);
+    ReflectionTestUtils.setField(request, "content", content);
+    ReflectionTestUtils.setField(request, "nodeType", nodeType);
+    ReflectionTestUtils.setField(request, "sortOrder", sortOrder);
+    ReflectionTestUtils.setField(request, "subTopics", subTopics);
+    ReflectionTestUtils.setField(request, "branchGroup", branchGroup);
     return request;
   }
 

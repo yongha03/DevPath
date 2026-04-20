@@ -13,7 +13,12 @@ public class AdminRoadmapNodeSummaryResponse {
   private Long roadmapId;
   private String roadmapTitle;
   private String title;
+  private String content;
   private String nodeType;
+  private Integer sortOrder;
+  private String subTopics;
+  private Integer branchGroup;
+  private List<Long> prerequisiteNodeIds;
   private boolean required;
   private int requiredTagCount;
   private List<String> requiredTags;

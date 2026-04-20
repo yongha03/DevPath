@@ -1,20 +1,24 @@
 package com.devpath.api.admin.service;
 
 import com.devpath.api.admin.dto.governance.AdminRoadmapNodeSummaryResponse;
+import com.devpath.api.admin.dto.governance.AdminOfficialRoadmapOptionResponse;
 import com.devpath.api.admin.dto.governance.NodeCompletionRuleRequest;
 import com.devpath.api.admin.dto.governance.NodePrerequisitesRequest;
 import com.devpath.api.admin.dto.governance.NodeRequiredTagsRequest;
 import com.devpath.api.admin.dto.governance.NodeTypeRequest;
+import com.devpath.api.admin.dto.governance.RoadmapNodeUpsertRequest;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
 import com.devpath.domain.roadmap.entity.NodeCompletionRule;
 import com.devpath.domain.roadmap.entity.NodeRequiredTag;
 import com.devpath.domain.roadmap.entity.Prerequisite;
+import com.devpath.domain.roadmap.entity.Roadmap;
 import com.devpath.domain.roadmap.entity.RoadmapNode;
 import com.devpath.domain.roadmap.repository.NodeCompletionRuleRepository;
 import com.devpath.domain.roadmap.repository.NodeRequiredTagRepository;
 import com.devpath.domain.roadmap.repository.PrerequisiteRepository;
 import com.devpath.domain.roadmap.repository.RoadmapNodeRepository;
+import com.devpath.domain.roadmap.repository.RoadmapRepository;
 import com.devpath.domain.user.entity.Tag;
 import com.devpath.domain.user.repository.TagRepository;
 import lombok.RequiredArgsConstructor;
@@ -34,9 +38,10 @@ import java.util.Set;
 public class AdminNodeGovernanceService {
 
     private static final Set<String> ALLOWED_NODE_TYPES =
-            Set.of("CONCEPT", "PRACTICE", "PROJECT", "REVIEW", "EXAM");
+            Set.of("CONCEPT", "PRACTICE", "PROJECT", "REVIEW", "EXAM", "QUIZ", "ASSIGNMENT");
 
     private final RoadmapNodeRepository roadmapNodeRepository;
+    private final RoadmapRepository roadmapRepository;
     private final TagRepository tagRepository;
     private final NodeRequiredTagRepository nodeRequiredTagRepository;
     private final PrerequisiteRepository prerequisiteRepository;
@@ -53,6 +58,7 @@ public class AdminNodeGovernanceService {
 
         List<Long> nodeIds = nodes.stream().map(RoadmapNode::getNodeId).toList();
         Map<Long, List<String>> requiredTagsByNodeId = buildRequiredTagsMap(nodeIds);
+        Map<Long, List<Long>> prerequisiteNodeIdsByNodeId = buildPrerequisiteNodeIdsMap(nodeIds);
         Map<Long, NodeCompletionRule> completionRulesByNodeId = nodeCompletionRuleRepository
                 .findAllByNodeNodeIdIn(nodeIds)
                 .stream()
@@ -66,8 +72,65 @@ public class AdminNodeGovernanceService {
                 .map(node -> toAdminRoadmapNodeSummary(
                         node,
                         requiredTagsByNodeId.getOrDefault(node.getNodeId(), List.of()),
+                        prerequisiteNodeIdsByNodeId.getOrDefault(node.getNodeId(), List.of()),
                         completionRulesByNodeId.get(node.getNodeId())))
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    // 노드 생성 폼에서 선택 가능한 공식 로드맵 목록을 내려준다.
+    public List<AdminOfficialRoadmapOptionResponse> getOfficialRoadmaps() {
+        return roadmapRepository.findAllByIsOfficialTrueAndIsDeletedFalseOrderByTitleAsc()
+                .stream()
+                .map(AdminOfficialRoadmapOptionResponse::from)
+                .toList();
+    }
+
+    public AdminRoadmapNodeSummaryResponse createNode(RoadmapNodeUpsertRequest request) {
+        RoadmapNodeUpsertRequest validRequest = requireNodeRequest(request);
+        Roadmap roadmap = getOfficialRoadmap(validRequest.getRoadmapId());
+        String nodeType = normalizeNodeType(validRequest.getNodeType());
+        String title = normalizeRequiredText(validRequest.getTitle());
+        Integer sortOrder = normalizeSortOrder(validRequest.getSortOrder());
+
+        RoadmapNode node = roadmapNodeRepository.save(
+                RoadmapNode.builder()
+                        .roadmap(roadmap)
+                        .title(title)
+                        .content(normalizeNullableText(validRequest.getContent()))
+                        .nodeType(nodeType)
+                        .sortOrder(sortOrder)
+                        .subTopics(normalizeNullableText(validRequest.getSubTopics()))
+                        .branchGroup(normalizeOptionalNumber(validRequest.getBranchGroup()))
+                        .build());
+
+        return toAdminRoadmapNodeSummary(node, List.of(), List.of(), null);
+    }
+
+    public AdminRoadmapNodeSummaryResponse updateNode(Long nodeId, RoadmapNodeUpsertRequest request) {
+        RoadmapNodeUpsertRequest validRequest = requireNodeRequest(request);
+        RoadmapNode node = getNode(nodeId);
+        Roadmap roadmap = getOfficialRoadmap(validRequest.getRoadmapId());
+
+        if (!node.getRoadmap().getRoadmapId().equals(roadmap.getRoadmapId())) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+
+        node.updateAdminInfo(
+                normalizeRequiredText(validRequest.getTitle()),
+                normalizeNullableText(validRequest.getContent()),
+                normalizeNodeType(validRequest.getNodeType()),
+                normalizeSortOrder(validRequest.getSortOrder()),
+                normalizeNullableText(validRequest.getSubTopics()),
+                normalizeOptionalNumber(validRequest.getBranchGroup()));
+
+        List<String> requiredTags = buildRequiredTagsMap(List.of(node.getNodeId()))
+                .getOrDefault(node.getNodeId(), List.of());
+        List<Long> prerequisiteNodeIds = buildPrerequisiteNodeIdsMap(List.of(node.getNodeId()))
+                .getOrDefault(node.getNodeId(), List.of());
+        NodeCompletionRule completionRule = nodeCompletionRuleRepository.findByNodeNodeId(node.getNodeId()).orElse(null);
+
+        return toAdminRoadmapNodeSummary(node, requiredTags, prerequisiteNodeIds, completionRule);
     }
 
     // 노드 필수 태그를 전체 교체 방식으로 갱신한다.
@@ -94,11 +157,7 @@ public class AdminNodeGovernanceService {
 
     public void updateNodeType(Long nodeId, NodeTypeRequest request) {
         RoadmapNode node = getNode(nodeId);
-        String nodeType = normalizeRequiredValue(request == null ? null : request.getNodeType());
-
-        if (!ALLOWED_NODE_TYPES.contains(nodeType)) {
-            throw new CustomException(ErrorCode.INVALID_INPUT);
-        }
+        String nodeType = normalizeNodeType(request == null ? null : request.getNodeType());
 
         node.changeNodeType(nodeType);
     }
@@ -131,8 +190,8 @@ public class AdminNodeGovernanceService {
     // 노드 완료 규칙은 없으면 생성하고 있으면 같은 레코드를 갱신한다.
     public void updateCompletionRule(Long nodeId, NodeCompletionRuleRequest request) {
         RoadmapNode node = getNode(nodeId);
-        String criteriaType = normalizeRequiredValue(
-                request == null ? null : request.getCompletionRuleDescription());
+        String criteriaType = normalizeRequiredText(
+                request == null ? null : request.getCompletionRuleDescription()).toUpperCase();
         String criteriaValue = request != null && request.getRequiredProgressRate() != null
                 ? request.getRequiredProgressRate().toString() : "0";
 
@@ -154,6 +213,24 @@ public class AdminNodeGovernanceService {
         return roadmapNodeRepository
                 .findById(nodeId)
                 .orElseThrow(() -> new CustomException(ErrorCode.ROADMAP_NODE_NOT_FOUND));
+    }
+
+    private RoadmapNodeUpsertRequest requireNodeRequest(RoadmapNodeUpsertRequest request) {
+        if (request == null) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+
+        return request;
+    }
+
+    private Roadmap getOfficialRoadmap(Long roadmapId) {
+        if (roadmapId == null) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+
+        return roadmapRepository
+                .findByRoadmapIdAndIsOfficialTrueAndIsDeletedFalse(roadmapId)
+                .orElseThrow(() -> new CustomException(ErrorCode.ROADMAP_NOT_FOUND));
     }
 
     private List<RoadmapNode> loadNodes(List<Long> nodeIds) {
@@ -201,12 +278,50 @@ public class AdminNodeGovernanceService {
         return uniqueIds.stream().toList();
     }
 
-    private String normalizeRequiredValue(String value) {
+    private String normalizeRequiredText(String value) {
         if (value == null || value.isBlank()) {
             throw new CustomException(ErrorCode.INVALID_INPUT);
         }
 
-        return value.trim().toUpperCase();
+        return value.trim();
+    }
+
+    private String normalizeNodeType(String value) {
+        String nodeType = normalizeRequiredText(value).toUpperCase();
+
+        if (!ALLOWED_NODE_TYPES.contains(nodeType)) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+
+        return nodeType;
+    }
+
+    private String normalizeNullableText(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+
+        return value.trim();
+    }
+
+    private Integer normalizeSortOrder(Integer value) {
+        if (value == null || value < 0) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+
+        return value;
+    }
+
+    private Integer normalizeOptionalNumber(Integer value) {
+        if (value == null) {
+            return null;
+        }
+
+        if (value < 0) {
+            throw new CustomException(ErrorCode.INVALID_INPUT);
+        }
+
+        return value;
     }
 
     // 노드별 필수 태그 이름을 표 렌더링용 맵으로 모은다.
@@ -223,9 +338,24 @@ public class AdminNodeGovernanceService {
         return requiredTagsByNodeId;
     }
 
+    // 노드별 선행 노드 ID 목록을 관리자 표 렌더링용 맵으로 모은다.
+    private Map<Long, List<Long>> buildPrerequisiteNodeIdsMap(List<Long> nodeIds) {
+        Map<Long, List<Long>> prerequisiteNodeIdsByNodeId = new LinkedHashMap<>();
+
+        for (PrerequisiteRepository.PrerequisiteNodeIdProjection projection :
+                prerequisiteRepository.findPrerequisiteNodeIdsByNodeIds(nodeIds)) {
+            prerequisiteNodeIdsByNodeId
+                    .computeIfAbsent(projection.getNodeId(), ignored -> new java.util.ArrayList<>())
+                    .add(projection.getPrerequisiteNodeId());
+        }
+
+        return prerequisiteNodeIdsByNodeId;
+    }
+
     private AdminRoadmapNodeSummaryResponse toAdminRoadmapNodeSummary(
             RoadmapNode node,
             List<String> requiredTags,
+            List<Long> prerequisiteNodeIds,
             NodeCompletionRule completionRule) {
         Integer requiredProgressRate = null;
         if (completionRule != null) {
@@ -241,7 +371,12 @@ public class AdminNodeGovernanceService {
                 .roadmapId(node.getRoadmap().getRoadmapId())
                 .roadmapTitle(node.getRoadmap().getTitle())
                 .title(node.getTitle())
+                .content(node.getContent())
                 .nodeType(node.getNodeType())
+                .sortOrder(node.getSortOrder())
+                .subTopics(node.getSubTopics())
+                .branchGroup(node.getBranchGroup())
+                .prerequisiteNodeIds(prerequisiteNodeIds)
                 .required(!requiredTags.isEmpty())
                 .requiredTagCount(requiredTags.size())
                 .requiredTags(requiredTags)

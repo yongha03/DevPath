@@ -8,6 +8,7 @@ import type {
   AdminDashboardOverview,
   AdminDashboardSummaryMetric,
   AdminModerationReport,
+  AdminOfficialRoadmapOption,
   AdminPendingCourse,
   AdminRoadmapNode,
   AdminTag,
@@ -34,6 +35,9 @@ type AdminTabKey = 'dashboard' | 'tags' | 'roadmaps' | 'catalog-menu' | 'roadmap
 type DashboardFilterState = {
   tagQuery: string
   nodeQuery: string
+  nodeHubSectionKey: string
+  nodeHubItemKey: string
+  nodeRoadmapId: string
   nodeType: string
   accountQuery: string
   accountRole: string
@@ -43,9 +47,11 @@ type DashboardFilterState = {
 type RoadmapHubFilterState = {
   query: string
   sectionKey: string
+  layoutType: string
   status: string
   featured: string
   linked: string
+  linkedRoadmapId: string
 }
 
 type RoadmapHubVisibleSection = {
@@ -57,13 +63,27 @@ type RoadmapHubVisibleSection = {
   }>
 }
 
+type NodeHubEntry = {
+  itemKey: string
+  sectionKey: string
+  sectionTitle: string
+  layoutType: string
+  itemTitle: string
+  linkedRoadmapId: number
+}
+
+const NODE_HUB_UNLINKED_FILTER = '__UNLINKED__'
+
 declare global {
   interface Window {
     refreshCurrentTab: () => void
     logout: () => Promise<void>
     createTag: () => Promise<void>
     mergeTag: (tagId: number) => Promise<void>
+    createRoadmapNode: () => Promise<void>
+    editRoadmapNode: (nodeId: number) => Promise<void>
     updateNodeTags: (nodeId: number) => Promise<void>
+    updateNodePrerequisites: (nodeId: number) => Promise<void>
     updateNodeRules: (nodeId: number) => Promise<void>
     toggleAccountStatus: (userId: number, accountStatus: string) => Promise<void>
     approveCourse: (courseId: number) => Promise<void>
@@ -105,7 +125,7 @@ declare global {
 const TAB_META: Record<AdminTabKey, { title: string; description: string }> = {
   dashboard: { title: '플랫폼 실시간 현황', description: 'DevPath 관리자 운영 지표 요약' },
   tags: { title: '기술 태그 데이터베이스', description: '공식 태그를 조회하고 병합합니다.' },
-  roadmaps: { title: '마스터 로드맵 노드', description: '노드 필수 태그와 완료 기준을 관리합니다.' },
+  roadmaps: { title: '마스터 로드맵 노드', description: '공식 로드맵 노드 생성, 수정, 선수 조건과 완료 기준을 관리합니다.' },
   'catalog-menu': { title: '강의 목록 메뉴 관리', description: 'lecture-list 상단 카테고리와 필터 구성을 수정합니다.' },
   'roadmap-hub': { title: '로드맵 허브 관리', description: 'roadmap-hub 섹션과 연결 로드맵 구성을 수정합니다.' },
   users: { title: '회원 통합 관리', description: '회원 상태와 권한을 운영 관점에서 관리합니다.' },
@@ -121,6 +141,9 @@ let roadmapNodeMap = new Map<number, AdminRoadmapNode>()
 let reportMap = new Map<number, AdminModerationReport>()
 let tagItems: AdminTag[] = []
 let nodeItems: AdminRoadmapNode[] = []
+let officialRoadmapOptions: AdminOfficialRoadmapOption[] = []
+let nodeHubCatalog: AdminRoadmapHubCatalog = { sections: [], officialRoadmaps: [] }
+let nodeHubEntriesByRoadmapId = new Map<number, NodeHubEntry[]>()
 let accountItems: AdminAccount[] = []
 let courseCatalogMenu: CourseCatalogMenu = { categories: [] }
 let courseCatalogMenuLoading = false
@@ -134,6 +157,9 @@ let roadmapHubError: string | null = null
 const filterState: DashboardFilterState = {
   tagQuery: '',
   nodeQuery: '',
+  nodeHubSectionKey: '',
+  nodeHubItemKey: '',
+  nodeRoadmapId: '',
   nodeType: '',
   accountQuery: '',
   accountRole: '',
@@ -143,9 +169,11 @@ const filterState: DashboardFilterState = {
 const roadmapHubFilterState: RoadmapHubFilterState = {
   query: '',
   sectionKey: '',
+  layoutType: '',
   status: '',
   featured: '',
   linked: '',
+  linkedRoadmapId: '',
 }
 
 function getElement<T extends HTMLElement>(id: string) {
@@ -251,9 +279,304 @@ function nodeTypeLabel(nodeType: string | null | undefined) {
       return '복습'
     case 'EXAM':
       return '평가'
+    case 'QUIZ':
+      return '퀴즈'
+    case 'ASSIGNMENT':
+      return '과제'
     default:
       return nodeType || '미정'
   }
+}
+
+function formatNodePrerequisites(node: AdminRoadmapNode) {
+  return node.prerequisiteNodeIds.length
+    ? node.prerequisiteNodeIds.map((nodeId) => `#${nodeId}`).join(', ')
+    : '선행 노드 없음'
+}
+
+function formatNodeStructure(node: AdminRoadmapNode) {
+  const branchText = node.branchGroup === null || node.branchGroup === undefined
+    ? '기본 흐름'
+    : `분기 ${node.branchGroup}`
+
+  return `순서 ${node.sortOrder ?? '-'} · ${branchText}`
+}
+
+function normalizeOptionalString(value: string | null) {
+  return value?.trim() ? value.trim() : null
+}
+
+function parseRequiredNumber(value: string | null, message: string) {
+  if (value === null) {
+    return null
+  }
+
+  const parsed = Number(value.trim())
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    window.alert(message)
+    return null
+  }
+
+  return parsed
+}
+
+function parseOptionalNumber(value: string | null, message: string) {
+  if (value === null) {
+    return null
+  }
+
+  if (!value.trim()) {
+    return undefined
+  }
+
+  const parsed = Number(value.trim())
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    window.alert(message)
+    return null
+  }
+
+  return parsed
+}
+
+function parseNodeIdList(value: string | null) {
+  if (value === null) {
+    return null
+  }
+
+  if (!value.trim()) {
+    return []
+  }
+
+  const nodeIds = value
+    .split(',')
+    .map((item) => Number(item.trim()))
+    .filter((item) => Number.isFinite(item))
+
+  if (nodeIds.length !== value.split(',').filter((item) => item.trim()).length) {
+    window.alert('노드 ID는 쉼표로 구분한 숫자만 입력하세요.')
+    return null
+  }
+
+  return nodeIds
+}
+
+function buildRoadmapOptionGuide() {
+  return officialRoadmapOptions
+    .map((roadmap) => `#${roadmap.roadmapId} ${roadmap.title}`)
+    .join('\n')
+}
+
+function buildNodePayloadFromPrompt(node?: AdminRoadmapNode) {
+  if (!node && officialRoadmapOptions.length === 0) {
+    window.alert('선택 가능한 공식 로드맵이 없습니다.')
+    return null
+  }
+
+  const roadmapId = node
+    ? node.roadmapId
+    : parseRequiredNumber(
+        window.prompt(`노드를 추가할 로드맵 ID를 입력하세요.\n${buildRoadmapOptionGuide()}`, officialRoadmapOptions[0]?.roadmapId.toString() ?? ''),
+        '로드맵 ID는 0 이상의 숫자로 입력하세요.',
+      )
+
+  if (roadmapId === null) {
+    return null
+  }
+
+  const title = window.prompt('노드 제목을 입력하세요.', node?.title ?? '')
+  if (!title?.trim()) {
+    return null
+  }
+
+  const content = window.prompt('노드 설명을 입력하세요. 비워두면 설명 없음으로 저장됩니다.', node?.content ?? '')
+  if (content === null) {
+    return null
+  }
+
+  const nodeType = window.prompt('노드 유형을 입력하세요. 예: CONCEPT, PRACTICE, PROJECT, REVIEW, EXAM, QUIZ, ASSIGNMENT', node?.nodeType ?? 'CONCEPT')
+  if (!nodeType?.trim()) {
+    return null
+  }
+
+  const defaultSortOrder = node?.sortOrder?.toString()
+    ?? String(
+      Math.max(
+        0,
+        ...nodeItems
+          .filter((item) => item.roadmapId === roadmapId)
+          .map((item) => item.sortOrder ?? 0),
+      ) + 1,
+    )
+  const sortOrder = parseRequiredNumber(
+    window.prompt('정렬 순서를 입력하세요. 숫자가 작을수록 먼저 표시됩니다.', defaultSortOrder),
+    '정렬 순서는 0 이상의 숫자로 입력하세요.',
+  )
+
+  if (sortOrder === null) {
+    return null
+  }
+
+  const subTopics = window.prompt('서브토픽을 쉼표로 구분해서 입력하세요. 비워두면 없음으로 저장됩니다.', node?.subTopics ?? '')
+  if (subTopics === null) {
+    return null
+  }
+
+  const branchGroup = parseOptionalNumber(
+    window.prompt('분기 그룹 번호를 입력하세요. 기본 흐름이면 비워두세요.', node?.branchGroup?.toString() ?? ''),
+    '분기 그룹은 0 이상의 숫자로 입력하세요.',
+  )
+
+  if (branchGroup === null) {
+    return null
+  }
+
+  return {
+    roadmapId,
+    title: title.trim(),
+    content: normalizeOptionalString(content),
+    nodeType: nodeType.trim().toUpperCase(),
+    sortOrder,
+    subTopics: normalizeOptionalString(subTopics),
+    branchGroup: branchGroup ?? null,
+  }
+}
+
+function buildNodeHubItemKey(sectionKey: string, item: RoadmapHubItem) {
+  return `${sectionKey}::${item.sortOrder}::${item.linkedRoadmapId ?? 'none'}::${item.title}`
+}
+
+function rebuildNodeHubIndex() {
+  const nextEntriesByRoadmapId = new Map<number, NodeHubEntry[]>()
+
+  nodeHubCatalog.sections.forEach((section) => {
+    section.items.forEach((item) => {
+      if (item.linkedRoadmapId === null || item.linkedRoadmapId === undefined) {
+        return
+      }
+
+      const entry: NodeHubEntry = {
+        itemKey: buildNodeHubItemKey(section.sectionKey, item),
+        sectionKey: section.sectionKey,
+        sectionTitle: section.title,
+        layoutType: section.layoutType,
+        itemTitle: item.title,
+        linkedRoadmapId: item.linkedRoadmapId,
+      }
+      const entries = nextEntriesByRoadmapId.get(item.linkedRoadmapId) ?? []
+      entries.push(entry)
+      nextEntriesByRoadmapId.set(item.linkedRoadmapId, entries)
+    })
+  })
+
+  nodeHubEntriesByRoadmapId = nextEntriesByRoadmapId
+}
+
+function getNodeHubEntries(roadmapId: number) {
+  return nodeHubEntriesByRoadmapId.get(roadmapId) ?? []
+}
+
+function findNodeHubEntry(itemKey: string) {
+  for (const entries of nodeHubEntriesByRoadmapId.values()) {
+    const entry = entries.find((candidate) => candidate.itemKey === itemKey)
+    if (entry) {
+      return entry
+    }
+  }
+
+  return null
+}
+
+function getNodeHubSectionRoadmapIds(sectionKey: string) {
+  const roadmapIds = new Set<number>()
+
+  nodeHubCatalog.sections
+    .filter((section) => section.sectionKey === sectionKey)
+    .forEach((section) => {
+      section.items.forEach((item) => {
+        if (item.linkedRoadmapId !== null && item.linkedRoadmapId !== undefined) {
+          roadmapIds.add(item.linkedRoadmapId)
+        }
+      })
+    })
+
+  return roadmapIds
+}
+
+function getNodeHubFilteredRoadmapIds() {
+  const itemEntry = filterState.nodeHubItemKey ? findNodeHubEntry(filterState.nodeHubItemKey) : null
+  if (itemEntry) {
+    return new Set([itemEntry.linkedRoadmapId])
+  }
+
+  if (filterState.nodeHubSectionKey === NODE_HUB_UNLINKED_FILTER) {
+    return new Set(
+      officialRoadmapOptions
+        .filter((roadmap) => getNodeHubEntries(roadmap.roadmapId).length === 0)
+        .map((roadmap) => roadmap.roadmapId),
+    )
+  }
+
+  if (filterState.nodeHubSectionKey) {
+    return getNodeHubSectionRoadmapIds(filterState.nodeHubSectionKey)
+  }
+
+  return null
+}
+
+function matchesNodeHubFilters(node: AdminRoadmapNode) {
+  const entries = getNodeHubEntries(node.roadmapId)
+
+  if (filterState.nodeHubSectionKey === NODE_HUB_UNLINKED_FILTER) {
+    return entries.length === 0
+  }
+
+  if (filterState.nodeHubItemKey) {
+    return entries.some((entry) => entry.itemKey === filterState.nodeHubItemKey)
+  }
+
+  if (filterState.nodeHubSectionKey) {
+    return entries.some((entry) => entry.sectionKey === filterState.nodeHubSectionKey)
+  }
+
+  return true
+}
+
+function nodeHubBadgeClassName(layoutType: string) {
+  switch (layoutType) {
+    case 'CARD_GRID':
+      return 'border border-emerald-100 bg-emerald-50 text-emerald-700'
+    case 'CHIP_GRID':
+      return 'border border-amber-100 bg-amber-50 text-amber-700'
+    case 'LINK_LIST':
+      return 'border border-sky-100 bg-sky-50 text-sky-700'
+    default:
+      return 'border border-slate-200 bg-slate-100 text-slate-600'
+  }
+}
+
+function renderNodeHubBadges(node: AdminRoadmapNode) {
+  const entries = getNodeHubEntries(node.roadmapId)
+
+  if (entries.length === 0) {
+    return '<div class="mt-2 inline-flex rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[10px] font-bold text-slate-400">허브 미연결</div>'
+  }
+
+  const visibleEntries = entries.slice(0, 3)
+  const extraCount = entries.length - visibleEntries.length
+
+  return `
+    <div class="mt-2 flex max-w-full flex-wrap gap-1">
+      ${visibleEntries
+        .map(
+          (entry) => `
+            <span class="max-w-full truncate whitespace-nowrap rounded-full px-2 py-0.5 text-[10px] font-bold ${nodeHubBadgeClassName(entry.layoutType)}">
+              ${escapeHtml(entry.sectionTitle)} · ${escapeHtml(entry.itemTitle)}
+            </span>`,
+        )
+        .join('')}
+      ${extraCount > 0 ? `<span class="rounded-full border border-slate-200 bg-white px-2 py-0.5 text-[10px] font-bold text-slate-400">+${extraCount}</span>` : ''}
+    </div>
+  `
 }
 
 function accountStatusLabel(status: string | null | undefined) {
@@ -515,41 +838,179 @@ function renderNodeRows(nodes: AdminRoadmapNode[]) {
         .map(
           (node) => `
             <tr class="border-b border-slate-100 transition-colors hover:bg-slate-50/70">
-              <td class="px-6 py-3 font-mono text-xs text-slate-400">#${node.nodeId}</td>
-              <td class="px-6 py-3"><div class="font-bold text-slate-800">${escapeHtml(node.title)}</div><div class="mt-0.5 text-[10px] text-slate-400">Roadmap #${node.roadmapId}</div></td>
-              <td class="px-6 py-3"><div class="font-medium text-slate-700">${escapeHtml(node.roadmapTitle)}</div><div class="mt-0.5 inline-flex rounded bg-blue-50 px-2 py-0.5 text-[10px] font-bold tracking-wide text-blue-600">${escapeHtml(nodeTypeLabel(node.nodeType))}</div></td>
-              <td class="px-6 py-3 text-xs text-slate-500"><div>${node.requiredTagCount > 0 ? `필수 태그 ${node.requiredTagCount}개` : '필수 태그 없음'}</div><div class="mt-1">${escapeHtml(node.completionRuleDescription || '완료 기준 없음')}${node.requiredProgressRate !== null ? ` / ${node.requiredProgressRate}%` : ''}</div></td>
-              <td class="space-x-1 px-6 py-3 text-right"><button onclick="updateNodeTags(${node.nodeId})" class="rounded border border-slate-200 bg-white px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50" type="button">태그 매핑</button><button onclick="updateNodeRules(${node.nodeId})" class="rounded bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-600 transition hover:bg-indigo-100 hover:text-indigo-800" type="button">완료 기준</button></td>
+              <td class="px-5 py-3 align-middle font-mono text-xs whitespace-nowrap text-slate-400">#${node.nodeId}</td>
+              <td class="px-5 py-3 align-middle"><div class="truncate font-bold text-slate-800">${escapeHtml(node.title)}</div><div class="mt-1 truncate text-xs text-slate-400">${escapeHtml(node.content || '설명 없음')}</div></td>
+              <td class="px-5 py-3 align-middle"><div class="truncate font-medium text-slate-700">${escapeHtml(node.roadmapTitle)}</div><div class="mt-0.5 inline-flex rounded bg-blue-50 px-2 py-0.5 text-[10px] font-bold tracking-wide whitespace-nowrap text-blue-600">${escapeHtml(nodeTypeLabel(node.nodeType))}</div>${renderNodeHubBadges(node)}</td>
+              <td class="px-5 py-3 align-middle text-xs text-slate-500"><div class="truncate whitespace-nowrap">${escapeHtml(formatNodeStructure(node))}</div><div class="mt-1 truncate whitespace-nowrap">${escapeHtml(formatNodePrerequisites(node))}</div>${node.subTopics ? `<div class="mt-1 truncate text-[11px] text-slate-400">${escapeHtml(node.subTopics)}</div>` : ''}</td>
+              <td class="px-4 py-3 align-middle text-xs whitespace-nowrap text-slate-500"><div>${node.requiredTagCount > 0 ? `필수 태그 ${node.requiredTagCount}개` : '필수 태그 없음'}</div><div class="mt-1">${escapeHtml(node.completionRuleDescription || '완료 기준 없음')}${node.requiredProgressRate !== null ? ` / ${node.requiredProgressRate}%` : ''}</div></td>
+              <td class="px-4 py-3 align-middle text-right"><div class="flex flex-nowrap justify-end gap-1"><button onclick="editRoadmapNode(${node.nodeId})" class="whitespace-nowrap rounded border border-slate-200 bg-white px-2 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50" type="button">노드 수정</button><button onclick="updateNodePrerequisites(${node.nodeId})" class="whitespace-nowrap rounded border border-slate-200 bg-white px-2 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50" type="button">선수 조건</button><button onclick="updateNodeTags(${node.nodeId})" class="whitespace-nowrap rounded border border-slate-200 bg-white px-2 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50" type="button">태그 매핑</button><button onclick="updateNodeRules(${node.nodeId})" class="whitespace-nowrap rounded bg-indigo-50 px-2 py-1.5 text-xs font-medium text-indigo-600 transition hover:bg-indigo-100 hover:text-indigo-800" type="button">완료 기준</button></div></td>
             </tr>`,
         )
         .join('')
-    : buildEmptyRow(5, '조건에 맞는 노드가 없습니다.')
+    : buildEmptyRow(6, '조건에 맞는 노드가 없습니다.')
 }
 
 function applyNodeFilters() {
   const keyword = normalizeText(filterState.nodeQuery)
+  const roadmapId = filterState.nodeRoadmapId.trim()
   const nodeType = filterState.nodeType.trim().toUpperCase()
   const filteredNodes = nodeItems.filter((node) => {
-    const matchesText = matchesKeyword(keyword, [node.nodeId, node.title, node.roadmapTitle, node.roadmapId])
+    const matchesText = matchesKeyword(keyword, [
+      node.nodeId,
+      node.title,
+      node.content,
+      node.subTopics,
+      node.roadmapTitle,
+      node.roadmapId,
+    ])
+    const matchesHub = matchesNodeHubFilters(node)
+    const matchesRoadmap = !roadmapId || String(node.roadmapId) === roadmapId
     const matchesType = !nodeType || (node.nodeType ?? '').toUpperCase() === nodeType
 
-    return matchesText && matchesType
+    return matchesText && matchesHub && matchesRoadmap && matchesType
   })
 
   renderNodeRows(filteredNodes)
   updateFilterSummary('nodeFilterSummary', nodeItems.length, filteredNodes.length)
 }
 
+function updateNodeHubFilterOptions() {
+  const sectionSelect = document.getElementById('nodeHubSectionFilter') as HTMLSelectElement | null
+  const itemSelect = document.getElementById('nodeHubItemFilter') as HTMLSelectElement | null
+
+  if (!sectionSelect || !itemSelect) {
+    return
+  }
+
+  const sectionKeys = new Set(nodeHubCatalog.sections.map((section) => section.sectionKey))
+  if (
+    filterState.nodeHubSectionKey
+    && filterState.nodeHubSectionKey !== NODE_HUB_UNLINKED_FILTER
+    && !sectionKeys.has(filterState.nodeHubSectionKey)
+  ) {
+    filterState.nodeHubSectionKey = ''
+    filterState.nodeHubItemKey = ''
+  }
+
+  sectionSelect.innerHTML = [
+    '<option value="">전체 허브 분류</option>',
+    ...nodeHubCatalog.sections.map((section) => {
+      const roadmapIds = getNodeHubSectionRoadmapIds(section.sectionKey)
+      return `<option value="${escapeHtml(section.sectionKey)}" ${filterState.nodeHubSectionKey === section.sectionKey ? 'selected' : ''}>${escapeHtml(section.title)} (${formatNumber(roadmapIds.size)})</option>`
+    }),
+    `<option value="${NODE_HUB_UNLINKED_FILTER}" ${filterState.nodeHubSectionKey === NODE_HUB_UNLINKED_FILTER ? 'selected' : ''}>허브 미연결</option>`,
+  ].join('')
+  sectionSelect.value = filterState.nodeHubSectionKey
+
+  const linkedItems = nodeHubCatalog.sections
+    .filter((section) => !filterState.nodeHubSectionKey || section.sectionKey === filterState.nodeHubSectionKey)
+    .flatMap((section) =>
+      section.items
+        .filter((item) => item.linkedRoadmapId !== null && item.linkedRoadmapId !== undefined)
+        .map((item) => ({ section, item, itemKey: buildNodeHubItemKey(section.sectionKey, item) })),
+    )
+  const itemKeys = new Set(linkedItems.map((item) => item.itemKey))
+
+  if (filterState.nodeHubItemKey && !itemKeys.has(filterState.nodeHubItemKey)) {
+    filterState.nodeHubItemKey = ''
+  }
+
+  itemSelect.disabled = filterState.nodeHubSectionKey === NODE_HUB_UNLINKED_FILTER
+  itemSelect.innerHTML = [
+    '<option value="">전체 허브 항목</option>',
+    ...linkedItems.map(
+      ({ section, item, itemKey }) => `
+        <option value="${escapeHtml(itemKey)}" ${filterState.nodeHubItemKey === itemKey ? 'selected' : ''}>
+          ${escapeHtml(section.title)} > ${escapeHtml(item.title)}
+        </option>`,
+    ),
+  ].join('')
+  itemSelect.value = filterState.nodeHubItemKey
+}
+
+function updateNodeRoadmapFilterOptions() {
+  const select = document.getElementById('nodeRoadmapFilter') as HTMLSelectElement | null
+  if (!select) {
+    return
+  }
+
+  const filteredRoadmapIds = getNodeHubFilteredRoadmapIds()
+  const availableRoadmaps = filteredRoadmapIds
+    ? officialRoadmapOptions.filter((roadmap) => filteredRoadmapIds.has(roadmap.roadmapId))
+    : officialRoadmapOptions
+  const roadmapIds = new Set(availableRoadmaps.map((roadmap) => String(roadmap.roadmapId)))
+  if (filterState.nodeRoadmapId && !roadmapIds.has(filterState.nodeRoadmapId)) {
+    filterState.nodeRoadmapId = ''
+  }
+
+  select.innerHTML = [
+    '<option value="">전체 로드맵</option>',
+    ...availableRoadmaps.map(
+      (roadmap) => `<option value="${roadmap.roadmapId}" ${filterState.nodeRoadmapId === String(roadmap.roadmapId) ? 'selected' : ''}>${escapeHtml(roadmap.title)}</option>`,
+    ),
+  ].join('')
+  select.value = filterState.nodeRoadmapId
+}
+
+function updateNodeHubQuickFilters() {
+  const container = document.getElementById('nodeHubQuickFilters')
+  if (!container) {
+    return
+  }
+
+  const makeButtonClass = (active: boolean) =>
+    active
+      ? 'rounded-full bg-slate-900 px-3 py-1.5 text-xs font-bold text-white shadow-sm'
+      : 'rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-500 transition hover:border-slate-300 hover:text-slate-800'
+  const countNodesByRoadmapIds = (roadmapIds: Set<number>) =>
+    nodeItems.filter((node) => roadmapIds.has(node.roadmapId)).length
+  const unlinkedCount = nodeItems.filter((node) => getNodeHubEntries(node.roadmapId).length === 0).length
+
+  container.innerHTML = [
+    `<button data-node-hub-section="" class="${makeButtonClass(!filterState.nodeHubSectionKey)}" type="button">전체 ${formatNumber(nodeItems.length)}</button>`,
+    ...nodeHubCatalog.sections.map((section) => {
+      const count = countNodesByRoadmapIds(getNodeHubSectionRoadmapIds(section.sectionKey))
+      return `<button data-node-hub-section="${escapeHtml(section.sectionKey)}" class="${makeButtonClass(filterState.nodeHubSectionKey === section.sectionKey)}" type="button">${escapeHtml(section.title)} ${formatNumber(count)}</button>`
+    }),
+    `<button data-node-hub-section="${NODE_HUB_UNLINKED_FILTER}" class="${makeButtonClass(filterState.nodeHubSectionKey === NODE_HUB_UNLINKED_FILTER)}" type="button">허브 미연결 ${formatNumber(unlinkedCount)}</button>`,
+  ].join('')
+
+  container.querySelectorAll<HTMLButtonElement>('button[data-node-hub-section]').forEach((button) => {
+    button.addEventListener('click', () => {
+      filterState.nodeHubSectionKey = button.dataset.nodeHubSection ?? ''
+      filterState.nodeHubItemKey = ''
+      filterState.nodeRoadmapId = ''
+      updateNodeFilterControls()
+      applyNodeFilters()
+    })
+  })
+}
+
+function updateNodeFilterControls() {
+  updateNodeHubFilterOptions()
+  updateNodeRoadmapFilterOptions()
+  updateNodeHubQuickFilters()
+}
+
 async function fetchNodes() {
   const tbody = getElement('nodeTableBody')
-  tbody.innerHTML = buildLoadingRow(5)
+  tbody.innerHTML = buildLoadingRow(6)
 
   try {
-    nodeItems = await adminApi.getRoadmapNodes()
+    const [nodes, roadmaps, hubCatalog] = await Promise.all([
+      adminApi.getRoadmapNodes(),
+      adminApi.getOfficialRoadmapOptions(),
+      adminApi.getRoadmapHubCatalog(),
+    ])
+    nodeItems = nodes
+    officialRoadmapOptions = roadmaps
+    nodeHubCatalog = hubCatalog
+    rebuildNodeHubIndex()
     roadmapNodeMap = new Map(nodeItems.map((node) => [node.nodeId, node]))
+    updateNodeFilterControls()
     applyNodeFilters()
   } catch (error) {
-    tbody.innerHTML = buildErrorRow(5, error instanceof Error ? error.message : '노드를 불러오지 못했습니다.')
+    tbody.innerHTML = buildErrorRow(6, error instanceof Error ? error.message : '노드를 불러오지 못했습니다.')
     updateFilterSummary('nodeFilterSummary', 0, 0)
   }
 }
@@ -1211,9 +1672,11 @@ function hasRoadmapHubFilter() {
   return Boolean(
     roadmapHubFilterState.query.trim()
       || roadmapHubFilterState.sectionKey
+      || roadmapHubFilterState.layoutType
       || roadmapHubFilterState.status
       || roadmapHubFilterState.featured
-      || roadmapHubFilterState.linked,
+      || roadmapHubFilterState.linked
+      || roadmapHubFilterState.linkedRoadmapId,
   )
 }
 
@@ -1242,8 +1705,11 @@ function matchesRoadmapHubItem(section: RoadmapHubSection, item: RoadmapHubItem)
     !roadmapHubFilterState.linked
     || (roadmapHubFilterState.linked === 'LINKED' && hasLinkedRoadmap)
     || (roadmapHubFilterState.linked === 'UNLINKED' && !hasLinkedRoadmap)
+  const matchesLinkedRoadmap =
+    !roadmapHubFilterState.linkedRoadmapId
+    || String(item.linkedRoadmapId ?? '') === roadmapHubFilterState.linkedRoadmapId
 
-  return matchesText && matchesStatus && matchesFeatured && matchesLinked
+  return matchesText && matchesStatus && matchesFeatured && matchesLinked && matchesLinkedRoadmap
 }
 
 function getRoadmapHubFilterResult() {
@@ -1252,15 +1718,20 @@ function getRoadmapHubFilterResult() {
   let visibleItemCount = 0
   const filtered = hasRoadmapHubFilter()
   const sectionOnlySelected = Boolean(
-    roadmapHubFilterState.sectionKey
+    (roadmapHubFilterState.sectionKey || roadmapHubFilterState.layoutType)
       && !roadmapHubFilterState.query.trim()
       && !roadmapHubFilterState.status
       && !roadmapHubFilterState.featured
-      && !roadmapHubFilterState.linked,
+      && !roadmapHubFilterState.linked
+      && !roadmapHubFilterState.linkedRoadmapId,
   )
 
   roadmapHubCatalog.sections.forEach((section, sectionIndex) => {
     if (roadmapHubFilterState.sectionKey && section.sectionKey !== roadmapHubFilterState.sectionKey) {
+      return
+    }
+
+    if (roadmapHubFilterState.layoutType && section.layoutType !== roadmapHubFilterState.layoutType) {
       return
     }
 
@@ -1318,6 +1789,37 @@ function updateRoadmapHubSectionFilterOptions() {
   select.value = roadmapHubFilterState.sectionKey
 }
 
+function updateRoadmapHubRoadmapFilterOptions() {
+  const select = document.getElementById('roadmapHubRoadmapFilter') as HTMLSelectElement | null
+  if (!select) {
+    return
+  }
+
+  const linkedRoadmapById = new Map<number, string>()
+  roadmapHubCatalog.sections.forEach((section) => {
+    section.items.forEach((item) => {
+      if (item.linkedRoadmapId !== null && item.linkedRoadmapId !== undefined) {
+        linkedRoadmapById.set(item.linkedRoadmapId, item.linkedRoadmapTitle ?? `로드맵 #${item.linkedRoadmapId}`)
+      }
+    })
+  })
+
+  if (roadmapHubFilterState.linkedRoadmapId && !linkedRoadmapById.has(Number(roadmapHubFilterState.linkedRoadmapId))) {
+    roadmapHubFilterState.linkedRoadmapId = ''
+  }
+
+  select.innerHTML = [
+    '<option value="">전체 연결 로드맵</option>',
+    ...Array.from(linkedRoadmapById.entries())
+      .sort(([, leftTitle], [, rightTitle]) => leftTitle.localeCompare(rightTitle, 'ko'))
+      .map(
+        ([roadmapId, title]) =>
+          `<option value="${roadmapId}" ${roadmapHubFilterState.linkedRoadmapId === String(roadmapId) ? 'selected' : ''}>${escapeHtml(title)}</option>`,
+      ),
+  ].join('')
+  select.value = roadmapHubFilterState.linkedRoadmapId
+}
+
 function buildRoadmapHubLayoutOptions(selectedValue: string) {
   return [
     ['CARD_GRID', '카드 그리드'],
@@ -1350,6 +1852,7 @@ function renderRoadmapHubEditor() {
   updateRoadmapHubSaveButton()
   updateRoadmapHubSummary()
   updateRoadmapHubSectionFilterOptions()
+  updateRoadmapHubRoadmapFilterOptions()
 
   if (roadmapHubLoading) {
     updateRoadmapHubFilterSummary(0, 0, hasRoadmapHubFilter())
@@ -1731,6 +2234,29 @@ function initFilters() {
     applyNodeFilters()
   })
 
+  const nodeHubSectionFilter = getElement<HTMLSelectElement>('nodeHubSectionFilter')
+  nodeHubSectionFilter.addEventListener('change', () => {
+    filterState.nodeHubSectionKey = nodeHubSectionFilter.value
+    filterState.nodeHubItemKey = ''
+    filterState.nodeRoadmapId = ''
+    updateNodeFilterControls()
+    applyNodeFilters()
+  })
+
+  const nodeHubItemFilter = getElement<HTMLSelectElement>('nodeHubItemFilter')
+  nodeHubItemFilter.addEventListener('change', () => {
+    filterState.nodeHubItemKey = nodeHubItemFilter.value
+    filterState.nodeRoadmapId = ''
+    updateNodeFilterControls()
+    applyNodeFilters()
+  })
+
+  const nodeRoadmapFilter = getElement<HTMLSelectElement>('nodeRoadmapFilter')
+  nodeRoadmapFilter.addEventListener('change', () => {
+    filterState.nodeRoadmapId = nodeRoadmapFilter.value
+    applyNodeFilters()
+  })
+
   const nodeTypeFilter = getElement<HTMLSelectElement>('nodeTypeFilter')
   nodeTypeFilter.addEventListener('change', () => {
     filterState.nodeType = nodeTypeFilter.value
@@ -1767,6 +2293,12 @@ function initFilters() {
     renderRoadmapHubEditor()
   })
 
+  const roadmapHubLayoutFilter = getElement<HTMLSelectElement>('roadmapHubLayoutFilter')
+  roadmapHubLayoutFilter.addEventListener('change', () => {
+    roadmapHubFilterState.layoutType = roadmapHubLayoutFilter.value
+    renderRoadmapHubEditor()
+  })
+
   const roadmapHubStatusFilter = getElement<HTMLSelectElement>('roadmapHubStatusFilter')
   roadmapHubStatusFilter.addEventListener('change', () => {
     roadmapHubFilterState.status = roadmapHubStatusFilter.value
@@ -1785,18 +2317,28 @@ function initFilters() {
     renderRoadmapHubEditor()
   })
 
+  const roadmapHubRoadmapFilter = getElement<HTMLSelectElement>('roadmapHubRoadmapFilter')
+  roadmapHubRoadmapFilter.addEventListener('change', () => {
+    roadmapHubFilterState.linkedRoadmapId = roadmapHubRoadmapFilter.value
+    renderRoadmapHubEditor()
+  })
+
   const roadmapHubFilterReset = getElement<HTMLButtonElement>('roadmapHubFilterReset')
   roadmapHubFilterReset.addEventListener('click', () => {
     roadmapHubFilterState.query = ''
     roadmapHubFilterState.sectionKey = ''
+    roadmapHubFilterState.layoutType = ''
     roadmapHubFilterState.status = ''
     roadmapHubFilterState.featured = ''
     roadmapHubFilterState.linked = ''
+    roadmapHubFilterState.linkedRoadmapId = ''
     roadmapHubFilterInput.value = ''
     roadmapHubSectionFilter.value = ''
+    roadmapHubLayoutFilter.value = ''
     roadmapHubStatusFilter.value = ''
     roadmapHubFeaturedFilter.value = ''
     roadmapHubLinkedFilter.value = ''
+    roadmapHubRoadmapFilter.value = ''
     renderRoadmapHubEditor()
   })
 }
@@ -1862,6 +2404,36 @@ function installGlobalActions() {
     })
   }
 
+  window.createRoadmapNode = async () => {
+    await runAdminAction(async () => {
+      const payload = buildNodePayloadFromPrompt()
+      if (!payload) {
+        return
+      }
+
+      await adminApi.createRoadmapNode(payload)
+      await fetchNodes()
+    })
+  }
+
+  window.editRoadmapNode = async (nodeId: number) => {
+    await runAdminAction(async () => {
+      const node = roadmapNodeMap.get(nodeId)
+      if (!node) {
+        window.alert('수정할 노드를 찾지 못했습니다.')
+        return
+      }
+
+      const payload = buildNodePayloadFromPrompt(node)
+      if (!payload) {
+        return
+      }
+
+      await adminApi.updateRoadmapNode(nodeId, payload)
+      await fetchNodes()
+    })
+  }
+
   window.updateNodeTags = async (nodeId: number) => {
     await runAdminAction(async () => {
       const node = roadmapNodeMap.get(nodeId)
@@ -1881,6 +2453,28 @@ function installGlobalActions() {
       }
 
       await adminApi.updateNodeRequiredTags(nodeId, requiredTags)
+      await fetchNodes()
+    })
+  }
+
+  window.updateNodePrerequisites = async (nodeId: number) => {
+    await runAdminAction(async () => {
+      const node = roadmapNodeMap.get(nodeId)
+      if (!node) {
+        window.alert('수정할 노드를 찾지 못했습니다.')
+        return
+      }
+
+      const input = window.prompt(
+        '선행 노드 ID를 쉼표로 구분해서 입력하세요. 같은 로드맵의 노드만 지정할 수 있습니다.',
+        node.prerequisiteNodeIds.join(', '),
+      )
+      const prerequisiteNodeIds = parseNodeIdList(input)
+      if (prerequisiteNodeIds === null) {
+        return
+      }
+
+      await adminApi.updateNodePrerequisites(nodeId, prerequisiteNodeIds)
       await fetchNodes()
     })
   }

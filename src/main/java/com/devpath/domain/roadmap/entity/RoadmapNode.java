@@ -59,4 +59,19 @@ public class RoadmapNode {
     this.content = content;
     this.nodeType = nodeType;
   }
+
+  public void updateAdminInfo(
+      String title,
+      String content,
+      String nodeType,
+      Integer sortOrder,
+      String subTopics,
+      Integer branchGroup) {
+    this.title = title;
+    this.content = content;
+    this.nodeType = nodeType;
+    this.sortOrder = sortOrder;
+    this.subTopics = subTopics;
+    this.branchGroup = branchGroup;
+  }
 }

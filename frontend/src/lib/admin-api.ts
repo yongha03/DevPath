@@ -2,6 +2,7 @@ import type {
   AdminAccount,
   AdminDashboardOverview,
   AdminModerationReport,
+  AdminOfficialRoadmapOption,
   AdminPendingCourse,
   AdminRoadmapNode,
   AdminTag,
@@ -87,10 +88,50 @@ export const adminApi = {
   getRoadmapNodes(signal?: AbortSignal) {
     return request<AdminRoadmapNode[]>('/api/admin/nodes', { method: 'GET', signal })
   },
+  getOfficialRoadmapOptions(signal?: AbortSignal) {
+    return request<AdminOfficialRoadmapOption[]>('/api/admin/nodes/roadmaps', { method: 'GET', signal })
+  },
+  createRoadmapNode(payload: {
+    roadmapId: number
+    title: string
+    content?: string | null
+    nodeType: string
+    sortOrder: number
+    subTopics?: string | null
+    branchGroup?: number | null
+  }) {
+    return request<AdminRoadmapNode>('/api/admin/nodes', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  },
+  updateRoadmapNode(
+    nodeId: number,
+    payload: {
+      roadmapId: number
+      title: string
+      content?: string | null
+      nodeType: string
+      sortOrder: number
+      subTopics?: string | null
+      branchGroup?: number | null
+    },
+  ) {
+    return request<AdminRoadmapNode>(`/api/admin/nodes/${nodeId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    })
+  },
   updateNodeRequiredTags(nodeId: number, requiredTags: string[]) {
     return request<void>(`/api/admin/nodes/${nodeId}/required-tags`, {
       method: 'PUT',
       body: JSON.stringify({ requiredTags }),
+    })
+  },
+  updateNodePrerequisites(nodeId: number, prerequisiteNodeIds: number[]) {
+    return request<void>(`/api/admin/nodes/${nodeId}/prerequisites`, {
+      method: 'PUT',
+      body: JSON.stringify({ prerequisiteNodeIds }),
     })
   },
   updateNodeCompletionRule(

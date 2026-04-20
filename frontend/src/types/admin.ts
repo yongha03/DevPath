@@ -45,12 +45,23 @@ export interface AdminRoadmapNode {
   roadmapId: number
   roadmapTitle: string
   title: string
+  content: string | null
   nodeType: string | null
+  sortOrder: number | null
+  subTopics: string | null
+  branchGroup: number | null
+  prerequisiteNodeIds: number[]
   required: boolean
   requiredTagCount: number
   requiredTags: string[]
   completionRuleDescription: string | null
   requiredProgressRate: number | null
+}
+
+// 노드 생성 시 선택하는 공식 로드맵 항목이다.
+export interface AdminOfficialRoadmapOption {
+  roadmapId: number
+  title: string
 }
 
 // 회원 통합 관리 표에서 사용하는 계정 정보다.
