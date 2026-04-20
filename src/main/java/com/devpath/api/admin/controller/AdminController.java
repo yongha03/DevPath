@@ -61,6 +61,27 @@ public class AdminController {
         );
     }
 
+    @Operation(summary = "오피셜 로드맵 소개 콘텐츠 수정")
+    @PutMapping("/roadmaps/{roadmapId}/info")
+    public ApiResponse<RoadmapDto.Response> updateOfficialRoadmapInfo(
+            @PathVariable Long roadmapId,
+            @RequestBody RoadmapDto.InfoUpdateRequest request
+    ) {
+        return ApiResponse.success(
+                "오피셜 로드맵 소개 콘텐츠가 성공적으로 수정되었습니다.",
+                adminService.updateOfficialRoadmapInfo(roadmapId, request)
+        );
+    }
+
+    @Operation(summary = "오피셜 로드맵 소개 콘텐츠 삭제")
+    @DeleteMapping("/roadmaps/{roadmapId}/info")
+    public ApiResponse<RoadmapDto.Response> clearOfficialRoadmapInfo(@PathVariable Long roadmapId) {
+        return ApiResponse.success(
+                "오피셜 로드맵 소개 콘텐츠가 삭제되었습니다.",
+                adminService.clearOfficialRoadmapInfo(roadmapId)
+        );
+    }
+
     // 공식 로드맵은 물리 삭제 대신 soft delete 처리한다.
     @Operation(summary = "오피셜 로드맵 삭제")
     @DeleteMapping("/roadmaps/{roadmapId}")

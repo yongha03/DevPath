@@ -55,6 +55,26 @@ public class AdminService {
         return toRoadmapResponse(roadmap);
     }
 
+    // 로드맵 상세 화면의 소개 아코디언 콘텐츠만 별도로 수정한다.
+    @Transactional
+    public RoadmapDto.Response updateOfficialRoadmapInfo(Long roadmapId, RoadmapDto.InfoUpdateRequest request) {
+        Roadmap roadmap = roadmapRepository.findByRoadmapIdAndIsOfficialTrueAndIsDeletedFalse(roadmapId)
+                .orElseThrow(() -> new CustomException(ErrorCode.RESOURCE_NOT_FOUND));
+
+        roadmap.updateIntro(blankToNull(request.getInfoTitle()), blankToNull(request.getInfoContent()));
+        return toRoadmapResponse(roadmap);
+    }
+
+    // 소개 삭제는 로드맵 자체 삭제가 아니라 info_title/info_content 초기화로 처리한다.
+    @Transactional
+    public RoadmapDto.Response clearOfficialRoadmapInfo(Long roadmapId) {
+        Roadmap roadmap = roadmapRepository.findByRoadmapIdAndIsOfficialTrueAndIsDeletedFalse(roadmapId)
+                .orElseThrow(() -> new CustomException(ErrorCode.RESOURCE_NOT_FOUND));
+
+        roadmap.updateIntro(null, null);
+        return toRoadmapResponse(roadmap);
+    }
+
     // 로드맵 삭제는 soft delete 로직만 수행한다.
     @Transactional
     public void deleteOfficialRoadmap(Long roadmapId) {
@@ -70,8 +90,17 @@ public class AdminService {
                 .roadmapId(roadmap.getRoadmapId())
                 .title(roadmap.getTitle())
                 .description(roadmap.getDescription())
+                .infoTitle(roadmap.getInfoTitle())
+                .infoContent(roadmap.getInfoContent())
                 .isOfficial(roadmap.getIsOfficial())
                 .createdAt(roadmap.getCreatedAt())
                 .build();
+    }
+
+    private String blankToNull(String value) {
+        if (value == null || value.trim().isEmpty()) {
+            return null;
+        }
+        return value;
     }
 }

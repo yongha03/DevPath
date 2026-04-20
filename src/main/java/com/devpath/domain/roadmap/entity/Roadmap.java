@@ -68,4 +68,9 @@ public class Roadmap {
     this.title = title;
     this.description = description;
   }
+
+  public void updateIntro(String infoTitle, String infoContent) {
+    this.infoTitle = infoTitle;
+    this.infoContent = infoContent;
+  }
 }

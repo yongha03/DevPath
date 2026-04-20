@@ -35,6 +35,7 @@ type AdminTabKey =
   | 'dashboard'
   | 'tags'
   | 'official-roadmaps'
+  | 'roadmap-info'
   | 'roadmaps'
   | 'catalog-menu'
   | 'roadmap-hub'
@@ -44,6 +45,7 @@ type AdminTabKey =
 type DashboardFilterState = {
   tagQuery: string
   officialRoadmapQuery: string
+  roadmapInfoQuery: string
   nodeQuery: string
   nodeHubSectionKey: string
   nodeHubItemKey: string
@@ -104,6 +106,8 @@ declare global {
     deleteOfficialRoadmap: (roadmapId: number) => Promise<void>
     createRoadmapNode: () => Promise<void>
     editRoadmapNode: (nodeId: number) => Promise<void>
+    editRoadmapInfo: (roadmapId: number) => void
+    clearRoadmapInfo: (roadmapId: number) => Promise<void>
     updateNodeTags: (nodeId: number) => Promise<void>
     updateNodePrerequisites: (nodeId: number) => Promise<void>
     updateNodeRules: (nodeId: number) => Promise<void>
@@ -114,6 +118,8 @@ declare global {
     resolveReport: (reportId: number) => Promise<void>
     createCatalogCategory: () => void
     saveCourseCatalogMenu: () => Promise<void>
+    setAllCatalogCategoriesCollapsed: (collapsed: boolean) => void
+    toggleCatalogCategoryCollapsed: (categoryIndex: number) => void
     moveCatalogCategory: (categoryIndex: number, direction: number) => void
     deleteCatalogCategory: (categoryIndex: number) => void
     updateCatalogCategoryField: (categoryIndex: number, field: string, value: string) => void
@@ -132,6 +138,8 @@ declare global {
     removeCatalogGroupItem: (categoryIndex: number, groupIndex: number, itemIndex: number) => void
     createRoadmapHubSection: () => void
     saveRoadmapHubCatalog: () => Promise<void>
+    setAllRoadmapHubSectionsCollapsed: (collapsed: boolean) => void
+    toggleRoadmapHubSectionCollapsed: (sectionIndex: number) => void
     moveRoadmapHubSection: (sectionIndex: number, direction: number) => void
     deleteRoadmapHubSection: (sectionIndex: number) => void
     updateRoadmapHubSectionField: (sectionIndex: number, field: string, value: string) => void
@@ -148,6 +156,7 @@ const TAB_META: Record<AdminTabKey, { title: string; description: string }> = {
   dashboard: { title: '플랫폼 실시간 현황', description: 'DevPath 관리자 운영 지표 요약' },
   tags: { title: '기술 태그 데이터베이스', description: '공식 태그를 조회하고 병합합니다.' },
   'official-roadmaps': { title: '공식 로드맵 관리', description: '노드가 연결될 공식 로드맵을 생성, 수정, 삭제합니다.' },
+  'roadmap-info': { title: '로드맵 소개 관리', description: '로드맵 상세 상단 소개 아코디언 콘텐츠를 수정합니다.' },
   roadmaps: { title: '마스터 로드맵 노드', description: '공식 로드맵 노드 생성, 수정, 선수 조건과 완료 기준을 관리합니다.' },
   'catalog-menu': { title: '강의 목록 메뉴 관리', description: 'lecture-list 상단 카테고리와 필터 구성을 수정합니다.' },
   'roadmap-hub': { title: '로드맵 허브 관리', description: 'roadmap-hub 섹션과 연결 로드맵 구성을 수정합니다.' },
@@ -166,6 +175,11 @@ let tagItems: AdminTag[] = []
 let officialRoadmapItems: AdminOfficialRoadmap[] = []
 let officialRoadmapEditingId: number | null = null
 let officialRoadmapSaving = false
+let roadmapInfoItems: AdminOfficialRoadmap[] = []
+let roadmapInfoEditingId: number | null = null
+let roadmapInfoLoading = false
+let roadmapInfoSaving = false
+let roadmapInfoError: string | null = null
 let nodeItems: AdminRoadmapNode[] = []
 let officialRoadmapOptions: AdminOfficialRoadmapOption[] = []
 let nodeHubCatalog: AdminRoadmapHubCatalog = { sections: [], officialRoadmaps: [] }
@@ -175,10 +189,12 @@ let courseCatalogMenu: CourseCatalogMenu = { categories: [] }
 let courseCatalogMenuLoading = false
 let courseCatalogMenuSaving = false
 let courseCatalogMenuError: string | null = null
+let collapsedCatalogCategoryKeys = new Set<string>()
 let roadmapHubCatalog: AdminRoadmapHubCatalog = { sections: [], officialRoadmaps: [] }
 let roadmapHubLoading = false
 let roadmapHubSaving = false
 let roadmapHubError: string | null = null
+let collapsedRoadmapHubSectionKeys = new Set<string>()
 let roadmapNodeModalResolver: ((payload: RoadmapNodePayload | null) => void) | null = null
 let roadmapNodeModalEditingNode: AdminRoadmapNode | null = null
 let roadmapNodeModalInitialized = false
@@ -187,6 +203,7 @@ let roadmapNodeModalReturnFocus: HTMLElement | null = null
 const filterState: DashboardFilterState = {
   tagQuery: '',
   officialRoadmapQuery: '',
+  roadmapInfoQuery: '',
   nodeQuery: '',
   nodeHubSectionKey: '',
   nodeHubItemKey: '',
@@ -224,6 +241,96 @@ function escapeHtml(value: string | number | null | undefined) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;')
+}
+
+function normalizeInlineText(value: string | null | undefined) {
+  return String(value ?? '').replace(/\s+/g, ' ').trim()
+}
+
+function sanitizePreviewHtml(content: string) {
+  return content
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/\son\w+="[^"]*"/gi, '')
+    .replace(/\son\w+='[^']*'/gi, '')
+}
+
+function roadmapInfoHtmlToEditableText(content: string | null | undefined) {
+  const normalized = content?.trim()
+  if (!normalized) {
+    return ''
+  }
+
+  if (!normalized.includes('<')) {
+    return normalized
+  }
+
+  const document = new DOMParser().parseFromString(normalized, 'text/html')
+  const lines: string[] = []
+  const blocks = document.body.querySelectorAll('h1, h2, h3, h4, p, li, strong.block, div > strong')
+
+  blocks.forEach((block) => {
+    const text = normalizeInlineText(block.textContent)
+    if (!text) {
+      return
+    }
+
+    if (block.tagName === 'LI') {
+      lines.push(`- ${text}`)
+      return
+    }
+
+    if (block.matches('h1, h2, h3, h4, strong.block, div > strong')) {
+      lines.push(`## ${text}`)
+      return
+    }
+
+    lines.push(text)
+  })
+
+  return lines.length > 0 ? lines.join('\n\n') : normalizeInlineText(document.body.textContent)
+}
+
+function buildRoadmapInfoContentHtml(content: string | null | undefined) {
+  const lines = String(content ?? '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+
+  const parts: string[] = []
+  let listItems: string[] = []
+
+  const flushList = () => {
+    if (listItems.length === 0) {
+      return
+    }
+
+    parts.push(`<ul class="list-disc pl-5 space-y-1 text-gray-700">${listItems.join('')}</ul>`)
+    listItems = []
+  }
+
+  lines.forEach((line) => {
+    if (!line) {
+      flushList()
+      return
+    }
+
+    if (line.startsWith('- ')) {
+      listItems.push(`<li>${escapeHtml(line.slice(2).trim())}</li>`)
+      return
+    }
+
+    flushList()
+
+    if (line.startsWith('## ')) {
+      parts.push(`<strong class="block text-gray-900 text-base mb-2">${escapeHtml(line.slice(3).trim())}</strong>`)
+      return
+    }
+
+    parts.push(`<p class="mb-2">${escapeHtml(line)}</p>`)
+  })
+
+  flushList()
+
+  return parts.join('\n')
 }
 
 // 필터 비교는 공백 제거와 소문자 변환 기준으로 통일한다.
@@ -1205,6 +1312,235 @@ async function submitOfficialRoadmapForm() {
   }
 }
 
+function roadmapHasInfo(roadmap: AdminOfficialRoadmap) {
+  return Boolean(roadmap.infoTitle?.trim() || roadmap.infoContent?.trim())
+}
+
+function getFilteredRoadmapInfoItems() {
+  const keyword = normalizeText(filterState.roadmapInfoQuery)
+  return roadmapInfoItems.filter((roadmap) =>
+    matchesKeyword(keyword, [
+      roadmap.roadmapId,
+      roadmap.title,
+      roadmap.description,
+      roadmap.infoTitle,
+      roadmap.infoContent,
+    ]),
+  )
+}
+
+function renderRoadmapInfoOptions() {
+  const select = getElement<HTMLSelectElement>('roadmapInfoRoadmapSelect')
+  select.innerHTML = [
+    '<option value="">로드맵을 선택하세요</option>',
+    ...roadmapInfoItems.map(
+      (roadmap) => `
+        <option value="${roadmap.roadmapId}" ${roadmapInfoEditingId === roadmap.roadmapId ? 'selected' : ''}>
+          ${escapeHtml(roadmap.title)}
+        </option>`,
+    ),
+  ].join('')
+  select.value = roadmapInfoEditingId === null ? '' : String(roadmapInfoEditingId)
+}
+
+function renderRoadmapInfoRows(roadmaps: AdminOfficialRoadmap[]) {
+  const tbody = getElement('roadmapInfoTableBody')
+  tbody.innerHTML = roadmaps.length
+    ? roadmaps
+        .map((roadmap) => {
+          const selected = roadmapInfoEditingId === roadmap.roadmapId
+          const hasInfo = roadmapHasInfo(roadmap)
+          return `
+            <tr class="border-b border-slate-100 transition-colors ${selected ? 'bg-teal-50/60' : 'hover:bg-slate-50/70'}">
+              <td class="px-5 py-3 font-mono text-xs text-slate-400">#${roadmap.roadmapId}</td>
+              <td class="px-5 py-3">
+                <div class="truncate font-bold text-slate-800">${escapeHtml(roadmap.title)}</div>
+                <div class="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">${escapeHtml(roadmap.description || '설명 없음')}</div>
+              </td>
+              <td class="px-5 py-3">
+                <div class="truncate text-sm font-semibold text-slate-700">${escapeHtml(roadmap.infoTitle || '소개 제목 없음')}</div>
+                <div class="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">${escapeHtml(roadmapInfoHtmlToEditableText(roadmap.infoContent) || '소개 본문 없음')}</div>
+              </td>
+              <td class="px-5 py-3">
+                <span class="rounded px-2 py-0.5 text-[10px] font-bold tracking-wide ${hasInfo ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}">
+                  ${hasInfo ? '등록됨' : '미등록'}
+                </span>
+              </td>
+              <td class="px-5 py-3 text-right">
+                <div class="flex flex-nowrap justify-end gap-1">
+                  <button onclick="editRoadmapInfo(${roadmap.roadmapId})" class="whitespace-nowrap rounded border border-slate-200 bg-white px-2 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50" type="button">편집</button>
+                  <button onclick="clearRoadmapInfo(${roadmap.roadmapId})" class="whitespace-nowrap rounded bg-rose-50 px-2 py-1.5 text-xs font-medium text-rose-600 transition hover:bg-rose-100 hover:text-rose-800 ${hasInfo ? '' : 'opacity-50'}" type="button" ${hasInfo ? '' : 'disabled'}>삭제</button>
+                </div>
+              </td>
+            </tr>`
+        })
+        .join('')
+    : buildEmptyRow(5, '조건에 맞는 로드맵 소개가 없습니다.')
+}
+
+function syncRoadmapInfoFormState() {
+  const selectedRoadmap = roadmapInfoItems.find((roadmap) => roadmap.roadmapId === roadmapInfoEditingId) ?? null
+  const form = getElement<HTMLFormElement>('roadmapInfoForm')
+  const titleInput = getElement<HTMLInputElement>('roadmapInfoTitleInput')
+  const contentInput = getElement<HTMLTextAreaElement>('roadmapInfoContentInput')
+  const saveButton = getElement<HTMLButtonElement>('roadmapInfoSaveButton')
+  const deleteButton = getElement<HTMLButtonElement>('roadmapInfoDeleteButton')
+  const resetButton = getElement<HTMLButtonElement>('roadmapInfoResetButton')
+  const selectedTitle = getElement('roadmapInfoSelectedTitle')
+  const selectedDescription = getElement('roadmapInfoSelectedDescription')
+  const hasSelection = selectedRoadmap !== null
+  const hasInfo = selectedRoadmap ? roadmapHasInfo(selectedRoadmap) : false
+
+  form.classList.toggle('opacity-70', roadmapInfoSaving)
+  titleInput.disabled = !hasSelection || roadmapInfoSaving
+  contentInput.disabled = !hasSelection || roadmapInfoSaving
+  saveButton.disabled = !hasSelection || roadmapInfoSaving
+  deleteButton.disabled = !hasSelection || !hasInfo || roadmapInfoSaving
+  resetButton.disabled = roadmapInfoSaving
+  deleteButton.classList.toggle('opacity-50', !hasInfo)
+  deleteButton.classList.toggle('cursor-not-allowed', !hasSelection || !hasInfo || roadmapInfoSaving)
+  saveButton.classList.toggle('opacity-70', roadmapInfoSaving)
+  saveButton.classList.toggle('cursor-not-allowed', !hasSelection || roadmapInfoSaving)
+  saveButton.innerHTML = roadmapInfoSaving
+    ? '<i class="fas fa-circle-notch fa-spin mr-1"></i> 저장 중'
+    : '<i class="fas fa-save mr-1"></i> 소개 저장'
+
+  selectedTitle.textContent = selectedRoadmap?.title ?? '로드맵을 선택하세요'
+  selectedDescription.textContent = selectedRoadmap?.description ?? '목록에서 로드맵을 선택하면 소개 제목과 본문을 수정할 수 있습니다.'
+  renderRoadmapInfoPreview()
+}
+
+function populateRoadmapInfoForm() {
+  const selectedRoadmap = roadmapInfoItems.find((roadmap) => roadmap.roadmapId === roadmapInfoEditingId) ?? null
+  getElement<HTMLInputElement>('roadmapInfoTitleInput').value = selectedRoadmap?.infoTitle ?? ''
+  getElement<HTMLTextAreaElement>('roadmapInfoContentInput').value = roadmapInfoHtmlToEditableText(selectedRoadmap?.infoContent)
+  renderRoadmapInfoOptions()
+  syncRoadmapInfoFormState()
+}
+
+function renderRoadmapInfoPreview() {
+  const preview = document.getElementById('roadmapInfoPreview')
+  const contentInput = document.getElementById('roadmapInfoContentInput') as HTMLTextAreaElement | null
+  if (!preview || !contentInput) {
+    return
+  }
+
+  const html = buildRoadmapInfoContentHtml(contentInput.value)
+  preview.innerHTML = html.trim()
+    ? sanitizePreviewHtml(html)
+    : '<p class="text-slate-400">소개 본문을 입력하면 미리보기가 표시됩니다.</p>'
+}
+
+function renderRoadmapInfoManager() {
+  const summaryElement = getElement('roadmapInfoSummary')
+  const filteredRoadmaps = getFilteredRoadmapInfoItems()
+  const registeredCount = roadmapInfoItems.filter(roadmapHasInfo).length
+
+  summaryElement.textContent = `전체 ${formatNumber(roadmapInfoItems.length)}개 · 소개 등록 ${formatNumber(registeredCount)}개`
+  renderRoadmapInfoOptions()
+
+  if (roadmapInfoLoading) {
+    getElement('roadmapInfoTableBody').innerHTML = buildLoadingRow(5)
+    syncRoadmapInfoFormState()
+    return
+  }
+
+  if (roadmapInfoError) {
+    getElement('roadmapInfoTableBody').innerHTML = buildErrorRow(5, roadmapInfoError)
+    syncRoadmapInfoFormState()
+    return
+  }
+
+  renderRoadmapInfoRows(filteredRoadmaps)
+  updateFilterSummary('roadmapInfoFilterSummary', roadmapInfoItems.length, filteredRoadmaps.length)
+  syncRoadmapInfoFormState()
+}
+
+function setRoadmapInfoForm(roadmapId: number | null) {
+  roadmapInfoEditingId = roadmapId
+  populateRoadmapInfoForm()
+  renderRoadmapInfoRows(getFilteredRoadmapInfoItems())
+}
+
+async function fetchRoadmapInfoItems() {
+  roadmapInfoLoading = true
+  roadmapInfoError = null
+  renderRoadmapInfoManager()
+
+  try {
+    roadmapInfoItems = await adminApi.getOfficialRoadmaps()
+    if (roadmapInfoEditingId && !roadmapInfoItems.some((roadmap) => roadmap.roadmapId === roadmapInfoEditingId)) {
+      roadmapInfoEditingId = null
+    }
+  } catch (error) {
+    roadmapInfoError = error instanceof Error ? error.message : '로드맵 소개 목록을 불러오지 못했습니다.'
+  } finally {
+    roadmapInfoLoading = false
+    renderRoadmapInfoManager()
+    populateRoadmapInfoForm()
+  }
+}
+
+async function saveRoadmapInfoForm() {
+  const roadmapId = roadmapInfoEditingId
+  if (roadmapId === null) {
+    window.alert('소개를 수정할 로드맵을 선택하세요.')
+    return
+  }
+
+  const infoTitle = normalizeOptionalString(getElement<HTMLInputElement>('roadmapInfoTitleInput').value)
+  const editableContent = normalizeOptionalString(getElement<HTMLTextAreaElement>('roadmapInfoContentInput').value)
+  const infoContent = editableContent ? buildRoadmapInfoContentHtml(editableContent) : null
+
+  if (!infoTitle && !infoContent) {
+    window.alert('소개 제목 또는 소개 본문을 입력하세요. 비우려면 소개 삭제를 사용하세요.')
+    return
+  }
+
+  roadmapInfoSaving = true
+  syncRoadmapInfoFormState()
+
+  try {
+    await adminApi.updateOfficialRoadmapInfo(roadmapId, { infoTitle, infoContent })
+    window.alert('로드맵 소개를 저장했습니다.')
+    await fetchRoadmapInfoItems()
+    setRoadmapInfoForm(roadmapId)
+  } finally {
+    roadmapInfoSaving = false
+    syncRoadmapInfoFormState()
+  }
+}
+
+async function clearRoadmapInfoById(roadmapId: number) {
+  const roadmap = roadmapInfoItems.find((item) => item.roadmapId === roadmapId)
+  if (!roadmap) {
+    window.alert('소개를 삭제할 로드맵을 찾지 못했습니다.')
+    return
+  }
+
+  if (!roadmapHasInfo(roadmap)) {
+    window.alert('삭제할 소개 콘텐츠가 없습니다.')
+    return
+  }
+
+  if (!window.confirm(`'${roadmap.title}' 로드맵 소개를 삭제하시겠습니까?`)) {
+    return
+  }
+
+  roadmapInfoSaving = true
+  syncRoadmapInfoFormState()
+
+  try {
+    await adminApi.deleteOfficialRoadmapInfo(roadmapId)
+    window.alert('로드맵 소개를 삭제했습니다.')
+    await fetchRoadmapInfoItems()
+    setRoadmapInfoForm(roadmapId)
+  } finally {
+    roadmapInfoSaving = false
+    syncRoadmapInfoFormState()
+  }
+}
+
 function renderNodeRows(nodes: AdminRoadmapNode[]) {
   const tbody = getElement('nodeTableBody')
   tbody.innerHTML = nodes.length
@@ -1583,6 +1919,62 @@ function moveArrayItem<T>(items: T[], index: number, direction: number) {
   items.splice(nextIndex, 0, movedItem)
 }
 
+function getCatalogCategoryCollapseKey(category: CourseCatalogCategory, categoryIndex: number) {
+  return String(category.categoryKey ?? '').trim() || `category-index-${categoryIndex}`
+}
+
+function getRoadmapHubSectionCollapseKey(section: RoadmapHubSection, sectionIndex: number) {
+  return String(section.sectionKey ?? '').trim() || `roadmap-hub-section-index-${sectionIndex}`
+}
+
+function buildCollapsedKeySet<T>(items: T[], getKey: (item: T, index: number) => string) {
+  return new Set(items.map((item, index) => getKey(item, index)))
+}
+
+function setAllCatalogCategoriesCollapsed(collapsed: boolean) {
+  collapsedCatalogCategoryKeys = collapsed
+    ? buildCollapsedKeySet(courseCatalogMenu.categories, getCatalogCategoryCollapseKey)
+    : new Set<string>()
+  renderCourseCatalogMenuEditor()
+}
+
+function toggleCatalogCategoryCollapsed(categoryIndex: number) {
+  const category = courseCatalogMenu.categories[categoryIndex]
+  if (!category) {
+    return
+  }
+
+  const categoryKey = getCatalogCategoryCollapseKey(category, categoryIndex)
+  if (collapsedCatalogCategoryKeys.has(categoryKey)) {
+    collapsedCatalogCategoryKeys.delete(categoryKey)
+  } else {
+    collapsedCatalogCategoryKeys.add(categoryKey)
+  }
+  renderCourseCatalogMenuEditor()
+}
+
+function setAllRoadmapHubSectionsCollapsed(collapsed: boolean) {
+  collapsedRoadmapHubSectionKeys = collapsed
+    ? buildCollapsedKeySet(roadmapHubCatalog.sections, getRoadmapHubSectionCollapseKey)
+    : new Set<string>()
+  renderRoadmapHubEditor()
+}
+
+function toggleRoadmapHubSectionCollapsed(sectionIndex: number) {
+  const section = roadmapHubCatalog.sections[sectionIndex]
+  if (!section) {
+    return
+  }
+
+  const sectionKey = getRoadmapHubSectionCollapseKey(section, sectionIndex)
+  if (collapsedRoadmapHubSectionKeys.has(sectionKey)) {
+    collapsedRoadmapHubSectionKeys.delete(sectionKey)
+  } else {
+    collapsedRoadmapHubSectionKeys.add(sectionKey)
+  }
+  renderRoadmapHubEditor()
+}
+
 function updateCatalogMenu(mutator: (menu: CourseCatalogMenu) => void) {
   const nextMenu = cloneCourseCatalogMenu(courseCatalogMenu)
   mutator(nextMenu)
@@ -1661,70 +2053,58 @@ function renderCourseCatalogMenuEditor() {
 }
 
 function renderCatalogCategoryCard(category: CourseCatalogCategory, categoryIndex: number) {
-  const groupsHtml = category.groups.length
-    ? category.groups.map((group, groupIndex) => renderCatalogGroupCard(categoryIndex, group, groupIndex)).join('')
-    : `
-      <div class="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-6 text-center text-xs text-slate-400">
-        등록된 그룹이 없습니다.
-      </div>
-    `
+  const categoryKey = getCatalogCategoryCollapseKey(category, categoryIndex)
+  const collapsed = collapsedCatalogCategoryKeys.has(categoryKey)
+  const filterItemCount = category.groups.reduce((sum, group) => sum + group.items.length, 0)
+  const summaryBadgesHtml = `
+    <span class="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-500">메가메뉴 ${formatNumber(category.megaMenuItems.length)}개</span>
+    <span class="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-500">그룹 ${formatNumber(category.groups.length)}개</span>
+    <span class="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-500">필터 ${formatNumber(filterItemCount)}개</span>
+  `
 
-  const megaMenuHtml = category.megaMenuItems.length
-    ? category.megaMenuItems
-        .map(
-          (item, itemIndex) => `
-            <div class="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
-              <input
-                value="${escapeHtml(item.label)}"
-                oninput="updateCatalogMegaMenuItemLabel(${categoryIndex}, ${itemIndex}, this.value)"
-                type="text"
-                class="flex-1 bg-transparent text-sm text-slate-700 outline-none"
-                placeholder="메가메뉴 라벨"
-              />
-              <div class="flex items-center gap-1 text-slate-400">
-                <button onclick="moveCatalogMegaMenuItem(${categoryIndex}, ${itemIndex}, -1)" class="rounded p-1 transition hover:bg-slate-100 hover:text-slate-700" type="button">
-                  <i class="fas fa-arrow-up text-xs"></i>
-                </button>
-                <button onclick="moveCatalogMegaMenuItem(${categoryIndex}, ${itemIndex}, 1)" class="rounded p-1 transition hover:bg-slate-100 hover:text-slate-700" type="button">
-                  <i class="fas fa-arrow-down text-xs"></i>
-                </button>
-                <button onclick="removeCatalogMegaMenuItem(${categoryIndex}, ${itemIndex})" class="rounded p-1 transition hover:bg-rose-50 hover:text-rose-600" type="button">
-                  <i class="fas fa-trash text-xs"></i>
-                </button>
-              </div>
-            </div>`,
-        )
-        .join('')
-    : `
-      <div class="rounded-lg border border-dashed border-slate-200 bg-white px-4 py-5 text-center text-xs text-slate-400">
-        등록된 메가메뉴 항목이 없습니다.
-      </div>
-    `
-
-  return `
-    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div class="flex flex-col gap-4 border-b border-slate-100 pb-5 xl:flex-row xl:items-start xl:justify-between">
-        <div>
-          <div class="flex items-center gap-2">
-            <span class="rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-bold text-indigo-600">카테고리 ${categoryIndex + 1}</span>
-            <span class="rounded-full px-2.5 py-1 text-[11px] font-bold ${category.active ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}">${category.active ? '활성' : '비활성'}</span>
-          </div>
-          <h3 class="mt-3 text-lg font-bold text-slate-900">${escapeHtml(category.label || '새 카테고리')}</h3>
-          <p class="mt-1 text-xs text-slate-500">key: ${escapeHtml(category.categoryKey || '-')}</p>
+  let categoryBodyHtml = ''
+  if (!collapsed) {
+    const groupsHtml = category.groups.length
+      ? category.groups.map((group, groupIndex) => renderCatalogGroupCard(categoryIndex, group, groupIndex)).join('')
+      : `
+        <div class="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-6 text-center text-xs text-slate-400">
+          등록된 그룹이 없습니다.
         </div>
-        <div class="flex flex-wrap items-center gap-2">
-          <button onclick="moveCatalogCategory(${categoryIndex}, -1)" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-500 transition hover:bg-slate-50 hover:text-slate-700" type="button">
-            <i class="fas fa-arrow-up mr-1"></i> 위로
-          </button>
-          <button onclick="moveCatalogCategory(${categoryIndex}, 1)" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-500 transition hover:bg-slate-50 hover:text-slate-700" type="button">
-            <i class="fas fa-arrow-down mr-1"></i> 아래로
-          </button>
-          <button onclick="deleteCatalogCategory(${categoryIndex})" class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-600 transition hover:bg-rose-100" type="button">
-            <i class="fas fa-trash mr-1"></i> 삭제
-          </button>
-        </div>
-      </div>
+      `
 
+    const megaMenuHtml = category.megaMenuItems.length
+      ? category.megaMenuItems
+          .map(
+            (item, itemIndex) => `
+              <div class="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
+                <input
+                  value="${escapeHtml(item.label)}"
+                  oninput="updateCatalogMegaMenuItemLabel(${categoryIndex}, ${itemIndex}, this.value)"
+                  type="text"
+                  class="flex-1 bg-transparent text-sm text-slate-700 outline-none"
+                  placeholder="메가메뉴 라벨"
+                />
+                <div class="flex items-center gap-1 text-slate-400">
+                  <button onclick="moveCatalogMegaMenuItem(${categoryIndex}, ${itemIndex}, -1)" class="rounded p-1 transition hover:bg-slate-100 hover:text-slate-700" type="button">
+                    <i class="fas fa-arrow-up text-xs"></i>
+                  </button>
+                  <button onclick="moveCatalogMegaMenuItem(${categoryIndex}, ${itemIndex}, 1)" class="rounded p-1 transition hover:bg-slate-100 hover:text-slate-700" type="button">
+                    <i class="fas fa-arrow-down text-xs"></i>
+                  </button>
+                  <button onclick="removeCatalogMegaMenuItem(${categoryIndex}, ${itemIndex})" class="rounded p-1 transition hover:bg-rose-50 hover:text-rose-600" type="button">
+                    <i class="fas fa-trash text-xs"></i>
+                  </button>
+                </div>
+              </div>`,
+          )
+          .join('')
+      : `
+        <div class="rounded-lg border border-dashed border-slate-200 bg-white px-4 py-5 text-center text-xs text-slate-400">
+          등록된 메가메뉴 항목이 없습니다.
+        </div>
+      `
+
+    categoryBodyHtml = `
       <div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <label class="block">
           <span class="mb-1 block text-[11px] font-bold text-slate-500">key</span>
@@ -1798,6 +2178,37 @@ function renderCatalogCategoryCard(category: CourseCatalogCategory, categoryInde
           <div class="space-y-4">${groupsHtml}</div>
         </div>
       </div>
+    `
+  }
+
+  return `
+    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div class="flex flex-col gap-4 ${collapsed ? '' : 'border-b border-slate-100 pb-5'} xl:flex-row xl:items-start xl:justify-between">
+        <div>
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-bold text-indigo-600">카테고리 ${categoryIndex + 1}</span>
+            <span class="rounded-full px-2.5 py-1 text-[11px] font-bold ${category.active ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}">${category.active ? '활성' : '비활성'}</span>
+            ${summaryBadgesHtml}
+          </div>
+          <h3 class="mt-3 text-lg font-bold text-slate-900">${escapeHtml(category.label || '새 카테고리')}</h3>
+          <p class="mt-1 text-xs text-slate-500">key: ${escapeHtml(category.categoryKey || '-')}</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button onclick="toggleCatalogCategoryCollapsed(${categoryIndex})" aria-expanded="${!collapsed}" class="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-600 transition hover:bg-indigo-100" type="button">
+            <i class="fas ${collapsed ? 'fa-chevron-down' : 'fa-chevron-up'} mr-1"></i> ${collapsed ? '펼치기' : '접기'}
+          </button>
+          <button onclick="moveCatalogCategory(${categoryIndex}, -1)" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-500 transition hover:bg-slate-50 hover:text-slate-700" type="button">
+            <i class="fas fa-arrow-up mr-1"></i> 위로
+          </button>
+          <button onclick="moveCatalogCategory(${categoryIndex}, 1)" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-500 transition hover:bg-slate-50 hover:text-slate-700" type="button">
+            <i class="fas fa-arrow-down mr-1"></i> 아래로
+          </button>
+          <button onclick="deleteCatalogCategory(${categoryIndex})" class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-600 transition hover:bg-rose-100" type="button">
+            <i class="fas fa-trash mr-1"></i> 삭제
+          </button>
+        </div>
+      </div>
+      ${categoryBodyHtml}
     </section>
   `
 }
@@ -1914,6 +2325,7 @@ async function fetchCourseCatalogMenu() {
   try {
     const response = await adminApi.getCourseCatalogMenu()
     courseCatalogMenu = reindexCourseCatalogMenu(response)
+    collapsedCatalogCategoryKeys = buildCollapsedKeySet(courseCatalogMenu.categories, getCatalogCategoryCollapseKey)
   } catch (error) {
     courseCatalogMenuError = error instanceof Error ? error.message : '강의 메뉴를 불러오지 못했습니다.'
   } finally {
@@ -2286,43 +2698,23 @@ function renderRoadmapHubSectionCard(
   visibleItems = section.items.map((item, itemIndex) => ({ item, itemIndex })),
   filtered = false,
 ) {
+  const sectionKey = getRoadmapHubSectionCollapseKey(section, sectionIndex)
+  const collapsed = collapsedRoadmapHubSectionKeys.has(sectionKey)
   const emptyItemsMessage = filtered ? '필터 조건에 맞는 항목이 없습니다.' : '등록된 항목이 없습니다.'
   const itemCountText = filtered
     ? `표시 ${formatNumber(visibleItems.length)}개 / 전체 ${formatNumber(section.items.length)}개`
     : `항목 ${formatNumber(section.items.length)}개`
-  const itemsHtml = visibleItems.length
-    ? visibleItems.map(({ item, itemIndex }) => renderRoadmapHubItemRow(sectionIndex, item, itemIndex)).join('')
-    : `
-      <div class="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-6 text-center text-xs text-slate-400">
-        ${escapeHtml(emptyItemsMessage)}
-      </div>
-    `
-
-  return `
-    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div class="flex flex-col gap-4 border-b border-slate-100 pb-5 xl:flex-row xl:items-start xl:justify-between">
-        <div>
-          <div class="flex items-center gap-2">
-            <span class="rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-bold text-indigo-600">섹션 ${sectionIndex + 1}</span>
-            <span class="rounded-full px-2.5 py-1 text-[11px] font-bold ${section.active ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}">${section.active ? '활성' : '비활성'}</span>
-            <span class="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-500">${escapeHtml(itemCountText)}</span>
-          </div>
-          <h3 class="mt-3 text-lg font-bold text-slate-900">${escapeHtml(section.title || '새 로드맵 섹션')}</h3>
-          <p class="mt-1 text-xs text-slate-500">key: ${escapeHtml(section.sectionKey || '-')}</p>
+  let sectionBodyHtml = ''
+  if (!collapsed) {
+    const itemsHtml = visibleItems.length
+      ? visibleItems.map(({ item, itemIndex }) => renderRoadmapHubItemRow(sectionIndex, item, itemIndex)).join('')
+      : `
+        <div class="rounded-xl border border-dashed border-slate-200 bg-white px-4 py-6 text-center text-xs text-slate-400">
+          ${escapeHtml(emptyItemsMessage)}
         </div>
-        <div class="flex flex-wrap items-center gap-2">
-          <button onclick="moveRoadmapHubSection(${sectionIndex}, -1)" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-500 transition hover:bg-slate-50 hover:text-slate-700" type="button">
-            <i class="fas fa-arrow-up mr-1"></i> 위로
-          </button>
-          <button onclick="moveRoadmapHubSection(${sectionIndex}, 1)" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-500 transition hover:bg-slate-50 hover:text-slate-700" type="button">
-            <i class="fas fa-arrow-down mr-1"></i> 아래로
-          </button>
-          <button onclick="deleteRoadmapHubSection(${sectionIndex})" class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-600 transition hover:bg-rose-100" type="button">
-            <i class="fas fa-trash mr-1"></i> 삭제
-          </button>
-        </div>
-      </div>
+      `
 
+    sectionBodyHtml = `
       <div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <label class="block">
           <span class="mb-1 block text-[11px] font-bold text-slate-500">섹션 key</span>
@@ -2385,6 +2777,38 @@ function renderRoadmapHubSectionCard(
         </div>
         <div class="space-y-3">${itemsHtml}</div>
       </div>
+    `
+  }
+
+  return `
+    <section class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <div class="flex flex-col gap-4 ${collapsed ? '' : 'border-b border-slate-100 pb-5'} xl:flex-row xl:items-start xl:justify-between">
+        <div>
+          <div class="flex flex-wrap items-center gap-2">
+            <span class="rounded-full bg-indigo-50 px-2.5 py-1 text-[11px] font-bold text-indigo-600">섹션 ${sectionIndex + 1}</span>
+            <span class="rounded-full px-2.5 py-1 text-[11px] font-bold ${section.active ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}">${section.active ? '활성' : '비활성'}</span>
+            <span class="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-500">${escapeHtml(section.layoutType)}</span>
+            <span class="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-bold text-slate-500">${escapeHtml(itemCountText)}</span>
+          </div>
+          <h3 class="mt-3 text-lg font-bold text-slate-900">${escapeHtml(section.title || '새 로드맵 섹션')}</h3>
+          <p class="mt-1 text-xs text-slate-500">key: ${escapeHtml(section.sectionKey || '-')}</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button onclick="toggleRoadmapHubSectionCollapsed(${sectionIndex})" aria-expanded="${!collapsed}" class="rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-bold text-indigo-600 transition hover:bg-indigo-100" type="button">
+            <i class="fas ${collapsed ? 'fa-chevron-down' : 'fa-chevron-up'} mr-1"></i> ${collapsed ? '펼치기' : '접기'}
+          </button>
+          <button onclick="moveRoadmapHubSection(${sectionIndex}, -1)" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-500 transition hover:bg-slate-50 hover:text-slate-700" type="button">
+            <i class="fas fa-arrow-up mr-1"></i> 위로
+          </button>
+          <button onclick="moveRoadmapHubSection(${sectionIndex}, 1)" class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-bold text-slate-500 transition hover:bg-slate-50 hover:text-slate-700" type="button">
+            <i class="fas fa-arrow-down mr-1"></i> 아래로
+          </button>
+          <button onclick="deleteRoadmapHubSection(${sectionIndex})" class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-xs font-bold text-rose-600 transition hover:bg-rose-100" type="button">
+            <i class="fas fa-trash mr-1"></i> 삭제
+          </button>
+        </div>
+      </div>
+      ${sectionBodyHtml}
     </section>
   `
 }
@@ -2488,6 +2912,7 @@ async function fetchRoadmapHubCatalog() {
       ...response,
       sections: reindexRoadmapHubSections(response.sections),
     }
+    collapsedRoadmapHubSectionKeys = buildCollapsedKeySet(roadmapHubCatalog.sections, getRoadmapHubSectionCollapseKey)
   } catch (error) {
     roadmapHubError = error instanceof Error ? error.message : '로드맵 허브 구성을 불러오지 못했습니다.'
   } finally {
@@ -2537,6 +2962,9 @@ async function refreshActiveTab() {
     case 'official-roadmaps':
       await fetchOfficialRoadmaps()
       break
+    case 'roadmap-info':
+      await fetchRoadmapInfoItems()
+      break
     case 'roadmaps':
       await fetchNodes()
       break
@@ -2560,15 +2988,12 @@ function setActiveTab(nextTab: AdminTabKey) {
 
   document.querySelectorAll<HTMLElement>('.nav-btn').forEach((button) => {
     const isActive = button.dataset.target === nextTab
-    const icon = button.querySelector('i')
-
-    button.classList.toggle('bg-indigo-600', isActive)
-    button.classList.toggle('text-white', isActive)
-    button.classList.toggle('shadow-md', isActive)
-    button.classList.toggle('shadow-indigo-900/40', isActive)
-    button.classList.toggle('text-slate-400', !isActive)
-    icon?.classList.toggle('opacity-80', isActive)
-    icon?.classList.toggle('opacity-70', !isActive)
+    button.classList.toggle('is-active', isActive)
+    if (isActive) {
+      button.setAttribute('aria-current', 'page')
+    } else {
+      button.removeAttribute('aria-current')
+    }
   })
 
   const pageMeta = TAB_META[nextTab]
@@ -2621,6 +3046,45 @@ function initFilters() {
 
   getElement<HTMLButtonElement>('officialRoadmapCancelEdit').addEventListener('click', () => {
     resetOfficialRoadmapForm()
+  })
+
+  const roadmapInfoFilterInput = getElement<HTMLInputElement>('roadmapInfoFilterInput')
+  roadmapInfoFilterInput.addEventListener('input', () => {
+    filterState.roadmapInfoQuery = roadmapInfoFilterInput.value
+    renderRoadmapInfoManager()
+  })
+
+  const roadmapInfoRoadmapSelect = getElement<HTMLSelectElement>('roadmapInfoRoadmapSelect')
+  roadmapInfoRoadmapSelect.addEventListener('change', () => {
+    const selectedValue = roadmapInfoRoadmapSelect.value
+    setRoadmapInfoForm(selectedValue ? Number(selectedValue) : null)
+  })
+
+  const roadmapInfoContentInput = getElement<HTMLTextAreaElement>('roadmapInfoContentInput')
+  roadmapInfoContentInput.addEventListener('input', () => {
+    renderRoadmapInfoPreview()
+  })
+
+  const roadmapInfoForm = getElement<HTMLFormElement>('roadmapInfoForm')
+  roadmapInfoForm.addEventListener('submit', (event) => {
+    event.preventDefault()
+    void runAdminAction(async () => {
+      await saveRoadmapInfoForm()
+    })
+  })
+
+  getElement<HTMLButtonElement>('roadmapInfoResetButton').addEventListener('click', () => {
+    setRoadmapInfoForm(null)
+  })
+
+  getElement<HTMLButtonElement>('roadmapInfoDeleteButton').addEventListener('click', () => {
+    if (roadmapInfoEditingId === null) {
+      return
+    }
+
+    void runAdminAction(async () => {
+      await clearRoadmapInfoById(roadmapInfoEditingId as number)
+    })
   })
 
   const nodeFilterInput = getElement<HTMLInputElement>('nodeFilterInput')
@@ -2862,6 +3326,16 @@ function installGlobalActions() {
     })
   }
 
+  window.editRoadmapInfo = (roadmapId: number) => {
+    setRoadmapInfoForm(roadmapId)
+  }
+
+  window.clearRoadmapInfo = async (roadmapId: number) => {
+    await runAdminAction(async () => {
+      await clearRoadmapInfoById(roadmapId)
+    })
+  }
+
   window.updateNodeTags = async (nodeId: number) => {
     await runAdminAction(async () => {
       const node = roadmapNodeMap.get(nodeId)
@@ -3015,6 +3489,14 @@ function installGlobalActions() {
 
   window.saveCourseCatalogMenu = async () => {
     await saveCourseCatalogMenu()
+  }
+
+  window.setAllCatalogCategoriesCollapsed = (collapsed: boolean) => {
+    setAllCatalogCategoriesCollapsed(collapsed)
+  }
+
+  window.toggleCatalogCategoryCollapsed = (categoryIndex: number) => {
+    toggleCatalogCategoryCollapsed(categoryIndex)
   }
 
   window.moveCatalogCategory = (categoryIndex: number, direction: number) => {
@@ -3186,6 +3668,14 @@ function installGlobalActions() {
 
   window.saveRoadmapHubCatalog = async () => {
     await saveRoadmapHubCatalog()
+  }
+
+  window.setAllRoadmapHubSectionsCollapsed = (collapsed: boolean) => {
+    setAllRoadmapHubSectionsCollapsed(collapsed)
+  }
+
+  window.toggleRoadmapHubSectionCollapsed = (sectionIndex: number) => {
+    toggleRoadmapHubSectionCollapsed(sectionIndex)
   }
 
   window.moveRoadmapHubSection = (sectionIndex: number, direction: number) => {
