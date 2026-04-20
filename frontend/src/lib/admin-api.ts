@@ -101,6 +101,18 @@ export const adminApi = {
       body: JSON.stringify(payload),
     })
   },
+  updateOfficialRoadmapInfo(
+    roadmapId: number,
+    payload: { infoTitle?: string | null; infoContent?: string | null },
+  ) {
+    return request<AdminOfficialRoadmap>(`/api/admin/roadmaps/${roadmapId}/info`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    })
+  },
+  deleteOfficialRoadmapInfo(roadmapId: number) {
+    return request<AdminOfficialRoadmap>(`/api/admin/roadmaps/${roadmapId}/info`, { method: 'DELETE' })
+  },
   deleteOfficialRoadmap(roadmapId: number) {
     return request<void>(`/api/admin/roadmaps/${roadmapId}`, { method: 'DELETE' })
   },

@@ -35,6 +35,7 @@ type AdminTabKey =
   | 'dashboard'
   | 'tags'
   | 'official-roadmaps'
+  | 'roadmap-info'
   | 'roadmaps'
   | 'catalog-menu'
   | 'roadmap-hub'
@@ -44,6 +45,7 @@ type AdminTabKey =
 type DashboardFilterState = {
   tagQuery: string
   officialRoadmapQuery: string
+  roadmapInfoQuery: string
   nodeQuery: string
   nodeHubSectionKey: string
   nodeHubItemKey: string
@@ -104,6 +106,8 @@ declare global {
     deleteOfficialRoadmap: (roadmapId: number) => Promise<void>
     createRoadmapNode: () => Promise<void>
     editRoadmapNode: (nodeId: number) => Promise<void>
+    editRoadmapInfo: (roadmapId: number) => void
+    clearRoadmapInfo: (roadmapId: number) => Promise<void>
     updateNodeTags: (nodeId: number) => Promise<void>
     updateNodePrerequisites: (nodeId: number) => Promise<void>
     updateNodeRules: (nodeId: number) => Promise<void>
@@ -152,6 +156,7 @@ const TAB_META: Record<AdminTabKey, { title: string; description: string }> = {
   dashboard: { title: '플랫폼 실시간 현황', description: 'DevPath 관리자 운영 지표 요약' },
   tags: { title: '기술 태그 데이터베이스', description: '공식 태그를 조회하고 병합합니다.' },
   'official-roadmaps': { title: '공식 로드맵 관리', description: '노드가 연결될 공식 로드맵을 생성, 수정, 삭제합니다.' },
+  'roadmap-info': { title: '로드맵 소개 관리', description: '로드맵 상세 상단 소개 아코디언 콘텐츠를 수정합니다.' },
   roadmaps: { title: '마스터 로드맵 노드', description: '공식 로드맵 노드 생성, 수정, 선수 조건과 완료 기준을 관리합니다.' },
   'catalog-menu': { title: '강의 목록 메뉴 관리', description: 'lecture-list 상단 카테고리와 필터 구성을 수정합니다.' },
   'roadmap-hub': { title: '로드맵 허브 관리', description: 'roadmap-hub 섹션과 연결 로드맵 구성을 수정합니다.' },
@@ -170,6 +175,11 @@ let tagItems: AdminTag[] = []
 let officialRoadmapItems: AdminOfficialRoadmap[] = []
 let officialRoadmapEditingId: number | null = null
 let officialRoadmapSaving = false
+let roadmapInfoItems: AdminOfficialRoadmap[] = []
+let roadmapInfoEditingId: number | null = null
+let roadmapInfoLoading = false
+let roadmapInfoSaving = false
+let roadmapInfoError: string | null = null
 let nodeItems: AdminRoadmapNode[] = []
 let officialRoadmapOptions: AdminOfficialRoadmapOption[] = []
 let nodeHubCatalog: AdminRoadmapHubCatalog = { sections: [], officialRoadmaps: [] }
@@ -193,6 +203,7 @@ let roadmapNodeModalReturnFocus: HTMLElement | null = null
 const filterState: DashboardFilterState = {
   tagQuery: '',
   officialRoadmapQuery: '',
+  roadmapInfoQuery: '',
   nodeQuery: '',
   nodeHubSectionKey: '',
   nodeHubItemKey: '',
@@ -230,6 +241,96 @@ function escapeHtml(value: string | number | null | undefined) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;')
+}
+
+function normalizeInlineText(value: string | null | undefined) {
+  return String(value ?? '').replace(/\s+/g, ' ').trim()
+}
+
+function sanitizePreviewHtml(content: string) {
+  return content
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/\son\w+="[^"]*"/gi, '')
+    .replace(/\son\w+='[^']*'/gi, '')
+}
+
+function roadmapInfoHtmlToEditableText(content: string | null | undefined) {
+  const normalized = content?.trim()
+  if (!normalized) {
+    return ''
+  }
+
+  if (!normalized.includes('<')) {
+    return normalized
+  }
+
+  const document = new DOMParser().parseFromString(normalized, 'text/html')
+  const lines: string[] = []
+  const blocks = document.body.querySelectorAll('h1, h2, h3, h4, p, li, strong.block, div > strong')
+
+  blocks.forEach((block) => {
+    const text = normalizeInlineText(block.textContent)
+    if (!text) {
+      return
+    }
+
+    if (block.tagName === 'LI') {
+      lines.push(`- ${text}`)
+      return
+    }
+
+    if (block.matches('h1, h2, h3, h4, strong.block, div > strong')) {
+      lines.push(`## ${text}`)
+      return
+    }
+
+    lines.push(text)
+  })
+
+  return lines.length > 0 ? lines.join('\n\n') : normalizeInlineText(document.body.textContent)
+}
+
+function buildRoadmapInfoContentHtml(content: string | null | undefined) {
+  const lines = String(content ?? '')
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+
+  const parts: string[] = []
+  let listItems: string[] = []
+
+  const flushList = () => {
+    if (listItems.length === 0) {
+      return
+    }
+
+    parts.push(`<ul class="list-disc pl-5 space-y-1 text-gray-700">${listItems.join('')}</ul>`)
+    listItems = []
+  }
+
+  lines.forEach((line) => {
+    if (!line) {
+      flushList()
+      return
+    }
+
+    if (line.startsWith('- ')) {
+      listItems.push(`<li>${escapeHtml(line.slice(2).trim())}</li>`)
+      return
+    }
+
+    flushList()
+
+    if (line.startsWith('## ')) {
+      parts.push(`<strong class="block text-gray-900 text-base mb-2">${escapeHtml(line.slice(3).trim())}</strong>`)
+      return
+    }
+
+    parts.push(`<p class="mb-2">${escapeHtml(line)}</p>`)
+  })
+
+  flushList()
+
+  return parts.join('\n')
 }
 
 // 필터 비교는 공백 제거와 소문자 변환 기준으로 통일한다.
@@ -1208,6 +1309,235 @@ async function submitOfficialRoadmapForm() {
   } finally {
     officialRoadmapSaving = false
     syncOfficialRoadmapFormState()
+  }
+}
+
+function roadmapHasInfo(roadmap: AdminOfficialRoadmap) {
+  return Boolean(roadmap.infoTitle?.trim() || roadmap.infoContent?.trim())
+}
+
+function getFilteredRoadmapInfoItems() {
+  const keyword = normalizeText(filterState.roadmapInfoQuery)
+  return roadmapInfoItems.filter((roadmap) =>
+    matchesKeyword(keyword, [
+      roadmap.roadmapId,
+      roadmap.title,
+      roadmap.description,
+      roadmap.infoTitle,
+      roadmap.infoContent,
+    ]),
+  )
+}
+
+function renderRoadmapInfoOptions() {
+  const select = getElement<HTMLSelectElement>('roadmapInfoRoadmapSelect')
+  select.innerHTML = [
+    '<option value="">로드맵을 선택하세요</option>',
+    ...roadmapInfoItems.map(
+      (roadmap) => `
+        <option value="${roadmap.roadmapId}" ${roadmapInfoEditingId === roadmap.roadmapId ? 'selected' : ''}>
+          ${escapeHtml(roadmap.title)}
+        </option>`,
+    ),
+  ].join('')
+  select.value = roadmapInfoEditingId === null ? '' : String(roadmapInfoEditingId)
+}
+
+function renderRoadmapInfoRows(roadmaps: AdminOfficialRoadmap[]) {
+  const tbody = getElement('roadmapInfoTableBody')
+  tbody.innerHTML = roadmaps.length
+    ? roadmaps
+        .map((roadmap) => {
+          const selected = roadmapInfoEditingId === roadmap.roadmapId
+          const hasInfo = roadmapHasInfo(roadmap)
+          return `
+            <tr class="border-b border-slate-100 transition-colors ${selected ? 'bg-teal-50/60' : 'hover:bg-slate-50/70'}">
+              <td class="px-5 py-3 font-mono text-xs text-slate-400">#${roadmap.roadmapId}</td>
+              <td class="px-5 py-3">
+                <div class="truncate font-bold text-slate-800">${escapeHtml(roadmap.title)}</div>
+                <div class="mt-1 line-clamp-2 text-xs leading-5 text-slate-500">${escapeHtml(roadmap.description || '설명 없음')}</div>
+              </td>
+              <td class="px-5 py-3">
+                <div class="truncate text-sm font-semibold text-slate-700">${escapeHtml(roadmap.infoTitle || '소개 제목 없음')}</div>
+                <div class="mt-1 line-clamp-2 text-xs leading-5 text-slate-400">${escapeHtml(roadmapInfoHtmlToEditableText(roadmap.infoContent) || '소개 본문 없음')}</div>
+              </td>
+              <td class="px-5 py-3">
+                <span class="rounded px-2 py-0.5 text-[10px] font-bold tracking-wide ${hasInfo ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-500'}">
+                  ${hasInfo ? '등록됨' : '미등록'}
+                </span>
+              </td>
+              <td class="px-5 py-3 text-right">
+                <div class="flex flex-nowrap justify-end gap-1">
+                  <button onclick="editRoadmapInfo(${roadmap.roadmapId})" class="whitespace-nowrap rounded border border-slate-200 bg-white px-2 py-1.5 text-xs font-medium text-slate-600 transition hover:bg-slate-50" type="button">편집</button>
+                  <button onclick="clearRoadmapInfo(${roadmap.roadmapId})" class="whitespace-nowrap rounded bg-rose-50 px-2 py-1.5 text-xs font-medium text-rose-600 transition hover:bg-rose-100 hover:text-rose-800 ${hasInfo ? '' : 'opacity-50'}" type="button" ${hasInfo ? '' : 'disabled'}>삭제</button>
+                </div>
+              </td>
+            </tr>`
+        })
+        .join('')
+    : buildEmptyRow(5, '조건에 맞는 로드맵 소개가 없습니다.')
+}
+
+function syncRoadmapInfoFormState() {
+  const selectedRoadmap = roadmapInfoItems.find((roadmap) => roadmap.roadmapId === roadmapInfoEditingId) ?? null
+  const form = getElement<HTMLFormElement>('roadmapInfoForm')
+  const titleInput = getElement<HTMLInputElement>('roadmapInfoTitleInput')
+  const contentInput = getElement<HTMLTextAreaElement>('roadmapInfoContentInput')
+  const saveButton = getElement<HTMLButtonElement>('roadmapInfoSaveButton')
+  const deleteButton = getElement<HTMLButtonElement>('roadmapInfoDeleteButton')
+  const resetButton = getElement<HTMLButtonElement>('roadmapInfoResetButton')
+  const selectedTitle = getElement('roadmapInfoSelectedTitle')
+  const selectedDescription = getElement('roadmapInfoSelectedDescription')
+  const hasSelection = selectedRoadmap !== null
+  const hasInfo = selectedRoadmap ? roadmapHasInfo(selectedRoadmap) : false
+
+  form.classList.toggle('opacity-70', roadmapInfoSaving)
+  titleInput.disabled = !hasSelection || roadmapInfoSaving
+  contentInput.disabled = !hasSelection || roadmapInfoSaving
+  saveButton.disabled = !hasSelection || roadmapInfoSaving
+  deleteButton.disabled = !hasSelection || !hasInfo || roadmapInfoSaving
+  resetButton.disabled = roadmapInfoSaving
+  deleteButton.classList.toggle('opacity-50', !hasInfo)
+  deleteButton.classList.toggle('cursor-not-allowed', !hasSelection || !hasInfo || roadmapInfoSaving)
+  saveButton.classList.toggle('opacity-70', roadmapInfoSaving)
+  saveButton.classList.toggle('cursor-not-allowed', !hasSelection || roadmapInfoSaving)
+  saveButton.innerHTML = roadmapInfoSaving
+    ? '<i class="fas fa-circle-notch fa-spin mr-1"></i> 저장 중'
+    : '<i class="fas fa-save mr-1"></i> 소개 저장'
+
+  selectedTitle.textContent = selectedRoadmap?.title ?? '로드맵을 선택하세요'
+  selectedDescription.textContent = selectedRoadmap?.description ?? '목록에서 로드맵을 선택하면 소개 제목과 본문을 수정할 수 있습니다.'
+  renderRoadmapInfoPreview()
+}
+
+function populateRoadmapInfoForm() {
+  const selectedRoadmap = roadmapInfoItems.find((roadmap) => roadmap.roadmapId === roadmapInfoEditingId) ?? null
+  getElement<HTMLInputElement>('roadmapInfoTitleInput').value = selectedRoadmap?.infoTitle ?? ''
+  getElement<HTMLTextAreaElement>('roadmapInfoContentInput').value = roadmapInfoHtmlToEditableText(selectedRoadmap?.infoContent)
+  renderRoadmapInfoOptions()
+  syncRoadmapInfoFormState()
+}
+
+function renderRoadmapInfoPreview() {
+  const preview = document.getElementById('roadmapInfoPreview')
+  const contentInput = document.getElementById('roadmapInfoContentInput') as HTMLTextAreaElement | null
+  if (!preview || !contentInput) {
+    return
+  }
+
+  const html = buildRoadmapInfoContentHtml(contentInput.value)
+  preview.innerHTML = html.trim()
+    ? sanitizePreviewHtml(html)
+    : '<p class="text-slate-400">소개 본문을 입력하면 미리보기가 표시됩니다.</p>'
+}
+
+function renderRoadmapInfoManager() {
+  const summaryElement = getElement('roadmapInfoSummary')
+  const filteredRoadmaps = getFilteredRoadmapInfoItems()
+  const registeredCount = roadmapInfoItems.filter(roadmapHasInfo).length
+
+  summaryElement.textContent = `전체 ${formatNumber(roadmapInfoItems.length)}개 · 소개 등록 ${formatNumber(registeredCount)}개`
+  renderRoadmapInfoOptions()
+
+  if (roadmapInfoLoading) {
+    getElement('roadmapInfoTableBody').innerHTML = buildLoadingRow(5)
+    syncRoadmapInfoFormState()
+    return
+  }
+
+  if (roadmapInfoError) {
+    getElement('roadmapInfoTableBody').innerHTML = buildErrorRow(5, roadmapInfoError)
+    syncRoadmapInfoFormState()
+    return
+  }
+
+  renderRoadmapInfoRows(filteredRoadmaps)
+  updateFilterSummary('roadmapInfoFilterSummary', roadmapInfoItems.length, filteredRoadmaps.length)
+  syncRoadmapInfoFormState()
+}
+
+function setRoadmapInfoForm(roadmapId: number | null) {
+  roadmapInfoEditingId = roadmapId
+  populateRoadmapInfoForm()
+  renderRoadmapInfoRows(getFilteredRoadmapInfoItems())
+}
+
+async function fetchRoadmapInfoItems() {
+  roadmapInfoLoading = true
+  roadmapInfoError = null
+  renderRoadmapInfoManager()
+
+  try {
+    roadmapInfoItems = await adminApi.getOfficialRoadmaps()
+    if (roadmapInfoEditingId && !roadmapInfoItems.some((roadmap) => roadmap.roadmapId === roadmapInfoEditingId)) {
+      roadmapInfoEditingId = null
+    }
+  } catch (error) {
+    roadmapInfoError = error instanceof Error ? error.message : '로드맵 소개 목록을 불러오지 못했습니다.'
+  } finally {
+    roadmapInfoLoading = false
+    renderRoadmapInfoManager()
+    populateRoadmapInfoForm()
+  }
+}
+
+async function saveRoadmapInfoForm() {
+  const roadmapId = roadmapInfoEditingId
+  if (roadmapId === null) {
+    window.alert('소개를 수정할 로드맵을 선택하세요.')
+    return
+  }
+
+  const infoTitle = normalizeOptionalString(getElement<HTMLInputElement>('roadmapInfoTitleInput').value)
+  const editableContent = normalizeOptionalString(getElement<HTMLTextAreaElement>('roadmapInfoContentInput').value)
+  const infoContent = editableContent ? buildRoadmapInfoContentHtml(editableContent) : null
+
+  if (!infoTitle && !infoContent) {
+    window.alert('소개 제목 또는 소개 본문을 입력하세요. 비우려면 소개 삭제를 사용하세요.')
+    return
+  }
+
+  roadmapInfoSaving = true
+  syncRoadmapInfoFormState()
+
+  try {
+    await adminApi.updateOfficialRoadmapInfo(roadmapId, { infoTitle, infoContent })
+    window.alert('로드맵 소개를 저장했습니다.')
+    await fetchRoadmapInfoItems()
+    setRoadmapInfoForm(roadmapId)
+  } finally {
+    roadmapInfoSaving = false
+    syncRoadmapInfoFormState()
+  }
+}
+
+async function clearRoadmapInfoById(roadmapId: number) {
+  const roadmap = roadmapInfoItems.find((item) => item.roadmapId === roadmapId)
+  if (!roadmap) {
+    window.alert('소개를 삭제할 로드맵을 찾지 못했습니다.')
+    return
+  }
+
+  if (!roadmapHasInfo(roadmap)) {
+    window.alert('삭제할 소개 콘텐츠가 없습니다.')
+    return
+  }
+
+  if (!window.confirm(`'${roadmap.title}' 로드맵 소개를 삭제하시겠습니까?`)) {
+    return
+  }
+
+  roadmapInfoSaving = true
+  syncRoadmapInfoFormState()
+
+  try {
+    await adminApi.deleteOfficialRoadmapInfo(roadmapId)
+    window.alert('로드맵 소개를 삭제했습니다.')
+    await fetchRoadmapInfoItems()
+    setRoadmapInfoForm(roadmapId)
+  } finally {
+    roadmapInfoSaving = false
+    syncRoadmapInfoFormState()
   }
 }
 
@@ -2632,6 +2962,9 @@ async function refreshActiveTab() {
     case 'official-roadmaps':
       await fetchOfficialRoadmaps()
       break
+    case 'roadmap-info':
+      await fetchRoadmapInfoItems()
+      break
     case 'roadmaps':
       await fetchNodes()
       break
@@ -2713,6 +3046,45 @@ function initFilters() {
 
   getElement<HTMLButtonElement>('officialRoadmapCancelEdit').addEventListener('click', () => {
     resetOfficialRoadmapForm()
+  })
+
+  const roadmapInfoFilterInput = getElement<HTMLInputElement>('roadmapInfoFilterInput')
+  roadmapInfoFilterInput.addEventListener('input', () => {
+    filterState.roadmapInfoQuery = roadmapInfoFilterInput.value
+    renderRoadmapInfoManager()
+  })
+
+  const roadmapInfoRoadmapSelect = getElement<HTMLSelectElement>('roadmapInfoRoadmapSelect')
+  roadmapInfoRoadmapSelect.addEventListener('change', () => {
+    const selectedValue = roadmapInfoRoadmapSelect.value
+    setRoadmapInfoForm(selectedValue ? Number(selectedValue) : null)
+  })
+
+  const roadmapInfoContentInput = getElement<HTMLTextAreaElement>('roadmapInfoContentInput')
+  roadmapInfoContentInput.addEventListener('input', () => {
+    renderRoadmapInfoPreview()
+  })
+
+  const roadmapInfoForm = getElement<HTMLFormElement>('roadmapInfoForm')
+  roadmapInfoForm.addEventListener('submit', (event) => {
+    event.preventDefault()
+    void runAdminAction(async () => {
+      await saveRoadmapInfoForm()
+    })
+  })
+
+  getElement<HTMLButtonElement>('roadmapInfoResetButton').addEventListener('click', () => {
+    setRoadmapInfoForm(null)
+  })
+
+  getElement<HTMLButtonElement>('roadmapInfoDeleteButton').addEventListener('click', () => {
+    if (roadmapInfoEditingId === null) {
+      return
+    }
+
+    void runAdminAction(async () => {
+      await clearRoadmapInfoById(roadmapInfoEditingId as number)
+    })
   })
 
   const nodeFilterInput = getElement<HTMLInputElement>('nodeFilterInput')
@@ -2951,6 +3323,16 @@ function installGlobalActions() {
 
       await adminApi.updateRoadmapNode(nodeId, payload)
       await fetchNodes()
+    })
+  }
+
+  window.editRoadmapInfo = (roadmapId: number) => {
+    setRoadmapInfoForm(roadmapId)
+  }
+
+  window.clearRoadmapInfo = async (roadmapId: number) => {
+    await runAdminAction(async () => {
+      await clearRoadmapInfoById(roadmapId)
     })
   }
 

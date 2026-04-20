@@ -69,6 +69,8 @@ export interface AdminOfficialRoadmap {
   roadmapId: number
   title: string
   description: string | null
+  infoTitle: string | null
+  infoContent: string | null
   isOfficial: boolean
   createdAt: string | null
 }
