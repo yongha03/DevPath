@@ -2655,15 +2655,12 @@ function setActiveTab(nextTab: AdminTabKey) {
 
   document.querySelectorAll<HTMLElement>('.nav-btn').forEach((button) => {
     const isActive = button.dataset.target === nextTab
-    const icon = button.querySelector('i')
-
-    button.classList.toggle('bg-indigo-600', isActive)
-    button.classList.toggle('text-white', isActive)
-    button.classList.toggle('shadow-md', isActive)
-    button.classList.toggle('shadow-indigo-900/40', isActive)
-    button.classList.toggle('text-slate-400', !isActive)
-    icon?.classList.toggle('opacity-80', isActive)
-    icon?.classList.toggle('opacity-70', !isActive)
+    button.classList.toggle('is-active', isActive)
+    if (isActive) {
+      button.setAttribute('aria-current', 'page')
+    } else {
+      button.removeAttribute('aria-current')
+    }
   })
 
   const pageMeta = TAB_META[nextTab]
