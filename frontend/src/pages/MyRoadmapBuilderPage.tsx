@@ -75,7 +75,9 @@ function MyRoadmapBuilderPage() {
   useEffect(() => {
     setLoading(true)
     setFetchError(null)
-    fetch(`/api/builder/modules?category=${category}`)
+    fetch(`/api/builder/modules?category=${category}`, {
+      headers: { Authorization: `Bearer ${session?.accessToken ?? ''}` },
+    })
       .then((res) => {
         if (!res.ok) throw new Error(`서버 오류 (${res.status})`)
         return res.json()
