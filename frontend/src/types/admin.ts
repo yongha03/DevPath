@@ -64,6 +64,15 @@ export interface AdminOfficialRoadmapOption {
   title: string
 }
 
+// 공식 로드맵 관리 표에서 사용하는 로드맵 정보다.
+export interface AdminOfficialRoadmap {
+  roadmapId: number
+  title: string
+  description: string | null
+  isOfficial: boolean
+  createdAt: string | null
+}
+
 // 회원 통합 관리 표에서 사용하는 계정 정보다.
 export interface AdminAccount {
   userId: number

@@ -7,6 +7,7 @@ import com.devpath.domain.roadmap.entity.Roadmap;
 import com.devpath.domain.roadmap.repository.RoadmapRepository;
 import com.devpath.domain.user.entity.User;
 import com.devpath.domain.user.repository.UserRepository;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,6 +19,13 @@ public class AdminService {
 
     private final RoadmapRepository roadmapRepository;
     private final UserRepository userRepository;
+
+    public List<RoadmapDto.Response> getOfficialRoadmaps() {
+        return roadmapRepository.findAllByIsOfficialTrueAndIsDeletedFalseOrderByTitleAsc()
+                .stream()
+                .map(this::toRoadmapResponse)
+                .toList();
+    }
 
     // 오피셜 로드맵 생성은 관리자 사용자 검증 후 처리한다.
     @Transactional

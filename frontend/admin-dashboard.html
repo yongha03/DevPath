@@ -139,6 +139,13 @@
           <i class="fas fa-tags w-6 text-center opacity-70"></i> 기술 태그 관리
         </button>
         <button
+          data-target="official-roadmaps"
+          class="nav-btn w-full rounded-lg px-4 py-2.5 text-left font-medium text-slate-400 transition-all duration-200 hover:bg-slate-800/60 hover:text-slate-100"
+          type="button"
+        >
+          <i class="fas fa-route w-6 text-center opacity-70"></i> 공식 로드맵 관리
+        </button>
+        <button
           data-target="roadmaps"
           class="nav-btn w-full rounded-lg px-4 py-2.5 text-left font-medium text-slate-400 transition-all duration-200 hover:bg-slate-800/60 hover:text-slate-100"
           type="button"
@@ -363,6 +370,92 @@
                   </tr>
                 </thead>
                 <tbody id="tagTableBody" class="bg-white text-sm"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="view-official-roadmaps" class="view-section hidden space-y-4">
+          <div class="overflow-hidden rounded-xl border border-slate-200/60 bg-white shadow-sm">
+            <div class="flex flex-col gap-3 border-b border-slate-100 bg-white p-5 xl:flex-row xl:items-start xl:justify-between">
+              <div>
+                <h3 class="text-sm font-bold text-slate-800">공식 로드맵 관리</h3>
+                <p class="mt-1 text-xs text-slate-500">노드가 연결될 공식 로드맵을 생성, 수정, 삭제합니다.</p>
+              </div>
+              <div id="officialRoadmapSummary" class="text-xs font-medium text-slate-500">전체 0개</div>
+            </div>
+
+            <form id="officialRoadmapForm" class="border-b border-slate-100 bg-slate-50/60 p-5">
+              <div class="grid gap-3 lg:grid-cols-[minmax(220px,0.8fr)_minmax(300px,1.2fr)_auto] lg:items-start">
+                <label class="block">
+                  <span class="mb-1.5 block text-xs font-bold text-slate-500">로드맵 제목</span>
+                  <input
+                    id="officialRoadmapTitleInput"
+                    class="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                    type="text"
+                    placeholder="예: Backend Master Roadmap"
+                    autocomplete="off"
+                  />
+                </label>
+                <label class="block">
+                  <span class="mb-1.5 block text-xs font-bold text-slate-500">설명</span>
+                  <textarea
+                    id="officialRoadmapDescriptionInput"
+                    class="min-h-[38px] w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                    placeholder="로드맵 설명을 입력하세요."
+                    rows="2"
+                  ></textarea>
+                </label>
+                <div class="flex gap-2 lg:pt-6">
+                  <button
+                    id="officialRoadmapSaveButton"
+                    class="rounded-md bg-indigo-600 px-4 py-2 text-xs font-bold whitespace-nowrap text-white shadow-sm transition hover:bg-indigo-700"
+                    type="submit"
+                  >
+                    <i class="fas fa-plus mr-1"></i> 로드맵 생성
+                  </button>
+                  <button
+                    id="officialRoadmapCancelEdit"
+                    class="hidden rounded-md border border-slate-200 bg-white px-4 py-2 text-xs font-bold whitespace-nowrap text-slate-600 shadow-sm transition hover:bg-slate-50"
+                    type="button"
+                  >
+                    취소
+                  </button>
+                </div>
+              </div>
+            </form>
+
+            <div class="border-b border-slate-100 bg-white px-5 py-4">
+              <label class="relative block max-w-xl">
+                <i class="fas fa-search pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-xs text-slate-400"></i>
+                <input
+                  id="officialRoadmapFilterInput"
+                  class="w-full rounded-lg border border-slate-200 bg-white py-2 pr-3 pl-9 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+                  type="text"
+                  placeholder="로드맵명 또는 설명으로 필터"
+                />
+              </label>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full min-w-[820px] table-fixed border-collapse text-left">
+                <colgroup>
+                  <col class="w-[10%]" />
+                  <col class="w-[48%]" />
+                  <col class="w-[16%]" />
+                  <col class="w-[12%]" />
+                  <col class="w-[14%]" />
+                </colgroup>
+                <thead>
+                  <tr>
+                    <th class="border-b border-slate-100 bg-slate-50/50 px-6 py-3 text-[11px] font-bold tracking-wider text-slate-400 uppercase">ID</th>
+                    <th class="border-b border-slate-100 bg-slate-50/50 px-6 py-3 text-[11px] font-bold tracking-wider text-slate-400 uppercase">로드맵</th>
+                    <th class="border-b border-slate-100 bg-slate-50/50 px-6 py-3 text-[11px] font-bold tracking-wider text-slate-400 uppercase">생성일</th>
+                    <th class="border-b border-slate-100 bg-slate-50/50 px-6 py-3 text-[11px] font-bold tracking-wider text-slate-400 uppercase">상태</th>
+                    <th class="border-b border-slate-100 bg-slate-50/50 px-6 py-3 text-right text-[11px] font-bold tracking-wider text-slate-400 uppercase">관리</th>
+                  </tr>
+                </thead>
+                <tbody id="officialRoadmapTableBody" class="bg-white text-sm"></tbody>
               </table>
             </div>
           </div>
@@ -701,17 +794,10 @@
           <div class="devpath-modal-body">
             <div class="devpath-modal-grid">
               <div class="devpath-input-group">
-                <label for="roadmapIdInput" class="devpath-input-label">로드맵 ID</label>
-                <input
-                  type="number"
-                  id="roadmapIdInput"
-                  class="devpath-modal-input"
-                  placeholder="예: 1"
-                  min="0"
-                  list="roadmapIdOptions"
-                  autocomplete="off"
-                />
-                <datalist id="roadmapIdOptions"></datalist>
+                <label for="roadmapIdInput" class="devpath-input-label">로드맵</label>
+                <select id="roadmapIdInput" class="devpath-modal-input">
+                  <option value="">로드맵을 선택해주세요</option>
+                </select>
               </div>
 
               <div class="devpath-input-group">

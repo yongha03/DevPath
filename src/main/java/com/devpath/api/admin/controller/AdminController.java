@@ -6,9 +6,11 @@ import com.devpath.common.response.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -25,6 +27,15 @@ public class AdminController {
     private final AdminService adminService;
 
     // 관리자 전용 컨트롤러에서는 오피셜 로드맵 관리만 담당한다.
+    @Operation(summary = "오피셜 로드맵 목록 조회")
+    @GetMapping("/roadmaps")
+    public ApiResponse<List<RoadmapDto.Response>> getOfficialRoadmaps() {
+        return ApiResponse.success(
+                "오피셜 로드맵 목록을 조회했습니다.",
+                adminService.getOfficialRoadmaps()
+        );
+    }
+
     @Operation(summary = "오피셜 로드맵 생성")
     @PostMapping("/roadmaps")
     public ApiResponse<RoadmapDto.Response> createOfficialRoadmap(

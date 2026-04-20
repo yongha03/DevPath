@@ -2,6 +2,7 @@ import type {
   AdminAccount,
   AdminDashboardOverview,
   AdminModerationReport,
+  AdminOfficialRoadmap,
   AdminOfficialRoadmapOption,
   AdminPendingCourse,
   AdminRoadmapNode,
@@ -84,6 +85,24 @@ export const adminApi = {
       method: 'POST',
       body: JSON.stringify({ sourceTagIds, targetTagId }),
     })
+  },
+  getOfficialRoadmaps(signal?: AbortSignal) {
+    return request<AdminOfficialRoadmap[]>('/api/admin/roadmaps', { method: 'GET', signal })
+  },
+  createOfficialRoadmap(payload: { title: string; description?: string | null }) {
+    return request<AdminOfficialRoadmap>('/api/admin/roadmaps', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  },
+  updateOfficialRoadmap(roadmapId: number, payload: { title: string; description?: string | null }) {
+    return request<AdminOfficialRoadmap>(`/api/admin/roadmaps/${roadmapId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    })
+  },
+  deleteOfficialRoadmap(roadmapId: number) {
+    return request<void>(`/api/admin/roadmaps/${roadmapId}`, { method: 'DELETE' })
   },
   getRoadmapNodes(signal?: AbortSignal) {
     return request<AdminRoadmapNode[]>('/api/admin/nodes', { method: 'GET', signal })
