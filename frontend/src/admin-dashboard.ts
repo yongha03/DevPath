@@ -393,8 +393,7 @@ function getRoadmapNodeModalElements() {
     form: getElement<HTMLFormElement>('addNodeForm'),
     title: getElement<HTMLHeadingElement>('addNodeModalTitle'),
     description: getElement<HTMLParagraphElement>('addNodeModalDescription'),
-    roadmapIdInput: getElement<HTMLInputElement>('roadmapIdInput'),
-    roadmapIdOptions: getElement<HTMLDataListElement>('roadmapIdOptions'),
+    roadmapIdInput: getElement<HTMLSelectElement>('roadmapIdInput'),
     nodeTypeInput: getElement<HTMLSelectElement>('nodeTypeInput'),
     nodeTitleInput: getElement<HTMLInputElement>('nodeTitleInput'),
     nodeContentInput: getElement<HTMLTextAreaElement>('nodeContentInput'),
@@ -406,11 +405,41 @@ function getRoadmapNodeModalElements() {
   }
 }
 
-function populateRoadmapIdOptions() {
-  const { roadmapIdOptions } = getRoadmapNodeModalElements()
-  roadmapIdOptions.innerHTML = officialRoadmapOptions
-    .map((roadmap) => `<option value="${roadmap.roadmapId}" label="${escapeHtml(roadmap.title)}"></option>`)
-    .join('')
+function populateRoadmapSelectOptions(node?: AdminRoadmapNode) {
+  const { roadmapIdInput } = getRoadmapNodeModalElements()
+  const options = [...officialRoadmapOptions]
+
+  if (node && !options.some((roadmap) => roadmap.roadmapId === node.roadmapId)) {
+    options.push({
+      roadmapId: node.roadmapId,
+      title: node.roadmapTitle,
+    })
+  }
+
+  roadmapIdInput.innerHTML = [
+    '<option value="">로드맵을 선택해주세요</option>',
+    ...options.map(
+      (roadmap) => (
+        `<option value="${roadmap.roadmapId}">[ID: ${roadmap.roadmapId}] ${escapeHtml(roadmap.title)}</option>`
+      ),
+    ),
+  ].join('')
+}
+
+function getInitialRoadmapId(node?: AdminRoadmapNode) {
+  if (node) {
+    return node.roadmapId
+  }
+
+  const selectedRoadmapId = Number(filterState.nodeRoadmapId)
+  if (
+    Number.isInteger(selectedRoadmapId)
+    && officialRoadmapOptions.some((roadmap) => roadmap.roadmapId === selectedRoadmapId)
+  ) {
+    return selectedRoadmapId
+  }
+
+  return null
 }
 
 function setRoadmapNodeModalOpen(open: boolean) {
@@ -453,7 +482,7 @@ function readRoadmapNodeModalPayload() {
   } = getRoadmapNodeModalElements()
 
   if (!roadmapIdInput.value.trim()) {
-    window.alert('로드맵 ID를 입력하세요.')
+    window.alert('로드맵을 선택하세요.')
     roadmapIdInput.focus()
     return null
   }
@@ -532,13 +561,17 @@ function initRoadmapNodeModal() {
       return
     }
 
+    if (!roadmapIdInput.value) {
+      sortOrderInput.value = ''
+      return
+    }
+
     const roadmapId = Number(roadmapIdInput.value)
     if (Number.isInteger(roadmapId) && roadmapId >= 0) {
       sortOrderInput.value = String(getDefaultNodeSortOrder(roadmapId))
     }
   }
 
-  roadmapIdInput.addEventListener('input', refreshSortOrder)
   roadmapIdInput.addEventListener('change', refreshSortOrder)
 
   cancelButton.addEventListener('click', () => {
@@ -580,7 +613,7 @@ function openRoadmapNodeModal(node?: AdminRoadmapNode) {
   }
 
   initRoadmapNodeModal()
-  populateRoadmapIdOptions()
+  populateRoadmapSelectOptions(node)
 
   const {
     modal,
@@ -597,7 +630,7 @@ function openRoadmapNodeModal(node?: AdminRoadmapNode) {
     confirmButton,
   } = getRoadmapNodeModalElements()
 
-  const roadmapId = node?.roadmapId ?? officialRoadmapOptions[0]?.roadmapId ?? 0
+  const roadmapId = getInitialRoadmapId(node)
   roadmapNodeModalEditingNode = node ?? null
 
   form.reset()
@@ -607,13 +640,13 @@ function openRoadmapNodeModal(node?: AdminRoadmapNode) {
     : '공식 로드맵에 연결할 노드 정보를 입력하세요.'
   confirmButton.textContent = node ? '수정하기' : '추가하기'
 
-  roadmapIdInput.value = String(roadmapId)
+  roadmapIdInput.value = roadmapId === null ? '' : String(roadmapId)
   roadmapIdInput.disabled = Boolean(node)
   roadmapIdInput.classList.toggle('devpath-modal-input-disabled', Boolean(node))
   nodeTypeInput.value = node?.nodeType?.toUpperCase() || 'CONCEPT'
   nodeTitleInput.value = node?.title ?? ''
   nodeContentInput.value = node?.content ?? ''
-  sortOrderInput.value = String(getDefaultNodeSortOrder(roadmapId, node))
+  sortOrderInput.value = roadmapId === null ? '' : String(getDefaultNodeSortOrder(roadmapId, node))
   branchGroupInput.value = node?.branchGroup?.toString() ?? ''
   subTopicsInput.value = node?.subTopics ?? ''
 
@@ -633,7 +666,6 @@ function openRoadmapNodeModal(node?: AdminRoadmapNode) {
       }
 
       roadmapIdInput.focus()
-      roadmapIdInput.select()
     }, 80)
   })
 }

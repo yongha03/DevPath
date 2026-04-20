@@ -701,17 +701,10 @@
           <div class="devpath-modal-body">
             <div class="devpath-modal-grid">
               <div class="devpath-input-group">
-                <label for="roadmapIdInput" class="devpath-input-label">로드맵 ID</label>
-                <input
-                  type="number"
-                  id="roadmapIdInput"
-                  class="devpath-modal-input"
-                  placeholder="예: 1"
-                  min="0"
-                  list="roadmapIdOptions"
-                  autocomplete="off"
-                />
-                <datalist id="roadmapIdOptions"></datalist>
+                <label for="roadmapIdInput" class="devpath-input-label">로드맵</label>
+                <select id="roadmapIdInput" class="devpath-modal-input">
+                  <option value="">로드맵을 선택해주세요</option>
+                </select>
               </div>
 
               <div class="devpath-input-group">
