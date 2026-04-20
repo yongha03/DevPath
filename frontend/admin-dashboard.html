@@ -111,7 +111,10 @@
       }
 
       .admin-nav-section {
-        color: #64748b;
+        color: #94a3b8;
+        font-weight: 600;
+        letter-spacing: 0;
+        text-transform: none;
       }
 
       .admin-nav-btn {
@@ -124,6 +127,9 @@
         border: 1px solid transparent;
         color: #475569;
         background: transparent;
+        font-size: 0.94rem;
+        font-weight: 500;
+        letter-spacing: 0;
       }
 
       .admin-nav-btn:hover,
@@ -141,6 +147,7 @@
         box-shadow:
           inset 3px 0 0 var(--menu-accent),
           0 10px 22px rgba(15, 23, 42, 0.08);
+        font-weight: 600;
       }
 
       .admin-nav-icon {
@@ -166,6 +173,10 @@
         flex: 1;
         align-items: center;
         gap: 0.75rem;
+      }
+
+      .view-section.block + .view-section.block {
+        margin-top: 1rem;
       }
 
       .admin-logout-button {
@@ -291,6 +302,8 @@
       </div>
 
       <nav class="flex-1 space-y-1 overflow-y-auto px-3 py-6" id="admin-nav">
+        <div class="admin-nav-section px-4 pb-2 text-[10px] font-bold tracking-widest">개요</div>
+
         <button
           data-target="dashboard"
           class="nav-btn admin-nav-btn is-active w-full rounded-lg px-3 py-2.5 text-left text-sm font-bold transition-all duration-200"
@@ -300,7 +313,7 @@
           <span>대시보드</span>
         </button>
 
-        <div class="admin-nav-section px-4 pt-6 pb-2 text-[10px] font-bold tracking-widest uppercase">Governance</div>
+        <div class="admin-nav-section px-4 pt-6 pb-2 text-[10px] font-bold tracking-widest">운영</div>
 
         <button
           data-target="tags"
@@ -310,21 +323,16 @@
           <span class="admin-nav-icon"><i class="fas fa-tags"></i></span>
           <span>기술 태그 관리</span>
         </button>
+
+        <div class="admin-nav-section px-4 pt-6 pb-2 text-[10px] font-bold tracking-widest">학습 로드맵</div>
+
         <button
           data-target="official-roadmaps"
           class="nav-btn admin-nav-btn w-full rounded-lg px-3 py-2.5 text-left text-sm font-bold transition-all duration-200"
           type="button"
         >
           <span class="admin-nav-icon"><i class="fas fa-route"></i></span>
-          <span>공식 로드맵 관리</span>
-        </button>
-        <button
-          data-target="roadmap-info"
-          class="nav-btn admin-nav-btn w-full rounded-lg px-3 py-2.5 text-left text-sm font-bold transition-all duration-200"
-          type="button"
-        >
-          <span class="admin-nav-icon"><i class="fas fa-info-circle"></i></span>
-          <span>로드맵 소개 관리</span>
+          <span>로드맵 기본 정보</span>
         </button>
         <button
           data-target="roadmaps"
@@ -332,7 +340,7 @@
           type="button"
         >
           <span class="admin-nav-icon"><i class="fas fa-sitemap"></i></span>
-          <span>마스터 로드맵</span>
+          <span>마스터 노드</span>
         </button>
         <button
           data-target="node-resources"
@@ -343,6 +351,17 @@
           <span>노드 추천 자료</span>
         </button>
         <button
+          data-target="roadmap-hub"
+          class="nav-btn admin-nav-btn w-full rounded-lg px-3 py-2.5 text-left text-sm font-bold transition-all duration-200"
+          type="button"
+        >
+          <span class="admin-nav-icon"><i class="fas fa-map-signs"></i></span>
+          <span>로드맵 허브</span>
+        </button>
+
+        <div class="admin-nav-section px-4 pt-6 pb-2 text-[10px] font-bold tracking-widest">콘텐츠</div>
+
+        <button
           data-target="catalog-menu"
           class="nav-btn admin-nav-btn w-full rounded-lg px-3 py-2.5 text-left text-sm font-bold transition-all duration-200"
           type="button"
@@ -350,16 +369,8 @@
           <span class="admin-nav-icon"><i class="fas fa-layer-group"></i></span>
           <span>강의 메뉴 관리</span>
         </button>
-        <button
-          data-target="roadmap-hub"
-          class="nav-btn admin-nav-btn w-full rounded-lg px-3 py-2.5 text-left text-sm font-bold transition-all duration-200"
-          type="button"
-        >
-          <span class="admin-nav-icon"><i class="fas fa-map-signs"></i></span>
-          <span>로드맵 허브 관리</span>
-        </button>
 
-        <div class="admin-nav-section px-4 pt-6 pb-2 text-[10px] font-bold tracking-widest uppercase">Monitoring</div>
+        <div class="admin-nav-section px-4 pt-6 pb-2 text-[10px] font-bold tracking-widest">모니터링</div>
 
         <button
           data-target="users"

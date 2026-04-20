@@ -183,7 +183,7 @@ declare global {
 const TAB_META: Record<AdminTabKey, { title: string; description: string }> = {
   dashboard: { title: '플랫폼 실시간 현황', description: 'DevPath 관리자 운영 지표 요약' },
   tags: { title: '기술 태그 데이터베이스', description: '공식 태그를 조회하고 병합합니다.' },
-  'official-roadmaps': { title: '공식 로드맵 관리', description: '노드가 연결될 공식 로드맵을 생성, 수정, 삭제합니다.' },
+  'official-roadmaps': { title: '로드맵 기본 정보', description: '공식 로드맵 생성과 상세 소개 콘텐츠를 한 화면에서 관리합니다.' },
   'roadmap-info': { title: '로드맵 소개 관리', description: '로드맵 상세 상단 소개 아코디언 콘텐츠를 수정합니다.' },
   roadmaps: { title: '마스터 로드맵 노드', description: '공식 로드맵 노드 생성, 수정, 선수 조건과 완료 기준을 관리합니다.' },
   'node-resources': { title: '노드 추천 자료', description: '로드맵 노드 상세 패널에 노출할 무료 자료 링크를 관리합니다.' },
@@ -1328,6 +1328,10 @@ async function fetchOfficialRoadmaps() {
   }
 }
 
+async function fetchRoadmapBaseInfo() {
+  await Promise.all([fetchOfficialRoadmaps(), fetchRoadmapInfoItems()])
+}
+
 async function submitOfficialRoadmapForm() {
   const payload = getOfficialRoadmapFormPayload()
   if (!payload) {
@@ -1347,7 +1351,7 @@ async function submitOfficialRoadmapForm() {
     }
 
     resetOfficialRoadmapForm()
-    await fetchOfficialRoadmaps()
+    await fetchRoadmapBaseInfo()
   } finally {
     officialRoadmapSaving = false
     syncOfficialRoadmapFormState()
@@ -3521,7 +3525,7 @@ async function refreshActiveTab() {
       await fetchTags()
       break
     case 'official-roadmaps':
-      await fetchOfficialRoadmaps()
+      await fetchRoadmapBaseInfo()
       break
     case 'roadmap-info':
       await fetchRoadmapInfoItems()
@@ -3564,9 +3568,16 @@ function setActiveTab(nextTab: AdminTabKey) {
   getElement('page-title').textContent = pageMeta.title
   getElement('page-desc').textContent = pageMeta.description
 
+  const visibleViewIds = new Set(
+    nextTab === 'official-roadmaps'
+      ? ['view-official-roadmaps', 'view-roadmap-info']
+      : [`view-${nextTab}`],
+  )
+
   document.querySelectorAll<HTMLElement>('.view-section').forEach((section) => {
-    section.classList.toggle('block', section.id === `view-${nextTab}`)
-    section.classList.toggle('hidden', section.id !== `view-${nextTab}`)
+    const isVisible = visibleViewIds.has(section.id)
+    section.classList.toggle('block', isVisible)
+    section.classList.toggle('hidden', !isVisible)
   })
 }
 
@@ -3929,7 +3940,7 @@ function installGlobalActions() {
         resetOfficialRoadmapForm()
       }
 
-      await fetchOfficialRoadmaps()
+      await fetchRoadmapBaseInfo()
       window.alert('공식 로드맵을 삭제했습니다.')
     })
   }
