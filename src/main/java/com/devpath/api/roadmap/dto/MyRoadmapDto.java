@@ -5,6 +5,7 @@ import com.devpath.domain.roadmap.entity.CustomRoadmap;
 import com.devpath.domain.roadmap.entity.CustomRoadmapNode;
 import com.devpath.domain.roadmap.entity.DisplayNodeStatus;
 import com.devpath.domain.roadmap.entity.NodeStatus;
+import com.devpath.domain.roadmap.entity.RoadmapNodeResource;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
@@ -125,7 +126,8 @@ public class MyRoadmapDto {
         List<CustomRoadmapNode> nodes,
         Map<Long, List<Long>> prerequisiteIdsByNodeId,
         Map<Long, NodeStatus> statusByNodeId,
-        Map<Long, NodeClearance> clearanceByNodeId) {
+        Map<Long, NodeClearance> clearanceByNodeId,
+        Map<Long, List<RoadmapNodeResource>> resourcesByNodeId) {
       return DetailResponse.builder()
           .customRoadmapId(customRoadmap.getId())
           .originalRoadmapId(customRoadmap.getOriginalRoadmap().getRoadmapId())
@@ -142,7 +144,9 @@ public class MyRoadmapDto {
                               node,
                               prerequisiteIdsByNodeId.getOrDefault(node.getId(), List.of()),
                               statusByNodeId,
-                              clearanceByNodeId.get(node.getOriginalNode().getNodeId())))
+                              clearanceByNodeId.get(node.getOriginalNode().getNodeId()),
+                              resourcesByNodeId.getOrDefault(
+                                  node.getOriginalNode().getNodeId(), List.of())))
                   .toList())
           .build();
     }
@@ -195,6 +199,9 @@ public class MyRoadmapDto {
     @Schema(description = "필수 태그 충족 여부")
     private boolean requiredTagsSatisfied;
 
+    @Schema(description = "노드 추천 무료 자료 목록")
+    private List<NodeResourceItem> resources;
+
     @Builder
     private NodeItem(
         Long customNodeId,
@@ -210,7 +217,8 @@ public class MyRoadmapDto {
         Long branchFromNodeId,
         String branchType,
         Double lessonCompletionRate,
-        boolean requiredTagsSatisfied) {
+        boolean requiredTagsSatisfied,
+        List<NodeResourceItem> resources) {
       this.customNodeId = customNodeId;
       this.originalNodeId = originalNodeId;
       this.title = title;
@@ -225,13 +233,15 @@ public class MyRoadmapDto {
       this.branchType = branchType;
       this.lessonCompletionRate = lessonCompletionRate;
       this.requiredTagsSatisfied = requiredTagsSatisfied;
+      this.resources = resources;
     }
 
     public static NodeItem from(
         CustomRoadmapNode node,
         List<Long> prerequisiteCustomNodeIds,
         Map<Long, NodeStatus> statusByNodeId,
-        NodeClearance clearance) {
+        NodeClearance clearance,
+        List<RoadmapNodeResource> resources) {
       String raw = node.getOriginalNode().getSubTopics();
       List<String> chips = (raw != null && !raw.isBlank())
           ? Arrays.stream(raw.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList()
@@ -269,6 +279,57 @@ public class MyRoadmapDto {
           .branchType(node.getBranchType())
           .lessonCompletionRate(lessonRate)
           .requiredTagsSatisfied(tagsSatisfied)
+          .resources(resources.stream().map(NodeResourceItem::from).toList())
+          .build();
+    }
+  }
+
+  @Getter
+  @NoArgsConstructor(access = AccessLevel.PROTECTED)
+  public static class NodeResourceItem {
+
+    @Schema(example = "1")
+    private Long resourceId;
+
+    @Schema(example = "Java 공식 튜토리얼")
+    private String title;
+
+    @Schema(example = "https://docs.oracle.com/javase/tutorial/")
+    private String url;
+
+    @Schema(description = "자료 설명")
+    private String description;
+
+    @Schema(description = "BLOG / DOCS / VIDEO / OFFICIAL / COURSE / OTHER")
+    private String sourceType;
+
+    @Schema(example = "1")
+    private Integer sortOrder;
+
+    @Builder
+    private NodeResourceItem(
+        Long resourceId,
+        String title,
+        String url,
+        String description,
+        String sourceType,
+        Integer sortOrder) {
+      this.resourceId = resourceId;
+      this.title = title;
+      this.url = url;
+      this.description = description;
+      this.sourceType = sourceType;
+      this.sortOrder = sortOrder;
+    }
+
+    public static NodeResourceItem from(RoadmapNodeResource resource) {
+      return NodeResourceItem.builder()
+          .resourceId(resource.getResourceId())
+          .title(resource.getTitle())
+          .url(resource.getUrl())
+          .description(resource.getDescription())
+          .sourceType(resource.getSourceType())
+          .sortOrder(resource.getSortOrder())
           .build();
     }
   }

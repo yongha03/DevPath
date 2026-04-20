@@ -6,6 +6,7 @@ import type {
   AdminOfficialRoadmapOption,
   AdminPendingCourse,
   AdminRoadmapNode,
+  AdminRoadmapNodeResource,
   AdminTag,
 } from '../types/admin'
 import type { CourseCatalogMenu } from '../types/course-catalog'
@@ -174,6 +175,43 @@ export const adminApi = {
       method: 'PUT',
       body: JSON.stringify({ completionRuleDescription, requiredProgressRate }),
     })
+  },
+  getRoadmapNodeResources(signal?: AbortSignal) {
+    return request<AdminRoadmapNodeResource[]>('/api/admin/node-resources', { method: 'GET', signal })
+  },
+  createRoadmapNodeResource(payload: {
+    nodeId: number
+    title: string
+    url: string
+    description?: string | null
+    sourceType?: string | null
+    sortOrder?: number | null
+    active?: boolean
+  }) {
+    return request<AdminRoadmapNodeResource>('/api/admin/node-resources', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    })
+  },
+  updateRoadmapNodeResource(
+    resourceId: number,
+    payload: {
+      nodeId: number
+      title: string
+      url: string
+      description?: string | null
+      sourceType?: string | null
+      sortOrder?: number | null
+      active?: boolean
+    },
+  ) {
+    return request<AdminRoadmapNodeResource>(`/api/admin/node-resources/${resourceId}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    })
+  },
+  deleteRoadmapNodeResource(resourceId: number) {
+    return request<void>(`/api/admin/node-resources/${resourceId}`, { method: 'DELETE' })
   },
   getAccounts(signal?: AbortSignal) {
     return request<AdminAccount[]>('/api/admin/accounts', { method: 'GET', signal })

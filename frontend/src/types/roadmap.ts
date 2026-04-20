@@ -17,6 +17,16 @@ export interface RoadmapNodeItem {
   branchType?: string | null
   lessonCompletionRate?: number
   requiredTagsSatisfied?: boolean
+  resources?: RoadmapNodeResourceItem[]
+}
+
+export interface RoadmapNodeResourceItem {
+  resourceId: number
+  title: string
+  url: string
+  description?: string | null
+  sourceType?: string | null
+  sortOrder?: number | null
 }
 
 export interface RoadmapDetail {

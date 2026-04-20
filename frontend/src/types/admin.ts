@@ -58,6 +58,22 @@ export interface AdminRoadmapNode {
   requiredProgressRate: number | null
 }
 
+export interface AdminRoadmapNodeResource {
+  resourceId: number
+  nodeId: number
+  nodeTitle: string
+  roadmapId: number
+  roadmapTitle: string
+  title: string
+  url: string
+  description: string | null
+  sourceType: string | null
+  sortOrder: number | null
+  active: boolean
+  createdAt: string | null
+  updatedAt: string | null
+}
+
 // 노드 생성 시 선택하는 공식 로드맵 항목이다.
 export interface AdminOfficialRoadmapOption {
   roadmapId: number
