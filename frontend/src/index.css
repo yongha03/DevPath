@@ -83,7 +83,9 @@ input,
 select,
 textarea {
   max-width: 100%;
-  font: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
 }
 
 pre {
@@ -160,6 +162,28 @@ pre {
 
 .bg-primary {
   background-color: #00c471;
+}
+
+.hero-primary-button {
+  transition:
+    background-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.hero-primary-button:hover {
+  background-color: #16a34a;
+}
+
+.hero-secondary-button {
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.hero-secondary-button:hover {
+  border-color: #9ca3af;
 }
 
 .hero-bg {
