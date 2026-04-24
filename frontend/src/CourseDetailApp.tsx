@@ -505,6 +505,7 @@ export default function CourseDetailApp() {
         profileImage={profileImage}
         onLogout={handleLogout}
         onLoginClick={() => openAuthModal('login')}
+        activeNavHref="lecture-list.html"
         offsetTopPx={headerOffsetTop}
       />
 

@@ -2,6 +2,9 @@
 
 :root {
   --header-height: var(--app-header-height, 64px);
+  --roadmap-toolbar-height: 60px;
+  --roadmap-content-gap: 48px;
+  --roadmap-fixed-top: calc(var(--header-height) + var(--roadmap-toolbar-height));
   --changes-panel-width: min(400px, 100vw);
   --roadmap-node-width: clamp(280px, 34vw, 380px);
   --roadmap-side-node-width: clamp(250px, 30vw, 330px);
@@ -16,6 +19,7 @@
   max-width: 1400px;
   margin-left: auto;
   margin-right: auto;
+  padding-top: calc(var(--roadmap-fixed-top) + var(--roadmap-content-gap));
   transition:
     max-width 0.3s ease,
     margin 0.3s ease,
@@ -32,13 +36,94 @@
 }
 
 /* ── 헤더 ── */
-.app-header {
+.roadmap-page-toolbar {
   position: fixed;
-  top: 0; left: 0; right: 0;
-  height: var(--header-height);
-  z-index: 999;
-  background: #fff;
-  border-bottom: 1px solid #f3f4f6;
+  top: var(--header-height);
+  left: 0;
+  right: 0;
+  height: var(--roadmap-toolbar-height);
+  z-index: 950;
+  background: rgba(255, 255, 255, 0.94);
+  border-bottom: 1px solid #e5e7eb;
+  backdrop-filter: blur(10px);
+}
+
+.roadmap-header-metrics-shell {
+  width: 100%;
+  height: 100%;
+  display: none;
+}
+
+.roadmap-header-list-shell {
+  width: 100%;
+  height: 100%;
+  display: none;
+}
+
+.roadmap-header-list-shell__inner {
+  width: calc(100% + var(--left-rail));
+  height: 100%;
+  margin-left: calc(-1 * var(--left-rail));
+  padding-left: clamp(12px, 2vw, 24px);
+  padding-right: clamp(16px, 3vw, 32px);
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  pointer-events: none;
+}
+
+.roadmap-header-list-shell__inner > * {
+  pointer-events: auto;
+}
+
+.roadmap-header-metrics-shell__inner {
+  width: 100%;
+  height: 100%;
+  margin-inline: auto;
+  padding-inline: clamp(16px, 3vw, 32px);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  pointer-events: none;
+}
+
+.roadmap-header-metrics {
+  margin-right: 152px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  pointer-events: auto;
+}
+
+.roadmap-page-toolbar__inner {
+  width: min(100%, 1600px);
+  height: 100%;
+  margin-inline: auto;
+  padding-inline: clamp(16px, 3vw, 32px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.roadmap-page-toolbar__inner::-webkit-scrollbar {
+  display: none;
+}
+
+.roadmap-page-toolbar__left,
+.roadmap-page-toolbar__right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 0 0 auto;
+  min-width: max-content;
+}
+
+.roadmap-category-badge {
+  top: calc(var(--roadmap-fixed-top) + 12px);
 }
 
 /* ── 메인 노드 박스 ── */
@@ -332,7 +417,7 @@
 /* ── 변경사항 패널 ── */
 .changes-panel {
   position: fixed; right: 0;
-  top: var(--header-height); bottom: 0;
+  top: var(--roadmap-fixed-top); bottom: 0;
   width: var(--changes-panel-width);
   background: white;
   border-left: 1px solid #e5e7eb;
@@ -403,8 +488,8 @@
 .side-drawer {
   position: fixed;
   right: 0;
-  top: var(--header-height);
-  height: calc(100dvh - var(--header-height));
+  top: var(--roadmap-fixed-top);
+  height: calc(100dvh - var(--roadmap-fixed-top));
   width: min(500px, 100vw);
   background: white;
   box-shadow: -4px 0 32px rgba(0,0,0,0.12);
@@ -420,7 +505,7 @@
 .drawer-overlay {
   position: fixed;
   left: 0; right: 0; bottom: 0;
-  top: var(--header-height);
+  top: var(--roadmap-fixed-top);
   background: rgba(0,0,0,0.3);
   z-index: 150;
   backdrop-filter: blur(2px);
@@ -586,4 +671,29 @@
   align-items: center;
   gap: 40px;
   white-space: nowrap;
+}
+
+@media (min-width: 1280px) {
+  :root {
+    --roadmap-toolbar-height: 0px;
+    --roadmap-content-gap: 24px;
+  }
+
+  .roadmap-header-list-shell,
+  .roadmap-header-metrics-shell {
+    display: block;
+  }
+
+  .roadmap-page-toolbar {
+    display: none;
+  }
+
+  .roadmap-page-toolbar__inner {
+    justify-content: flex-start;
+  }
+
+  .roadmap-page-toolbar__left--mobile,
+  .roadmap-page-toolbar__right--mobile {
+    display: none;
+  }
 }

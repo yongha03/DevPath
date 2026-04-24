@@ -1,6 +1,14 @@
 import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
+import AuthModal, { type AuthView } from '../components/AuthModal'
 import RoadmapInfoContent from '../components/RoadmapInfoContent'
-import { roadmapApi } from '../lib/api'
+import SiteHeader from '../components/SiteHeader'
+import { authApi, roadmapApi, userApi } from '../lib/api'
+import {
+  AUTH_SESSION_SYNC_EVENT,
+  clearStoredAuthSession,
+  getPostLoginRedirect,
+  readStoredAuthSession,
+} from '../lib/auth-session'
 import type { ProofCardSummary } from '../types/learner'
 import type {
   RoadmapDetail,
@@ -10,6 +18,24 @@ import type {
   NodeStatus,
   ChangeType,
 } from '../types/roadmap'
+
+function readAuthViewFromLocation(): AuthView | null {
+  const value = new URLSearchParams(window.location.search).get('auth')
+
+  return value === 'login' || value === 'signup' ? value : null
+}
+
+function syncAuthViewInLocation(view: AuthView | null) {
+  const url = new URL(window.location.href)
+
+  if (view) {
+    url.searchParams.set('auth', view)
+  } else {
+    url.searchParams.delete('auth')
+  }
+
+  window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
+}
 
 // ── 헬퍼 ─────────────────────────────────────────────────────────────────────
 
@@ -1269,11 +1295,132 @@ function ChangesPanel({
 
 // ── 메인 페이지 ───────────────────────────────────────────────────────────────
 
+interface RoadmapPageToolbarProps {
+  changesCount: number
+  totalNodes: number
+  doneNodes: number
+  progressPct: number
+  onToggleChangesPanel: () => void
+}
+
+function RoadmapHeaderMetrics({
+  changesCount,
+  totalNodes,
+  doneNodes,
+  progressPct,
+  onToggleChangesPanel,
+}: RoadmapPageToolbarProps) {
+  return (
+    <div className="roadmap-header-metrics">
+      <button
+        type="button"
+        onClick={onToggleChangesPanel}
+        className="relative flex items-center gap-2 px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition text-xs font-bold"
+      >
+        <i className="fas fa-history" />
+        <span>{'\uBCC0\uACBD\uC0AC\uD56D'}</span>
+        {changesCount > 0 ? (
+          <span className="badge-pulse absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold shadow-sm">
+            {changesCount}
+          </span>
+        ) : null}
+      </button>
+
+      <div className="node-count-wrap" title={'\uC804\uCCB4 / \uC644\uB8CC'}>
+        <div className="node-count-card total">
+          <span className="node-count-number">{totalNodes}</span>
+          <span className="node-count-label">{'\uC804\uCCB4'}</span>
+        </div>
+        <div className="node-count-card done">
+          <span className="node-count-number">{doneNodes}</span>
+          <span className="node-count-label">{'\uC644\uB8CC'}</span>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-2 pl-3 border-l border-gray-200">
+        <span className="text-xs text-gray-500">{'\uC9C4\uD589\uB960'}</span>
+        <div className="w-20 h-2 bg-gray-100 rounded-full overflow-hidden">
+          <div className="h-full bg-[#00c471]" style={{ width: `${progressPct}%` }} />
+        </div>
+        <span className="text-xs font-bold text-[#00c471]">{progressPct}%</span>
+      </div>
+    </div>
+  )
+}
+
+function RoadmapHeaderListLink() {
+  return (
+    <a
+      href="roadmap-hub.html"
+      className="text-gray-500 hover:text-gray-800 font-bold text-sm flex items-center gap-1"
+    >
+      <i className="fas fa-arrow-left" />
+      <span>{'\uBAA9\uB85D'}</span>
+    </a>
+  )
+}
+
+function RoadmapPageToolbar({
+  changesCount,
+  totalNodes,
+  doneNodes,
+  progressPct,
+  onToggleChangesPanel,
+}: RoadmapPageToolbarProps) {
+  return (
+    <div className="roadmap-page-toolbar">
+      <div className="roadmap-page-toolbar__inner">
+        <div className="roadmap-page-toolbar__left roadmap-page-toolbar__left--mobile">
+          <RoadmapHeaderListLink />
+        </div>
+
+        <div className="roadmap-page-toolbar__right roadmap-page-toolbar__right--mobile">
+          <button
+            type="button"
+            onClick={onToggleChangesPanel}
+            className="relative flex items-center gap-2 px-3 py-1.5 bg-slate-100 text-slate-700 rounded-lg hover:bg-slate-200 transition text-xs font-bold"
+          >
+            <i className="fas fa-history" />
+            <span>{'\uBCC0\uACBD\uC0AC\uD56D'}</span>
+            {changesCount > 0 ? (
+              <span className="badge-pulse absolute -top-1 -right-1 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold shadow-sm">
+                {changesCount}
+              </span>
+            ) : null}
+          </button>
+
+          <div className="node-count-wrap" title={'\uC804\uCCB4 / \uC644\uB8CC'}>
+            <div className="node-count-card total">
+              <span className="node-count-number">{totalNodes}</span>
+              <span className="node-count-label">{'\uC804\uCCB4'}</span>
+            </div>
+            <div className="node-count-card done">
+              <span className="node-count-number">{doneNodes}</span>
+              <span className="node-count-label">{'\uC644\uB8CC'}</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 pl-3 border-l border-gray-200">
+            <span className="text-xs text-gray-500">{'\uC9C4\uD589\uB960'}</span>
+            <div className="w-20 h-2 bg-gray-100 rounded-full overflow-hidden">
+              <div className="h-full bg-[#00c471]" style={{ width: `${progressPct}%` }} />
+            </div>
+            <span className="text-xs font-bold text-[#00c471]">{progressPct}%</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function RoadmapDetailPage() {
   const params = new URLSearchParams(window.location.search)
   const customRoadmapId = Number(params.get('id'))
   const originalRoadmapId = Number(params.get('original'))
 
+  const [session, setSession]       = useState(() => readStoredAuthSession())
+  const [profileImage, setProfileImage] = useState<string | null>(null)
+  const [authView, setAuthView]     = useState<AuthView | null>(() => readAuthViewFromLocation())
   const [roadmap, setRoadmap]       = useState<RoadmapDetail | null>(null)
   const [changes, setChanges]       = useState<RecommendationChange[]>([])
   const [histories, setHistories]   = useState<RecommendationChangeHistory[]>([])
@@ -1285,6 +1432,47 @@ export default function RoadmapDetailPage() {
   const [processing, setProcessing] = useState(false)
   const [drawerNode, setDrawerNode] = useState<RoadmapNodeItem | null>(null)
   const abortRef = useRef<AbortController | null>(null)
+
+  useEffect(() => {
+    const syncSession = () => {
+      setSession(readStoredAuthSession())
+    }
+
+    window.addEventListener('storage', syncSession)
+    window.addEventListener(AUTH_SESSION_SYNC_EVENT, syncSession)
+    syncSession()
+
+    return () => {
+      window.removeEventListener('storage', syncSession)
+      window.removeEventListener(AUTH_SESSION_SYNC_EVENT, syncSession)
+    }
+  }, [])
+
+  useEffect(() => {
+    syncAuthViewInLocation(authView)
+  }, [authView])
+
+  useEffect(() => {
+    if (!session) {
+      setProfileImage(null)
+      return
+    }
+
+    const controller = new AbortController()
+
+    userApi
+      .getMyProfile(controller.signal)
+      .then((profile) => {
+        setProfileImage(profile.profileImage)
+      })
+      .catch(() => {
+        setProfileImage(null)
+      })
+
+    return () => {
+      controller.abort()
+    }
+  }, [session])
 
   useEffect(() => {
     const ctrl = new AbortController()
@@ -1444,6 +1632,42 @@ export default function RoadmapDetailPage() {
 
   // ── 파생 데이터 ──────────────────────────────────────────────────────────────
 
+  async function handleLogout() {
+    const currentSession = readStoredAuthSession()
+
+    try {
+      if (currentSession?.refreshToken) {
+        await authApi.logout(currentSession.refreshToken)
+      }
+    } catch {
+      // Server logout failure should not block local session cleanup.
+    } finally {
+      clearStoredAuthSession()
+      setSession(null)
+      setProfileImage(null)
+    }
+  }
+
+  function openAuthModal(view: AuthView) {
+    setAuthView(view)
+  }
+
+  function closeAuthModal() {
+    setAuthView(null)
+  }
+
+  function handleAuthenticated() {
+    const nextSession = readStoredAuthSession()
+
+    if (nextSession?.role === 'ROLE_ADMIN') {
+      window.location.replace(getPostLoginRedirect(nextSession.role))
+      return
+    }
+
+    setSession(nextSession)
+    closeAuthModal()
+  }
+
   const proofCardByNodeId = useMemo(
     () => Object.fromEntries(proofCards.map((p) => [p.nodeId, p])) as Record<number, ProofCardSummary | undefined>,
     [proofCards],
@@ -1499,7 +1723,43 @@ export default function RoadmapDetailPage() {
     <div className="overflow-x-hidden text-gray-800">
 
       {/* ── 헤더 ──────────────────────────────────────────────────────────────── */}
-      <header className="app-header">
+      <SiteHeader
+        session={session}
+        profileImage={profileImage}
+        onLogout={handleLogout}
+        onLoginClick={() => openAuthModal('login')}
+        activeNavHref="roadmap-hub.html"
+        startOverlay={(
+          <div className="roadmap-header-list-shell">
+            <div className="roadmap-header-list-shell__inner">
+              <RoadmapHeaderListLink />
+            </div>
+          </div>
+        )}
+        endOverlay={(
+          <div className="roadmap-header-metrics-shell">
+            <div className="roadmap-header-metrics-shell__inner">
+              <RoadmapHeaderMetrics
+                changesCount={changes.length}
+                totalNodes={totalNodes}
+                doneNodes={doneNodes}
+                progressPct={progressPct}
+                onToggleChangesPanel={() => setPanelOpen((value) => !value)}
+              />
+            </div>
+          </div>
+        )}
+      />
+
+      <RoadmapPageToolbar
+        changesCount={changes.length}
+        totalNodes={totalNodes}
+        doneNodes={doneNodes}
+        progressPct={progressPct}
+        onToggleChangesPanel={() => setPanelOpen((value) => !value)}
+      />
+
+      {false ? <header className="app-header">
         <div className="max-w-[1600px] mx-auto w-full px-6 h-full grid items-center gap-4" style={{ gridTemplateColumns: 'auto 1fr auto' }}>
           {/* 왼쪽: 뒤로 + 로고 */}
           <div className="flex items-center gap-4 shrink-0">
@@ -1576,7 +1836,7 @@ export default function RoadmapDetailPage() {
             </div>
           </div>
         </div>
-      </header>
+      </header> : null}
 
       {/* ── 노드 드로어 ──────────────────────────────────────────────────────── */}
       <NodeDrawer
@@ -1610,10 +1870,10 @@ export default function RoadmapDetailPage() {
       />
 
       {/* ── 메인 콘텐츠 ───────────────────────────────────────────────────────── */}
-      <main className={`roadmap-main${panelOpen ? ' panel-open' : ''} relative pt-28 pb-24 w-full min-h-screen`}>
+      <main className={`roadmap-main${panelOpen ? ' panel-open' : ''} relative pb-24 w-full min-h-screen`}>
 
         {/* 로드맵 카테고리 라벨 */}
-        <div className="fixed left-8 top-[76px] z-[60]">
+        <div className="roadmap-category-badge fixed left-8 z-[60]">
           <div className="flex items-center gap-2 text-sm font-extrabold text-gray-800 bg-white/80 backdrop-blur px-3 py-2 rounded-lg border border-gray-200 shadow-sm">
             <i className="fas fa-server text-[#00c471]" />
             <span>{roadmap.title}</span>
@@ -1688,6 +1948,15 @@ export default function RoadmapDetailPage() {
 
         </div>
       </main>
+
+      {authView ? (
+        <AuthModal
+          view={authView}
+          onClose={closeAuthModal}
+          onViewChange={setAuthView}
+          onAuthenticated={handleAuthenticated}
+        />
+      ) : null}
     </div>
   )
 }

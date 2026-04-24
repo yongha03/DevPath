@@ -1,10 +1,35 @@
 import { useEffect, useState } from 'react'
-import { roadmapApi } from '../lib/api'
-import { readStoredAuthSession } from '../lib/auth-session'
+import AuthModal, { type AuthView } from '../components/AuthModal'
+import SiteHeader from '../components/SiteHeader'
+import { authApi, roadmapApi, userApi } from '../lib/api'
+import {
+  AUTH_SESSION_SYNC_EVENT,
+  clearStoredAuthSession,
+  getPostLoginRedirect,
+  readStoredAuthSession,
+} from '../lib/auth-session'
 import type { RoadmapHubCatalog, RoadmapHubItem } from '../types/roadmap-hub'
 
 function buildRoadmapHref(linkedRoadmapId: number | null) {
   return linkedRoadmapId ? `roadmap.html?original=${linkedRoadmapId}` : null
+}
+
+function readAuthViewFromLocation(): AuthView | null {
+  const value = new URLSearchParams(window.location.search).get('auth')
+
+  return value === 'login' || value === 'signup' ? value : null
+}
+
+function syncAuthViewInLocation(view: AuthView | null) {
+  const url = new URL(window.location.href)
+
+  if (view) {
+    url.searchParams.set('auth', view)
+  } else {
+    url.searchParams.delete('auth')
+  }
+
+  window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
 }
 
 function renderRoleCard(item: RoadmapHubItem) {
@@ -23,9 +48,7 @@ function renderRoleCard(item: RoadmapHubItem) {
       <p className={item.featured ? 'relative text-xs text-gray-500' : 'text-xs text-gray-500'}>
         {item.subtitle || '공식 로드맵'}
         {item.featured ? (
-          <span className="ml-1 font-bold text-brand">
-            (추천)
-          </span>
+          <span className="ml-1 font-bold text-brand">(추천)</span>
         ) : null}
       </p>
       {item.featured ? <div className="absolute top-2 right-2 h-2 w-2 animate-ping rounded-full bg-red-500" /> : null}
@@ -209,15 +232,61 @@ function RoadmapHubSections({
 }
 
 function RoadmapHubPage() {
-  const session = readStoredAuthSession()
+  const [session, setSession] = useState(() => readStoredAuthSession())
+  const [profileImage, setProfileImage] = useState<string | null>(null)
+  const [authView, setAuthView] = useState<AuthView | null>(() => readAuthViewFromLocation())
   const [catalog, setCatalog] = useState<RoadmapHubCatalog | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    document.title = 'DevPath - 개발자 로드맵'
+  }, [])
+
+  useEffect(() => {
+    const syncSession = () => {
+      setSession(readStoredAuthSession())
+    }
+
+    window.addEventListener('storage', syncSession)
+    window.addEventListener(AUTH_SESSION_SYNC_EVENT, syncSession)
+    syncSession()
+
+    return () => {
+      window.removeEventListener('storage', syncSession)
+      window.removeEventListener(AUTH_SESSION_SYNC_EVENT, syncSession)
+    }
+  }, [])
+
+  useEffect(() => {
+    syncAuthViewInLocation(authView)
+  }, [authView])
+
+  useEffect(() => {
+    if (!session) {
+      setProfileImage(null)
+      return
+    }
+
+    const controller = new AbortController()
+
+    userApi
+      .getMyProfile(controller.signal)
+      .then((profile) => {
+        setProfileImage(profile.profileImage)
+      })
+      .catch(() => {
+        setProfileImage(null)
+      })
+
+    return () => {
+      controller.abort()
+    }
+  }, [session])
+
+  useEffect(() => {
     const abortController = new AbortController()
 
-    // 로드맵 허브 화면이 열릴 때 최신 허브 구성을 바로 가져온다.
     const loadHubCatalog = async () => {
       setLoading(true)
       setError(null)
@@ -245,113 +314,124 @@ function RoadmapHubPage() {
     }
   }, [])
 
-  const displayName = session?.name?.trim() || '게스트'
-  const avatarSeed = encodeURIComponent(displayName)
+  async function handleLogout() {
+    const currentSession = readStoredAuthSession()
+
+    try {
+      if (currentSession?.refreshToken) {
+        await authApi.logout(currentSession.refreshToken)
+      }
+    } catch {
+      // 서버 로그아웃이 실패해도 브라우저 세션은 정리한다.
+    } finally {
+      clearStoredAuthSession()
+      setSession(null)
+      setProfileImage(null)
+    }
+  }
+
+  function openAuthModal(view: AuthView) {
+    setAuthView(view)
+  }
+
+  function closeAuthModal() {
+    setAuthView(null)
+  }
+
+  function handleAuthenticated() {
+    const nextSession = readStoredAuthSession()
+
+    if (nextSession?.role === 'ROLE_ADMIN') {
+      window.location.replace(getPostLoginRedirect(nextSession.role))
+      return
+    }
+
+    setSession(nextSession)
+    closeAuthModal()
+  }
+
+  function retryLoadHubCatalog() {
+    setLoading(true)
+    setError(null)
+
+    void roadmapApi
+      .getHubCatalog()
+      .then((response) => {
+        setCatalog(response)
+      })
+      .catch((retryError) => {
+        setError(retryError instanceof Error ? retryError.message : '로드맵 허브를 불러오지 못했습니다.')
+      })
+      .finally(() => {
+        setLoading(false)
+      })
+  }
 
   return (
-    <div className="h-screen min-w-0 overflow-hidden bg-gray-50 text-gray-900">
-      <div className="hub-header-rail" />
+    <div className="flex min-h-screen flex-col bg-gray-50 text-gray-900">
+      <SiteHeader
+        session={session}
+        profileImage={profileImage}
+        onLogout={handleLogout}
+        onLoginClick={() => openAuthModal('login')}
+        activeNavHref="roadmap-hub.html"
+      />
 
-      <div className="flex h-screen min-w-0 flex-1 flex-col overflow-hidden">
-        <header className="hub-header">
-          <div className="app-responsive-container flex h-full items-center gap-4 lg:gap-8">
-            <div
-              className="hidden w-60 items-center px-4 lg:flex"
-              style={{ transform: 'translateX(var(--logo-nudge))' }}
+      <main className="app-main flex-1">
+        <header className="border-b border-gray-100 bg-gradient-to-b from-white to-gray-50 px-4 py-20 text-center">
+          <h1 className="mb-6 text-4xl font-bold text-gray-900 md:text-6xl">
+            <span className="bg-gradient-to-r from-purple-600 to-green-500 bg-clip-text text-transparent">
+              개발자 로드맵
+            </span>
+          </h1>
+          <p className="mx-auto mb-10 max-w-3xl text-lg leading-relaxed text-gray-500">
+            <span className="font-bold text-brand">DevPath</span>는 개발자들의 학습 방향을 잡을 수 있도록 정리합니다.
+            <br />
+            역할과 기술별로 정리된 로드맵을 확인하고 성장 흐름을 바로 시작해 보세요.
+          </p>
+          <div className="flex flex-col justify-center gap-4 sm:flex-row">
+            <button
+              type="button"
+              onClick={() => {
+                window.location.href = 'my-roadmap.html'
+              }}
+              className="group relative flex items-center justify-center gap-3 rounded-full bg-brand px-8 py-4 font-bold text-white shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-green-600 hover:shadow-xl"
             >
-              <a href="home.html" className="group flex items-center gap-2 text-xl font-bold text-gray-900">
-                <i className="fas fa-code-branch text-brand transition group-hover:rotate-12" /> DevPath
-              </a>
-            </div>
-            <div className="flex items-center lg:hidden">
-              <a href="home.html" className="group flex items-center gap-2 text-xl font-bold text-gray-900">
-                <i className="fas fa-code-branch text-brand transition group-hover:rotate-12" /> DevPath
-              </a>
-            </div>
-
-            <div className="hidden flex-1 items-center justify-center gap-10 text-sm font-bold text-gray-500 md:flex">
-              <a href="roadmap-hub.html" className="border-b-2 border-brand pb-1 text-brand transition">
-                로드맵
-              </a>
-              <a href="lecture-list.html" className="transition hover:text-brand">강의</a>
-              <a href="project-list.html" className="transition hover:text-brand">프로젝트</a>
-              <a href="community-list.html" className="transition hover:text-brand">커뮤니티</a>
-              <a href="job-matching.html" className="transition hover:text-brand">채용분석</a>
-            </div>
-
-            <div className="ml-auto flex min-w-0 items-center justify-end gap-2 md:w-60">
-              <div
-                className="flex cursor-pointer items-center gap-2"
-                onClick={() => { window.location.href = 'profile.html' }}
-              >
-                <span className="text-sm font-bold text-gray-700">{displayName}</span>
-                <img
-                  src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${avatarSeed}`}
-                  className="h-9 w-9 rounded-full border border-gray-200 shadow-sm"
-                  alt="me"
-                />
-              </div>
-            </div>
+              <div className="h-2 w-2 animate-pulse rounded-full bg-white" />
+              <span className="text-lg">나만의 로드맵 만들기</span>
+              <i className="fas fa-pen-ruler ml-1 transition-transform group-hover:rotate-12" />
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                window.location.href = 'roadmap.html'
+              }}
+              className="group relative flex items-center justify-center gap-3 rounded-full bg-gray-800 px-8 py-4 font-bold text-white shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-gray-900 hover:shadow-xl"
+            >
+              <span className="text-lg">학습 로드맵으로 이동</span>
+              <i className="fas fa-arrow-right transition-transform group-hover:translate-x-1" />
+            </button>
           </div>
         </header>
 
-        <main className="hub-main flex-1">
-          <header className="border-b border-gray-100 bg-gradient-to-b from-white to-gray-50 px-4 py-20 text-center">
-            <h1 className="mb-6 text-4xl font-bold text-gray-900 md:text-6xl">
-              <span className="bg-gradient-to-r from-purple-600 to-green-500 bg-clip-text text-transparent">
-                개발자 로드맵
-              </span>
-            </h1>
-            <p className="mx-auto mb-10 max-w-3xl text-lg leading-relaxed text-gray-500">
-              <span className="font-bold text-brand">DevPath</span>는 개발자들의 학습 방향을 잃지 않도록 정리합니다.
-              <br />
-              역할과 기술별로 정리된 로드맵을 확인하고 성장 흐름을 시작하세요.
-            </p>
-            <div className="flex flex-col justify-center gap-4 sm:flex-row">
-              <button
-                type="button"
-                onClick={() => { window.location.href = 'my-roadmap.html' }}
-                className="group relative flex items-center justify-center gap-3 rounded-full bg-brand px-8 py-4 font-bold text-white shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-green-600 hover:shadow-xl"
-              >
-                <div className="h-2 w-2 animate-pulse rounded-full bg-white" />
-                <span className="text-lg">나만의 로드맵 만들기</span>
-                <i className="fas fa-pen-ruler ml-1 transition-transform group-hover:rotate-12" />
-              </button>
-              <button
-                type="button"
-                onClick={() => { window.location.href = 'roadmap.html' }}
-                className="group relative flex items-center justify-center gap-3 rounded-full bg-gray-800 px-8 py-4 font-bold text-white shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-gray-900 hover:shadow-xl"
-              >
-                <span className="text-lg">학습 로드맵으로 이동</span>
-                <i className="fas fa-arrow-right transition-transform group-hover:translate-x-1" />
-              </button>
-            </div>
-          </header>
+        <div className="mx-auto mt-12 max-w-7xl space-y-20 px-6 pb-32">
+          <RoadmapHubSections
+            catalog={catalog}
+            loading={loading}
+            error={error}
+            onRetry={retryLoadHubCatalog}
+          />
+        </div>
+      </main>
 
-          <div className="mx-auto mt-12 max-w-7xl space-y-20 px-6 pb-32">
-            <RoadmapHubSections
-              catalog={catalog}
-              loading={loading}
-              error={error}
-              onRetry={() => {
-                setLoading(true)
-                setError(null)
-
-                void roadmapApi.getHubCatalog()
-                  .then((response) => {
-                    setCatalog(response)
-                  })
-                  .catch((retryError) => {
-                    setError(retryError instanceof Error ? retryError.message : '로드맵 허브를 불러오지 못했습니다.')
-                  })
-                  .finally(() => {
-                    setLoading(false)
-                  })
-              }}
-            />
-          </div>
-        </main>
-      </div>
+      {authView ? (
+        <AuthModal
+          view={authView}
+          onClose={closeAuthModal}
+          onViewChange={setAuthView}
+          onAuthenticated={handleAuthenticated}
+        />
+      ) : null}
     </div>
   )
 }

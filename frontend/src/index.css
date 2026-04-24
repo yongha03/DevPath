@@ -83,7 +83,9 @@ input,
 select,
 textarea {
   max-width: 100%;
-  font: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
 }
 
 pre {
@@ -160,6 +162,28 @@ pre {
 
 .bg-primary {
   background-color: #00c471;
+}
+
+.hero-primary-button {
+  transition:
+    background-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.hero-primary-button:hover {
+  background-color: #16a34a;
+}
+
+.hero-secondary-button {
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.hero-secondary-button:hover {
+  border-color: #9ca3af;
 }
 
 .hero-bg {
@@ -568,6 +592,54 @@ pre {
   overflow-anchor: none;
   scrollbar-gutter: stable;
   overscroll-behavior-y: contain;
+}
+
+.site-header-nav-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+  padding-bottom: 0.25rem;
+  color: #6b7280;
+  transition:
+    color 0.22s ease,
+    transform 0.22s ease;
+}
+
+.site-header-nav-link::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: -4px;
+  left: 0;
+  height: 2px;
+  border-radius: 999px;
+  background: #00c471;
+  opacity: 0;
+  transform: scaleX(0.28);
+  transform-origin: center;
+  transition:
+    opacity 0.24s ease,
+    transform 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+  pointer-events: none;
+}
+
+.site-header-nav-link:hover,
+.site-header-nav-link:focus-visible,
+.site-header-nav-link--active {
+  color: #00c471;
+  transform: translateY(-1px);
+}
+
+.site-header-nav-link:hover::after,
+.site-header-nav-link:focus-visible::after,
+.site-header-nav-link--active::after {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+.site-header-nav-link:focus-visible {
+  outline: none;
 }
 
 @media (max-width: 1023px) {

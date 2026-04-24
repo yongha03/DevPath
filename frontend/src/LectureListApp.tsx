@@ -298,6 +298,7 @@ export default function LectureListApp() {
         profileImage={profileImage}
         onLogout={handleLogout}
         onLoginClick={() => openAuthModal('login')}
+        activeNavHref="lecture-list.html"
       />
 
       <main className="app-main w-full bg-white pb-20">

@@ -329,7 +329,7 @@ function App() {
             </span>
           </h1>
           <p className="mx-auto mb-10 max-w-2xl text-lg leading-relaxed text-gray-500 md:text-xl">
-            막막한 독학은 그만. AI 진단부터 로드맵 추천, 실전 프로젝트,
+            막막한 독학은 그만. 맞춤 진단부터 로드맵 추천, 실전 프로젝트,
             <br />
             그리고 취업 매칭까지 하나의 플랫폼에서 해결하세요.
           </p>
@@ -337,14 +337,14 @@ function App() {
             <button
               type="button"
               onClick={() => go('survey.html')}
-              className="bg-brand flex items-center justify-center gap-2 rounded-xl px-8 py-4 text-lg font-bold text-white shadow-xl shadow-green-500/30 transition hover:bg-green-600"
+              className="hero-primary-button px-8 py-4 bg-brand hover:bg-green-600 text-white font-bold rounded-xl transition shadow-xl shadow-green-500/30 flex items-center justify-center gap-2 text-lg"
             >
-              <i className="fas fa-magic" /> AI 로드맵 추천받기
+              <i className="fas fa-magic" /> 로드맵 추천받기
             </button>
             <button
               type="button"
               onClick={() => go('roadmap-hub.html')}
-              className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-8 py-4 text-lg font-bold text-gray-700 transition hover:border-gray-400"
+              className="hero-secondary-button flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-8 py-4 text-lg font-bold text-gray-700 transition hover:border-gray-400"
             >
               <i className="fas fa-map" /> 로드맵 둘러보기
             </button>
@@ -645,9 +645,9 @@ function App() {
         </div>
       </section>
 
-      <section className="bg-brand relative overflow-hidden py-24">
+      <section className="py-24 bg-brand relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10" />
-        <div className="relative z-10 mx-auto max-w-4xl px-6 text-center">
+        <div className="max-w-4xl mx-auto px-6 text-center relative z-10">
           <h2 className="mb-6 text-4xl font-extrabold text-white md:text-5xl">준비되셨나요?</h2>
           <p className="mb-10 text-lg text-white/90">
             지금 바로 DevPath와 함께 성장의 여정을 시작하세요.
@@ -657,9 +657,9 @@ function App() {
           <button
             type="button"
             onClick={() => go('survey.html')}
-            className="text-brand rounded-xl bg-white px-10 py-4 text-lg font-bold shadow-xl transition hover:scale-105 hover:bg-gray-100"
+            className="px-10 py-4 bg-white text-brand font-bold rounded-xl text-lg shadow-xl hover:bg-gray-100 transition transform hover:scale-105"
           >
-            AI 로드맵 추천받기
+            로드맵 추천받기
           </button>
         </div>
       </section>

@@ -1,4 +1,4 @@
-import type { CSSProperties } from 'react'
+import type { CSSProperties, ReactNode } from 'react'
 import type { AuthSession } from '../types/auth'
 import AccountUserMenu from './AccountUserMenu'
 
@@ -12,19 +12,19 @@ const headerLinks = [
 
 // Edit only this object when you want pixel-level header tuning.
 export const siteHeaderTuning = {
-  maxWidthPx: 1600,
+  maxWidthPx: null,
   horizontalPaddingPx: 32,
   containerGapPx: 32,
   sideWidthPx: 240,
   brandSlotOffsetXPx: -54,
-  navBaseXPx: 17.5,
+  navBaseXPx: -20,
   navGapPx: 40,
   instructorGapPx: 40,
   instructorLinkGapPx: 24,
   headerGroup: { x: 0, y: 0 },
   brandGroup: { x: 15, y: 0 },
-  navGroup: { x: -2.5, y: 0 },
-  userGroup: { x: -12.5, y: 0 },
+  navGroup: { x: 0, y: 0 },
+  userGroup: { x: 0, y: 0 },
 } as const
 
 function getMoveStyle(offset: { x: number; y: number }): CSSProperties {
@@ -38,7 +38,11 @@ type SiteHeaderProps = {
   profileImage?: string | null
   onLogout?: () => Promise<void> | void
   onLoginClick?: () => void
+  activeNavHref?: string | null
   offsetTopPx?: number
+  userGroupOffsetOverride?: { x: number; y: number }
+  startOverlay?: ReactNode
+  endOverlay?: ReactNode
 }
 
 export default function SiteHeader({
@@ -46,14 +50,18 @@ export default function SiteHeader({
   profileImage,
   onLogout,
   onLoginClick,
+  activeNavHref = null,
   offsetTopPx = 0,
+  userGroupOffsetOverride,
+  startOverlay,
+  endOverlay,
 }: SiteHeaderProps) {
   const showInstructorDashboard = session?.role === 'ROLE_INSTRUCTOR'
   const instructorHeaderLinks = showInstructorDashboard
     ? [{ href: 'instructor-dashboard.html', label: '\uAC15\uC0AC \uB300\uC2DC\uBCF4\uB4DC' }]
     : []
   const containerStyle: CSSProperties = {
-    maxWidth: `${siteHeaderTuning.maxWidthPx}px`,
+    maxWidth: siteHeaderTuning.maxWidthPx == null ? 'none' : `${siteHeaderTuning.maxWidthPx}px`,
     paddingLeft: `clamp(16px, 3vw, ${siteHeaderTuning.horizontalPaddingPx}px)`,
     paddingRight: `clamp(16px, 3vw, ${siteHeaderTuning.horizontalPaddingPx}px)`,
     gap: `clamp(12px, 2vw, ${siteHeaderTuning.containerGapPx}px)`,
@@ -71,9 +79,11 @@ export default function SiteHeader({
     marginLeft: `${siteHeaderTuning.instructorGapPx}px`,
     gap: `${siteHeaderTuning.instructorLinkGapPx}px`,
   }
-  const userStyle = getMoveStyle(siteHeaderTuning.userGroup)
+  const userStyle = getMoveStyle(userGroupOffsetOverride ?? siteHeaderTuning.userGroup)
   const railStyle: CSSProperties = { top: `${offsetTopPx}px` }
   const headerStyle: CSSProperties = { top: `${offsetTopPx}px` }
+  const defaultNavLinkClassName = 'site-header-nav-link'
+  const activeNavLinkClassName = 'site-header-nav-link site-header-nav-link--active'
 
   return (
     <>
@@ -106,7 +116,11 @@ export default function SiteHeader({
           <div className="hidden flex-1 items-center justify-center text-sm font-bold text-gray-500 md:flex">
             <div className="relative inline-flex items-center" style={navStyle}>
               {headerLinks.map((item) => (
-                <a key={item.href} href={item.href} className="inline-block whitespace-nowrap transition hover:text-brand">
+                <a
+                  key={item.href}
+                  href={item.href}
+                  className={activeNavHref === item.href ? activeNavLinkClassName : defaultNavLinkClassName}
+                >
                   {item.label}
                 </a>
               ))}
@@ -117,7 +131,11 @@ export default function SiteHeader({
                   style={instructorStyle}
                 >
                   {instructorHeaderLinks.map((item) => (
-                    <a key={item.href} href={item.href} className="inline-block transition hover:text-brand">
+                    <a
+                      key={item.href}
+                      href={item.href}
+                      className={activeNavHref === item.href ? activeNavLinkClassName : defaultNavLinkClassName}
+                    >
                       {item.label}
                     </a>
                   ))}
@@ -156,6 +174,18 @@ export default function SiteHeader({
             </div>
           </div>
         </div>
+
+        {startOverlay ? (
+          <div className="absolute inset-0 pointer-events-none">
+            {startOverlay}
+          </div>
+        ) : null}
+
+        {endOverlay ? (
+          <div className="absolute inset-0 pointer-events-none">
+            {endOverlay}
+          </div>
+        ) : null}
       </nav>
     </>
   )
