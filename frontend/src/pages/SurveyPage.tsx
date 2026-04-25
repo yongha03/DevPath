@@ -1,4 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import SiteHeader from '../components/SiteHeader'
+import { authApi, userApi } from '../lib/api'
+import {
+  AUTH_SESSION_SYNC_EVENT,
+  clearStoredAuthSession,
+  readStoredAuthSession,
+} from '../lib/auth-session'
+import type { AuthSession } from '../types/auth'
 
 type Screen = 'start' | 'question' | 'loading' | 'result'
 
@@ -133,10 +141,51 @@ function initScores(): Record<string, number> {
 }
 
 function SurveyPage() {
+  const [session, setSession] = useState<AuthSession | null>(() => readStoredAuthSession())
+  const [profileImage, setProfileImage] = useState<string | null>(null)
   const [screen, setScreen] = useState<Screen>('start')
   const [currentStep, setCurrentStep] = useState(0)
   const [scores, setScores] = useState<Record<string, number>>(initScores)
   const [results, setResults] = useState<[string, number][]>([])
+
+  useEffect(() => {
+    document.title = 'DevPath - 나만의 로드맵 찾기'
+
+    const syncSession = () => {
+      setSession(readStoredAuthSession())
+    }
+
+    window.addEventListener('storage', syncSession)
+    window.addEventListener(AUTH_SESSION_SYNC_EVENT, syncSession)
+    syncSession()
+
+    return () => {
+      window.removeEventListener('storage', syncSession)
+      window.removeEventListener(AUTH_SESSION_SYNC_EVENT, syncSession)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!session) {
+      setProfileImage(null)
+      return
+    }
+
+    const controller = new AbortController()
+
+    userApi
+      .getMyProfile(controller.signal)
+      .then((profile) => {
+        setProfileImage(profile.profileImage)
+      })
+      .catch(() => {
+        setProfileImage(null)
+      })
+
+    return () => {
+      controller.abort()
+    }
+  }, [session])
 
   function startSurvey() {
     setScores(initScores())
@@ -173,25 +222,57 @@ function SurveyPage() {
     setResults([])
   }
 
+  async function handleLogout() {
+    const currentSession = readStoredAuthSession()
+
+    try {
+      if (currentSession?.refreshToken) {
+        await authApi.logout(currentSession.refreshToken)
+      }
+    } catch {
+      // 서버 로그아웃이 실패해도 브라우저 세션은 정리합니다.
+    } finally {
+      clearStoredAuthSession()
+      setSession(null)
+      setProfileImage(null)
+    }
+  }
+
+  function handleLoginClick() {
+    window.location.href = 'home.html?auth=login'
+  }
+
   const progress = Math.round((currentStep / QUESTIONS.length) * 100)
   const question = QUESTIONS[currentStep]
   const topResult = results[0] ? ROADMAPS[results[0][0]] : null
 
   return (
     <div className="flex min-h-screen flex-col bg-white text-gray-900">
-      <nav className="sticky top-0 z-50 flex items-center justify-between border-b border-gray-200 bg-white/90 px-6 py-4 backdrop-blur">
-        <a href="roadmap-hub.html" className="flex items-center gap-2 text-2xl font-bold">
-          <i className="fas fa-code-branch text-brand" /> DevPath
-        </a>
-        <a
-          href="roadmap-hub.html"
-          className="rounded px-3 py-2 text-sm text-gray-500 transition hover:bg-gray-100 hover:text-black"
-        >
-          <i className="fas fa-arrow-left mr-2" />목록으로 돌아가기
-        </a>
-      </nav>
+      <SiteHeader
+        session={session}
+        profileImage={profileImage}
+        onLogout={handleLogout}
+        onLoginClick={handleLoginClick}
+        activeNavHref="roadmap-hub.html"
+        startOverlay={
+          <a
+            href="home.html"
+            className="pointer-events-auto absolute top-1/2 flex items-center gap-1 text-sm font-bold text-gray-500 transition hover:text-gray-800"
+            style={{
+              left: 'calc((var(--left-rail) * -1) + clamp(8px, 2vw, 16px))',
+              transform: 'translateY(-50%)',
+            }}
+          >
+            <i className="fas fa-arrow-left" />
+            <span>홈으로</span>
+          </a>
+        }
+      />
 
-      <main className="mx-auto flex w-full max-w-3xl flex-grow flex-col items-center justify-center p-6">
+      <main
+        className="mx-auto flex w-full max-w-3xl flex-grow flex-col items-center justify-center px-6 pb-6"
+        style={{ paddingTop: 'calc(var(--app-header-height) + 24px)' }}
+      >
         {screen === 'question' && (
           <div className="mb-12 w-full">
             <div className="mb-2 flex justify-between text-xs text-gray-500">

@@ -8,7 +8,7 @@
   top: 0;
   left: var(--left-rail);
   right: 0;
-  height: 64px;
+  height: var(--app-header-height, 64px);
   z-index: 999;
   background: rgba(255, 255, 255, 0.9);
   border-bottom: 1px solid #e5e7eb;
@@ -20,7 +20,7 @@
   top: 0;
   left: 0;
   width: var(--left-rail);
-  height: 64px;
+  height: var(--app-header-height, 64px);
   background: rgba(255, 255, 255, 0.9);
   border-bottom: 1px solid #e5e7eb;
   z-index: 998;
@@ -28,10 +28,16 @@
 }
 
 .hub-main {
-  padding-top: 64px;
+  padding-top: var(--app-header-height, 64px);
   overflow-y: auto;
   background: #f9fafb;
   overflow-anchor: none;
+}
+
+@media (max-width: 1023px) {
+  :root {
+    --left-rail: 0px;
+  }
 }
 
 .roadmap-hub-card {

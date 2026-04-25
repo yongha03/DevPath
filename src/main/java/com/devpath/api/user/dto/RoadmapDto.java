@@ -21,6 +21,16 @@ public class RoadmapDto {
   }
 
   @Getter
+  @Schema(description = "오피셜 로드맵 소개 콘텐츠 수정 요청 DTO")
+  public static class InfoUpdateRequest {
+    @Schema(description = "로드맵 상세 화면 소개 아코디언 제목", example = "백엔드 개발이란 무엇인가요?")
+    private String infoTitle;
+
+    @Schema(description = "로드맵 상세 화면 소개 HTML 콘텐츠")
+    private String infoContent;
+  }
+
+  @Getter
   @Builder
   @Schema(description = "오피셜 로드맵 응답 DTO")
   public static class Response {
@@ -32,6 +42,12 @@ public class RoadmapDto {
 
     @Schema(description = "로드맵 설명")
     private String description;
+
+    @Schema(description = "로드맵 상세 화면 소개 아코디언 제목")
+    private String infoTitle;
+
+    @Schema(description = "로드맵 상세 화면 소개 HTML 콘텐츠")
+    private String infoContent;
 
     @Schema(description = "공식 로드맵 여부", example = "true")
     private Boolean isOfficial;

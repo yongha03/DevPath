@@ -1,12 +1,15 @@
 import { useEffect } from 'react'
-import { readStoredAuthSession } from './lib/auth-session'
+import { getPostLoginRedirect, readStoredAuthSession } from './lib/auth-session'
 
 function LoginApp() {
   useEffect(() => {
+    // 로그인 전용 엔트리는 기존 세션을 역할별 기본 화면으로 돌려보낸다.
     const existingSession = readStoredAuthSession()
 
     if (existingSession) {
-      window.location.replace('/')
+      window.location.replace(
+        existingSession.role === 'ROLE_ADMIN' ? getPostLoginRedirect(existingSession.role) : '/',
+      )
       return
     }
 

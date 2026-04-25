@@ -19,14 +19,14 @@ const myMenuItems: Array<{
 
 export function LearnerPageShell({ children }: { children: ReactNode }) {
   return (
-    <main className="app-main flex-1 overflow-y-scroll bg-[#F8F9FA]">
-      <div className="mx-auto w-full max-w-[1600px] px-8 pt-8 pb-12">{children}</div>
+    <main className="app-main flex-1 overflow-y-auto bg-[#F8F9FA]">
+      <div className="app-responsive-container pt-6 pb-10 md:pt-8 md:pb-12">{children}</div>
     </main>
   )
 }
 
 export function LearnerContentRow({ children }: { children: ReactNode }) {
-  return <div className="flex gap-8">{children}</div>
+  return <div className="app-responsive-row">{children}</div>
 }
 
 export function MyMenuSidebar({

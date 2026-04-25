@@ -12,5 +12,8 @@ public interface RoadmapRepository extends JpaRepository<Roadmap, Long> {
 
   List<Roadmap> findAllByIsOfficialTrueAndIsDeletedFalse();
 
+  // 관리자 허브 편집기에서 연결 가능한 공식 로드맵 목록을 제목순으로 읽어 온다.
+  List<Roadmap> findAllByIsOfficialTrueAndIsDeletedFalseOrderByTitleAsc();
+
   Optional<Roadmap> findByRoadmapIdAndIsOfficialTrueAndIsDeletedFalse(Long roadmapId);
 }

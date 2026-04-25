@@ -8,9 +8,11 @@ import com.devpath.domain.learning.repository.clearance.NodeClearanceRepository;
 import com.devpath.domain.roadmap.entity.CustomRoadmap;
 import com.devpath.domain.roadmap.entity.CustomRoadmapNode;
 import com.devpath.domain.roadmap.entity.NodeStatus;
+import com.devpath.domain.roadmap.entity.RoadmapNodeResource;
 import com.devpath.domain.roadmap.repository.CustomNodePrerequisiteRepository;
 import com.devpath.domain.roadmap.repository.CustomRoadmapNodeRepository;
 import com.devpath.domain.roadmap.repository.CustomRoadmapRepository;
+import com.devpath.domain.roadmap.repository.RoadmapNodeResourceRepository;
 import com.devpath.domain.user.entity.User;
 import com.devpath.domain.user.repository.UserRepository;
 import java.util.List;
@@ -29,6 +31,7 @@ public class CustomRoadmapQueryService {
   private final CustomRoadmapNodeRepository customRoadmapNodeRepository;
   private final CustomNodePrerequisiteRepository customNodePrerequisiteRepository;
   private final NodeClearanceRepository nodeClearanceRepository;
+  private final RoadmapNodeResourceRepository roadmapNodeResourceRepository;
 
   @Transactional(readOnly = true)
   public List<CustomRoadmap> getMyRoadmaps(Long userId) {
@@ -65,7 +68,21 @@ public class CustomRoadmapQueryService {
                 .collect(Collectors.toMap(c -> c.getNode().getNodeId(), c -> c))
             : Map.of();
 
-    return MyRoadmapDto.DetailResponse.from(customRoadmap, customNodes, prerequisiteIdsByNodeId, statusByNodeId, clearanceByNodeId);
+    List<Long> originalNodeIds =
+        customNodes.stream().map(node -> node.getOriginalNode().getNodeId()).toList();
+    Map<Long, List<RoadmapNodeResource>> resourcesByNodeId =
+        originalNodeIds.isEmpty()
+            ? Map.of()
+            : roadmapNodeResourceRepository.findActiveByNodeIds(originalNodeIds).stream()
+                .collect(Collectors.groupingBy(resource -> resource.getNode().getNodeId()));
+
+    return MyRoadmapDto.DetailResponse.from(
+        customRoadmap,
+        customNodes,
+        prerequisiteIdsByNodeId,
+        statusByNodeId,
+        clearanceByNodeId,
+        resourcesByNodeId);
   }
 
   @Transactional

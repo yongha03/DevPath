@@ -47,7 +47,7 @@ export default function LearnerLayout({
   }, [])
 
   return (
-    <div className="flex h-screen overflow-hidden text-gray-800">
+    <div className="flex h-screen min-w-0 overflow-hidden text-gray-800">
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <LearnerHeader session={session} profileImage={profileImage} onLogout={onLogout} />
         {children}

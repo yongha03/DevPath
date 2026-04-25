@@ -3,12 +3,12 @@ import AccountUserMenu from './components/AccountUserMenu'
 import AuthModal, { type AuthView } from './components/AuthModal'
 import SiteHeader from './components/SiteHeader'
 import { authApi, userApi } from './lib/api'
-import { AUTH_SESSION_SYNC_EVENT, clearStoredAuthSession, readStoredAuthSession } from './lib/auth-session'
-
-type AosInstance = {
-  init: (options: { duration: number; once: boolean; offset: number }) => void
-  refresh?: () => void
-}
+import {
+  AUTH_SESSION_SYNC_EVENT,
+  clearStoredAuthSession,
+  getPostLoginRedirect,
+  readStoredAuthSession,
+} from './lib/auth-session'
 
 const headerLinks = [
   { key: 'roadmap', href: 'roadmap-hub.html', label: '로드맵' },
@@ -22,7 +22,7 @@ const instructorHeaderLink = { key: 'instructorDashboard', href: 'instructor-das
 
 type HeaderMoveKey = 'brandGroup' | 'navGroup'
 
-// Edit these values directly when you want to move each header group.
+// 헤더 각 영역의 위치를 미세 조정할 때 사용하는 오프셋이다.
 const headerMoveOffsets: Record<HeaderMoveKey, { x: number; y: number }> = {
   brandGroup: { x: 7.5, y: 0 },
   navGroup: { x: -10, y: 0 },
@@ -75,14 +75,53 @@ function syncAuthViewInLocation(view: AuthView | null) {
 }
 
 function initAos() {
-  const aos = (window as Window & { AOS?: AosInstance }).AOS
+  const elements = Array.from(document.querySelectorAll<HTMLElement>('[data-aos]'))
 
-  aos?.init({
-    duration: 800,
-    once: true,
-    offset: 100,
+  if (elements.length === 0) {
+    return undefined
+  }
+
+  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    elements.forEach((element) => {
+      element.classList.add('aos-animate')
+    })
+    return undefined
+  }
+
+  elements.forEach((element) => {
+    const delay = Number(element.dataset.aosDelay ?? 0)
+
+    if (Number.isFinite(delay) && delay > 0) {
+      element.style.transitionDelay = `${delay}ms`
+    }
+
+    element.classList.add('aos-init')
   })
-  aos?.refresh?.()
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) {
+          return
+        }
+
+        entry.target.classList.add('aos-animate')
+        observer.unobserve(entry.target)
+      })
+    },
+    {
+      rootMargin: '0px 0px -18% 0px',
+      threshold: 0.18,
+    },
+  )
+
+  elements.forEach((element) => {
+    observer.observe(element)
+  })
+
+  return () => {
+    observer.disconnect()
+  }
 }
 
 function getHeaderMoveStyle(key: HeaderMoveKey): CSSProperties {
@@ -103,7 +142,7 @@ function App() {
 
   useEffect(() => {
     document.title = 'DevPath - 개발자 성장의 모든 것'
-    initAos()
+    return initAos()
   }, [])
 
   useEffect(() => {
@@ -173,8 +212,16 @@ function App() {
     setAuthView(null)
   }
 
+  // 관리자 세션은 일반 홈 대신 전용 대시보드로 즉시 이동시킨다.
   function handleAuthenticated() {
-    setSession(readStoredAuthSession())
+    const nextSession = readStoredAuthSession()
+
+    if (nextSession?.role === 'ROLE_ADMIN') {
+      window.location.replace(getPostLoginRedirect(nextSession.role))
+      return
+    }
+
+    setSession(nextSession)
     closeAuthModal()
   }
 
@@ -290,14 +337,14 @@ function App() {
             <button
               type="button"
               onClick={() => go('survey.html')}
-              className="bg-brand flex items-center justify-center gap-2 rounded-xl px-8 py-4 text-lg font-bold text-white shadow-xl shadow-green-500/30 transition hover:bg-green-600"
+              className="hero-primary-button px-8 py-4 bg-brand hover:bg-green-600 text-white font-bold rounded-xl transition shadow-xl shadow-green-500/30 flex items-center justify-center gap-2 text-lg"
             >
               <i className="fas fa-magic" /> 로드맵 추천받기
             </button>
             <button
               type="button"
               onClick={() => go('roadmap-hub.html')}
-              className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-8 py-4 text-lg font-bold text-gray-700 transition hover:border-gray-400"
+              className="hero-secondary-button flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-8 py-4 text-lg font-bold text-gray-700 transition hover:border-gray-400"
             >
               <i className="fas fa-map" /> 로드맵 둘러보기
             </button>
@@ -598,9 +645,9 @@ function App() {
         </div>
       </section>
 
-      <section className="bg-brand relative overflow-hidden py-24">
+      <section className="py-24 bg-brand relative overflow-hidden">
         <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10" />
-        <div className="relative z-10 mx-auto max-w-4xl px-6 text-center">
+        <div className="max-w-4xl mx-auto px-6 text-center relative z-10">
           <h2 className="mb-6 text-4xl font-extrabold text-white md:text-5xl">준비되셨나요?</h2>
           <p className="mb-10 text-lg text-white/90">
             지금 바로 DevPath와 함께 성장의 여정을 시작하세요.
@@ -610,7 +657,7 @@ function App() {
           <button
             type="button"
             onClick={() => go('survey.html')}
-            className="text-brand rounded-xl bg-white px-10 py-4 text-lg font-bold shadow-xl transition hover:scale-105 hover:bg-gray-100"
+            className="px-10 py-4 bg-white text-brand font-bold rounded-xl text-lg shadow-xl hover:bg-gray-100 transition transform hover:scale-105"
           >
             로드맵 추천받기
           </button>

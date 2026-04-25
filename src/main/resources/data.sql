@@ -53,8 +53,8 @@ WHERE NOT EXISTS (
 INSERT INTO users (email, password, name, role_name, is_active, created_at, updated_at)
 SELECT
     'learner@devpath.com',
-    '$2a$10$xh6.EW/FRzJBWfxqpdXh2uTVoepPhUxQRUH5OEwk90IpYeKjegkj.',
-    'Learner Kim',
+    '$2a$10$lEubudcVnsxZ6EAO3.joFOPndlLjv9.bi5FcO4z59a74fCMjqZA.O',
+    '김하늘',
     'ROLE_LEARNER',
     TRUE,
     NOW(),
@@ -69,7 +69,7 @@ INSERT INTO users (email, password, name, role_name, is_active, created_at, upda
 SELECT
     'instructor@devpath.com',
     '$2a$10$xh6.EW/FRzJBWfxqpdXh2uTVoepPhUxQRUH5OEwk90IpYeKjegkj.',
-    'Instructor Hong',
+    '홍지훈',
     'ROLE_INSTRUCTOR',
     TRUE,
     NOW(),
@@ -84,7 +84,7 @@ INSERT INTO users (email, password, name, role_name, is_active, created_at, upda
 SELECT
     'admin@devpath.com',
     '$2a$10$xh6.EW/FRzJBWfxqpdXh2uTVoepPhUxQRUH5OEwk90IpYeKjegkj.',
-    'Admin Park',
+    '박서연',
     'ROLE_ADMIN',
     TRUE,
     NOW(),
@@ -97,7 +97,11 @@ WHERE NOT EXISTS (
 
 UPDATE users
 SET password = '$2a$10$xh6.EW/FRzJBWfxqpdXh2uTVoepPhUxQRUH5OEwk90IpYeKjegkj.'
-WHERE email IN ('learner@devpath.com', 'instructor@devpath.com', 'admin@devpath.com');
+WHERE email IN ('learner@devpath.com', 'instructor@devpath.com');
+
+UPDATE users
+SET password = '$2a$10$lEubudcVnsxZ6EAO3.joFOPndlLjv9.bi5FcO4z59a74fCMjqZA.O'
+WHERE email = 'admin@devpath.com';
 
 -- ============================================================
 -- 3. User Profiles
@@ -117,7 +121,7 @@ INSERT INTO user_profiles (
 SELECT
     u.user_id,
     NULL,
-    'Hong Backend Lab',
+    '홍지훈 백엔드 연구소',
     'Spring Boot와 Security를 실전 중심으로 가르치는 강사입니다.',
     '010-0000-0001',
     'https://github.com/instructor-hong',
@@ -148,7 +152,7 @@ INSERT INTO user_profiles (
 SELECT
     u.user_id,
     NULL,
-    'DevPath Admin',
+    'DevPath 관리자',
     'DevPath 플랫폼 운영과 학습 경험 개선을 담당하고 있습니다.',
     '010-0000-0002',
     'https://github.com/admin-park',
@@ -167,7 +171,7 @@ WHERE u.email = 'admin@devpath.com'
 UPDATE user_profiles up
 SET
     profile_image = NULL,
-    channel_name = 'Hong Backend Lab',
+    channel_name = '홍지훈 백엔드 연구소',
     bio = 'Spring Boot와 Security를 실전 중심으로 가르치는 강사입니다.',
     github_url = 'https://github.com/instructor-hong',
     blog_url = 'https://blog.devpath.com/hong',
@@ -180,7 +184,7 @@ WHERE up.user_id = u.user_id
 UPDATE user_profiles up
 SET
     profile_image = NULL,
-    channel_name = 'DevPath Admin',
+    channel_name = 'DevPath 관리자',
     bio = 'DevPath 플랫폼 운영과 학습 경험 개선을 담당하고 있습니다.',
     github_url = 'https://github.com/admin-park',
     blog_url = 'https://blog.devpath.com/admin',
@@ -2161,7 +2165,7 @@ INSERT INTO users (
 )
 SELECT 'restricted-user@devpath.com',
        '$2a$10$RcdWJBwl.kuttYmqm/BN..6aZKeLNlq9DiNFHbZgZxfTzzNDD33o2',
-       'Restricted Learner', 'ROLE_LEARNER', FALSE, 'RESTRICTED',
+       '정민재', 'ROLE_LEARNER', FALSE, 'RESTRICTED',
        '2026-02-01 00:00:00', '2026-02-15 00:00:00'
 WHERE NOT EXISTS (
     SELECT 1 FROM users WHERE email = 'restricted-user@devpath.com'
@@ -2172,7 +2176,7 @@ INSERT INTO users (
 )
 SELECT 'deactivated-user@devpath.com',
        '$2a$10$RcdWJBwl.kuttYmqm/BN..6aZKeLNlq9DiNFHbZgZxfTzzNDD33o2',
-       'Deactivated Learner', 'ROLE_LEARNER', FALSE, 'DEACTIVATED',
+       '오서연', 'ROLE_LEARNER', FALSE, 'DEACTIVATED',
        '2026-02-01 00:00:00', '2026-02-16 00:00:00'
 WHERE NOT EXISTS (
     SELECT 1 FROM users WHERE email = 'deactivated-user@devpath.com'
@@ -2183,7 +2187,7 @@ INSERT INTO users (
 )
 SELECT 'withdrawn-user@devpath.com',
        '$2a$10$RcdWJBwl.kuttYmqm/BN..6aZKeLNlq9DiNFHbZgZxfTzzNDD33o2',
-       'Withdrawn Learner', 'ROLE_LEARNER', FALSE, 'WITHDRAWN',
+       '강도윤', 'ROLE_LEARNER', FALSE, 'WITHDRAWN',
        '2026-02-01 00:00:00', '2026-02-17 00:00:00'
 WHERE NOT EXISTS (
     SELECT 1 FROM users WHERE email = 'withdrawn-user@devpath.com'
@@ -2386,7 +2390,7 @@ INSERT INTO users (email, password, name, role_name, is_active, created_at, upda
 SELECT
     'learner2@devpath.com',
     '$2a$10$RcdWJBwl.kuttYmqm/BN..6aZKeLNlq9DiNFHbZgZxfTzzNDD33o2',
-    'Learner Park',
+    '박지민',
     'ROLE_LEARNER',
     TRUE,
     NOW(),
@@ -2401,7 +2405,7 @@ INSERT INTO users (email, password, name, role_name, is_active, created_at, upda
 SELECT
     'learner3@devpath.com',
     '$2a$10$RcdWJBwl.kuttYmqm/BN..6aZKeLNlq9DiNFHbZgZxfTzzNDD33o2',
-    'Learner Lee',
+    '이서준',
     'ROLE_LEARNER',
     TRUE,
     NOW(),
@@ -8778,7 +8782,7 @@ INSERT INTO users (email, password, name, role_name, is_active, created_at, upda
 SELECT
     'learner4@devpath.com',
     '$2a$10$RcdWJBwl.kuttYmqm/BN..6aZKeLNlq9DiNFHbZgZxfTzzNDD33o2',
-    'Learner Choi',
+    '최유진',
     'ROLE_LEARNER',
     TRUE,
     NOW(),
@@ -9227,114 +9231,181 @@ WHERE original_node_id IN (
 DELETE FROM custom_roadmaps
 WHERE original_roadmap_id = (SELECT roadmap_id FROM roadmaps WHERE title = 'Backend Master Roadmap');
 
--- 22단계: roadmap_nodes 삭제 (모든 자식 정리 완료)
+-- 22단계: roadmap_node_resources (roadmap_nodes 참조)
+DELETE FROM roadmap_node_resources
+WHERE node_id IN (
+    SELECT node_id FROM roadmap_nodes
+    WHERE roadmap_id = (SELECT roadmap_id FROM roadmaps WHERE title = 'Backend Master Roadmap')
+);
+
+-- 23단계: roadmap_nodes 삭제 (모든 자식 정리 완료)
 DELETE FROM roadmap_nodes
 WHERE roadmap_id = (SELECT roadmap_id FROM roadmaps WHERE title = 'Backend Master Roadmap');
 
 -- 척추 노드 (branch_group = NULL)
 INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
 SELECT r.roadmap_id, '인터넷 & 웹 기초',
-       'HTTP/HTTPS 동작 방식, DNS 조회 원리, 도메인과 호스팅 개념을 이해하고 브라우저가 서버와 통신하는 전체 흐름을 학습합니다.',
-       'CONCEPT', 1, 'HTTP/HTTPS,DNS 작동원리,도메인,호스팅,브라우저', NULL
+       '백엔드 개발자는 브라우저 요청이 DNS 조회, TCP/TLS 연결, HTTP 요청/응답을 거쳐 서버 애플리케이션까지 도달하는 흐름을 이해해야 합니다. 이 단계에서는 URL을 입력했을 때 어떤 네트워크 계층을 지나고 서버가 어떤 기준으로 응답을 만드는지 익힙니다.',
+       'CONCEPT', 1, 'HTTP 요청/응답: 클라이언트가 리소스를 요청하고 서버가 상태 코드와 본문을 돌려주는 구조,DNS: 도메인 이름을 실제 서버 IP로 찾는 이름 해석 시스템,HTTPS와 TLS: 통신 내용을 암호화하고 서버 신뢰성을 검증하는 보안 계층,브라우저와 서버 흐름: URL 입력부터 렌더링 직전까지 이어지는 전체 요청 경로', NULL
 FROM roadmaps r WHERE r.title = 'Backend Master Roadmap';
 
 INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
 SELECT r.roadmap_id, 'OS & 터미널',
-       'Linux/Unix 운영체제 기본 명령어, 파일 시스템, 프로세스·스레드 관리, 메모리·I/O 관리 원리를 학습합니다.',
-       'CONCEPT', 2, 'Terminal 사용법,프로세스 관리,스레드와 동시성,메모리 관리,I/O 관리', NULL
+       '운영체제는 백엔드 애플리케이션이 실제로 실행되는 바닥입니다. 파일 권한, 프로세스, 포트, 로그, 환경 변수, 메모리 사용량을 터미널에서 확인할 수 있어야 장애 상황에서 원인을 좁힐 수 있습니다.',
+       'CONCEPT', 2, '프로세스와 스레드: 프로그램 실행 단위와 동시 처리의 기본 구조,파일 시스템과 권한: 서버 파일 위치와 읽기 쓰기 실행 권한을 다루는 기준,셸 명령과 파이프: 로그 확인과 배포 작업을 자동화하는 터미널 활용법,포트와 I/O: 네트워크 연결과 입출력 자원이 애플리케이션에 미치는 영향', NULL
 FROM roadmaps r WHERE r.title = 'Backend Master Roadmap';
 
 INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
 SELECT r.roadmap_id, 'Java 기초',
-       '변수/자료형, 제어문, 클래스·객체, 상속·다형성·캡슐화를 학습하고 Java로 기본 프로그램을 작성할 수 있습니다.',
-       'CONCEPT', 3, 'OOP,클래스와 객체,상속,인터페이스,제네릭,컬렉션 프레임워크', NULL
+       'Spring Boot를 제대로 쓰려면 Java 문법을 단순 암기보다 객체 모델과 타입 시스템 관점에서 이해해야 합니다. 클래스, 인터페이스, 컬렉션, 예외 처리, 제네릭을 익히면 서비스 계층과 도메인 코드를 안정적으로 설계할 수 있습니다.',
+       'CONCEPT', 3, 'JVM: Java 코드가 운영체제와 무관하게 실행되는 런타임 구조,OOP: 책임을 가진 객체들이 협력하도록 코드를 나누는 설계 방식,컬렉션 프레임워크: List Set Map으로 데이터를 목적에 맞게 다루는 표준 도구,예외 처리: 실패 상황을 호출 흐름 안에서 명확하게 다루는 방법,제네릭: 타입 안정성을 유지하면서 재사용 가능한 코드를 만드는 문법', NULL
 FROM roadmaps r WHERE r.title = 'Backend Master Roadmap';
 
 INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
 SELECT r.roadmap_id, 'Git & 버전 관리',
-       'Git init/add/commit/branch/merge/rebase를 익히고 GitHub Pull Request 기반의 협업 워크플로우를 학습합니다.',
-       'PRACTICE', 4, 'Git 기초,브랜치 전략,GitFlow,Pull Request,코드 리뷰', NULL
+       'Git은 코드 저장 도구를 넘어 팀 작업의 변경 이력과 의사결정을 남기는 시스템입니다. 브랜치 전략, 커밋 단위, PR 리뷰 흐름을 이해하면 기능 개발과 버그 수정이 섞이지 않고 안전하게 배포할 수 있습니다.',
+       'PRACTICE', 4, '커밋: 의미 있는 변경 단위를 기록하는 기본 단위,브랜치: 기능 개발과 배포 라인을 분리하는 작업 공간,Pull Request: 코드 리뷰와 변경 검증을 거쳐 병합하는 협업 절차,충돌 해결: 같은 코드 영역의 변경을 사람이 판단해 정리하는 과정', NULL
 FROM roadmaps r WHERE r.title = 'Backend Master Roadmap';
 
 INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
 SELECT r.roadmap_id, 'RDB & SQL',
-       '관계형 데이터베이스 구조, 정규화, SELECT/JOIN/서브쿼리/집계함수를 학습하고 트랜잭션(ACID)의 원리를 이해합니다.',
-       'CONCEPT', 5, 'SQL CRUD,JOIN,서브쿼리,인덱스,트랜잭션,ACID,PostgreSQL', NULL
+       '대부분의 백엔드 서비스는 관계형 데이터베이스에 핵심 데이터를 저장합니다. 테이블 설계, JOIN, 인덱스, 트랜잭션을 이해해야 데이터 정합성을 지키면서도 조회 성능을 유지할 수 있습니다.',
+       'CONCEPT', 5, '테이블과 관계: 데이터를 행과 열로 저장하고 외래키로 연결하는 구조,JOIN: 여러 테이블에 나뉜 데이터를 하나의 결과로 조합하는 방법,인덱스: 조회 속도를 높이지만 쓰기 비용을 함께 고려해야 하는 자료구조,트랜잭션과 ACID: 여러 데이터 변경을 하나의 안전한 작업 단위로 묶는 원칙', NULL
 FROM roadmaps r WHERE r.title = 'Backend Master Roadmap';
 
 INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
 SELECT r.roadmap_id, 'REST API 설계',
-       'REST 원칙, URI 명사형 설계, HTTP 메서드 활용, 상태코드 전략, Swagger(OpenAPI 3.0) 문서화를 학습합니다.',
-       'CONCEPT', 6, 'REST 원칙,URI 설계,HTTP 메서드,상태코드,Swagger,OpenAPI', NULL
+       'REST API는 프론트엔드와 백엔드가 약속하는 가장 흔한 통신 규칙입니다. URI를 리소스 중심으로 설계하고 HTTP 메서드와 상태 코드를 일관되게 쓰면 클라이언트가 예측 가능한 API를 사용할 수 있습니다.',
+       'CONCEPT', 6, '리소스 중심 URI: 행위보다 대상을 기준으로 API 주소를 설계하는 방식,HTTP 메서드: GET POST PUT PATCH DELETE의 의도를 구분하는 약속,상태 코드: 요청 결과를 숫자로 명확하게 전달하는 표준,OpenAPI: API 사용법과 스키마를 문서로 공유하는 명세', NULL
 FROM roadmaps r WHERE r.title = 'Backend Master Roadmap';
 
 INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
 SELECT r.roadmap_id, 'Spring Boot & MVC',
-       'Auto-configuration, @Bean/@Component, DispatcherServlet, Controller-Service-Repository 3계층 구조를 학습합니다.',
-       'CONCEPT', 7, 'DI/IoC,@Bean,Auto-configuration,DispatcherServlet,3계층 구조', NULL
+       'Spring Boot는 설정 부담을 줄여 애플리케이션을 빠르게 띄우고 Spring MVC는 요청이 컨트롤러까지 도달하는 웹 계층 흐름을 담당합니다. DI, Bean, DispatcherServlet, 계층 구조를 이해해야 기능이 커져도 코드가 무너지지 않습니다.',
+       'CONCEPT', 7, 'DI와 IoC: 객체 생성과 의존성 연결을 프레임워크가 관리하는 구조,Bean: Spring 컨테이너가 생명주기를 관리하는 객체,DispatcherServlet: HTTP 요청을 컨트롤러로 라우팅하는 MVC의 중심 진입점,3계층 구조: Controller Service Repository로 책임을 나누는 기본 설계', NULL
 FROM roadmaps r WHERE r.title = 'Backend Master Roadmap';
 
 INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
 SELECT r.roadmap_id, 'Spring Data JPA',
-       'Entity 설계, Repository 패턴, JPQL, FetchType(LAZY/EAGER), N+1 문제 해결 방법을 학습합니다.',
-       'CONCEPT', 8, 'Entity 매핑,Repository,JPQL,FetchType,N+1 해결,QueryDSL', NULL
+       'JPA는 객체 중심 코드와 관계형 데이터베이스 사이의 차이를 줄여주는 ORM 기술입니다. 엔티티 매핑과 연관관계를 제대로 잡지 못하면 N+1, 영속성 컨텍스트, 트랜잭션 경계 문제로 성능과 데이터 정합성이 흔들릴 수 있습니다.',
+       'CONCEPT', 8, 'Entity 매핑: 객체 필드와 데이터베이스 테이블 컬럼을 연결하는 규칙,연관관계: 객체 참조와 외래키 관계를 일관되게 표현하는 방법,영속성 컨텍스트: 엔티티 변경을 추적하고 DB 반영 시점을 관리하는 공간,Fetch 전략: 연관 데이터를 즉시 가져올지 늦게 가져올지 정하는 기준,N+1 문제: 반복 조회로 SQL이 과도하게 발생하는 성능 문제', NULL
 FROM roadmaps r WHERE r.title = 'Backend Master Roadmap';
 
 -- 분기 노드 (sort 9-10, 좌: Redis, 우: 테스트)
 INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
 SELECT r.roadmap_id, 'Redis 기초',
-       'Redis 자료구조(String/Hash/List/Set/ZSet), TTL 설정, Spring Cache(@Cacheable) 연동을 학습합니다.',
-       'PRACTICE', 9, 'String/Hash/List/Set/ZSet,TTL,Spring Cache,@Cacheable', 1
+       'Redis는 단순 캐시 저장소가 아니라 빠른 읽기 쓰기와 다양한 자료구조를 제공하는 인메모리 데이터 저장소입니다. 캐시, 랭킹, 임시 토큰, 카운터처럼 응답 속도가 중요한 기능에서 TTL과 자료구조 선택이 핵심입니다.',
+       'PRACTICE', 9, '인메모리 저장소: 디스크보다 빠른 메모리에 데이터를 보관하는 방식,String Hash List Set ZSet: 목적에 따라 선택하는 Redis 핵심 자료구조,TTL: 일정 시간이 지나면 데이터를 자동 삭제하는 만료 전략,캐시 전략: DB 부하를 줄이기 위해 자주 읽는 데이터를 임시 저장하는 방식', 1
 FROM roadmaps r WHERE r.title = 'Backend Master Roadmap';
 
 INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
 SELECT r.roadmap_id, 'Redis 심화',
-       'Session 저장, JWT 블랙리스트 관리, Pub/Sub 메시지, 분산 락(Redisson)을 학습합니다.',
-       'PRACTICE', 10, 'Session 저장,JWT 블랙리스트,Pub/Sub,분산 락,Redisson', 1
+       'Redis를 서비스 운영에 깊게 쓰면 세션 저장, 토큰 무효화, Pub/Sub, 분산 락처럼 여러 서버가 공유해야 하는 상태를 다루게 됩니다. 특히 분산 환경에서는 락 만료 시간과 장애 상황을 고려하지 않으면 중복 처리나 데이터 꼬임이 생길 수 있습니다.',
+       'PRACTICE', 10, '세션 저장: 여러 서버가 같은 로그인 상태를 공유하도록 저장하는 방식,JWT 블랙리스트: 만료 전 토큰을 강제로 무효화하기 위한 차단 목록,Pub/Sub: 발행자와 구독자가 메시지를 비동기로 주고받는 패턴,분산 락: 여러 인스턴스가 같은 작업을 동시에 처리하지 못하게 막는 장치', 1
 FROM roadmaps r WHERE r.title = 'Backend Master Roadmap';
 
 INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
 SELECT r.roadmap_id, 'JUnit5 & Mockito',
-       '@Test, @BeforeEach, Mock/Spy 객체, verify 검증을 활용한 단위 테스트 작성법을 학습합니다.',
-       'PRACTICE', 9, '@Test,@BeforeEach,Mock/Spy,verify,assertThat,BDD', 2
+       '테스트 코드는 기능이 의도대로 동작하는지 반복해서 확인하게 해주는 안전장치입니다. JUnit5로 테스트 구조를 만들고 Mockito로 외부 의존성을 대체하면 서비스 로직을 빠르고 독립적으로 검증할 수 있습니다.',
+       'PRACTICE', 9, '테스트 생명주기: 테스트 실행 전후 준비와 정리를 관리하는 흐름,Assertion: 실제 결과가 기대값과 맞는지 검증하는 표현,Mock과 Spy: 외부 의존성이나 일부 동작을 테스트용 객체로 대체하는 방법,verify: 협력 객체가 기대한 방식으로 호출됐는지 확인하는 검증', 2
 FROM roadmaps r WHERE r.title = 'Backend Master Roadmap';
 
 INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
 SELECT r.roadmap_id, 'Spring Boot 테스트',
-       '@SpringBootTest, @WebMvcTest, MockMvc, TestRestTemplate를 활용한 통합 테스트 작성법을 학습합니다.',
-       'PRACTICE', 10, '@SpringBootTest,@WebMvcTest,MockMvc,TestRestTemplate,JaCoCo', 2
+       'Spring 애플리케이션은 단위 테스트만으로는 필터, 컨트롤러, DI 설정, DB 연동 흐름을 모두 검증하기 어렵습니다. 테스트 슬라이스와 통합 테스트를 구분해서 사용하면 빠른 피드백과 실제 동작 검증을 균형 있게 가져갈 수 있습니다.',
+       'PRACTICE', 10, '@SpringBootTest: 전체 애플리케이션 컨텍스트를 띄워 통합 흐름을 확인하는 테스트,@WebMvcTest: 웹 계층만 가볍게 띄워 컨트롤러 요청 응답을 검증하는 테스트,MockMvc: 실제 서버 없이 MVC 요청을 시뮬레이션하는 도구,TestRestTemplate: 테스트 환경에서 실제 HTTP 호출 흐름을 확인하는 도구', 2
 FROM roadmaps r WHERE r.title = 'Backend Master Roadmap';
 
 -- 척추 뒷부분 (sort 11-15, branch_group = NULL)
 INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
 SELECT r.roadmap_id, 'Spring Security & JWT',
-       'SecurityFilterChain, Access/Refresh Token 구조, OncePerRequestFilter, OAuth2 소셜 로그인을 학습합니다.',
-       'CONCEPT', 11, 'SecurityFilterChain,JWT 구조,Access/Refresh Token,OAuth2,소셜 로그인', NULL
+       '인증과 인가는 사용자가 누구인지 확인하고 어떤 기능을 쓸 수 있는지 결정하는 백엔드 핵심 영역입니다. Spring Security의 필터 체인과 JWT 흐름을 이해해야 로그인, 토큰 재발급, 권한 체크, OAuth2 연동을 안전하게 구현할 수 있습니다.',
+       'CONCEPT', 11, '인증과 인가: 사용자의 신원 확인과 접근 권한 판단을 구분하는 개념,SecurityFilterChain: 요청이 컨트롤러에 도달하기 전 보안 처리를 수행하는 필터 흐름,JWT: 서버 세션 없이 인증 정보를 전달하는 토큰 형식,OAuth2 로그인: 외부 제공자의 인증 결과를 서비스 로그인으로 연결하는 방식', NULL
 FROM roadmaps r WHERE r.title = 'Backend Master Roadmap';
 
 INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
 SELECT r.roadmap_id, 'Docker & CI/CD',
-       'Dockerfile 작성, docker-compose 설정, GitHub Actions를 활용한 자동 빌드·테스트·배포 파이프라인을 구축합니다.',
-       'PRACTICE', 12, 'Dockerfile,docker-compose,GitHub Actions,CI/CD 파이프라인,AWS EC2', NULL
+       'Docker는 애플리케이션 실행 환경을 이미지로 고정해 개발 PC와 서버의 차이를 줄여줍니다. CI/CD 파이프라인까지 연결하면 코드 변경이 테스트, 이미지 빌드, 배포 단계로 자동 이어져 반복 작업과 실수를 줄일 수 있습니다.',
+       'PRACTICE', 12, '이미지와 컨테이너: 실행 환경을 패키징하고 독립된 프로세스로 실행하는 단위,Dockerfile: 애플리케이션 이미지를 만드는 빌드 절차 정의서,docker-compose: 여러 컨테이너를 한 번에 실행하고 연결하는 설정,GitHub Actions: 코드 변경을 기준으로 빌드 테스트 배포를 자동화하는 도구', NULL
 FROM roadmaps r WHERE r.title = 'Backend Master Roadmap';
 
 INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
 SELECT r.roadmap_id, 'SOLID & 디자인패턴',
-       'SOLID 5원칙을 이해하고 GoF 디자인 패턴(Singleton/Factory/Strategy/Observer/Builder)을 코드에 적용합니다.',
-       'CONCEPT', 13, 'SRP,OCP,LSP,ISP,DIP,Singleton,Factory,Strategy,Observer', NULL
+       '객체지향 설계 원칙과 디자인 패턴은 코드가 커질수록 변경 비용을 낮추기 위한 공통 언어입니다. SOLID를 기준으로 책임을 나누고 반복되는 문제에는 검증된 패턴을 적용하면 서비스 로직의 결합도를 줄일 수 있습니다.',
+       'CONCEPT', 13, 'SRP: 하나의 클래스가 하나의 변경 이유만 갖도록 책임을 분리하는 원칙,OCP: 기존 코드를 덜 수정하고 확장으로 기능을 추가하는 원칙,DIP: 구체 구현보다 추상에 의존해 결합도를 낮추는 원칙,전략 패턴: 실행 시점에 알고리즘이나 정책을 바꿔 끼우는 패턴,팩토리 패턴: 객체 생성 책임을 별도 구성 요소로 분리하는 패턴', NULL
 FROM roadmaps r WHERE r.title = 'Backend Master Roadmap';
 
 INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
 SELECT r.roadmap_id, '웹 보안 기초',
-       'OWASP Top 10 취약점을 이해하고 XSS/CSRF/SQL Injection 방어, HTTPS/TLS 설정을 학습합니다.',
-       'CONCEPT', 14, 'OWASP Top 10,XSS,CSRF,SQL Injection,HTTPS/TLS,CORS,Rate Limiting', NULL
+       '웹 보안은 기능이 완성된 뒤 덧붙이는 작업이 아니라 API 설계부터 함께 고려해야 하는 기본 조건입니다. OWASP Top 10, XSS, CSRF, SQL Injection, CORS, HTTPS를 이해하면 흔한 공격 경로를 줄이고 안전한 기본값을 만들 수 있습니다.',
+       'CONCEPT', 14, 'XSS: 악성 스크립트가 사용자 브라우저에서 실행되는 공격,CSRF: 로그인된 사용자의 권한으로 원치 않는 요청을 보내게 만드는 공격,SQL Injection: 입력값으로 SQL을 조작해 데이터를 탈취하거나 변경하는 공격,CORS: 브라우저가 다른 출처 요청을 제한하고 허용하는 보안 정책,HTTPS와 TLS: 네트워크 구간에서 데이터 변조와 도청을 줄이는 암호화 계층', NULL
 FROM roadmaps r WHERE r.title = 'Backend Master Roadmap';
 
 INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
 SELECT r.roadmap_id, '메시지 큐 & MSA',
-       'Kafka Topic/Producer/Consumer와 MSA 서비스 분리 기준, API Gateway 패턴을 학습합니다.',
-       'CONCEPT', 15, 'Kafka,Topic/Partition,Producer/Consumer,MSA,API Gateway,서비스 분리', NULL
+       '메시지 큐와 MSA는 서비스가 커졌을 때 기능을 분리하고 비동기 처리를 안정적으로 운영하기 위한 선택지입니다. Kafka의 Topic, Producer, Consumer 흐름과 API Gateway의 진입점 역할을 이해하면 서비스 간 결합을 줄이면서 확장할 수 있습니다.',
+       'CONCEPT', 15, '메시지 큐: 작업을 즉시 처리하지 않고 큐에 쌓아 비동기로 처리하는 구조,Kafka Topic과 Partition: 메시지를 분류하고 병렬 처리를 가능하게 하는 저장 단위,Producer와 Consumer: 메시지를 발행하고 읽어 처리하는 구성 요소,API Gateway: 여러 서비스 앞에서 라우팅 인증 공통 처리를 담당하는 진입점,서비스 분리 기준: 하나의 기능을 독립 서비스로 나눌지 판단하는 경계', NULL
 FROM roadmaps r WHERE r.title = 'Backend Master Roadmap';
+
+-- Backend Master Roadmap 노드 추천 무료 자료
+INSERT INTO roadmap_node_resources
+    (node_id, title, url, description, source_type, sort_order, active, created_at, updated_at)
+SELECT rn.node_id,
+       resources.title,
+       resources.url,
+       resources.description,
+       resources.source_type,
+       resources.sort_order,
+       TRUE,
+       NOW(),
+       NOW()
+FROM roadmap_nodes rn
+JOIN roadmaps r ON r.roadmap_id = rn.roadmap_id
+JOIN (
+    VALUES
+        ('인터넷 & 웹 기초', 'MDN HTTP 개요', 'https://developer.mozilla.org/en-US/docs/Web/HTTP', 'HTTP 메시지, 메서드, 상태 코드와 브라우저-서버 통신 흐름을 정리합니다.', 'DOCS', 1),
+        ('인터넷 & 웹 기초', 'MDN DNS 용어', 'https://developer.mozilla.org/en-US/docs/Glossary/DNS', 'DNS가 도메인 이름을 IP 주소로 해석하는 기본 흐름을 확인합니다.', 'DOCS', 2),
+        ('OS & 터미널', 'GNU Bash Manual', 'https://www.gnu.org/software/bash/manual/bash.html', '셸 명령, 파이프, 리다이렉션과 스크립트 기초를 공식 매뉴얼로 확인합니다.', 'OFFICIAL', 1),
+        ('OS & 터미널', 'Linux man-pages intro', 'https://man7.org/linux/man-pages/man1/intro.1.html', 'Linux 명령어 매뉴얼 구조와 터미널 도움말 읽는 법을 익힙니다.', 'DOCS', 2),
+        ('Java 기초', 'Oracle Java Tutorials', 'https://docs.oracle.com/javase/tutorial/java/index.html', '클래스, 객체, 상속, 인터페이스 등 Java 언어 기본기를 공식 튜토리얼로 학습합니다.', 'OFFICIAL', 1),
+        ('Java 기초', 'Java SE API Documentation', 'https://docs.oracle.com/en/java/javase/21/docs/api/index.html', '표준 라이브러리와 컬렉션 API를 실제 문서 기준으로 찾아봅니다.', 'OFFICIAL', 2),
+        ('Git & 버전 관리', 'Pro Git Book', 'https://git-scm.com/book/en/v2', 'Git의 커밋, 브랜치, 병합, 리베이스를 공식 무료 책으로 학습합니다.', 'OFFICIAL', 1),
+        ('Git & 버전 관리', 'GitHub Git 시작하기', 'https://docs.github.com/en/get-started/using-git/about-git', 'GitHub 기반 협업에서 Git이 어떻게 쓰이는지 확인합니다.', 'OFFICIAL', 2),
+        ('RDB & SQL', 'PostgreSQL SQL Tutorial', 'https://www.postgresql.org/docs/current/tutorial-sql.html', 'SELECT, WHERE, JOIN 등 SQL 기본 문법을 PostgreSQL 공식 문서로 학습합니다.', 'OFFICIAL', 1),
+        ('RDB & SQL', 'PostgreSQL Transactions', 'https://www.postgresql.org/docs/current/tutorial-transactions.html', '트랜잭션과 ACID 흐름을 공식 튜토리얼로 확인합니다.', 'OFFICIAL', 2),
+        ('REST API 설계', 'HTTP Semantics RFC 9110', 'https://www.rfc-editor.org/rfc/rfc9110.html', 'HTTP 메서드, 상태 코드, 캐싱 등 REST API 설계의 기반이 되는 표준 문서입니다.', 'OFFICIAL', 1),
+        ('REST API 설계', 'OpenAPI Specification', 'https://spec.openapis.org/oas/latest.html', 'OpenAPI 3 문서화 구조와 스키마 작성 방식을 확인합니다.', 'OFFICIAL', 2),
+        ('Spring Boot & MVC', 'Spring Framework MVC Reference', 'https://docs.spring.io/spring-framework/reference/web/webmvc.html', 'DispatcherServlet, Controller, 요청 매핑 등 Spring MVC 핵심 흐름을 학습합니다.', 'OFFICIAL', 1),
+        ('Spring Boot & MVC', 'Spring Framework IoC Container', 'https://docs.spring.io/spring-framework/reference/core/beans/introduction.html', 'Bean, DI, IoC 컨테이너 개념을 Spring 공식 문서로 확인합니다.', 'OFFICIAL', 2),
+        ('Spring Data JPA', 'Spring Data JPA Reference', 'https://docs.spring.io/spring-data/jpa/reference/', 'Repository, 쿼리 메서드, JPA 연동 방식을 공식 문서로 학습합니다.', 'OFFICIAL', 1),
+        ('Spring Data JPA', 'Hibernate ORM User Guide', 'https://docs.hibernate.org/orm/current/userguide/html_single/', '엔티티 매핑, 연관관계, Fetch 전략과 N+1 문제의 기반을 확인합니다.', 'OFFICIAL', 2),
+        ('Redis 기초', 'Redis Data Types', 'https://redis.io/docs/latest/develop/data-types/', 'String, Hash, List, Set, Sorted Set 등 Redis 핵심 자료구조를 확인합니다.', 'OFFICIAL', 1),
+        ('Redis 기초', 'Redis EXPIRE', 'https://redis.io/docs/latest/commands/expire/', 'TTL과 만료 정책을 Redis 공식 명령 문서로 확인합니다.', 'OFFICIAL', 2),
+        ('Redis 심화', 'Redis Pub/Sub', 'https://redis.io/docs/latest/develop/pubsub/', 'Pub/Sub 메시징 패턴과 구독 흐름을 공식 문서로 학습합니다.', 'OFFICIAL', 1),
+        ('Redis 심화', 'Redisson Locks and Synchronizers', 'https://redisson.pro/docs/data-and-services/locks-and-synchronizers/', '분산 락 구현에 자주 쓰이는 Redisson 락 API를 확인합니다.', 'DOCS', 2),
+        ('JUnit5 & Mockito', 'JUnit 5 User Guide', 'https://junit.org/junit5/docs/5.10.3/user-guide/index.html', '테스트 생명주기, assertion, parameterized test 등 JUnit 5 사용법을 확인합니다.', 'OFFICIAL', 1),
+        ('JUnit5 & Mockito', 'Mockito Documentation', 'https://site.mockito.org/', 'Mock, Spy, verify 기반 단위 테스트 작성 흐름을 확인합니다.', 'OFFICIAL', 2),
+        ('Spring Boot 테스트', 'Spring Boot Testing Reference', 'https://docs.spring.io/spring-boot/reference/testing/index.html', '@SpringBootTest, test slice, MockMvc 연동 등 Spring Boot 테스트 구성을 확인합니다.', 'OFFICIAL', 1),
+        ('Spring Boot 테스트', 'Spring Framework MockMvc', 'https://docs.spring.io/spring-framework/reference/testing/mockmvc.html', 'MockMvc로 컨트롤러 테스트를 작성하는 공식 예제를 확인합니다.', 'OFFICIAL', 2),
+        ('Spring Security & JWT', 'Spring Security Reference', 'https://docs.spring.io/spring-security/reference/index.html', 'SecurityFilterChain, 인증/인가, OAuth2 리소스 서버 구성을 공식 문서로 확인합니다.', 'OFFICIAL', 1),
+        ('Spring Security & JWT', 'JSON Web Token RFC 7519', 'https://www.rfc-editor.org/rfc/rfc7519.html', 'JWT 구조와 클레임 규칙을 표준 문서로 확인합니다.', 'OFFICIAL', 2),
+        ('Docker & CI/CD', 'Dockerfile Reference', 'https://docs.docker.com/reference/dockerfile/', 'Dockerfile 명령어와 이미지 빌드 방식을 공식 문서로 학습합니다.', 'OFFICIAL', 1),
+        ('Docker & CI/CD', 'GitHub Actions Documentation', 'https://docs.github.com/en/actions', '워크플로우, job, step 기반 CI/CD 파이프라인 구성을 확인합니다.', 'OFFICIAL', 2),
+        ('SOLID & 디자인패턴', 'Refactoring Guru Design Patterns', 'https://refactoring.guru/design-patterns', 'Singleton, Factory, Strategy, Observer 등 GoF 패턴을 예제로 확인합니다.', 'DOCS', 1),
+        ('SOLID & 디자인패턴', 'Java Design Patterns', 'https://java-design-patterns.com/', 'Java 코드 기반 디자인 패턴 구현 예시를 무료로 살펴봅니다.', 'DOCS', 2),
+        ('웹 보안 기초', 'OWASP Top 10', 'https://owasp.org/www-project-top-ten/', '웹 애플리케이션 주요 보안 위험과 대응 방향을 공식 프로젝트에서 확인합니다.', 'OFFICIAL', 1),
+        ('웹 보안 기초', 'MDN CORS Guide', 'https://developer.mozilla.org/en-US/docs/Web/HTTP/Guides/CORS', '브라우저 CORS 동작 방식과 서버 설정 흐름을 확인합니다.', 'DOCS', 2),
+        ('메시지 큐 & MSA', 'Apache Kafka Documentation', 'https://kafka.apache.org/documentation/', 'Topic, Producer, Consumer, Broker 개념과 메시징 흐름을 공식 문서로 학습합니다.', 'OFFICIAL', 1),
+        ('메시지 큐 & MSA', 'Spring Cloud Gateway Reference', 'https://docs.spring.io/spring-cloud-gateway/reference/', 'API Gateway 라우팅, 필터, 서비스 진입점 패턴을 확인합니다.', 'OFFICIAL', 2)
+) AS resources(node_title, title, url, description, source_type, sort_order)
+  ON resources.node_title = rn.title
+WHERE r.title = 'Backend Master Roadmap'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM roadmap_node_resources existing
+      WHERE existing.node_id = rn.node_id
+        AND existing.url = resources.url
+  );
 
 -- learner@devpath.com 커스텀 로드맵 재생성
 INSERT INTO custom_roadmaps (user_id, original_roadmap_id, title, progress_rate, is_builder_origin, created_at, updated_at)
@@ -10456,6 +10527,248 @@ WHERE u.email = 'learner@devpath.com'
 -- ============================================================
 
 -- ============================================================
+-- 강의 목록 메뉴 기본 구성
+-- ============================================================
+WITH lecture_catalog_category_seed(category_key, label, title, icon_class, sort_order, is_active) AS (
+    VALUES
+        ('all', '전체', '전체 강의', 'fas fa-th-large', 0, TRUE),
+        ('dev', '개발', '개발 · 프로그래밍', 'fas fa-laptop-code', 1, TRUE),
+        ('ai', 'AI', '인공지능(AI)', 'fas fa-robot', 2, TRUE),
+        ('data', '데이터', '데이터 사이언스', 'fas fa-database', 3, TRUE),
+        ('infra', '인프라', '인프라 · 보안', 'fas fa-server', 4, TRUE),
+        ('mobile', '모바일', '모바일 앱 개발', 'fas fa-mobile-alt', 5, TRUE),
+        ('career', '커리어', '커리어 · 자기계발', 'fas fa-briefcase', 6, TRUE)
+)
+INSERT INTO lecture_catalog_categories (category_key, label, title, icon_class, sort_order, is_active)
+SELECT seed.category_key, seed.label, seed.title, seed.icon_class, seed.sort_order, seed.is_active
+FROM lecture_catalog_category_seed seed
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM lecture_catalog_categories category
+    WHERE category.category_key = seed.category_key
+);
+
+WITH lecture_catalog_mega_menu_seed(category_key, label, sort_order) AS (
+    VALUES
+        ('dev', '웹 개발 (Web)', 0),
+        ('dev', '프론트엔드', 1),
+        ('dev', '백엔드', 2),
+        ('dev', '풀스택', 3),
+        ('dev', '게임 개발', 4),
+        ('dev', '프로그래밍 언어', 5),
+        ('ai', 'AI Engineer', 0),
+        ('ai', 'Data Scientist', 1),
+        ('ai', '머신러닝 (ML)', 2),
+        ('ai', '딥러닝 (DL)', 3),
+        ('ai', 'ChatGPT / LLM', 4),
+        ('ai', '프롬프트 엔지니어링', 5),
+        ('data', '데이터 분석', 0),
+        ('data', '데이터 엔지니어링', 1),
+        ('data', 'SQL / DB', 2),
+        ('data', 'NoSQL (Mongo)', 3),
+        ('data', '시각화 (Tableau)', 4),
+        ('data', '빅데이터', 5),
+        ('infra', 'DevOps', 0),
+        ('infra', 'AWS / Cloud', 1),
+        ('infra', 'Docker / K8s', 2),
+        ('infra', '보안 (Security)', 3),
+        ('infra', 'Linux / Shell', 4),
+        ('infra', '네트워크', 5),
+        ('mobile', 'Android App', 0),
+        ('mobile', 'iOS App', 1),
+        ('mobile', 'Flutter', 2),
+        ('mobile', 'React Native', 3),
+        ('mobile', 'Kotlin / Swift', 4),
+        ('career', '취업 / 이직', 0),
+        ('career', '이력서 / 면접', 1),
+        ('career', '기획 (PM/PO)', 2),
+        ('career', 'UX / UI 디자인', 3),
+        ('career', '비즈니스 스킬', 4),
+        ('career', '개발자 글쓰기', 5)
+)
+INSERT INTO lecture_catalog_mega_menu_items (category_id, label, sort_order)
+SELECT category.id, seed.label, seed.sort_order
+FROM lecture_catalog_mega_menu_seed seed
+JOIN lecture_catalog_categories category
+    ON category.category_key = seed.category_key
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM lecture_catalog_mega_menu_items item
+    WHERE item.category_id = category.id
+      AND item.label = seed.label
+);
+
+WITH lecture_catalog_group_seed(category_key, name, sort_order) AS (
+    VALUES
+        ('all', '탐색 분야', 0),
+        ('dev', '언어 (Language)', 0),
+        ('dev', '프론트엔드', 1),
+        ('dev', '백엔드', 2),
+        ('dev', 'CS & 기타', 3),
+        ('ai', '직무별', 0),
+        ('ai', '핵심 기술', 1),
+        ('ai', 'LLM & 프롬프트', 2),
+        ('ai', '라이브러리', 3),
+        ('data', '직무별', 0),
+        ('data', '데이터베이스', 1),
+        ('data', '분석 & 시각화', 2),
+        ('data', '빅데이터', 3),
+        ('infra', 'DevOps', 0),
+        ('infra', '컨테이너', 1),
+        ('infra', '시스템', 2),
+        ('infra', '보안', 3),
+        ('mobile', '네이티브', 0),
+        ('mobile', '크로스 플랫폼', 1),
+        ('mobile', '기타', 2),
+        ('career', '매니지먼트', 0),
+        ('career', '기획/디자인', 1),
+        ('career', '취업', 2),
+        ('career', '오피스', 3)
+)
+INSERT INTO lecture_catalog_groups (category_id, name, sort_order)
+SELECT category.id, seed.name, seed.sort_order
+FROM lecture_catalog_group_seed seed
+JOIN lecture_catalog_categories category
+    ON category.category_key = seed.category_key
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM lecture_catalog_groups group_item
+    WHERE group_item.category_id = category.id
+      AND group_item.name = seed.name
+);
+
+WITH lecture_catalog_group_item_seed(category_key, group_name, item_name, linked_category_key, sort_order) AS (
+    VALUES
+        ('all', '탐색 분야', '웹 개발', 'dev', 0),
+        ('all', '탐색 분야', 'AI/머신러닝', 'ai', 1),
+        ('all', '탐색 분야', '데이터 분석', 'data', 2),
+        ('all', '탐색 분야', '인프라', 'infra', 3),
+        ('all', '탐색 분야', '모바일 앱', 'mobile', 4),
+        ('all', '탐색 분야', '커리어', 'career', 5),
+        ('dev', '언어 (Language)', 'Java', NULL, 0),
+        ('dev', '언어 (Language)', 'Python', NULL, 1),
+        ('dev', '언어 (Language)', 'JavaScript', NULL, 2),
+        ('dev', '언어 (Language)', 'TypeScript', NULL, 3),
+        ('dev', '언어 (Language)', 'C++', NULL, 4),
+        ('dev', '언어 (Language)', 'C#', NULL, 5),
+        ('dev', '언어 (Language)', 'Go', NULL, 6),
+        ('dev', '언어 (Language)', 'Rust', NULL, 7),
+        ('dev', '언어 (Language)', 'Kotlin', NULL, 8),
+        ('dev', '언어 (Language)', 'Swift', NULL, 9),
+        ('dev', '프론트엔드', 'React', NULL, 0),
+        ('dev', '프론트엔드', 'Vue.js', NULL, 1),
+        ('dev', '프론트엔드', 'Angular', NULL, 2),
+        ('dev', '프론트엔드', 'Svelte', NULL, 3),
+        ('dev', '프론트엔드', 'Next.js', NULL, 4),
+        ('dev', '프론트엔드', 'HTML/CSS', NULL, 5),
+        ('dev', '프론트엔드', 'Tailwind', NULL, 6),
+        ('dev', '백엔드', 'Spring Boot', NULL, 0),
+        ('dev', '백엔드', 'Node.js', NULL, 1),
+        ('dev', '백엔드', 'Django', NULL, 2),
+        ('dev', '백엔드', 'FastAPI', NULL, 3),
+        ('dev', '백엔드', 'NestJS', NULL, 4),
+        ('dev', '백엔드', 'ASP.NET', NULL, 5),
+        ('dev', '백엔드', 'PHP', NULL, 6),
+        ('dev', 'CS & 기타', '자료구조/알고리즘', NULL, 0),
+        ('dev', 'CS & 기타', '테스트', NULL, 1),
+        ('dev', 'CS & 기타', '게임 개발', NULL, 2),
+        ('dev', 'CS & 기타', '아키텍처', NULL, 3),
+        ('ai', '직무별', 'AI Engineer', NULL, 0),
+        ('ai', '직무별', 'Data Scientist', NULL, 1),
+        ('ai', '직무별', 'MLOps', NULL, 2),
+        ('ai', '직무별', 'Researcher', NULL, 3),
+        ('ai', '핵심 기술', 'Machine Learning', NULL, 0),
+        ('ai', '핵심 기술', 'Deep Learning', NULL, 1),
+        ('ai', '핵심 기술', 'NLP', NULL, 2),
+        ('ai', '핵심 기술', 'Computer Vision', NULL, 3),
+        ('ai', '핵심 기술', 'Reinforcement Learning', NULL, 4),
+        ('ai', 'LLM & 프롬프트', 'ChatGPT', NULL, 0),
+        ('ai', 'LLM & 프롬프트', 'LangChain', NULL, 1),
+        ('ai', 'LLM & 프롬프트', 'Prompt Engineering', NULL, 2),
+        ('ai', 'LLM & 프롬프트', 'RAG', NULL, 3),
+        ('ai', 'LLM & 프롬프트', 'Fine-tuning', NULL, 4),
+        ('ai', '라이브러리', 'PyTorch', NULL, 0),
+        ('ai', '라이브러리', 'TensorFlow', NULL, 1),
+        ('ai', '라이브러리', 'Keras', NULL, 2),
+        ('ai', '라이브러리', 'Scikit-learn', NULL, 3),
+        ('ai', '라이브러리', 'HuggingFace', NULL, 4),
+        ('data', '직무별', 'Data Analyst', NULL, 0),
+        ('data', '직무별', 'Data Engineer', NULL, 1),
+        ('data', '직무별', 'DBA', NULL, 2),
+        ('data', '직무별', 'Big Data Engineer', NULL, 3),
+        ('data', '데이터베이스', 'MySQL', NULL, 0),
+        ('data', '데이터베이스', 'PostgreSQL', NULL, 1),
+        ('data', '데이터베이스', 'Oracle', NULL, 2),
+        ('data', '데이터베이스', 'MongoDB', NULL, 3),
+        ('data', '데이터베이스', 'Redis', NULL, 4),
+        ('data', '데이터베이스', 'Elasticsearch', NULL, 5),
+        ('data', '분석 & 시각화', 'Tableau', NULL, 0),
+        ('data', '분석 & 시각화', 'Power BI', NULL, 1),
+        ('data', '분석 & 시각화', 'Excel', NULL, 2),
+        ('data', '분석 & 시각화', 'Google Analytics', NULL, 3),
+        ('data', '분석 & 시각화', 'Pandas', NULL, 4),
+        ('data', '빅데이터', 'Hadoop', NULL, 0),
+        ('data', '빅데이터', 'Spark', NULL, 1),
+        ('data', '빅데이터', 'Kafka', NULL, 2),
+        ('data', '빅데이터', 'Airflow', NULL, 3),
+        ('data', '빅데이터', 'Data Lake', NULL, 4),
+        ('infra', 'DevOps', 'DevOps General', NULL, 0),
+        ('infra', 'DevOps', 'DevSecOps', NULL, 1),
+        ('infra', 'DevOps', 'AWS', NULL, 2),
+        ('infra', 'DevOps', 'Azure', NULL, 3),
+        ('infra', 'DevOps', 'GCP', NULL, 4),
+        ('infra', 'DevOps', 'System Design', NULL, 5),
+        ('infra', '컨테이너', 'Docker', NULL, 0),
+        ('infra', '컨테이너', 'Kubernetes', NULL, 1),
+        ('infra', '컨테이너', 'Terraform', NULL, 2),
+        ('infra', '컨테이너', 'CI/CD Pipelines', NULL, 3),
+        ('infra', '시스템', 'Linux', NULL, 0),
+        ('infra', '시스템', 'Shell Script', NULL, 1),
+        ('infra', '시스템', 'Network Administration', NULL, 2),
+        ('infra', '보안', 'Cyber Security', NULL, 0),
+        ('infra', '보안', 'Web Hacking', NULL, 1),
+        ('infra', '보안', 'Cloud Security', NULL, 2),
+        ('mobile', '네이티브', 'Android (Kotlin)', NULL, 0),
+        ('mobile', '네이티브', 'iOS (Swift)', NULL, 1),
+        ('mobile', '네이티브', 'SwiftUI', NULL, 2),
+        ('mobile', '네이티브', 'Jetpack Compose', NULL, 3),
+        ('mobile', '크로스 플랫폼', 'Flutter', NULL, 0),
+        ('mobile', '크로스 플랫폼', 'React Native', NULL, 1),
+        ('mobile', '크로스 플랫폼', 'Xamarin', NULL, 2),
+        ('mobile', '기타', 'Mobile Design', NULL, 0),
+        ('mobile', '기타', 'App Store Release', NULL, 1),
+        ('career', '매니지먼트', 'Product Manager', NULL, 0),
+        ('career', '매니지먼트', 'Engineering Manager', NULL, 1),
+        ('career', '매니지먼트', 'Developer Relations', NULL, 2),
+        ('career', '기획/디자인', 'UX / UI Design', NULL, 0),
+        ('career', '기획/디자인', 'Figma', NULL, 1),
+        ('career', '기획/디자인', 'Technical Writer', NULL, 2),
+        ('career', '기획/디자인', 'IT 서비스 기획', NULL, 3),
+        ('career', '취업', '이력서', NULL, 0),
+        ('career', '취업', '자소서', NULL, 1),
+        ('career', '취업', '기술 면접', NULL, 2),
+        ('career', '취업', '포트폴리오', NULL, 3),
+        ('career', '취업', '연봉 협상', NULL, 4),
+        ('career', '오피스', '개발자 글쓰기', NULL, 0),
+        ('career', '오피스', '커뮤니케이션', NULL, 1),
+        ('career', '오피스', '문서화', NULL, 2)
+)
+INSERT INTO lecture_catalog_group_items (group_id, name, linked_category_key, sort_order)
+SELECT group_item.id, seed.item_name, seed.linked_category_key, seed.sort_order
+FROM lecture_catalog_group_item_seed seed
+JOIN lecture_catalog_categories category
+    ON category.category_key = seed.category_key
+JOIN lecture_catalog_groups group_item
+    ON group_item.category_id = category.id
+   AND group_item.name = seed.group_name
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM lecture_catalog_group_items item
+    WHERE item.group_id = group_item.id
+      AND item.name = seed.item_name
+);
+
+-- ============================================================
 -- PUBLIC CATALOG DATA: lecture-list.html 실제 API 노출용 공개 강의
 --   - instructor@devpath.com: 2개
 --   - frontend@devpath.com  : 3개
@@ -10513,7 +10826,7 @@ INSERT INTO user_profiles (
 SELECT
     u.user_id,
     'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=400&q=80',
-    'Frontend Craft',
+    '프론트엔드 크래프트',
     'React, Next.js, Flutter로 제품 출시까지 이어지는 프론트엔드 강의를 만듭니다.',
     '프론트엔드 구조 설계, UI 품질, 모바일 앱 출시까지 실무 흐름으로 다루는 채널입니다.',
     NULL, NULL,
@@ -10534,7 +10847,7 @@ INSERT INTO user_profiles (
 SELECT
     u.user_id,
     'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=400&q=80',
-    'AI Data Lab',
+    'AI 데이터 연구소',
     'LLM 서비스, 데이터 분석, 커리어 준비를 실습 중심으로 안내합니다.',
     'AI 서비스 구현, 데이터 분석 기본기, 개발자 커리어 문서화를 함께 다루는 채널입니다.',
     NULL, NULL,
@@ -10546,6 +10859,18 @@ SELECT
 FROM users u
 WHERE u.email = 'data@devpath.com'
   AND NOT EXISTS (SELECT 1 FROM user_profiles up WHERE up.user_id = u.user_id);
+
+UPDATE user_profiles up
+SET
+    channel_name = CASE u.email
+        WHEN 'frontend@devpath.com' THEN '프론트엔드 크래프트'
+        WHEN 'data@devpath.com' THEN 'AI 데이터 연구소'
+        ELSE up.channel_name
+    END,
+    updated_at = NOW()
+FROM users u
+WHERE up.user_id = u.user_id
+  AND u.email IN ('frontend@devpath.com', 'data@devpath.com');
 
 INSERT INTO tags (name, category, is_official, is_deleted)
 WITH catalog_tags(name, category) AS (
@@ -11576,3 +11901,839 @@ INSERT INTO builder_modules (module_id, category, title, icon, color, bg_color, 
 SELECT 'bc-web3', 'blockchain', 'Web3.js / Ethers.js', 'fas fa-plug', 'text-blue-500', 'bg-blue-50',
        '["DApp 구축","지갑 연동(Metamask)","RPC 통신"]', 4
 WHERE NOT EXISTS (SELECT 1 FROM builder_modules WHERE module_id = 'bc-web3' AND category = 'blockchain');
+UPDATE users
+SET
+    name = CASE email
+        WHEN 'learner@devpath.com' THEN '김하늘'
+        WHEN 'learner2@devpath.com' THEN '박지민'
+        WHEN 'learner3@devpath.com' THEN '이서준'
+        WHEN 'learner4@devpath.com' THEN '최유진'
+        WHEN 'restricted-user@devpath.com' THEN '정민재'
+        WHEN 'deactivated-user@devpath.com' THEN '오서연'
+        WHEN 'withdrawn-user@devpath.com' THEN '강도윤'
+        WHEN 'instructor@devpath.com' THEN '홍지훈'
+        WHEN 'admin@devpath.com' THEN '박서연'
+        ELSE name
+    END,
+    updated_at = NOW()
+WHERE email IN (
+    'learner@devpath.com',
+    'learner2@devpath.com',
+    'learner3@devpath.com',
+    'learner4@devpath.com',
+    'restricted-user@devpath.com',
+    'deactivated-user@devpath.com',
+    'withdrawn-user@devpath.com',
+    'instructor@devpath.com',
+    'admin@devpath.com'
+);
+
+-- [CATALOG] frontend@devpath.com 강사 대시보드 활동 데이터
+INSERT INTO course_enrollments (
+    user_id, course_id, status, enrolled_at, completed_at, progress_percentage, last_accessed_at
+)
+WITH frontend_enrollment_seed(
+    learner_email, course_title, status, enrolled_at, completed_at, progress_percentage, last_accessed_at
+) AS (
+    VALUES
+        ('learner@devpath.com', 'React 19 프론트엔드 실전 가이드', 'ACTIVE', TIMESTAMP '2026-04-02 10:00:00', CAST(NULL AS TIMESTAMP), 18, TIMESTAMP '2026-04-05 21:10:00'),
+        ('learner2@devpath.com', 'React 19 프론트엔드 실전 가이드', 'COMPLETED', TIMESTAMP '2026-04-02 11:00:00', TIMESTAMP '2026-04-16 20:20:00', 100, TIMESTAMP '2026-04-16 20:20:00'),
+        ('learner3@devpath.com', 'React 19 프론트엔드 실전 가이드', 'ACTIVE', TIMESTAMP '2026-04-03 10:30:00', CAST(NULL AS TIMESTAMP), 34, TIMESTAMP '2026-04-07 19:30:00'),
+        ('learner4@devpath.com', 'React 19 프론트엔드 실전 가이드', 'ACTIVE', TIMESTAMP '2026-04-04 14:10:00', CAST(NULL AS TIMESTAMP), 52, TIMESTAMP '2026-04-15 22:10:00'),
+        ('learner@devpath.com', 'Next.js 14 제품 개발 실전', 'ACTIVE', TIMESTAMP '2026-04-04 09:20:00', CAST(NULL AS TIMESTAMP), 12, TIMESTAMP '2026-04-04 22:40:00'),
+        ('learner2@devpath.com', 'Next.js 14 제품 개발 실전', 'ACTIVE', TIMESTAMP '2026-04-05 13:00:00', CAST(NULL AS TIMESTAMP), 44, TIMESTAMP '2026-04-09 18:20:00'),
+        ('learner3@devpath.com', 'Next.js 14 제품 개발 실전', 'COMPLETED', TIMESTAMP '2026-04-05 15:40:00', TIMESTAMP '2026-04-16 21:00:00', 100, TIMESTAMP '2026-04-16 21:00:00'),
+        ('learner4@devpath.com', 'Next.js 14 제품 개발 실전', 'ACTIVE', TIMESTAMP '2026-04-06 10:15:00', CAST(NULL AS TIMESTAMP), 27, TIMESTAMP '2026-04-08 20:00:00'),
+        ('learner@devpath.com', 'Flutter로 MVP 앱 출시하기', 'ACTIVE', TIMESTAMP '2026-04-06 09:00:00', CAST(NULL AS TIMESTAMP), 9, TIMESTAMP '2026-04-03 23:10:00'),
+        ('learner2@devpath.com', 'Flutter로 MVP 앱 출시하기', 'ACTIVE', TIMESTAMP '2026-04-07 12:20:00', CAST(NULL AS TIMESTAMP), 63, TIMESTAMP '2026-04-14 21:30:00'),
+        ('learner3@devpath.com', 'Flutter로 MVP 앱 출시하기', 'ACTIVE', TIMESTAMP '2026-04-07 19:00:00', CAST(NULL AS TIMESTAMP), 28, TIMESTAMP '2026-04-08 22:45:00'),
+        ('learner4@devpath.com', 'Flutter로 MVP 앱 출시하기', 'COMPLETED', TIMESTAMP '2026-04-08 11:10:00', TIMESTAMP '2026-04-16 19:10:00', 100, TIMESTAMP '2026-04-16 19:10:00')
+)
+SELECT
+    u.user_id,
+    c.course_id,
+    seed.status,
+    seed.enrolled_at,
+    seed.completed_at,
+    seed.progress_percentage,
+    seed.last_accessed_at
+FROM frontend_enrollment_seed seed
+JOIN users u ON u.email = seed.learner_email
+JOIN courses c ON c.title = seed.course_title
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM course_enrollments ce
+    WHERE ce.user_id = u.user_id
+      AND ce.course_id = c.course_id
+);
+
+INSERT INTO lesson_progress (
+    user_id, lesson_id, progress_percent, progress_seconds,
+    default_playback_rate, is_pip_enabled, is_completed,
+    last_watched_at, created_at, updated_at
+)
+WITH frontend_progress_seed(
+    learner_email, course_title, lesson_title, progress_percent,
+    progress_seconds, default_playback_rate, is_pip_enabled, is_completed, last_watched_at
+) AS (
+    VALUES
+        ('learner@devpath.com', 'React 19 프론트엔드 실전 가이드', '컴포넌트 경계와 상태 배치', 100, 900, 1.25, TRUE, TRUE, TIMESTAMP '2026-04-04 21:00:00'),
+        ('learner@devpath.com', 'React 19 프론트엔드 실전 가이드', 'Actions와 폼 처리 패턴', 35, 430, 1.00, FALSE, FALSE, TIMESTAMP '2026-04-05 21:10:00'),
+        ('learner2@devpath.com', 'React 19 프론트엔드 실전 가이드', '컴포넌트 경계와 상태 배치', 100, 900, 1.25, TRUE, TRUE, TIMESTAMP '2026-04-12 20:00:00'),
+        ('learner2@devpath.com', 'React 19 프론트엔드 실전 가이드', 'Actions와 폼 처리 패턴', 100, 960, 1.25, TRUE, TRUE, TIMESTAMP '2026-04-13 20:30:00'),
+        ('learner2@devpath.com', 'React 19 프론트엔드 실전 가이드', 'Tailwind 유틸리티 설계', 100, 840, 1.25, TRUE, TRUE, TIMESTAMP '2026-04-15 20:10:00'),
+        ('learner2@devpath.com', 'React 19 프론트엔드 실전 가이드', 'Playwright로 사용자 흐름 테스트', 100, 1020, 1.25, TRUE, TRUE, TIMESTAMP '2026-04-16 20:20:00'),
+        ('learner3@devpath.com', 'React 19 프론트엔드 실전 가이드', '컴포넌트 경계와 상태 배치', 80, 720, 1.00, FALSE, FALSE, TIMESTAMP '2026-04-06 19:00:00'),
+        ('learner3@devpath.com', 'React 19 프론트엔드 실전 가이드', 'Actions와 폼 처리 패턴', 25, 310, 1.00, FALSE, FALSE, TIMESTAMP '2026-04-07 19:30:00'),
+        ('learner4@devpath.com', 'React 19 프론트엔드 실전 가이드', '컴포넌트 경계와 상태 배치', 100, 900, 1.10, FALSE, TRUE, TIMESTAMP '2026-04-12 21:30:00'),
+        ('learner4@devpath.com', 'React 19 프론트엔드 실전 가이드', 'Tailwind 유틸리티 설계', 55, 460, 1.10, FALSE, FALSE, TIMESTAMP '2026-04-15 22:10:00'),
+        ('learner@devpath.com', 'Next.js 14 제품 개발 실전', '라우팅과 레이아웃 구조 설계', 40, 360, 1.00, FALSE, FALSE, TIMESTAMP '2026-04-04 22:40:00'),
+        ('learner2@devpath.com', 'Next.js 14 제품 개발 실전', '라우팅과 레이아웃 구조 설계', 100, 900, 1.25, TRUE, TRUE, TIMESTAMP '2026-04-08 18:00:00'),
+        ('learner2@devpath.com', 'Next.js 14 제품 개발 실전', '서버 컴포넌트와 캐싱 전략', 45, 480, 1.00, FALSE, FALSE, TIMESTAMP '2026-04-09 18:20:00'),
+        ('learner3@devpath.com', 'Next.js 14 제품 개발 실전', '라우팅과 레이아웃 구조 설계', 100, 900, 1.25, TRUE, TRUE, TIMESTAMP '2026-04-14 20:10:00'),
+        ('learner3@devpath.com', 'Next.js 14 제품 개발 실전', '서버 컴포넌트와 캐싱 전략', 100, 1080, 1.25, TRUE, TRUE, TIMESTAMP '2026-04-15 20:30:00'),
+        ('learner3@devpath.com', 'Next.js 14 제품 개발 실전', '인증과 권한 처리', 100, 960, 1.25, TRUE, TRUE, TIMESTAMP '2026-04-16 20:40:00'),
+        ('learner4@devpath.com', 'Next.js 14 제품 개발 실전', '라우팅과 레이아웃 구조 설계', 55, 500, 1.00, FALSE, FALSE, TIMESTAMP '2026-04-08 20:00:00'),
+        ('learner@devpath.com', 'Flutter로 MVP 앱 출시하기', '위젯 트리와 상태 관리', 20, 170, 1.00, FALSE, FALSE, TIMESTAMP '2026-04-03 23:10:00'),
+        ('learner2@devpath.com', 'Flutter로 MVP 앱 출시하기', '위젯 트리와 상태 관리', 100, 840, 1.10, FALSE, TRUE, TIMESTAMP '2026-04-12 21:20:00'),
+        ('learner2@devpath.com', 'Flutter로 MVP 앱 출시하기', '라우팅과 폼 검증', 80, 720, 1.10, FALSE, FALSE, TIMESTAMP '2026-04-14 21:30:00'),
+        ('learner3@devpath.com', 'Flutter로 MVP 앱 출시하기', '위젯 트리와 상태 관리', 60, 500, 1.00, FALSE, FALSE, TIMESTAMP '2026-04-07 22:10:00'),
+        ('learner3@devpath.com', 'Flutter로 MVP 앱 출시하기', '라우팅과 폼 검증', 10, 90, 1.00, FALSE, FALSE, TIMESTAMP '2026-04-08 22:45:00'),
+        ('learner4@devpath.com', 'Flutter로 MVP 앱 출시하기', '위젯 트리와 상태 관리', 100, 840, 1.25, TRUE, TRUE, TIMESTAMP '2026-04-13 19:10:00'),
+        ('learner4@devpath.com', 'Flutter로 MVP 앱 출시하기', '라우팅과 폼 검증', 100, 900, 1.25, TRUE, TRUE, TIMESTAMP '2026-04-14 19:40:00'),
+        ('learner4@devpath.com', 'Flutter로 MVP 앱 출시하기', 'REST API 연동과 에러 처리', 100, 960, 1.25, TRUE, TRUE, TIMESTAMP '2026-04-15 19:30:00')
+)
+SELECT
+    u.user_id,
+    l.lesson_id,
+    seed.progress_percent,
+    seed.progress_seconds,
+    seed.default_playback_rate,
+    seed.is_pip_enabled,
+    seed.is_completed,
+    seed.last_watched_at,
+    seed.last_watched_at,
+    seed.last_watched_at
+FROM frontend_progress_seed seed
+JOIN users u ON u.email = seed.learner_email
+JOIN courses c ON c.title = seed.course_title
+JOIN course_sections cs ON cs.course_id = c.course_id
+JOIN lessons l ON l.section_id = cs.section_id AND l.title = seed.lesson_title
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM lesson_progress lp
+    WHERE lp.user_id = u.user_id
+      AND lp.lesson_id = l.lesson_id
+);
+
+INSERT INTO quiz_attempts (
+    quiz_id, learner_id, score, max_score, started_at, completed_at,
+    time_spent_seconds, is_passed, attempt_number, is_deleted, created_at, updated_at
+)
+WITH frontend_quiz_attempt_seed(
+    learner_email, course_title, score, max_score, started_at,
+    completed_at, time_spent_seconds, is_passed, attempt_number
+) AS (
+    VALUES
+        ('learner@devpath.com', 'React 19 프론트엔드 실전 가이드', 55, 100, TIMESTAMP '2026-04-06 19:00:00', TIMESTAMP '2026-04-06 19:08:00', 480, FALSE, 1),
+        ('learner2@devpath.com', 'React 19 프론트엔드 실전 가이드', 92, 100, TIMESTAMP '2026-04-13 20:00:00', TIMESTAMP '2026-04-13 20:06:00', 360, TRUE, 1),
+        ('learner3@devpath.com', 'React 19 프론트엔드 실전 가이드', 68, 100, TIMESTAMP '2026-04-07 20:00:00', TIMESTAMP '2026-04-07 20:09:00', 540, FALSE, 1),
+        ('learner2@devpath.com', 'Next.js 14 제품 개발 실전', 74, 100, TIMESTAMP '2026-04-09 19:00:00', TIMESTAMP '2026-04-09 19:08:00', 500, TRUE, 1),
+        ('learner3@devpath.com', 'Next.js 14 제품 개발 실전', 88, 100, TIMESTAMP '2026-04-15 21:00:00', TIMESTAMP '2026-04-15 21:07:00', 420, TRUE, 1),
+        ('learner3@devpath.com', 'Flutter로 MVP 앱 출시하기', 48, 100, TIMESTAMP '2026-04-08 23:00:00', TIMESTAMP '2026-04-08 23:10:00', 600, FALSE, 1),
+        ('learner4@devpath.com', 'Flutter로 MVP 앱 출시하기', 95, 100, TIMESTAMP '2026-04-14 20:00:00', TIMESTAMP '2026-04-14 20:06:00', 360, TRUE, 1)
+)
+SELECT
+    q.quiz_id,
+    u.user_id,
+    seed.score,
+    seed.max_score,
+    seed.started_at,
+    seed.completed_at,
+    seed.time_spent_seconds,
+    seed.is_passed,
+    seed.attempt_number,
+    FALSE,
+    seed.started_at,
+    seed.completed_at
+FROM frontend_quiz_attempt_seed seed
+JOIN users u ON u.email = seed.learner_email
+JOIN roadmap_nodes rn ON rn.sub_topics = seed.course_title
+                   AND rn.node_type = 'QUIZ'
+                   AND rn.title LIKE '[CATALOG]%'
+JOIN quizzes q ON q.node_id = rn.node_id
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM quiz_attempts qa
+    WHERE qa.quiz_id = q.quiz_id
+      AND qa.learner_id = u.user_id
+      AND qa.attempt_number = seed.attempt_number
+      AND qa.is_deleted = FALSE
+);
+
+INSERT INTO assignment_submissions (
+    assignment_id, learner_id, grader_id, submission_text, submission_url,
+    is_late, submission_status, submitted_at, graded_at,
+    readme_passed, test_passed, lint_passed, file_format_passed,
+    quality_score, total_score, individual_feedback, common_feedback,
+    is_deleted, created_at, updated_at
+)
+WITH frontend_submission_seed(
+    learner_email, course_title, submission_text, submission_url,
+    is_late, submission_status, submitted_at, graded_at,
+    readme_passed, test_passed, lint_passed, file_format_passed,
+    quality_score, total_score, individual_feedback, common_feedback
+) AS (
+    VALUES
+        ('learner2@devpath.com', 'React 19 프론트엔드 실전 가이드', '대시보드 필터와 Playwright 흐름을 제출했습니다.', 'https://github.com/devpath/frontend-react-dashboard-a', FALSE, 'GRADED', TIMESTAMP '2026-04-14 20:00:00', TIMESTAMP '2026-04-15 10:00:00', TRUE, TRUE, TRUE, TRUE, 91, 88, '테스트 흐름이 안정적입니다.', '프론트엔드 실습 과제 피드백'),
+        ('learner3@devpath.com', 'React 19 프론트엔드 실전 가이드', '상태 배치와 Tailwind 스타일링 결과를 정리했습니다.', 'https://github.com/devpath/frontend-react-dashboard-b', FALSE, 'GRADED', TIMESTAMP '2026-04-08 20:00:00', TIMESTAMP '2026-04-09 11:00:00', TRUE, FALSE, TRUE, TRUE, 62, 58, '폼 오류 케이스 테스트가 부족합니다.', '프론트엔드 실습 과제 피드백'),
+        ('learner3@devpath.com', 'Next.js 14 제품 개발 실전', '예약 상세 페이지와 SEO 점검표를 제출했습니다.', 'https://github.com/devpath/frontend-next-product-a', FALSE, 'GRADED', TIMESTAMP '2026-04-16 20:00:00', TIMESTAMP '2026-04-16 22:00:00', TRUE, TRUE, TRUE, TRUE, 89, 86, '캐싱 기준 설명이 좋습니다.', 'Next.js 제품 실습 과제 피드백'),
+        ('learner2@devpath.com', 'Next.js 14 제품 개발 실전', '인증 처리와 이미지 최적화 내용을 제출했습니다.', 'https://github.com/devpath/frontend-next-product-b', TRUE, 'GRADED', TIMESTAMP '2026-04-10 20:00:00', TIMESTAMP '2026-04-11 10:00:00', TRUE, TRUE, FALSE, TRUE, 71, 64, '메타데이터 누락 항목을 보강해야 합니다.', 'Next.js 제품 실습 과제 피드백'),
+        ('learner4@devpath.com', 'Flutter로 MVP 앱 출시하기', '스토어 제출용 MVP 화면과 빌드 체크리스트입니다.', 'https://github.com/devpath/frontend-flutter-mvp-a', FALSE, 'GRADED', TIMESTAMP '2026-04-15 18:00:00', TIMESTAMP '2026-04-16 09:30:00', TRUE, TRUE, TRUE, TRUE, 94, 92, '권한 설명과 빌드 문서가 명확합니다.', 'Flutter MVP 실습 과제 피드백'),
+        ('learner3@devpath.com', 'Flutter로 MVP 앱 출시하기', '가입 화면 폼 검증과 API 실패 처리까지 제출했습니다.', 'https://github.com/devpath/frontend-flutter-mvp-b', FALSE, 'GRADED', TIMESTAMP '2026-04-09 22:00:00', TIMESTAMP '2026-04-10 12:00:00', TRUE, FALSE, TRUE, TRUE, 66, 61, '에러 상태 화면을 더 분리하면 좋습니다.', 'Flutter MVP 실습 과제 피드백')
+)
+SELECT
+    a.assignment_id,
+    lu.user_id,
+    iu.user_id,
+    seed.submission_text,
+    seed.submission_url,
+    seed.is_late,
+    seed.submission_status,
+    seed.submitted_at,
+    seed.graded_at,
+    seed.readme_passed,
+    seed.test_passed,
+    seed.lint_passed,
+    seed.file_format_passed,
+    seed.quality_score,
+    seed.total_score,
+    seed.individual_feedback,
+    seed.common_feedback,
+    FALSE,
+    seed.submitted_at,
+    seed.graded_at
+FROM frontend_submission_seed seed
+JOIN users lu ON lu.email = seed.learner_email
+JOIN users iu ON iu.email = 'frontend@devpath.com'
+JOIN roadmap_nodes rn ON rn.sub_topics = seed.course_title
+                   AND rn.node_type = 'ASSIGNMENT'
+                   AND rn.title LIKE '[CATALOG]%'
+JOIN assignments a ON a.node_id = rn.node_id
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM assignment_submissions s
+    WHERE s.assignment_id = a.assignment_id
+      AND s.learner_id = lu.user_id
+      AND s.submission_url = seed.submission_url
+      AND s.is_deleted = FALSE
+);
+
+INSERT INTO qna_questions (
+    user_id, template_type, difficulty, title, content,
+    adopted_answer_id, course_id, lecture_timestamp,
+    qna_status, view_count, is_deleted, created_at, updated_at
+)
+WITH frontend_qna_seed(
+    learner_email, course_title, template_type, difficulty,
+    title, content, lecture_timestamp, view_count, created_at
+) AS (
+    VALUES
+        ('learner@devpath.com', 'React 19 프론트엔드 실전 가이드', 'IMPLEMENTATION', 'MEDIUM', 'Actions와 폼 처리에서 낙관적 업데이트 롤백은 어디에 두나요?', '폼 제출 실패 시 서버 에러 메시지와 로컬 상태를 함께 되돌리는 위치가 헷갈립니다.', '00:12:40', 18, TIMESTAMP '2026-04-14 09:20:00'),
+        ('learner2@devpath.com', 'React 19 프론트엔드 실전 가이드', 'DEBUGGING', 'HARD', 'Playwright 로그인 플로우 테스트가 CI에서만 실패합니다', '로컬에서는 통과하는데 CI에서 세션 쿠키가 유지되지 않아 다음 화면으로 넘어가지 않습니다.', '00:31:10', 24, TIMESTAMP '2026-04-15 13:10:00'),
+        ('learner3@devpath.com', 'React 19 프론트엔드 실전 가이드', 'STUDY', 'EASY', 'Tailwind 유틸리티가 길어질 때 컴포넌트를 어떻게 나누면 좋을까요?', '버튼과 카드에 클래스가 많아졌을 때 어느 기준으로 컴포넌트를 분리해야 하는지 궁금합니다.', '00:18:05', 11, TIMESTAMP '2026-04-16 10:30:00'),
+        ('learner4@devpath.com', 'React 19 프론트엔드 실전 가이드', 'CODE_REVIEW', 'MEDIUM', '대시보드 카드 컴포넌트 분리 기준을 봐주세요', '필터 카드와 통계 카드가 props 구조는 비슷한데 스타일이 달라서 같은 컴포넌트로 묶어도 되는지 고민됩니다.', '00:44:20', 7, TIMESTAMP '2026-04-13 18:45:00'),
+        ('learner@devpath.com', 'Next.js 14 제품 개발 실전', 'IMPLEMENTATION', 'MEDIUM', '서버 컴포넌트에서 쿠키 기반 인증을 읽는 위치가 궁금합니다', 'layout에서 세션을 읽는 방식과 page 단위로 읽는 방식 중 어떤 기준으로 나누는지 알고 싶습니다.', '00:16:25', 16, TIMESTAMP '2026-04-14 11:40:00'),
+        ('learner2@devpath.com', 'Next.js 14 제품 개발 실전', 'STUDY', 'MEDIUM', 'revalidatePath와 router.refresh를 언제 구분해서 쓰나요?', '서버 액션 이후 목록을 갱신할 때 두 방법을 같이 써야 하는지 기준이 애매합니다.', '00:27:50', 21, TIMESTAMP '2026-04-15 16:20:00'),
+        ('learner3@devpath.com', 'Next.js 14 제품 개발 실전', 'DEBUGGING', 'HARD', '이미지 최적화 후 LCP가 오히려 느려졌습니다', 'next/image로 바꾼 뒤 첫 화면 이미지가 늦게 표시됩니다. priority와 sizes 설정 기준을 알고 싶습니다.', '00:39:15', 29, TIMESTAMP '2026-04-16 14:00:00'),
+        ('learner4@devpath.com', 'Next.js 14 제품 개발 실전', 'PROJECT', 'MEDIUM', '메타데이터 템플릿을 여러 상세 페이지에 공통 적용하고 싶습니다', '제품 상세, 검색 결과, 프로필 페이지에서 title 규칙을 재사용하려면 어느 레이어에 두는 게 좋을까요?', '00:48:30', 9, TIMESTAMP '2026-04-12 20:10:00'),
+        ('learner@devpath.com', 'Flutter로 MVP 앱 출시하기', 'STUDY', 'EASY', '상태 관리에서 Riverpod을 꼭 써야 하나요?', '작은 MVP 앱에서도 기본 StatefulWidget만 쓰면 나중에 유지보수가 어려워지는지 궁금합니다.', '00:10:45', 13, TIMESTAMP '2026-04-16 09:10:00'),
+        ('learner2@devpath.com', 'Flutter로 MVP 앱 출시하기', 'DEBUGGING', 'MEDIUM', 'Android 빌드에서 권한 안내 문구가 반영되지 않습니다', 'AndroidManifest와 store 설명 문구를 수정했는데 빌드 결과에서 이전 문구가 계속 보입니다.', '00:42:10', 17, TIMESTAMP '2026-04-15 19:20:00'),
+        ('learner3@devpath.com', 'Flutter로 MVP 앱 출시하기', 'IMPLEMENTATION', 'MEDIUM', '폼 검증 에러 메시지를 화면마다 재사용하고 싶습니다', '가입, 로그인, 문의 화면에서 같은 검증 규칙을 쓰는데 위젯 분리와 함수 분리 중 어떤 방식이 좋을까요?', '00:21:55', 10, TIMESTAMP '2026-04-14 22:35:00'),
+        ('learner4@devpath.com', 'Flutter로 MVP 앱 출시하기', 'PROJECT', 'EASY', '스토어 제출용 권한 설명 문구를 어디서 관리하나요?', '카메라와 파일 접근 권한 설명을 코드와 제출 문서에서 함께 관리하는 방법이 궁금합니다.', '00:55:00', 8, TIMESTAMP '2026-04-13 15:50:00')
+)
+SELECT
+    u.user_id,
+    seed.template_type,
+    seed.difficulty,
+    seed.title,
+    seed.content,
+    NULL,
+    c.course_id,
+    seed.lecture_timestamp,
+    'UNANSWERED',
+    seed.view_count,
+    FALSE,
+    seed.created_at,
+    seed.created_at
+FROM frontend_qna_seed seed
+JOIN users u ON u.email = seed.learner_email
+JOIN courses c ON c.title = seed.course_title
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM qna_questions q
+    WHERE q.title = seed.title
+      AND q.user_id = u.user_id
+      AND q.course_id = c.course_id
+);
+
+INSERT INTO review (
+    course_id, learner_id, rating, content, status,
+    is_hidden, is_deleted, issue_tags_raw, created_at, updated_at
+)
+WITH frontend_review_seed(
+    learner_email, course_title, rating, content,
+    status, is_hidden, issue_tags_raw, created_at
+) AS (
+    VALUES
+        ('learner@devpath.com', 'React 19 프론트엔드 실전 가이드', 5, '상태 위치를 판단하는 기준이 실제 화면 예제로 연결돼서 이해하기 쉬웠습니다.', 'UNANSWERED', FALSE, CAST(NULL AS TEXT), TIMESTAMP '2026-04-16 19:20:00'),
+        ('learner2@devpath.com', 'React 19 프론트엔드 실전 가이드', 4, 'Playwright 실습은 좋았는데 예제 코드 버전이 영상과 조금 달라 확인이 필요합니다.', 'UNANSWERED', FALSE, '예제_코드_버전_차이,설명_보강_필요', TIMESTAMP '2026-04-15 21:10:00'),
+        ('learner3@devpath.com', 'React 19 프론트엔드 실전 가이드', 3, 'Tailwind 설명 중 화면 캡처와 실제 클래스명이 다른 구간이 있었습니다.', 'UNANSWERED', FALSE, '화면_캡처_불일치', TIMESTAMP '2026-04-14 18:40:00'),
+        ('learner4@devpath.com', 'React 19 프론트엔드 실전 가이드', 5, '대시보드 화면을 작은 단위로 나누는 기준이 실무에 바로 적용하기 좋았습니다.', 'UNANSWERED', FALSE, CAST(NULL AS TEXT), TIMESTAMP '2026-04-13 20:25:00'),
+        ('learner@devpath.com', 'Next.js 14 제품 개발 실전', 4, '서버 컴포넌트와 캐시 흐름은 좋았고 이미지 최적화 설명이 조금 더 있으면 좋겠습니다.', 'UNANSWERED', FALSE, '이미지_최적화_설명_보강', TIMESTAMP '2026-04-16 12:30:00'),
+        ('learner2@devpath.com', 'Next.js 14 제품 개발 실전', 5, 'App Router 기준으로 제품 화면을 끝까지 만드는 흐름이 잘 잡혀 있습니다.', 'UNANSWERED', FALSE, CAST(NULL AS TEXT), TIMESTAMP '2026-04-15 17:50:00'),
+        ('learner3@devpath.com', 'Next.js 14 제품 개발 실전', 3, '자료 링크 하나가 열리지 않고 메타데이터 예제 파일 위치가 영상과 달랐습니다.', 'UNANSWERED', FALSE, '링크_오류,자료_업데이트_필요', TIMESTAMP '2026-04-14 23:15:00'),
+        ('learner4@devpath.com', 'Next.js 14 제품 개발 실전', 4, '인증과 권한 처리 파트가 실습 중심이라 따라가기 좋았습니다.', 'UNANSWERED', FALSE, CAST(NULL AS TEXT), TIMESTAMP '2026-04-13 13:10:00'),
+        ('learner@devpath.com', 'Flutter로 MVP 앱 출시하기', 4, 'MVP 출시 체크리스트가 도움이 됐고 권한 설명 문구 예시가 더 있으면 좋겠습니다.', 'UNANSWERED', FALSE, '앱_권한_설명_보강', TIMESTAMP '2026-04-16 08:40:00'),
+        ('learner2@devpath.com', 'Flutter로 MVP 앱 출시하기', 5, '웹 개발자 입장에서 Flutter 앱 구조를 이해하기 쉽게 설명해줍니다.', 'UNANSWERED', FALSE, CAST(NULL AS TEXT), TIMESTAMP '2026-04-15 10:25:00'),
+        ('learner3@devpath.com', 'Flutter로 MVP 앱 출시하기', 2, '빌드 환경 버전 차이 때문에 실습이 막혔고 오류 재현 순서가 더 필요합니다.', 'UNANSWERED', FALSE, '빌드_환경_버전_차이,오류_재현_필요', TIMESTAMP '2026-04-14 09:35:00'),
+        ('learner4@devpath.com', 'Flutter로 MVP 앱 출시하기', 5, '위젯 분리와 폼 검증 흐름을 짧은 MVP 예제로 익히기 좋았습니다.', 'UNANSWERED', FALSE, CAST(NULL AS TEXT), TIMESTAMP '2026-04-13 19:00:00')
+)
+SELECT
+    c.course_id,
+    u.user_id,
+    seed.rating,
+    seed.content,
+    seed.status,
+    seed.is_hidden,
+    FALSE,
+    seed.issue_tags_raw,
+    seed.created_at,
+    seed.created_at
+FROM frontend_review_seed seed
+JOIN users u ON u.email = seed.learner_email
+JOIN courses c ON c.title = seed.course_title
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM review r
+    WHERE r.course_id = c.course_id
+      AND r.learner_id = u.user_id
+      AND r.is_deleted = FALSE
+);
+
+-- [CATALOG] frontend@devpath.com 정산 관리 데이터
+INSERT INTO settlement (
+    instructor_id, course_id, gross_amount, fee_amount, amount,
+    status, is_deleted, purchased_at, settled_at, created_at
+)
+WITH frontend_settlement_seed(
+    course_title, gross_amount, fee_amount, amount,
+    status, purchased_at, settled_at, created_at
+) AS (
+    VALUES
+        ('React 19 프론트엔드 실전 가이드', 79000, 15800, 63200, 'COMPLETED', TIMESTAMP '2026-01-08 10:20:00', TIMESTAMP '2026-01-15 11:00:00', TIMESTAMP '2026-01-15 11:00:00'),
+        ('Next.js 14 제품 개발 실전', 99000, 19800, 79200, 'COMPLETED', TIMESTAMP '2026-01-18 15:35:00', TIMESTAMP '2026-01-25 10:30:00', TIMESTAMP '2026-01-25 10:30:00'),
+        ('React 19 프론트엔드 실전 가이드', 79000, 15800, 63200, 'COMPLETED', TIMESTAMP '2026-02-06 09:40:00', TIMESTAMP '2026-02-13 14:00:00', TIMESTAMP '2026-02-13 14:00:00'),
+        ('Flutter로 MVP 앱 출시하기', 69000, 13800, 55200, 'COMPLETED', TIMESTAMP '2026-02-16 20:10:00', TIMESTAMP '2026-02-23 13:20:00', TIMESTAMP '2026-02-23 13:20:00'),
+        ('Next.js 14 제품 개발 실전', 99000, 19800, 79200, 'COMPLETED', TIMESTAMP '2026-03-04 11:15:00', TIMESTAMP '2026-03-11 16:10:00', TIMESTAMP '2026-03-11 16:10:00'),
+        ('React 19 프론트엔드 실전 가이드', 79000, 15800, 63200, 'COMPLETED', TIMESTAMP '2026-03-19 18:25:00', TIMESTAMP '2026-03-26 10:45:00', TIMESTAMP '2026-03-26 10:45:00'),
+        ('Flutter로 MVP 앱 출시하기', 69000, 13800, 55200, 'COMPLETED', TIMESTAMP '2026-04-04 12:30:00', TIMESTAMP '2026-04-11 11:30:00', TIMESTAMP '2026-04-11 11:30:00'),
+        ('Next.js 14 제품 개발 실전', 99000, 19800, 79200, 'COMPLETED', TIMESTAMP '2026-04-10 09:15:00', TIMESTAMP '2026-04-16 17:30:00', TIMESTAMP '2026-04-16 17:30:00'),
+        ('React 19 프론트엔드 실전 가이드', 79000, 15800, 63200, 'PENDING', TIMESTAMP '2026-04-15 13:20:00', CAST(NULL AS TIMESTAMP), TIMESTAMP '2026-04-15 13:20:00'),
+        ('Next.js 14 제품 개발 실전', 99000, 19800, 79200, 'PENDING', TIMESTAMP '2026-04-16 10:05:00', CAST(NULL AS TIMESTAMP), TIMESTAMP '2026-04-16 10:05:00'),
+        ('Flutter로 MVP 앱 출시하기', 69000, 13800, 55200, 'PENDING', TIMESTAMP '2026-04-16 17:30:00', CAST(NULL AS TIMESTAMP), TIMESTAMP '2026-04-16 17:30:00'),
+        ('Next.js 14 제품 개발 실전', 99000, 19800, 79200, 'HELD', TIMESTAMP '2026-04-13 16:40:00', CAST(NULL AS TIMESTAMP), TIMESTAMP '2026-04-13 16:40:00'),
+        ('React 19 프론트엔드 실전 가이드', 79000, 15800, 63200, 'HELD', TIMESTAMP '2026-04-14 19:05:00', CAST(NULL AS TIMESTAMP), TIMESTAMP '2026-04-14 19:05:00')
+)
+SELECT
+    iu.user_id,
+    c.course_id,
+    seed.gross_amount,
+    seed.fee_amount,
+    seed.amount,
+    seed.status,
+    FALSE,
+    seed.purchased_at,
+    seed.settled_at,
+    seed.created_at
+FROM frontend_settlement_seed seed
+JOIN users iu ON iu.email = 'frontend@devpath.com'
+JOIN courses c ON c.title = seed.course_title
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM settlement s
+    WHERE s.instructor_id = iu.user_id
+      AND s.course_id = c.course_id
+      AND s.purchased_at = seed.purchased_at
+      AND s.gross_amount = seed.gross_amount
+      AND s.is_deleted = FALSE
+);
+
+INSERT INTO settlement_hold (
+    settlement_id, admin_id, reason, held_at
+)
+WITH frontend_settlement_hold_seed(
+    course_title, purchased_at, reason, held_at
+) AS (
+    VALUES
+        ('Next.js 14 제품 개발 실전', TIMESTAMP '2026-04-13 16:40:00', '환불 문의가 접수되어 정산 확인 중입니다.', TIMESTAMP '2026-04-14 09:30:00'),
+        ('React 19 프론트엔드 실전 가이드', TIMESTAMP '2026-04-14 19:05:00', '결제 수단 확인이 필요해 일시 보류되었습니다.', TIMESTAMP '2026-04-15 10:15:00')
+)
+SELECT
+    s.id,
+    au.user_id,
+    seed.reason,
+    seed.held_at
+FROM frontend_settlement_hold_seed seed
+JOIN users iu ON iu.email = 'frontend@devpath.com'
+JOIN users au ON au.email = 'admin@devpath.com'
+JOIN courses c ON c.title = seed.course_title
+JOIN settlement s ON s.instructor_id = iu.user_id
+                 AND s.course_id = c.course_id
+                 AND s.purchased_at = seed.purchased_at
+                 AND s.status = 'HELD'
+                 AND s.is_deleted = FALSE
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM settlement_hold sh
+    WHERE sh.settlement_id = s.id
+);
+
+-- [CATALOG] 사용자 신고 접수 시드 데이터
+INSERT INTO moderation_report (
+    reporter_user_id,
+    target_user_id,
+    content_id,
+    reason,
+    status,
+    action_taken,
+    resolved_by,
+    resolved_at,
+    created_at
+)
+SELECT
+    reporter.user_id,
+    target.user_id,
+    NULL,
+    '프로젝트 채팅에서 반복적인 비방 메시지를 보냈습니다.',
+    'PENDING',
+    NULL,
+    NULL,
+    NULL,
+    TIMESTAMP '2026-04-15 09:20:00'
+FROM users reporter
+JOIN users target ON target.email = 'learner3@devpath.com'
+WHERE reporter.email = 'learner2@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM moderation_report mr
+      WHERE mr.reporter_user_id = reporter.user_id
+        AND mr.target_user_id = target.user_id
+        AND mr.content_id IS NULL
+        AND mr.reason = '프로젝트 채팅에서 반복적인 비방 메시지를 보냈습니다.'
+  );
+
+INSERT INTO moderation_report (
+    reporter_user_id,
+    target_user_id,
+    content_id,
+    reason,
+    status,
+    action_taken,
+    resolved_by,
+    resolved_at,
+    created_at
+)
+SELECT
+    reporter.user_id,
+    author.user_id,
+    r.id,
+    '수강 후기 내용에 개인 연락처가 그대로 노출되어 있습니다.',
+    'PENDING',
+    NULL,
+    NULL,
+    NULL,
+    TIMESTAMP '2026-04-15 14:10:00'
+FROM users reporter
+JOIN users author ON author.email = 'learner2@devpath.com'
+JOIN courses c ON c.title = 'React 19 프론트엔드 실전 가이드'
+JOIN review r ON r.course_id = c.course_id
+             AND r.learner_id = author.user_id
+             AND r.is_deleted = FALSE
+WHERE reporter.email = 'learner3@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM moderation_report mr
+      WHERE mr.reporter_user_id = reporter.user_id
+        AND mr.content_id = r.id
+        AND mr.reason = '수강 후기 내용에 개인 연락처가 그대로 노출되어 있습니다.'
+  );
+
+INSERT INTO moderation_report (
+    reporter_user_id,
+    target_user_id,
+    content_id,
+    reason,
+    status,
+    action_taken,
+    resolved_by,
+    resolved_at,
+    created_at
+)
+SELECT
+    reporter.user_id,
+    author.user_id,
+    r.id,
+    '후기 문구가 강의와 무관한 외부 홍보성 내용으로 보입니다.',
+    'PENDING',
+    NULL,
+    NULL,
+    NULL,
+    TIMESTAMP '2026-04-16 11:45:00'
+FROM users reporter
+JOIN users author ON author.email = 'learner3@devpath.com'
+JOIN courses c ON c.title = 'Flutter로 MVP 앱 출시하기'
+JOIN review r ON r.course_id = c.course_id
+             AND r.learner_id = author.user_id
+             AND r.is_deleted = FALSE
+WHERE reporter.email = 'learner2@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM moderation_report mr
+      WHERE mr.reporter_user_id = reporter.user_id
+        AND mr.content_id = r.id
+        AND mr.reason = '후기 문구가 강의와 무관한 외부 홍보성 내용으로 보입니다.'
+  );
+
+INSERT INTO moderation_report (
+    reporter_user_id,
+    target_user_id,
+    content_id,
+    reason,
+    status,
+    action_taken,
+    resolved_by,
+    resolved_at,
+    created_at
+)
+SELECT
+    reporter.user_id,
+    target.user_id,
+    NULL,
+    '프로필 소개에 외부 연락처 유도가 반복되어 관리자 검토 후 경고 처리했습니다.',
+    'RESOLVED',
+    'WARNING',
+    admin_user.user_id,
+    TIMESTAMP '2026-04-14 18:20:00',
+    TIMESTAMP '2026-04-14 12:00:00'
+FROM users reporter
+JOIN users target ON target.email = 'frontend@devpath.com'
+JOIN users admin_user ON admin_user.email = 'admin@devpath.com'
+WHERE reporter.email = 'learner3@devpath.com'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM moderation_report mr
+      WHERE mr.reporter_user_id = reporter.user_id
+        AND mr.target_user_id = target.user_id
+        AND mr.content_id IS NULL
+        AND mr.reason = '프로필 소개에 외부 연락처 유도가 반복되어 관리자 검토 후 경고 처리했습니다.'
+  );
+-- ============================================================
+-- 로드맵 허브 기본 구성
+-- ============================================================
+WITH roadmap_hub_official_seed(title) AS (
+    VALUES
+        ('Full Stack'),
+        ('DevOps'),
+        ('DevSecOps'),
+        ('Data Analyst'),
+        ('AI Engineer'),
+        ('AI and Data Scientist'),
+        ('Data Engineer'),
+        ('Android'),
+        ('Machine Learning'),
+        ('PostgreSQL'),
+        ('iOS'),
+        ('Blockchain'),
+        ('QA'),
+        ('Software Architect'),
+        ('Cyber Security'),
+        ('UX Design'),
+        ('Technical Writer'),
+        ('Game Developer'),
+        ('Server Side Game Developer'),
+        ('MLOps'),
+        ('Product Manager'),
+        ('Engineering Manager'),
+        ('Developer Relations'),
+        ('BI Analyst'),
+        ('SQL'),
+        ('Computer Science'),
+        ('React'),
+        ('Vue'),
+        ('Angular'),
+        ('JavaScript'),
+        ('TypeScript'),
+        ('Node.js'),
+        ('Python'),
+        ('System Design'),
+        ('Java'),
+        ('ASP.NET Core'),
+        ('API Design'),
+        ('Spring Boot'),
+        ('Flutter'),
+        ('C++'),
+        ('Rust'),
+        ('Go Roadmap'),
+        ('Design and Architecture'),
+        ('GraphQL'),
+        ('React Native'),
+        ('Design System'),
+        ('Prompt Engineering'),
+        ('MongoDB'),
+        ('Linux'),
+        ('Kubernetes'),
+        ('Docker'),
+        ('AWS'),
+        ('Terraform'),
+        ('Data Structures & Algorithms'),
+        ('Redis'),
+        ('Git and GitHub'),
+        ('PHP'),
+        ('Cloudflare'),
+        ('AI Red Teaming'),
+        ('AI Agents'),
+        ('Next.js'),
+        ('Code Review'),
+        ('Kotlin'),
+        ('HTML'),
+        ('CSS'),
+        ('Swift & Swift UI'),
+        ('Shell / Bash'),
+        ('Laravel'),
+        ('Elasticsearch'),
+        ('WordPress'),
+        ('Django'),
+        ('Ruby'),
+        ('Ruby on Rails'),
+        ('Claude Code'),
+        ('Vibe Coding'),
+        ('Scala'),
+        ('OpenClaw')
+)
+INSERT INTO roadmaps (creator_id, title, description, is_official, is_public, is_deleted, created_at)
+SELECT
+    admin_user.user_id,
+    seed.title,
+    CONCAT(seed.title, ' 학습 흐름을 담은 DevPath 공식 로드맵입니다.'),
+    TRUE,
+    TRUE,
+    FALSE,
+    CURRENT_TIMESTAMP
+FROM roadmap_hub_official_seed seed
+JOIN users admin_user ON admin_user.email = 'admin@devpath.com'
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM roadmaps roadmap
+    WHERE roadmap.title = seed.title
+);
+
+WITH roadmap_hub_section_seed(section_key, title, description, layout_type, sort_order, is_active) AS (
+    VALUES
+        ('role-based', '역할 기반 로드맵', '직무 중심 로드맵 허브 구성입니다.', 'CARD_GRID', 0, TRUE),
+        ('skill-based', '기술 기반 로드맵', '기술 중심 로드맵 허브 구성입니다.', 'CHIP_GRID', 1, TRUE),
+        ('project-ideas', '프로젝트 아이디어', '프로젝트 아이디어 섹션입니다.', 'LINK_LIST', 2, TRUE),
+        ('best-practices', '베스트 프랙티스', '실무 베스트 프랙티스 섹션입니다.', 'LINK_LIST', 3, TRUE)
+)
+INSERT INTO roadmap_hub_sections (section_key, title, description, layout_type, sort_order, is_active)
+SELECT seed.section_key, seed.title, seed.description, seed.layout_type, seed.sort_order, seed.is_active
+FROM roadmap_hub_section_seed seed
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM roadmap_hub_sections section_item
+    WHERE section_item.section_key = seed.section_key
+);
+
+UPDATE roadmap_hub_sections
+SET title = CASE section_key
+        WHEN 'role-based' THEN '역할 기반 로드맵'
+        WHEN 'skill-based' THEN '기술 기반 로드맵'
+        WHEN 'project-ideas' THEN '프로젝트 아이디어'
+        WHEN 'best-practices' THEN '베스트 프랙티스'
+        ELSE title
+    END
+WHERE section_key IN ('role-based', 'skill-based', 'project-ideas', 'best-practices');
+
+WITH roadmap_hub_item_seed(
+    section_key,
+    item_title,
+    subtitle,
+    icon_class,
+    linked_roadmap_title,
+    is_featured,
+    sort_order,
+    is_active
+) AS (
+    VALUES
+        ('role-based', '프론트엔드', 'Frontend', 'fas fa-desktop', 'Frontend Entry Roadmap', FALSE, 0, TRUE),
+        ('role-based', '백엔드', 'Backend', 'fas fa-server', 'Backend Master Roadmap', TRUE, 1, TRUE),
+        ('role-based', '풀스택', 'Full Stack', 'fas fa-layer-group', 'Full Stack', FALSE, 2, TRUE),
+        ('role-based', '데브옵스', 'DevOps', 'fas fa-infinity', 'DevOps', TRUE, 3, TRUE),
+        ('role-based', '데브섹옵스', 'DevSecOps', 'fas fa-shield-halved', 'DevSecOps', FALSE, 4, TRUE),
+        ('role-based', '데이터 분석가', 'Data Analyst', 'fas fa-chart-line', 'Data Analyst', FALSE, 5, TRUE),
+        ('role-based', 'AI 엔지니어', 'AI Engineer', 'fas fa-brain', 'AI Engineer', TRUE, 6, TRUE),
+        ('role-based', 'AI·데이터 사이언티스트', 'AI and Data Scientist', 'fas fa-atom', 'AI and Data Scientist', FALSE, 7, TRUE),
+        ('role-based', '데이터 엔지니어', 'Data Engineer', 'fas fa-database', 'Data Engineer', FALSE, 8, TRUE),
+        ('role-based', '안드로이드', 'Android', 'fab fa-android', 'Android', FALSE, 9, TRUE),
+        ('role-based', '머신러닝', 'Machine Learning', 'fas fa-microchip', 'Machine Learning', FALSE, 10, TRUE),
+        ('role-based', 'PostgreSQL 전문가', 'PostgreSQL', 'fas fa-database', 'PostgreSQL', FALSE, 11, TRUE),
+        ('role-based', 'iOS 개발자', 'iOS', 'fab fa-apple', 'iOS', FALSE, 12, TRUE),
+        ('role-based', '블록체인', 'Blockchain', 'fas fa-link', 'Blockchain', FALSE, 13, TRUE),
+        ('role-based', 'QA 엔지니어', 'QA', 'fas fa-vial', 'QA', FALSE, 14, TRUE),
+        ('role-based', '소프트웨어 아키텍트', 'Software Architect', 'fas fa-sitemap', 'Software Architect', FALSE, 15, TRUE),
+        ('role-based', '사이버 보안', 'Cyber Security', 'fas fa-user-shield', 'Cyber Security', TRUE, 16, TRUE),
+        ('role-based', 'UX 디자인', 'UX Design', 'fas fa-bezier-curve', 'UX Design', FALSE, 17, TRUE),
+        ('role-based', '테크니컬 라이터', 'Technical Writer', 'fas fa-pen-fancy', 'Technical Writer', FALSE, 18, TRUE),
+        ('role-based', '게임 개발자', 'Game Developer', 'fas fa-gamepad', 'Game Developer', FALSE, 19, TRUE),
+        ('role-based', '서버 사이드 게임 개발자', 'Server Side Game Developer', 'fas fa-dice-d20', 'Server Side Game Developer', FALSE, 20, TRUE),
+        ('role-based', 'MLOps 엔지니어', 'MLOps', 'fas fa-gears', 'MLOps', TRUE, 21, TRUE),
+        ('role-based', '프로덕트 매니저', 'Product Manager', 'fas fa-clipboard-list', 'Product Manager', FALSE, 22, TRUE),
+        ('role-based', '엔지니어링 매니저', 'Engineering Manager', 'fas fa-users', 'Engineering Manager', FALSE, 23, TRUE),
+        ('role-based', '데브렐', 'Developer Relations', 'fas fa-bullhorn', 'Developer Relations', FALSE, 24, TRUE),
+        ('role-based', 'BI 분석가', 'BI Analyst', 'fas fa-chart-pie', 'BI Analyst', FALSE, 25, TRUE),
+        ('skill-based', 'SQL', NULL, NULL, 'SQL', FALSE, 0, TRUE),
+        ('skill-based', 'Computer Science', NULL, NULL, 'Computer Science', FALSE, 1, TRUE),
+        ('skill-based', 'React', NULL, NULL, 'React', FALSE, 2, TRUE),
+        ('skill-based', 'Vue', NULL, NULL, 'Vue', FALSE, 3, TRUE),
+        ('skill-based', 'Angular', NULL, NULL, 'Angular', FALSE, 4, TRUE),
+        ('skill-based', 'JavaScript', NULL, NULL, 'JavaScript', FALSE, 5, TRUE),
+        ('skill-based', 'TypeScript', NULL, NULL, 'TypeScript', FALSE, 6, TRUE),
+        ('skill-based', 'Node.js', NULL, NULL, 'Node.js', FALSE, 7, TRUE),
+        ('skill-based', 'Python', NULL, NULL, 'Python', FALSE, 8, TRUE),
+        ('skill-based', 'System Design', NULL, NULL, 'System Design', FALSE, 9, TRUE),
+        ('skill-based', 'Java', NULL, NULL, 'Java', FALSE, 10, TRUE),
+        ('skill-based', 'ASP.NET Core', NULL, NULL, 'ASP.NET Core', FALSE, 11, TRUE),
+        ('skill-based', 'API Design', NULL, NULL, 'API Design', FALSE, 12, TRUE),
+        ('skill-based', 'Spring Boot', NULL, NULL, 'Spring Boot', FALSE, 13, TRUE),
+        ('skill-based', 'Flutter', NULL, NULL, 'Flutter', FALSE, 14, TRUE),
+        ('skill-based', 'C++', NULL, NULL, 'C++', FALSE, 15, TRUE),
+        ('skill-based', 'Rust', NULL, NULL, 'Rust', FALSE, 16, TRUE),
+        ('skill-based', 'Go Roadmap', NULL, NULL, 'Go Roadmap', FALSE, 17, TRUE),
+        ('skill-based', 'Design and Architecture', NULL, NULL, 'Design and Architecture', FALSE, 18, TRUE),
+        ('skill-based', 'GraphQL', NULL, NULL, 'GraphQL', FALSE, 19, TRUE),
+        ('skill-based', 'React Native', NULL, NULL, 'React Native', FALSE, 20, TRUE),
+        ('skill-based', 'Design System', NULL, NULL, 'Design System', FALSE, 21, TRUE),
+        ('skill-based', 'Prompt Engineering', NULL, NULL, 'Prompt Engineering', FALSE, 22, TRUE),
+        ('skill-based', 'MongoDB', NULL, NULL, 'MongoDB', FALSE, 23, TRUE),
+        ('skill-based', 'Linux', NULL, NULL, 'Linux', FALSE, 24, TRUE),
+        ('skill-based', 'Kubernetes', NULL, NULL, 'Kubernetes', FALSE, 25, TRUE),
+        ('skill-based', 'Docker', NULL, NULL, 'Docker', FALSE, 26, TRUE),
+        ('skill-based', 'AWS', NULL, NULL, 'AWS', FALSE, 27, TRUE),
+        ('skill-based', 'Terraform', NULL, NULL, 'Terraform', FALSE, 28, TRUE),
+        ('skill-based', 'Data Structures & Algorithms', NULL, NULL, 'Data Structures & Algorithms', FALSE, 29, TRUE),
+        ('skill-based', 'Redis', NULL, NULL, 'Redis', FALSE, 30, TRUE),
+        ('skill-based', 'Git and GitHub', NULL, NULL, 'Git and GitHub', FALSE, 31, TRUE),
+        ('skill-based', 'PHP', NULL, NULL, 'PHP', FALSE, 32, TRUE),
+        ('skill-based', 'Cloudflare', NULL, NULL, 'Cloudflare', FALSE, 33, TRUE),
+        ('skill-based', 'AI Red Teaming', NULL, NULL, 'AI Red Teaming', FALSE, 34, TRUE),
+        ('skill-based', 'AI Agents', NULL, NULL, 'AI Agents', FALSE, 35, TRUE),
+        ('skill-based', 'Next.js', NULL, NULL, 'Next.js', FALSE, 36, TRUE),
+        ('skill-based', 'Code Review', NULL, NULL, 'Code Review', FALSE, 37, TRUE),
+        ('skill-based', 'Kotlin', NULL, NULL, 'Kotlin', FALSE, 38, TRUE),
+        ('skill-based', 'HTML', NULL, NULL, 'HTML', FALSE, 39, TRUE),
+        ('skill-based', 'CSS', NULL, NULL, 'CSS', FALSE, 40, TRUE),
+        ('skill-based', 'Swift & Swift UI', NULL, NULL, 'Swift & Swift UI', FALSE, 41, TRUE),
+        ('skill-based', 'Shell / Bash', NULL, NULL, 'Shell / Bash', FALSE, 42, TRUE),
+        ('skill-based', 'Laravel', NULL, NULL, 'Laravel', FALSE, 43, TRUE),
+        ('skill-based', 'Elasticsearch', NULL, NULL, 'Elasticsearch', FALSE, 44, TRUE),
+        ('skill-based', 'WordPress', NULL, NULL, 'WordPress', FALSE, 45, TRUE),
+        ('skill-based', 'Django', NULL, NULL, 'Django', FALSE, 46, TRUE),
+        ('skill-based', 'Ruby', NULL, NULL, 'Ruby', FALSE, 47, TRUE),
+        ('skill-based', 'Ruby on Rails', NULL, NULL, 'Ruby on Rails', FALSE, 48, TRUE),
+        ('skill-based', 'Claude Code', NULL, NULL, 'Claude Code', FALSE, 49, TRUE),
+        ('skill-based', 'Vibe Coding', NULL, NULL, 'Vibe Coding', FALSE, 50, TRUE),
+        ('skill-based', 'Scala', NULL, NULL, 'Scala', FALSE, 51, TRUE),
+        ('skill-based', 'OpenClaw', NULL, NULL, 'OpenClaw', FALSE, 52, TRUE),
+        ('project-ideas', 'Frontend', NULL, NULL, NULL, FALSE, 0, TRUE),
+        ('project-ideas', 'Backend', NULL, NULL, NULL, FALSE, 1, TRUE),
+        ('project-ideas', 'DevOps', NULL, NULL, NULL, FALSE, 2, TRUE),
+        ('best-practices', 'AWS', NULL, NULL, NULL, FALSE, 0, TRUE),
+        ('best-practices', 'API Security', NULL, NULL, NULL, FALSE, 1, TRUE),
+        ('best-practices', 'Backend Performance', NULL, NULL, NULL, FALSE, 2, TRUE),
+        ('best-practices', 'Frontend Performance', NULL, NULL, NULL, FALSE, 3, TRUE),
+        ('best-practices', 'Code Review', NULL, NULL, NULL, FALSE, 4, TRUE)
+)
+INSERT INTO roadmap_hub_items (
+    section_id,
+    title,
+    subtitle,
+    icon_class,
+    linked_roadmap_id,
+    sort_order,
+    is_active,
+    is_featured
+)
+SELECT
+    section_item.id,
+    seed.item_title,
+    seed.subtitle,
+    seed.icon_class,
+    roadmap.roadmap_id,
+    seed.sort_order,
+    seed.is_active,
+    seed.is_featured
+FROM roadmap_hub_item_seed seed
+JOIN roadmap_hub_sections section_item
+    ON section_item.section_key = seed.section_key
+LEFT JOIN roadmaps roadmap
+    ON roadmap.title = seed.linked_roadmap_title
+   AND roadmap.is_official = TRUE
+   AND roadmap.is_deleted = FALSE
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM roadmap_hub_items item
+    WHERE item.section_id = section_item.id
+      AND (
+          item.title = seed.item_title
+          OR (seed.subtitle IS NOT NULL AND item.subtitle = seed.subtitle)
+      )
+);
+
+UPDATE roadmap_hub_items item
+SET
+    title = CASE item.subtitle
+        WHEN 'Frontend' THEN '프론트엔드'
+        WHEN 'Backend' THEN '백엔드'
+        WHEN 'Full Stack' THEN '풀스택'
+        WHEN 'DevOps' THEN '데브옵스'
+        WHEN 'DevSecOps' THEN '데브섹옵스'
+        WHEN 'Data Analyst' THEN '데이터 분석가'
+        WHEN 'AI Engineer' THEN 'AI 엔지니어'
+        WHEN 'AI and Data Scientist' THEN 'AI·데이터 사이언티스트'
+        WHEN 'Data Engineer' THEN '데이터 엔지니어'
+        WHEN 'Android' THEN '안드로이드'
+        WHEN 'Machine Learning' THEN '머신러닝'
+        WHEN 'PostgreSQL' THEN 'PostgreSQL 전문가'
+        WHEN 'iOS' THEN 'iOS 개발자'
+        WHEN 'Blockchain' THEN '블록체인'
+        WHEN 'QA' THEN 'QA 엔지니어'
+        WHEN 'Software Architect' THEN '소프트웨어 아키텍트'
+        WHEN 'Cyber Security' THEN '사이버 보안'
+        WHEN 'UX Design' THEN 'UX 디자인'
+        WHEN 'Technical Writer' THEN '테크니컬 라이터'
+        WHEN 'Game Developer' THEN '게임 개발자'
+        WHEN 'Server Side Game Developer' THEN '서버 사이드 게임 개발자'
+        WHEN 'MLOps' THEN 'MLOps 엔지니어'
+        WHEN 'Product Manager' THEN '프로덕트 매니저'
+        WHEN 'Engineering Manager' THEN '엔지니어링 매니저'
+        WHEN 'Developer Relations' THEN '데브렐'
+        WHEN 'BI Analyst' THEN 'BI 분석가'
+        ELSE item.title
+    END,
+    is_featured = CASE
+        WHEN item.subtitle IN ('Backend', 'AI Engineer', 'DevOps', 'MLOps', 'Cyber Security') THEN TRUE
+        ELSE FALSE
+    END
+FROM roadmap_hub_sections section_item
+WHERE item.section_id = section_item.id
+  AND section_item.section_key = 'role-based';

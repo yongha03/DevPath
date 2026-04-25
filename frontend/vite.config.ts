@@ -11,7 +11,7 @@ const proxyToBackend = {
   changeOrigin: true,
 } as const
 
-// https://vite.dev/config/
+// 관리자 대시보드를 별도 엔트리 HTML로 같이 빌드한다.
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   build: {
@@ -23,6 +23,7 @@ export default defineConfig({
         singup: resolve(__dirname, 'singup.html'),
         signup: resolve(__dirname, 'signup.html'),
         oauthRedirect: resolve(__dirname, 'oauth2/redirect.html'),
+        adminDashboard: resolve(__dirname, 'admin-dashboard.html'),
         roadmap: resolve(__dirname, 'roadmap.html'),
         survey: resolve(__dirname, 'survey.html'),
         roadmapHub: resolve(__dirname, 'roadmap-hub.html'),
