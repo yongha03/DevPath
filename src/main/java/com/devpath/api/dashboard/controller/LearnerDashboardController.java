@@ -3,6 +3,7 @@ package com.devpath.api.dashboard.controller;
 import static com.devpath.common.security.AuthenticationUtils.requireUserId;
 
 import com.devpath.api.dashboard.dto.DashboardGrowthRecommendationResponse;
+import com.devpath.api.dashboard.dto.DashboardMentoringResponse;
 import com.devpath.api.dashboard.dto.DashboardStudyGroupResponse;
 import com.devpath.api.dashboard.dto.DashboardSummaryResponse;
 import com.devpath.api.dashboard.dto.HeatmapResponse;
@@ -48,6 +49,14 @@ public class LearnerDashboardController {
             @Parameter(hidden = true) @AuthenticationPrincipal Long learnerId
     ) {
         return ApiResponse.ok(dashboardService.getDashboardStudyGroup(requireUserId(learnerId)));
+    }
+
+    @GetMapping("/mentoring")
+    @Operation(summary = "Get dashboard mentoring summary", description = "Get mentoring summary for projects joined by the authenticated user.")
+    public ApiResponse<DashboardMentoringResponse> getDashboardMentoring(
+            @Parameter(hidden = true) @AuthenticationPrincipal Long learnerId
+    ) {
+        return ApiResponse.ok(dashboardService.getDashboardMentoring(requireUserId(learnerId)));
     }
 
     @GetMapping("/growth-recommendation")

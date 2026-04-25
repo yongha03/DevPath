@@ -29,6 +29,30 @@ export interface DashboardStudyGroup {
   groups: DashboardStudyGroupItem[]
 }
 
+export interface DashboardMentoringProject {
+  projectId: number
+  name: string
+  status: string
+  joinedAt: string | null
+}
+
+export interface DashboardMentoringApplication {
+  applicationId: number
+  mentorId: number | null
+  mentorName: string | null
+  status: string
+  message: string | null
+  createdAt: string | null
+}
+
+export interface DashboardMentoring {
+  joinedProjectCount: number | null
+  applicationCount: number | null
+  pendingApplicationCount: number | null
+  latestProject: DashboardMentoringProject | null
+  latestApplication: DashboardMentoringApplication | null
+}
+
 export interface Enrollment {
   enrollmentId: number
   courseId: number

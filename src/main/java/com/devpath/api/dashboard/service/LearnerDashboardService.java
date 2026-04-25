@@ -2,12 +2,11 @@ package com.devpath.api.dashboard.service;
 
 import com.devpath.api.dashboard.dto.DashboardGrowthRecommendationResponse;
 import com.devpath.api.dashboard.dto.DashboardGrowthRecommendationResponse.RecommendationItem;
+import com.devpath.api.dashboard.dto.DashboardMentoringResponse;
 import com.devpath.api.dashboard.dto.DashboardStudyGroupResponse;
 import com.devpath.api.dashboard.dto.DashboardSummaryResponse;
 import com.devpath.api.dashboard.dto.HeatmapResponse;
 import com.devpath.common.provider.GeminiProvider;
-import com.devpath.domain.course.entity.CourseStatus;
-import com.devpath.domain.course.repository.CourseRepository;
 import com.devpath.domain.dashboard.entity.DashboardSnapshot;
 import com.devpath.domain.dashboard.repository.DashboardSnapshotRepository;
 import com.devpath.domain.learning.entity.LessonProgress;
@@ -19,16 +18,26 @@ import com.devpath.domain.learning.repository.proof.ProofCardRepository;
 import com.devpath.domain.learning.repository.proof.ProofCardTagRepository;
 import com.devpath.domain.planner.entity.Streak;
 import com.devpath.domain.planner.repository.StreakRepository;
+import com.devpath.domain.project.entity.MentoringApplication;
+import com.devpath.domain.project.entity.MentoringApplicationStatus;
+import com.devpath.domain.project.entity.Project;
+import com.devpath.domain.project.entity.ProjectMember;
+import com.devpath.domain.project.repository.MentoringApplicationRepository;
+import com.devpath.domain.project.repository.ProjectMemberRepository;
+import com.devpath.domain.project.repository.ProjectRepository;
 import com.devpath.domain.study.entity.StudyGroup;
 import com.devpath.domain.study.entity.StudyGroupJoinStatus;
 import com.devpath.domain.study.entity.StudyGroupMember;
 import com.devpath.domain.study.entity.StudyGroupStatus;
 import com.devpath.domain.study.repository.StudyGroupMemberRepository;
+import com.devpath.domain.user.entity.User;
+import com.devpath.domain.user.repository.UserRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -51,7 +60,10 @@ public class LearnerDashboardService {
     private final StudyGroupMemberRepository studyGroupMemberRepository;
     private final ProofCardRepository proofCardRepository;
     private final ProofCardTagRepository proofCardTagRepository;
-    private final CourseRepository courseRepository;
+    private final ProjectMemberRepository projectMemberRepository;
+    private final ProjectRepository projectRepository;
+    private final MentoringApplicationRepository mentoringApplicationRepository;
+    private final UserRepository userRepository;
     private final GeminiProvider geminiProvider;
 
     public DashboardSummaryResponse getSummary(Long learnerId) {
@@ -145,6 +157,168 @@ public class LearnerDashboardService {
                 .build();
     }
 
+    public DashboardMentoringResponse getDashboardMentoring(Long learnerId) {
+        List<ProjectMember> memberships = projectMemberRepository.findAllByLearnerIdOrderByJoinedAtDesc(learnerId);
+        if (memberships.isEmpty()) {
+            return buildEmptyMentoringResponse();
+        }
+
+        List<Long> projectIds = memberships.stream()
+                .map(ProjectMember::getProjectId)
+                .distinct()
+                .toList();
+
+        Map<Long, Project> projectsById = projectRepository.findAllById(projectIds).stream()
+                .filter(project -> !Boolean.TRUE.equals(project.getIsDeleted()))
+                .collect(Collectors.toMap(Project::getId, project -> project));
+
+        List<ProjectMember> activeMemberships = memberships.stream()
+                .filter(member -> projectsById.containsKey(member.getProjectId()))
+                .toList();
+
+        if (activeMemberships.isEmpty()) {
+            return buildEmptyMentoringResponse();
+        }
+
+        List<Long> activeProjectIds = activeMemberships.stream()
+                .map(ProjectMember::getProjectId)
+                .distinct()
+                .toList();
+
+        List<MentoringApplication> applications = mentoringApplicationRepository
+                .findAllByProjectIdInOrderByCreatedAtDesc(activeProjectIds);
+
+        Map<Long, User> mentorsById = userRepository.findAllById(
+                        applications.stream()
+                                .map(MentoringApplication::getMentorId)
+                                .distinct()
+                                .toList()
+                ).stream()
+                .collect(Collectors.toMap(User::getId, user -> user));
+
+        ProjectMember latestMembership = activeMemberships.get(0);
+        Project latestProject = projectsById.get(latestMembership.getProjectId());
+        MentoringApplication latestApplication = applications.isEmpty() ? null : applications.get(0);
+
+        int pendingApplicationCount = (int) applications.stream()
+                .filter(application -> application.getStatus() == MentoringApplicationStatus.PENDING
+                        || application.getStatus() == MentoringApplicationStatus.UNDER_REVIEW)
+                .count();
+
+        DashboardMentoringResponse.ProjectItem latestProjectItem = latestProject == null
+                ? null
+                : DashboardMentoringResponse.ProjectItem.builder()
+                        .projectId(latestProject.getId())
+                        .name(latestProject.getName())
+                        .status(latestProject.getStatus())
+                        .joinedAt(latestMembership.getJoinedAt())
+                        .build();
+
+        DashboardMentoringResponse.ApplicationItem latestApplicationItem = latestApplication == null
+                ? null
+                : DashboardMentoringResponse.ApplicationItem.builder()
+                        .applicationId(latestApplication.getId())
+                        .mentorId(latestApplication.getMentorId())
+                        .mentorName(mentorsById.get(latestApplication.getMentorId()) != null
+                                ? mentorsById.get(latestApplication.getMentorId()).getName()
+                                : null)
+                        .status(latestApplication.getStatus())
+                        .message(latestApplication.getMessage())
+                        .createdAt(latestApplication.getCreatedAt())
+                        .build();
+
+        return DashboardMentoringResponse.builder()
+                .joinedProjectCount(activeProjectIds.size())
+                .applicationCount(applications.size())
+                .pendingApplicationCount(pendingApplicationCount)
+                .latestProject(latestProjectItem)
+                .latestApplication(latestApplicationItem)
+                .build();
+    }
+
+    public DashboardGrowthRecommendationResponse getGrowthRecommendation(Long learnerId) {
+        List<ProofCard> proofCards = proofCardRepository.findAllByUserIdOrderByIssuedAtDesc(learnerId);
+
+        if (proofCards.isEmpty()) {
+            return buildEmptyRecommendation();
+        }
+
+        List<Long> proofCardIds = proofCards.stream().map(ProofCard::getId).toList();
+        List<String> tagNames = proofCardTagRepository
+                .findAllByProofCardIdInOrderByProofCardIdAscIdAsc(proofCardIds)
+                .stream()
+                .map(pct -> pct.getTag().getName())
+                .distinct()
+                .collect(Collectors.toList());
+
+        if (tagNames.isEmpty()) {
+            return buildEmptyRecommendation();
+        }
+
+        String tagList = String.join(", ", tagNames);
+        String prompt = String.format(
+                "학습자가 다음 기술 태그를 보유하고 있습니다: [%s]\n"
+                        + "다음 단계 학습에 적합한 강의 2개를 추천하고, 현재 역량 분석 한 줄을 작성하세요.\n"
+                        + "반드시 아래 JSON 형식으로만 응답하세요:\n"
+                        + "{\n"
+                        + "  \"analysisText\": \"분석 텍스트(1~2문장)\",\n"
+                        + "  \"recommendations\": [\n"
+                        + "    {\"courseTitle\": \"...\", \"matchRateIncrease\": 20, \"iconClass\": \"fa-database\"},\n"
+                        + "    {\"courseTitle\": \"...\", \"matchRateIncrease\": 15, \"iconClass\": \"fa-server\"}\n"
+                        + "  ]\n"
+                        + "}",
+                tagList
+        );
+
+        try {
+            String response = geminiProvider.generate(prompt);
+            if (response != null) {
+                int start = response.indexOf('{');
+                int end = response.lastIndexOf('}');
+                if (start >= 0 && end > start) {
+                    JsonNode json = MAPPER.readTree(response.substring(start, end + 1));
+                    String analysisText = json.path("analysisText").asText(null);
+                    JsonNode recs = json.path("recommendations");
+                    if (analysisText != null && recs.isArray() && recs.size() > 0) {
+                        List<RecommendationItem> items = new ArrayList<>();
+                        for (JsonNode rec : recs) {
+                            items.add(RecommendationItem.builder()
+                                    .courseTitle(rec.path("courseTitle").asText("추천 강의"))
+                                    .matchRateIncrease(rec.path("matchRateIncrease").asInt(10))
+                                    .iconClass(rec.path("iconClass").asText("fa-book"))
+                                    .build());
+                        }
+                        return DashboardGrowthRecommendationResponse.builder()
+                                .analysisText(analysisText)
+                                .recommendations(items)
+                                .build();
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("[LearnerDashboardService] Gemini 성장 제안 파싱 실패: {}", e.getMessage());
+        }
+
+        return buildEmptyRecommendation();
+    }
+
+    private DashboardMentoringResponse buildEmptyMentoringResponse() {
+        return DashboardMentoringResponse.builder()
+                .joinedProjectCount(0)
+                .applicationCount(0)
+                .pendingApplicationCount(0)
+                .latestProject(null)
+                .latestApplication(null)
+                .build();
+    }
+
+    private DashboardGrowthRecommendationResponse buildEmptyRecommendation() {
+        return DashboardGrowthRecommendationResponse.builder()
+                .analysisText("현재 학습 데이터가 충분하지 않아 추천을 생성하지 못했습니다.")
+                .recommendations(List.of())
+                .build();
+    }
+
     private int calculateTotalStudyHours(Long learnerId) {
         long totalProgressSeconds = lessonProgressRepository.sumProgressSecondsByLearnerId(learnerId);
         int totalStudyHours = (int) (totalProgressSeconds / 3600L);
@@ -173,98 +347,6 @@ public class LearnerDashboardService {
                 .orElse(0);
     }
 
-    public DashboardGrowthRecommendationResponse getGrowthRecommendation(Long learnerId) {
-        List<ProofCard> proofCards = proofCardRepository.findAllByUserIdOrderByIssuedAtDesc(learnerId);
-
-        if (proofCards.isEmpty()) {
-            return buildFallbackRecommendation();
-        }
-
-        List<Long> proofCardIds = proofCards.stream().map(ProofCard::getId).toList();
-        List<String> tagNames = proofCardTagRepository
-                .findAllByProofCardIdInOrderByProofCardIdAscIdAsc(proofCardIds)
-                .stream()
-                .map(pct -> pct.getTag().getName())
-                .distinct()
-                .collect(Collectors.toList());
-
-        if (tagNames.isEmpty()) {
-            return buildFallbackRecommendation();
-        }
-
-        String tagList = String.join(", ", tagNames);
-        String prompt = String.format(
-                "학습자가 다음 기술을 보유하고 있습니다: [%s]\n"
-                + "이 학습자가 다음으로 학습해야 할 강의 2개를 추천하고, 역량 분석 한 줄을 작성하라.\n"
-                + "반드시 아래 JSON 형식으로만 응답하라:\n"
-                + "{\n"
-                + "  \"analysisText\": \"분석 텍스트 (1~2문장)\",\n"
-                + "  \"recommendations\": [\n"
-                + "    {\"courseTitle\": \"...\", \"matchRateIncrease\": 20, \"iconClass\": \"fa-database\"},\n"
-                + "    {\"courseTitle\": \"...\", \"matchRateIncrease\": 15, \"iconClass\": \"fa-server\"}\n"
-                + "  ]\n"
-                + "}", tagList);
-
-        try {
-            String response = geminiProvider.generate(prompt);
-            if (response != null) {
-                int start = response.indexOf('{');
-                int end   = response.lastIndexOf('}');
-                if (start >= 0 && end > start) {
-                    JsonNode json = MAPPER.readTree(response.substring(start, end + 1));
-                    String analysisText = json.path("analysisText").asText(null);
-                    JsonNode recs = json.path("recommendations");
-                    if (analysisText != null && recs.isArray() && recs.size() > 0) {
-                        List<RecommendationItem> items = new ArrayList<>();
-                        for (JsonNode rec : recs) {
-                            items.add(RecommendationItem.builder()
-                                    .courseTitle(rec.path("courseTitle").asText("추천 강의"))
-                                    .matchRateIncrease(rec.path("matchRateIncrease").asInt(10))
-                                    .iconClass(rec.path("iconClass").asText("fa-book"))
-                                    .build());
-                        }
-                        return DashboardGrowthRecommendationResponse.builder()
-                                .analysisText(analysisText)
-                                .recommendations(items)
-                                .build();
-                    }
-                }
-            }
-        } catch (Exception e) {
-            log.warn("[LearnerDashboardService] Gemini 성장 제안 파싱 실패: {}", e.getMessage());
-        }
-
-        return buildFallbackRecommendation();
-    }
-
-    private DashboardGrowthRecommendationResponse buildFallbackRecommendation() {
-        List<String> publishedCourseTitles = courseRepository
-                .findTop3ByStatusOrderByPublishedAtDescCourseIdDesc(CourseStatus.PUBLISHED)
-                .stream()
-                .map(course -> course.getTitle())
-                .limit(2)
-                .toList();
-
-        String title1 = publishedCourseTitles.size() > 0 ? publishedCourseTitles.get(0) : "Advanced SQL & Tuning";
-        String title2 = publishedCourseTitles.size() > 1 ? publishedCourseTitles.get(1) : "Spring Security 실전";
-
-        return DashboardGrowthRecommendationResponse.builder()
-                .analysisText("현재 역량을 바탕으로 다음 단계 학습을 추천합니다.")
-                .recommendations(List.of(
-                        RecommendationItem.builder()
-                                .courseTitle(title1)
-                                .matchRateIncrease(20)
-                                .iconClass("fa-database")
-                                .build(),
-                        RecommendationItem.builder()
-                                .courseTitle(title2)
-                                .matchRateIncrease(15)
-                                .iconClass("fa-lock")
-                                .build()
-                ))
-                .build();
-    }
-
     private Integer calculateStudyDeltaMinutes(Long learnerId) {
         long todayTotalSeconds = lessonProgressRepository.sumProgressSecondsByLearnerId(learnerId);
         int todayTotalMinutes = (int) (todayTotalSeconds / 60);
@@ -284,10 +366,12 @@ public class LearnerDashboardService {
         if (recent.isEmpty()) {
             return null;
         }
-        LessonProgress lp = recent.get(0);
-        String sectionTitle = lp.getLesson().getSection().getTitle();
-        int lessonOrder = lp.getLesson().getOrderIndex() != null ? lp.getLesson().getOrderIndex() : 0;
-        String lessonTitle = lp.getLesson().getTitle();
+        LessonProgress lessonProgress = recent.get(0);
+        String sectionTitle = lessonProgress.getLesson().getSection().getTitle();
+        int lessonOrder = lessonProgress.getLesson().getOrderIndex() != null
+                ? lessonProgress.getLesson().getOrderIndex()
+                : 0;
+        String lessonTitle = lessonProgress.getLesson().getTitle();
         return sectionTitle + " - " + lessonOrder + "강. " + lessonTitle;
     }
 

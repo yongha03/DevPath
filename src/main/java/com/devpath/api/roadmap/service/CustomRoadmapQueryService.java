@@ -32,6 +32,7 @@ public class CustomRoadmapQueryService {
   private final CustomNodePrerequisiteRepository customNodePrerequisiteRepository;
   private final NodeClearanceRepository nodeClearanceRepository;
   private final RoadmapNodeResourceRepository roadmapNodeResourceRepository;
+  private final RoadmapProgressService roadmapProgressService;
 
   @Transactional(readOnly = true)
   public List<CustomRoadmap> getMyRoadmaps(Long userId) {
@@ -76,6 +77,7 @@ public class CustomRoadmapQueryService {
 
     return MyRoadmapDto.DetailResponse.from(
         customRoadmap,
+        roadmapProgressService.calculateProgressRate(customNodes),
         customNodes,
         prerequisiteIdsByNodeId,
         statusByNodeId,

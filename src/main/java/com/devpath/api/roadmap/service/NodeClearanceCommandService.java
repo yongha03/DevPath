@@ -33,6 +33,7 @@ public class NodeClearanceCommandService {
     private final NodeRequiredTagRepository nodeRequiredTagRepository;
     private final UserTechStackRepository userTechStackRepository;
     private final NodeClearanceRepository nodeClearanceRepository;
+    private final RoadmapProgressService roadmapProgressService;
 
     @Transactional
     public NodeClearResponse clearNode(Long userId, Long customRoadmapId, Long customNodeId) {
@@ -95,11 +96,7 @@ public class NodeClearanceCommandService {
 
         // 진행률을 재계산한다.
         List<CustomRoadmapNode> allNodes = customRoadmapNodeRepository.findAllByCustomRoadmap(customRoadmap);
-        long completedCount = allNodes.stream()
-                .filter(n -> NodeStatus.COMPLETED == n.getStatus())
-                .count();
-        int newRate = allNodes.isEmpty() ? 0 : (int) (completedCount * 100 / allNodes.size());
-        customRoadmap.updateProgressRate(newRate);
+        roadmapProgressService.updateProgressRate(customRoadmap, allNodes);
 
         return NodeClearResponse.of(customNode);
     }

@@ -55,6 +55,7 @@ import type {
   CertificateDetail,
   CertificateDownloadHistoryDetail,
   CertificatePdfDetail,
+  DashboardMentoring,
   DashboardStudyGroup,
   DashboardSummary,
   Enrollment,
@@ -396,6 +397,13 @@ export const dashboardApi = {
   getStudyGroup(signal?: AbortSignal) {
     return request<DashboardStudyGroup>(
       '/api/me/dashboard/study-group',
+      { method: 'GET', signal },
+      { auth: true },
+    )
+  },
+  getMentoring(signal?: AbortSignal) {
+    return request<DashboardMentoring>(
+      '/api/me/dashboard/mentoring',
       { method: 'GET', signal },
       { auth: true },
     )

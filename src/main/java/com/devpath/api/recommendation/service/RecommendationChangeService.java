@@ -5,6 +5,7 @@ import com.devpath.api.learning.service.TilService;
 import com.devpath.api.learning.service.WeaknessAnalysisService;
 import com.devpath.api.recommendation.dto.RecommendationChangeRequest;
 import com.devpath.api.recommendation.dto.RecommendationChangeResponse;
+import com.devpath.api.roadmap.service.RoadmapProgressService;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
 import com.devpath.domain.learning.entity.automation.AutomationRuleStatus;
@@ -51,6 +52,7 @@ public class RecommendationChangeService {
     private final RiskWarningService riskWarningService;
     private final WeaknessAnalysisService weaknessAnalysisService;
     private final TilService tilService;
+    private final RoadmapProgressService roadmapProgressService;
 
     @Transactional
     public List<RecommendationChangeResponse.Detail> createSuggestions(
@@ -346,11 +348,7 @@ public class RecommendationChangeService {
 
         // 진행률 재계산 (새 노드는 NOT_STARTED이므로 분모만 늘어남)
         List<CustomRoadmapNode> allNodes = customRoadmapNodeRepository.findAllByCustomRoadmap(customRoadmap);
-        long completedCount = allNodes.stream()
-            .filter(n -> NodeStatus.COMPLETED == n.getStatus())
-            .count();
-        int newRate = allNodes.isEmpty() ? 0 : (int) (completedCount * 100 / allNodes.size());
-        customRoadmap.updateProgressRate(newRate);
+        roadmapProgressService.updateProgressRate(customRoadmap, allNodes);
     }
 
     // DELETE 타입 변경 적용: 해당 유저의 커스텀 로드맵에서 노드 삭제 + prerequisites 정리 + 진행률 재계산
@@ -364,12 +362,9 @@ public class RecommendationChangeService {
             // 삭제 전 남은 노드 기준으로 진행률 미리 계산
             List<CustomRoadmapNode> allNodes =
                 customRoadmapNodeRepository.findAllByCustomRoadmap(roadmap);
-            long completedCount = allNodes.stream()
+            List<CustomRoadmapNode> remainingNodes = allNodes.stream()
                 .filter(n -> !n.getId().equals(node.getId()))
-                .filter(n -> NodeStatus.COMPLETED == n.getStatus())
-                .count();
-            int remainingTotal = allNodes.size() - 1;
-            int newRate = remainingTotal == 0 ? 0 : (int) (completedCount * 100 / remainingTotal);
+                .toList();
 
             // prerequisites 양방향 정리
             customNodePrerequisiteRepository.deleteAllByCustomNodeOrPrerequisiteCustomNode(node);
@@ -378,7 +373,7 @@ public class RecommendationChangeService {
             customRoadmapNodeRepository.delete(node);
 
             // 진행률 업데이트
-            roadmap.updateProgressRate(newRate);
+            roadmapProgressService.updateProgressRate(roadmap, remainingNodes);
         }
     }
 

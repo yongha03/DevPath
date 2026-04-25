@@ -68,7 +68,8 @@ class CustomRoadmapCopyServiceTest {
             officialRoadmapReader,
             new TagValidationService(),
             userTechStackRepository,
-            nodeRequiredTagRepository);
+            nodeRequiredTagRepository,
+            new RoadmapProgressService());
 
     lenient()
         .when(customRoadmapRepository.save(any(CustomRoadmap.class)))

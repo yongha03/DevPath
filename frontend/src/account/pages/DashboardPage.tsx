@@ -3,6 +3,7 @@ import { dashboardApi, enrollmentApi, learningHistoryApi, notificationApi, proof
 import { LearnerContentRow, LearnerPageShell, MyMenuSidebar } from '../template'
 import type { AuthSession } from '../../types/auth'
 import type {
+  DashboardMentoring,
   DashboardStudyGroup,
   DashboardSummary,
   Enrollment,
@@ -17,6 +18,7 @@ import type { RoadmapDetail, RoadmapNodeItem } from '../../types/roadmap'
 type DashboardState = {
   summary: DashboardSummary
   heatmap: HeatmapEntry[]
+  mentoring: DashboardMentoring
   studyGroup: DashboardStudyGroup
   notifications: NotificationItem[]
   historySummary: LearningHistorySummary
@@ -26,109 +28,47 @@ type DashboardState = {
   growthRecommendation: GrowthRecommendation | null
 }
 
-const fallbackState: DashboardState = {
+const emptyState: DashboardState = {
   summary: {
-    currentStreak: 12,
-    totalStudyHours: 42.5,
-    completedNodes: 14,
+    currentStreak: 0,
+    totalStudyHours: 0,
+    completedNodes: 0,
   },
-  heatmap: [
-    { date: '2026-02-03', activityLevel: 2 },
-    { date: '2026-02-04', activityLevel: 4 },
-    { date: '2026-02-05', activityLevel: 1 },
-    { date: '2026-02-06', activityLevel: 5 },
-    { date: '2026-02-07', activityLevel: 3 },
-    { date: '2026-02-08', activityLevel: 1 },
-    { date: '2026-02-09', activityLevel: 1 },
-  ],
+  heatmap: [],
+  mentoring: {
+    joinedProjectCount: 0,
+    applicationCount: 0,
+    pendingApplicationCount: 0,
+    latestProject: null,
+    latestApplication: null,
+  },
   studyGroup: {
-    joinedGroupCount: 1,
+    joinedGroupCount: 0,
     recruitingGroupCount: 0,
-    inProgressGroupCount: 1,
-    groups: [
-      {
-        groupId: 1,
-        name: '2026 졸업작품 팀 A',
-        status: 'IN_PROGRESS',
-        maxMembers: 5,
-        joinedAt: '2026-01-15T00:00:00',
-        plannedEndDate: null,
-      currentMemberCount: null,
-      },
-    ],
+    inProgressGroupCount: 0,
+    groups: [],
   },
-  notifications: [
-    {
-      id: 1,
-      type: 'COMMUNITY',
-      message: '스프링 부트 JPA 관련 질문있습니다!',
-      isRead: false,
-      createdAt: '2026-02-09T10:00:00',
-    },
-    {
-      id: 2,
-      type: 'COMMUNITY',
-      message: '졸업작품 주제 추천 부탁드립니다.',
-      isRead: true,
-      createdAt: '2026-02-08T10:00:00',
-    },
-  ],
+  notifications: [],
   historySummary: {
-    completedNodeCount: 14,
-    proofCardCount: 3,
+    completedNodeCount: 0,
+    proofCardCount: 0,
     tilCount: 0,
     publishedTilCount: 0,
     assignmentSubmissionCount: 0,
     passedAssignmentCount: 0,
     supplementRecommendationCount: 0,
   },
-  enrollments: [
-    {
-      enrollmentId: 1,
-      courseId: 1,
-      courseTitle: 'Java 프로그래밍 (Backend Basic)',
-      instructorName: 'DevPath',
-      thumbnailUrl: 'https://images.unsplash.com/photo-1587620962725-abab7fe55159?w=400&q=80',
-      price: 99000,
-      originalPrice: 99000,
-      currency: 'KRW',
-      hasCertificate: true,
-      status: 'ACTIVE',
-      progressPercentage: 60,
-      enrolledAt: '2026-01-05T00:00:00',
-      completedAt: null,
-      lastAccessedAt: '2026-02-09T12:00:00',
-    },
-    {
-      enrollmentId: 2,
-      courseId: 2,
-      courseTitle: 'Docker & K8s 실전 배포',
-      instructorName: 'DevPath',
-      thumbnailUrl: 'https://images.unsplash.com/photo-1607799275518-d580e811cc0e?w=400&q=80',
-      price: 55000,
-      originalPrice: 55000,
-      currency: 'KRW',
-      hasCertificate: false,
-      status: 'COMPLETED',
-      progressPercentage: 100,
-      enrolledAt: '2026-01-10T00:00:00',
-      completedAt: '2026-01-25T00:00:00',
-      lastAccessedAt: '2026-01-25T12:00:00',
-    },
-  ],
+  enrollments: [],
   roadmap: null,
   proofCards: [],
   growthRecommendation: null,
 }
 
 function formatStudyTime(hoursValue: number | null | undefined) {
-  const totalMinutes = Math.max(0, Math.round((hoursValue ?? 42.5) * 60))
-  const hours = Math.floor(totalMinutes / 60)
-  const minutes = totalMinutes % 60
-
+  const totalMinutes = Math.max(0, Math.round((hoursValue ?? 0) * 60))
   return {
-    hours,
-    minutes,
+    hours: Math.floor(totalMinutes / 60),
+    minutes: totalMinutes % 60,
   }
 }
 
@@ -139,39 +79,44 @@ function buildWeeklyBars(heatmap: HeatmapEntry[]) {
   return labels.map((label, index) => {
     const item = recent[index]
     const activity = item?.activityLevel ?? 0
-    const height = item ? Math.max(10, Math.min(80, activity * 16)) : 0
+    const height = activity > 0 ? Math.max(10, Math.min(80, activity * 16)) : 0
 
     return {
       label,
       height,
-      tone:
-        index === 4 ? 'bg-green-300' : activity >= 3 ? 'bg-brand' : activity >= 1 ? 'bg-brand' : 'bg-gray-200',
-      active: activity >= 3 || index === 1 || index === 3,
+      tone: activity >= 3 ? 'bg-brand' : activity >= 1 ? 'bg-green-300' : 'bg-gray-200',
+      active: activity >= 1,
     }
   })
 }
 
 function buildSidebarNodes(nodes: RoadmapNodeItem[]) {
   const sorted = [...nodes]
-    .filter((n) => n.branchGroup == null)
-    .sort((a, b) => a.sortOrder - b.sortOrder)
-  const currentIndex = sorted.findIndex((n) => n.status === 'IN_PROGRESS')
+    .filter((node) => node.branchGroup == null)
+    .sort((left, right) => left.sortOrder - right.sortOrder)
+
+  const currentIndex = sorted.findIndex((node) => node.status === 'IN_PROGRESS')
   const start = currentIndex >= 0 ? Math.max(0, currentIndex - 2) : 0
   return sorted.slice(start, start + 5)
 }
 
-function formatRelativeTime(createdAt: string | null | undefined): string {
+function formatRelativeTime(createdAt: string | null | undefined) {
   if (!createdAt) return ''
+
   const diffMs = Date.now() - new Date(createdAt).getTime()
   const minutes = Math.floor(diffMs / (1000 * 60))
+
   if (minutes < 60) return `${Math.max(1, minutes)}분 전`
+
   const hours = Math.floor(diffMs / (1000 * 60 * 60))
   if (hours < 24) return `${hours}시간 전`
+
   return `${Math.floor(diffMs / (1000 * 60 * 60 * 24))}일 전`
 }
 
-function calcDDay(plannedEndDate: string | null | undefined): string {
+function calcDDay(plannedEndDate: string | null | undefined) {
   if (!plannedEndDate) return ''
+
   const diff = Math.ceil((new Date(plannedEndDate).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
   if (diff < 0) return '종료'
   if (diff === 0) return 'D-Day'
@@ -189,17 +134,65 @@ function statusClass(status: string | null | undefined) {
   }
 }
 
+function mentoringStatusClass(status: string | null | undefined) {
+  switch (status) {
+    case 'APPROVED':
+    case 'COMPLETED':
+      return 'bg-green-50 text-green-600'
+    case 'UNDER_REVIEW':
+    case 'IN_PROGRESS':
+      return 'bg-blue-50 text-blue-600'
+    case 'PENDING':
+      return 'bg-amber-50 text-amber-600'
+    case 'REJECTED':
+    case 'ON_HOLD':
+      return 'bg-rose-50 text-rose-600'
+    case 'PREPARING':
+      return 'bg-gray-100 text-gray-600'
+    default:
+      return 'bg-gray-100 text-gray-500'
+  }
+}
+
+function mentoringStatusLabel(status: string | null | undefined) {
+  switch (status) {
+    case 'APPROVED':
+      return '승인됨'
+    case 'UNDER_REVIEW':
+      return '검토 중'
+    case 'PENDING':
+      return '대기 중'
+    case 'REJECTED':
+      return '반려됨'
+    case 'PREPARING':
+      return '준비 중'
+    case 'IN_PROGRESS':
+      return '진행 중'
+    case 'COMPLETED':
+      return '완료'
+    case 'ON_HOLD':
+      return '보류'
+    default:
+      return '신청 없음'
+  }
+}
+
+function clampProgress(value: number | null | undefined) {
+  return Math.max(0, Math.min(100, Math.round(value ?? 0)))
+}
+
 export default function DashboardPage({ session }: { session: AuthSession }) {
-  const [state, setState] = useState<DashboardState>(fallbackState)
+  const [state, setState] = useState<DashboardState>(emptyState)
 
   useEffect(() => {
     const controller = new AbortController()
     const { signal } = controller
 
-    async function load() {
+    async function loadDashboard() {
       const [
         summaryResult,
         heatmapResult,
+        mentoringResult,
         studyGroupResult,
         notificationResult,
         historySummaryResult,
@@ -209,6 +202,7 @@ export default function DashboardPage({ session }: { session: AuthSession }) {
       ] = await Promise.allSettled([
         dashboardApi.getSummary(signal),
         dashboardApi.getHeatmap(signal),
+        dashboardApi.getMentoring(signal),
         dashboardApi.getStudyGroup(signal),
         notificationApi.getMine(signal),
         learningHistoryApi.getSummary(signal),
@@ -218,41 +212,16 @@ export default function DashboardPage({ session }: { session: AuthSession }) {
       ])
 
       setState((current) => ({
-        summary:
-          summaryResult.status === 'fulfilled'
-            ? {
-                currentStreak: summaryResult.value.currentStreak ?? current.summary.currentStreak,
-                totalStudyHours: summaryResult.value.totalStudyHours ?? current.summary.totalStudyHours,
-                completedNodes: summaryResult.value.completedNodes ?? current.summary.completedNodes,
-                studyHoursDeltaMinutes: summaryResult.value.studyHoursDeltaMinutes,
-                lastLessonInfo: summaryResult.value.lastLessonInfo,
-              }
-            : current.summary,
-        heatmap:
-          heatmapResult.status === 'fulfilled' && heatmapResult.value.length
-            ? heatmapResult.value
-            : current.heatmap,
-        studyGroup:
-          studyGroupResult.status === 'fulfilled'
-            ? studyGroupResult.value
-            : current.studyGroup,
-        notifications:
-          notificationResult.status === 'fulfilled' && notificationResult.value.length
-            ? notificationResult.value
-            : current.notifications,
+        ...current,
+        summary: summaryResult.status === 'fulfilled' ? summaryResult.value : current.summary,
+        heatmap: heatmapResult.status === 'fulfilled' ? heatmapResult.value : current.heatmap,
+        mentoring: mentoringResult.status === 'fulfilled' ? mentoringResult.value : current.mentoring,
+        studyGroup: studyGroupResult.status === 'fulfilled' ? studyGroupResult.value : current.studyGroup,
+        notifications: notificationResult.status === 'fulfilled' ? notificationResult.value : current.notifications,
         historySummary:
-          historySummaryResult.status === 'fulfilled'
-            ? historySummaryResult.value
-            : current.historySummary,
-        enrollments:
-          enrollmentResult.status === 'fulfilled' && enrollmentResult.value.length
-            ? enrollmentResult.value
-            : current.enrollments,
-        roadmap: current.roadmap,
-        proofCards:
-          proofCardsResult.status === 'fulfilled' && proofCardsResult.value.length
-            ? proofCardsResult.value
-            : current.proofCards,
+          historySummaryResult.status === 'fulfilled' ? historySummaryResult.value : current.historySummary,
+        enrollments: enrollmentResult.status === 'fulfilled' ? enrollmentResult.value : current.enrollments,
+        proofCards: proofCardsResult.status === 'fulfilled' ? proofCardsResult.value : current.proofCards,
         growthRecommendation:
           growthRecommendationResult.status === 'fulfilled'
             ? growthRecommendationResult.value
@@ -263,35 +232,43 @@ export default function DashboardPage({ session }: { session: AuthSession }) {
     async function loadRoadmap() {
       try {
         const listResult = await roadmapApi.getMyRoadmaps(signal)
-        const first = listResult.roadmaps[0]
-        if (!first) return
-        const detail = await roadmapApi.getMyRoadmapDetail(first.customRoadmapId, signal)
+        const firstRoadmap = listResult.roadmaps[0]
+        if (!firstRoadmap) return
+
+        const detail = await roadmapApi.getMyRoadmapDetail(firstRoadmap.customRoadmapId, signal)
         setState((current) => ({ ...current, roadmap: detail }))
       } catch {
-        // 로드맵 없으면 사이드바 미표시 유지
+        setState((current) => ({ ...current, roadmap: null }))
       }
     }
 
-    void load()
+    void loadDashboard()
     void loadRoadmap()
 
     return () => controller.abort()
   }, [])
 
-  const completedCourses =
-    state.enrollments.filter((item) => item.status === 'COMPLETED').length || Number(state.summary.completedNodes ?? 14)
+  const completedCourses = state.enrollments.filter((item) => item.status === 'COMPLETED').length
   const proofCardCount = state.historySummary.proofCardCount ?? 0
   const studyTime = formatStudyTime(state.summary.totalStudyHours)
   const recentEnrollment =
-    [...state.enrollments]
-      .sort((left, right) => new Date(right.lastAccessedAt ?? 0).getTime() - new Date(left.lastAccessedAt ?? 0).getTime())[0] ??
-    fallbackState.enrollments[0]
+    [...state.enrollments].sort(
+      (left, right) =>
+        new Date(right.lastAccessedAt ?? right.enrolledAt ?? 0).getTime() -
+        new Date(left.lastAccessedAt ?? left.enrolledAt ?? 0).getTime(),
+    )[0] ?? null
   const weeklyBars = buildWeeklyBars(state.heatmap)
-  const studyGroup = state.studyGroup.groups[0] ?? fallbackState.studyGroup.groups[0]
-  const dDay = calcDDay(studyGroup.plannedEndDate)
+  const mentoring = state.mentoring
+  const studyGroup = state.studyGroup.groups[0] ?? null
+  const dDay = calcDDay(studyGroup?.plannedEndDate)
   const communityItems = state.notifications.slice(0, 2)
-  const roadmapProgress = state.roadmap?.progressRate ?? Math.max(0, Math.min(100, recentEnrollment.progressPercentage ?? 60))
+  const mentoringActivityAt = mentoring.latestApplication?.createdAt ?? mentoring.latestProject?.joinedAt
+  const mentoringHasData = Boolean(mentoring.latestProject || mentoring.latestApplication)
+  const roadmapProgress = state.roadmap
+    ? clampProgress(state.roadmap.progressRate)
+    : clampProgress(recentEnrollment?.progressPercentage)
   const sidebarNodes = state.roadmap ? buildSidebarNodes(state.roadmap.nodes) : []
+  const growthItems = state.growthRecommendation?.recommendations ?? []
 
   return (
     <LearnerPageShell>
@@ -301,8 +278,8 @@ export default function DashboardPage({ session }: { session: AuthSession }) {
         <section className="min-w-0 flex-1 space-y-6">
           <header className="mb-2 flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">반가워요, {session.name}님! 👋</h1>
-              <p className="mt-1 text-sm text-gray-500">오늘도 목표를 향해 달려볼까요?</p>
+              <h1 className="text-2xl font-bold text-gray-900">반가워요, {session.name}님</h1>
+              <p className="mt-1 text-sm text-gray-500">오늘 학습 현황을 한 번에 확인해 보세요.</p>
             </div>
           </header>
 
@@ -315,9 +292,9 @@ export default function DashboardPage({ session }: { session: AuthSession }) {
                 </div>
               </div>
               <div className="mt-2">
-                <span className="text-2xl font-extrabold text-gray-900">{state.summary.currentStreak ?? 12}일</span>
+                <span className="text-2xl font-extrabold text-gray-900">{state.summary.currentStreak ?? 0}일</span>
               </div>
-              <p className="mt-1 text-[10px] text-gray-400">이대로 쭉 가보자고요!</p>
+              <p className="mt-1 text-[10px] text-gray-400">실제 학습 기록 기준으로 집계됩니다.</p>
             </div>
 
             <div className="relative rounded-2xl border border-gray-200 bg-white px-5 py-4 shadow-sm">
@@ -336,7 +313,7 @@ export default function DashboardPage({ session }: { session: AuthSession }) {
 
             <div className="relative rounded-2xl border border-gray-200 bg-white px-5 py-4 shadow-sm">
               <div className="flex items-start justify-between">
-                <p className="mt-1 text-xs font-bold text-gray-500">획득 뱃지</p>
+                <p className="mt-1 text-xs font-bold text-gray-500">획득 Proof</p>
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-yellow-50 text-yellow-500">
                   <i className="fas fa-medal" />
                 </div>
@@ -348,7 +325,7 @@ export default function DashboardPage({ session }: { session: AuthSession }) {
                 href="learning-log-gallery.html"
                 className="mt-1 inline-block text-[10px] font-bold text-brand hover:underline"
               >
-                Proof Card 확인 →
+                Proof Card 확인
               </a>
             </div>
 
@@ -364,12 +341,14 @@ export default function DashboardPage({ session }: { session: AuthSession }) {
                   {studyTime.hours}h <span className="text-lg text-gray-400">{studyTime.minutes}m</span>
                 </span>
               </div>
-              {state.summary.studyHoursDeltaMinutes != null && state.summary.studyHoursDeltaMinutes > 0 && (
+              {state.summary.studyHoursDeltaMinutes != null && state.summary.studyHoursDeltaMinutes > 0 ? (
                 <p className="mt-1 text-[10px] text-gray-400">
                   어제보다 {Math.floor(state.summary.studyHoursDeltaMinutes / 60) > 0
                     ? `${Math.floor(state.summary.studyHoursDeltaMinutes / 60)}h `
-                    : ''}{state.summary.studyHoursDeltaMinutes % 60}m 더함
+                    : ''}{state.summary.studyHoursDeltaMinutes % 60}m 증가
                 </p>
+              ) : (
+                <p className="mt-1 text-[10px] text-gray-400">수업 진도와 학습 기록이 반영됩니다.</p>
               )}
             </div>
           </div>
@@ -384,41 +363,65 @@ export default function DashboardPage({ session }: { session: AuthSession }) {
                   전체보기
                 </a>
               </div>
-              <div className="flex items-center gap-5">
-                <div className="h-20 w-32 shrink-0 overflow-hidden rounded-lg bg-gray-100">
-                  <img
-                    src={recentEnrollment.thumbnailUrl ?? fallbackState.enrollments[0].thumbnailUrl ?? ''}
-                    className="h-full w-full object-cover"
-                    alt="thumb"
-                  />
-                </div>
-                <div className="flex-1">
-                  <div className="mb-1 flex items-center justify-between">
-                    <h4 className="text-sm font-bold text-gray-900">{recentEnrollment.courseTitle}</h4>
-                    <span className="text-brand text-lg font-extrabold">{recentEnrollment.progressPercentage ?? 60}%</span>
+
+              {recentEnrollment ? (
+                <div className="flex items-center gap-5">
+                  <div className="flex h-20 w-32 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-gray-100">
+                    {recentEnrollment.thumbnailUrl ? (
+                      <img
+                        src={recentEnrollment.thumbnailUrl}
+                        className="h-full w-full object-cover"
+                        alt={recentEnrollment.courseTitle}
+                      />
+                    ) : (
+                      <i className="fas fa-play-circle text-2xl text-gray-300" />
+                    )}
                   </div>
-                  {state.summary.lastLessonInfo && (
-                    <p className="mb-2 text-xs text-gray-500">{state.summary.lastLessonInfo}</p>
-                  )}
-                  <div className="mb-1 h-2 w-full rounded-full bg-gray-100">
-                    <div
-                      className="bg-brand h-2 rounded-full transition-all duration-1000"
-                      style={{ width: `${recentEnrollment.progressPercentage ?? 60}%` }}
-                    />
+
+                  <div className="flex-1">
+                    <div className="mb-1 flex items-center justify-between gap-4">
+                      <h4 className="text-sm font-bold text-gray-900">{recentEnrollment.courseTitle}</h4>
+                      <span className="text-lg font-extrabold text-brand">
+                        {clampProgress(recentEnrollment.progressPercentage)}%
+                      </span>
+                    </div>
+                    {state.summary.lastLessonInfo ? (
+                      <p className="mb-2 text-xs text-gray-500">{state.summary.lastLessonInfo}</p>
+                    ) : (
+                      <p className="mb-2 text-xs text-gray-500">최근 학습한 강의의 진도가 반영됩니다.</p>
+                    )}
+                    <div className="mb-1 h-2 w-full rounded-full bg-gray-100">
+                      <div
+                        className="h-2 rounded-full bg-brand transition-all duration-1000"
+                        style={{ width: `${clampProgress(recentEnrollment.progressPercentage)}%` }}
+                      />
+                    </div>
                   </div>
+
+                  <button
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-900 text-white shadow-lg transition hover:bg-brand"
+                    onClick={() => {
+                      window.location.href = 'my-learning.html'
+                    }}
+                  >
+                    <i className="fas fa-play ml-1" />
+                  </button>
                 </div>
-                <button className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gray-900 text-white shadow-lg transition hover:bg-brand">
-                  <i className="fas fa-play ml-1" />
-                </button>
-              </div>
+              ) : (
+                <div className="flex min-h-[120px] flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50 text-center">
+                  <i className="fas fa-book-open text-2xl text-gray-200" />
+                  <p className="mt-3 text-sm font-bold text-gray-500">수강 중인 강의가 없습니다.</p>
+                  <p className="mt-1 text-xs text-gray-400">실제 수강 데이터가 생기면 이 영역에 자동 반영됩니다.</p>
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
               <div className="mb-4 flex items-center justify-between">
                 <h3 className="flex items-center gap-2 text-sm font-bold text-gray-800">
-                  <i className="fas fa-chart-bar text-gray-400" /> 주간 학습 시간
+                  <i className="fas fa-chart-bar text-gray-400" /> 주간 학습량
                 </h3>
-                <span className="text-[10px] text-gray-400">이번 주</span>
+                <span className="text-[10px] text-gray-400">최근 7일</span>
               </div>
               <div className="flex h-24 flex-1 items-end justify-between gap-2">
                 {weeklyBars.map((bar) => (
@@ -439,45 +442,55 @@ export default function DashboardPage({ session }: { session: AuthSession }) {
             <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
               <div className="mb-4 flex items-center justify-between">
                 <h3 className="flex items-center gap-2 text-sm font-bold text-gray-800">
-                  <i className="fas fa-rocket text-blue-500" /> 진행 중인 프로젝트
+                  <i className="fas fa-rocket text-blue-500" /> 진행 중인 스터디
                 </h3>
                 <a href="project-list.html" className="text-xs text-gray-400 hover:text-brand">
-                  더보기
+                  둘러보기
                 </a>
               </div>
-              <div className="cursor-pointer rounded-xl border border-blue-100 bg-blue-50 p-4 transition hover:shadow-md">
-                <div>
-                  <div className="mb-2 flex items-center gap-2">
-                    <span className="shrink-0 rounded bg-blue-500 px-2 py-0.5 text-[10px] font-bold text-white">Team</span>
-                    <span className="whitespace-nowrap text-sm font-bold text-gray-900">{studyGroup.name}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {dDay && (
-                      <span className={`shrink-0 rounded border px-2 py-0.5 text-xs font-bold ${statusClass(studyGroup.status)}`}>
-                        {dDay}
-                      </span>
-                    )}
-                    <p className="whitespace-nowrap text-[11px] text-gray-500">
-                      {studyGroup.status === 'IN_PROGRESS' ? '진행 중' : '모집 중'}
-                    </p>
-                  </div>
-                </div>
-                <div className="mt-4 flex -space-x-2">
-                  {(studyGroup.memberIds ?? [1, 2]).slice(0, 2).map((memberId, idx) => (
-                    <img
-                      key={memberId}
-                      className="h-8 w-8 rounded-full border-2 border-white bg-gray-200"
-                      src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${memberId}`}
-                      alt={`m${idx + 1}`}
-                    />
-                  ))}
-                  {(studyGroup.currentMemberCount ?? 0) > 2 && (
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-gray-100 text-[10px] font-bold text-gray-500">
-                      +{(studyGroup.currentMemberCount ?? 0) - 2}
+
+              {studyGroup ? (
+                <div className="cursor-pointer rounded-xl border border-blue-100 bg-blue-50 p-4 transition hover:shadow-md">
+                  <div>
+                    <div className="mb-2 flex items-center gap-2">
+                      <span className="shrink-0 rounded bg-blue-500 px-2 py-0.5 text-[10px] font-bold text-white">Team</span>
+                      <span className="whitespace-nowrap text-sm font-bold text-gray-900">{studyGroup.name}</span>
                     </div>
-                  )}
+                    <div className="flex items-center gap-2">
+                      {dDay ? (
+                        <span className={`shrink-0 rounded border px-2 py-0.5 text-xs font-bold ${statusClass(studyGroup.status)}`}>
+                          {dDay}
+                        </span>
+                      ) : null}
+                      <p className="whitespace-nowrap text-[11px] text-gray-500">
+                        {studyGroup.status === 'IN_PROGRESS' ? '진행 중' : '모집 중'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 flex -space-x-2">
+                    {(studyGroup.memberIds ?? []).slice(0, 4).map((memberId, index) => (
+                      <img
+                        key={memberId}
+                        className="h-8 w-8 rounded-full border-2 border-white bg-gray-200"
+                        src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${memberId}`}
+                        alt={`member-${index + 1}`}
+                      />
+                    ))}
+                    {(studyGroup.currentMemberCount ?? 0) > (studyGroup.memberIds?.length ?? 0) && (
+                      <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-gray-100 text-[10px] font-bold text-gray-500">
+                        +{(studyGroup.currentMemberCount ?? 0) - (studyGroup.memberIds?.length ?? 0)}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div className="flex min-h-[148px] flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50 text-center">
+                  <i className="fas fa-users text-2xl text-gray-200" />
+                  <p className="mt-3 text-sm font-bold text-gray-500">참여 중인 스터디가 없습니다.</p>
+                  <p className="mt-1 text-xs text-gray-400">DB에 연결된 스터디 정보가 생기면 여기 표시됩니다.</p>
+                </div>
+              )}
             </div>
 
             <div className="flex flex-col rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
@@ -485,66 +498,126 @@ export default function DashboardPage({ session }: { session: AuthSession }) {
                 <h3 className="flex items-center gap-2 text-sm font-bold text-gray-800">
                   <i className="fas fa-chalkboard-teacher text-purple-500" /> 멘토링
                 </h3>
-                <a href="#" className="text-xs text-gray-400 hover:text-brand">
-                  더보기
-                </a>
               </div>
-              <div className="flex flex-1 flex-col items-center justify-center py-2">
-                <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-gray-50 text-gray-300">
-                  <i className="fas fa-search" />
+              {mentoringHasData ? (
+                <div className="flex flex-1 flex-col justify-between gap-4">
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="rounded-xl bg-purple-50 px-3 py-2">
+                      <p className="text-[10px] font-bold text-purple-500">프로젝트</p>
+                      <p className="mt-1 text-sm font-extrabold text-gray-900">{mentoring.joinedProjectCount ?? 0}개</p>
+                    </div>
+                    <div className="rounded-xl bg-blue-50 px-3 py-2">
+                      <p className="text-[10px] font-bold text-blue-500">신청</p>
+                      <p className="mt-1 text-sm font-extrabold text-gray-900">{mentoring.applicationCount ?? 0}건</p>
+                    </div>
+                    <div className="rounded-xl bg-amber-50 px-3 py-2">
+                      <p className="text-[10px] font-bold text-amber-500">대기</p>
+                      <p className="mt-1 text-sm font-extrabold text-gray-900">{mentoring.pendingApplicationCount ?? 0}건</p>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-purple-100 bg-purple-50/60 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.08em] text-purple-500">Latest</p>
+                        <h4 className="mt-1 text-sm font-bold text-gray-900">
+                          {mentoring.latestProject?.name ?? '멘토링 프로젝트'}
+                        </h4>
+                      </div>
+                      <span
+                        className={`shrink-0 rounded px-2 py-1 text-[10px] font-bold ${mentoringStatusClass(
+                          mentoring.latestApplication?.status ?? mentoring.latestProject?.status,
+                        )}`}
+                      >
+                        {mentoringStatusLabel(mentoring.latestApplication?.status ?? mentoring.latestProject?.status)}
+                      </span>
+                    </div>
+
+                    {mentoring.latestApplication ? (
+                      <div className="mt-3 space-y-2 text-xs text-gray-500">
+                        <p>
+                          {mentoring.latestApplication.mentorName
+                            ? `${mentoring.latestApplication.mentorName} 멘토에게 신청됨`
+                            : '멘토링 신청 이력이 반영되었습니다.'}
+                        </p>
+                        {mentoring.latestApplication.message ? (
+                          <p className="line-clamp-2 text-[11px] text-gray-400">{mentoring.latestApplication.message}</p>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <p className="mt-3 text-xs text-gray-500">참여 중인 프로젝트 기준으로 집계되며, 아직 멘토링 신청 이력은 없습니다.</p>
+                    )}
+
+                    {mentoringActivityAt ? (
+                      <p className="mt-3 text-[10px] text-gray-400">{formatRelativeTime(mentoringActivityAt)}</p>
+                    ) : null}
+                  </div>
                 </div>
-                <p className="text-center text-xs leading-relaxed text-gray-400">
-                  현재 진행 중인
-                  <br />
-                  멘토링이 없습니다.
-                </p>
-                <button className="mt-3 rounded bg-purple-50 px-3 py-1.5 text-[10px] font-bold text-purple-600 transition hover:bg-purple-100">
-                  멘토 찾기
-                </button>
-              </div>
+              ) : (
+                <div className="flex flex-1 flex-col items-center justify-center py-2">
+                  <div className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-gray-50 text-gray-300">
+                    <i className="fas fa-search" />
+                  </div>
+                  <p className="text-center text-xs leading-relaxed text-gray-400">
+                    참여 중인 프로젝트나 멘토링 신청 이력이 없습니다.
+                    <br />
+                    실제 DB 기준으로 비어 있으면 이 상태로 표시됩니다.
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
               <div className="mb-4 flex items-center justify-between">
                 <h3 className="flex items-center gap-2 text-sm font-bold text-gray-800">
-                  <i className="fas fa-comment-dots text-orange-500" /> 라운지 / 커뮤니티
+                  <i className="fas fa-comment-dots text-orange-500" /> 알림 / 커뮤니티
                 </h3>
                 <a href="community-list.html" className="text-xs text-gray-400 hover:text-brand">
-                  더보기
+                  둘러보기
                 </a>
               </div>
-              <ul className="space-y-3">
-                {communityItems.map((item, index) => (
-                  <li key={item.id} className="group flex cursor-pointer items-start gap-3">
-                    <div className={`mt-1.5 h-1.5 w-1.5 rounded-full ${index === 0 ? 'bg-orange-400' : 'bg-gray-300'}`} />
-                    <div>
-                      <p className="line-clamp-1 text-sm text-gray-700 transition group-hover:text-brand">{item.message}</p>
-                      <p className="mt-0.5 text-[10px] text-gray-400">{formatRelativeTime(item.createdAt)}</p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
+
+              {communityItems.length > 0 ? (
+                <ul className="space-y-3">
+                  {communityItems.map((item, index) => (
+                    <li key={item.id} className="group flex cursor-pointer items-start gap-3">
+                      <div className={`mt-1.5 h-1.5 w-1.5 rounded-full ${index === 0 ? 'bg-orange-400' : 'bg-gray-300'}`} />
+                      <div>
+                        <p className="line-clamp-1 text-sm text-gray-700 transition group-hover:text-brand">{item.message}</p>
+                        <p className="mt-0.5 text-[10px] text-gray-400">{formatRelativeTime(item.createdAt)}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="flex min-h-[148px] flex-col items-center justify-center rounded-xl border border-dashed border-gray-200 bg-gray-50 text-center">
+                  <i className="fas fa-bell-slash text-2xl text-gray-200" />
+                  <p className="mt-3 text-sm font-bold text-gray-500">표시할 알림이 없습니다.</p>
+                  <p className="mt-1 text-xs text-gray-400">실제 알림 데이터가 생성되면 여기에서 확인할 수 있습니다.</p>
+                </div>
+              )}
             </div>
           </div>
 
           <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
             <div className="h-full rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
               <div className="mb-4 flex items-center justify-between">
-                <h3 className="text-sm font-bold text-gray-900">보유 스킬 (Proof)</h3>
+                <h3 className="text-sm font-bold text-gray-900">보유 Proof</h3>
                 <a href="learning-log-gallery.html" className="text-xs text-gray-400 hover:text-brand">전체</a>
               </div>
               <div className="space-y-3">
                 {state.proofCards.length > 0 ? (
                   state.proofCards.slice(0, 2).map((card, index) => {
                     const colors = [
-                      { icon: 'text-blue-500', bg: 'bg-blue-50', badge: 'text-blue-600 bg-blue-50' },
-                      { icon: 'text-purple-500', bg: 'bg-purple-50', badge: 'text-purple-600 bg-purple-50' },
+                      { icon: 'text-blue-500', badge: 'text-blue-600 bg-blue-50' },
+                      { icon: 'text-purple-500', badge: 'text-purple-600 bg-purple-50' },
                     ]
                     const color = colors[index % colors.length]
                     const firstTag = card.tags?.[0]?.tagName ?? card.nodeTitle
                     const issuedDate = card.issuedAt
                       ? new Date(card.issuedAt).toLocaleDateString('ko-KR', { month: 'short', day: 'numeric' })
                       : ''
+
                     return (
                       <div key={card.proofCardId} className="flex items-center justify-between rounded-xl border border-gray-100 bg-gray-50 p-3">
                         <div className="flex items-center gap-3">
@@ -552,21 +625,21 @@ export default function DashboardPage({ session }: { session: AuthSession }) {
                             <i className="fas fa-certificate" />
                           </div>
                           <div>
-                            <p className="text-sm font-bold text-gray-900 line-clamp-1">{firstTag}</p>
+                            <p className="line-clamp-1 text-sm font-bold text-gray-900">{firstTag}</p>
                             <p className="text-[10px] text-gray-400">{card.nodeTitle}</p>
                           </div>
                         </div>
                         <div className="text-right">
                           <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${color.badge}`}>Proof</span>
-                          {issuedDate && <p className="mt-0.5 text-[10px] text-gray-400">{issuedDate}</p>}
+                          {issuedDate ? <p className="mt-0.5 text-[10px] text-gray-400">{issuedDate}</p> : null}
                         </div>
                       </div>
                     )
                   })
                 ) : (
                   <div className="flex flex-col items-center justify-center py-6 text-center">
-                    <i className="fas fa-medal text-2xl text-gray-200 mb-2" />
-                    <p className="text-xs text-gray-400">아직 획득한 Proof Card가<br />없습니다.</p>
+                    <i className="fas fa-medal mb-2 text-2xl text-gray-200" />
+                    <p className="text-xs text-gray-400">아직 획득한 Proof Card가 없습니다.</p>
                   </div>
                 )}
               </div>
@@ -575,42 +648,39 @@ export default function DashboardPage({ session }: { session: AuthSession }) {
             <div className="flex h-full flex-col justify-between rounded-2xl border border-gray-200 bg-white p-6 shadow-sm md:col-span-2">
               <div className="mb-4 flex items-center gap-2">
                 <i className="fas fa-magic text-purple-500" />
-                <h3 className="text-sm font-bold text-gray-900">AI 맞춤 성장 제안</h3>
+                <h3 className="text-sm font-bold text-gray-900">AI 성장 제안</h3>
               </div>
 
               <div className="flex h-full flex-col gap-4 md:flex-row">
-                {state.growthRecommendation?.recommendations?.[0] && (
+                {growthItems.length > 0 ? (
                   <div className="flex flex-1 flex-col justify-center gap-2 rounded-xl bg-purple-50 p-4">
                     <div className="flex items-center gap-3">
                       <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-white text-xl text-purple-600 shadow-sm">
-                        <i className={`fas ${state.growthRecommendation.recommendations[0].iconClass}`} />
+                        <i className={`fas ${growthItems[0].iconClass}`} />
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-gray-900">
-                          {state.growthRecommendation.recommendations[0].courseTitle}
-                        </p>
+                        <p className="text-sm font-bold text-gray-900">{growthItems[0].courseTitle}</p>
                         <p className="text-[10px] text-gray-500">
-                          매칭률{' '}
-                          <span className="font-bold text-purple-600">
-                            +{state.growthRecommendation.recommendations[0].matchRateIncrease}%
-                          </span>{' '}
-                          상승
+                          매칭률 <span className="font-bold text-purple-600">+{growthItems[0].matchRateIncrease}%</span> 상승
                         </p>
                       </div>
                     </div>
-                    {state.growthRecommendation.recommendations[1] && (
+
+                    {growthItems[1] ? (
                       <div className="flex items-center gap-3 rounded-lg border border-purple-100 bg-white px-3 py-2">
-                        <i className={`fas ${state.growthRecommendation.recommendations[1].iconClass} text-purple-400 text-sm`} />
+                        <i className={`fas ${growthItems[1].iconClass} text-sm text-purple-400`} />
                         <div>
-                          <p className="text-xs font-bold text-gray-800">
-                            {state.growthRecommendation.recommendations[1].courseTitle}
-                          </p>
-                          <p className="text-[10px] text-gray-400">
-                            +{state.growthRecommendation.recommendations[1].matchRateIncrease}% 상승
-                          </p>
+                          <p className="text-xs font-bold text-gray-800">{growthItems[1].courseTitle}</p>
+                          <p className="text-[10px] text-gray-400">+{growthItems[1].matchRateIncrease}% 상승</p>
                         </div>
                       </div>
-                    )}
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="flex flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-purple-100 bg-purple-50/60 p-4 text-center">
+                    <i className="fas fa-sparkles text-2xl text-purple-200" />
+                    <p className="mt-3 text-sm font-bold text-gray-500">추천할 성장 데이터가 아직 없습니다.</p>
+                    <p className="mt-1 text-xs text-gray-400">Proof Card와 학습 이력이 쌓이면 실제 추천이 생성됩니다.</p>
                   </div>
                 )}
 
@@ -622,7 +692,9 @@ export default function DashboardPage({ session }: { session: AuthSession }) {
                     <span className="text-xs font-bold text-gray-300">Analysis</span>
                   </div>
                   <p className="text-xs leading-relaxed text-gray-300">
-                    {state.growthRecommendation?.analysisText ?? '학습 데이터를 분석하여 성장 제안을 준비 중입니다.'}
+                    {growthItems.length > 0 && state.growthRecommendation?.analysisText
+                      ? state.growthRecommendation.analysisText
+                      : '추천을 생성할 실제 학습 데이터가 아직 충분하지 않습니다.'}
                   </p>
                 </div>
               </div>
@@ -631,21 +703,21 @@ export default function DashboardPage({ session }: { session: AuthSession }) {
         </section>
 
         <aside className="hidden w-80 shrink-0 xl:block">
-          <div className="sticky-roadmap mt-[80px] rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+          <div className="sticky-roadmap rounded-2xl border border-gray-200 bg-white p-6 shadow-sm" style={{ top: '96px' }}>
             <div className="mb-6 flex items-center justify-between">
               <h3 className="flex items-center gap-2 font-bold text-gray-900">
                 <i className="fas fa-map text-brand" /> 나의 학습 로드맵
               </h3>
-              {state.roadmap && (
+              {state.roadmap ? (
                 <span className="max-w-[120px] truncate rounded bg-gray-100 px-2 py-1 text-[10px] text-gray-500">
                   {state.roadmap.title}
                 </span>
-              )}
+              ) : null}
             </div>
 
             <div className="roadmap-container relative pb-2">
               <div className="roadmap-line" />
-              <div className="roadmap-progress" style={{ height: `${Math.max(50, roadmapProgress)}%` }} />
+              <div className="roadmap-progress" style={{ height: `${roadmapProgress}%` }} />
 
               {sidebarNodes.length > 0 ? (
                 <>
@@ -662,23 +734,26 @@ export default function DashboardPage({ session }: { session: AuthSession }) {
                         </div>
                       )
                     }
+
                     if (node.status === 'IN_PROGRESS') {
-                      const progress = Math.round((node.lessonCompletionRate ?? 0) * 100)
+                      const progress = clampProgress((node.lessonCompletionRate ?? 0) * 100)
+
                       return (
                         <div key={node.customNodeId} className="roadmap-item">
                           <div className="step-icon current">
-                            <div className="bg-brand h-2.5 w-2.5 rounded-full animate-pulse" />
+                            <div className="h-2.5 w-2.5 rounded-full bg-brand animate-pulse" />
                           </div>
                           <div className="relative -mt-1 rounded-lg border border-green-200 bg-green-50 p-2 shadow-sm">
                             <h4 className="mb-1 text-sm font-bold text-gray-900">{node.title}</h4>
                             <div className="h-1.5 w-full rounded-full border border-green-100 bg-white">
-                              <div className="bg-brand h-1.5 rounded-full" style={{ width: `${progress}%` }} />
+                              <div className="h-1.5 rounded-full bg-brand" style={{ width: `${progress}%` }} />
                             </div>
                             <p className="mt-1 text-right text-[10px] text-gray-500">{progress}% 완료</p>
                           </div>
                         </div>
                       )
                     }
+
                     return (
                       <div key={node.customNodeId} className="roadmap-item">
                         <div className="step-icon waiting">
@@ -690,6 +765,7 @@ export default function DashboardPage({ session }: { session: AuthSession }) {
                       </div>
                     )
                   })}
+
                   <div className="roadmap-item mt-6">
                     <div className="step-icon border-2 border-yellow-400 bg-yellow-100 text-yellow-600 shadow-sm">
                       <i className="fas fa-flag text-xs" />
@@ -701,11 +777,11 @@ export default function DashboardPage({ session }: { session: AuthSession }) {
                 </>
               ) : (
                 <div className="flex flex-col items-center justify-center py-8 text-center">
-                  <i className="fas fa-map text-3xl text-gray-200 mb-3" />
+                  <i className="fas fa-map mb-3 text-3xl text-gray-200" />
                   <p className="text-xs text-gray-400">
-                    로드맵을 불러오는 중이거나
+                    연결된 로드맵이 없거나
                     <br />
-                    아직 로드맵이 없습니다.
+                    아직 불러올 데이터가 없습니다.
                   </p>
                 </div>
               )}

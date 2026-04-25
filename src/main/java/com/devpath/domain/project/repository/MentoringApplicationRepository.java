@@ -13,5 +13,7 @@ public interface MentoringApplicationRepository extends JpaRepository<MentoringA
             MentoringApplicationStatus status
     );
 
+    List<MentoringApplication> findAllByProjectIdInOrderByCreatedAtDesc(List<Long> projectIds);
+
     List<MentoringApplication> findAllByProjectIdOrderByCreatedAtDesc(Long projectId);
 }

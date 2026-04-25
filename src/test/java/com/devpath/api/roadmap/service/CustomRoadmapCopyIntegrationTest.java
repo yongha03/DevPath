@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.reset;
 
+import com.devpath.api.roadmap.dto.MyRoadmapDto;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
 import com.devpath.domain.roadmap.entity.CustomRoadmap;
@@ -49,6 +50,7 @@ import org.springframework.transaction.annotation.Transactional;
 class CustomRoadmapCopyIntegrationTest {
 
   @Autowired private CustomRoadmapCopyService customRoadmapCopyService;
+  @Autowired private CustomRoadmapQueryService customRoadmapQueryService;
   @Autowired private UserRepository userRepository;
   @Autowired private TagRepository tagRepository;
   @Autowired private UserTechStackRepository userTechStackRepository;
@@ -143,7 +145,79 @@ class CustomRoadmapCopyIntegrationTest {
     assertThat(copiedNodes.get(0).getStatus()).isEqualTo(NodeStatus.COMPLETED);
     assertThat(copiedNodes.get(1).getStatus()).isEqualTo(NodeStatus.COMPLETED);
     assertThat(copiedNodes.get(2).getStatus()).isEqualTo(NodeStatus.NOT_STARTED);
+    assertThat(customRoadmap.getProgressRate()).isEqualTo(66);
     assertThat(customNodePrerequisiteRepository.findAllByCustomRoadmap(customRoadmap)).hasSize(2);
+  }
+
+  @Test
+  @Transactional
+  void getMyRoadmap_recalculatesProgressRateWhenStoredValueIsStale() {
+    User user =
+        userRepository.save(
+            User.builder().email("progress@test.com").password("pw").name("progress-user").build());
+
+    Tag javaTag = tagRepository.save(Tag.builder().name("Java").category("Backend").build());
+    Tag springTag = tagRepository.save(Tag.builder().name("Spring").category("Backend").build());
+    Tag dockerTag = tagRepository.save(Tag.builder().name("Docker").category("DevOps").build());
+
+    userTechStackRepository.saveAll(
+        List.of(
+            UserTechStack.builder().user(user).tag(javaTag).build(),
+            UserTechStack.builder().user(user).tag(springTag).build()));
+
+    Roadmap roadmap =
+        roadmapRepository.save(
+            Roadmap.builder()
+                .title("Backend")
+                .description("official roadmap")
+                .isOfficial(true)
+                .isDeleted(false)
+                .build());
+
+    RoadmapNode javaNode =
+        roadmapNodeRepository.save(
+            RoadmapNode.builder()
+                .roadmap(roadmap)
+                .title("Java Basics")
+                .content("java")
+                .nodeType("STEP")
+                .sortOrder(1)
+                .build());
+    RoadmapNode springNode =
+        roadmapNodeRepository.save(
+            RoadmapNode.builder()
+                .roadmap(roadmap)
+                .title("Spring Basics")
+                .content("spring")
+                .nodeType("STEP")
+                .sortOrder(2)
+                .build());
+    RoadmapNode dockerNode =
+        roadmapNodeRepository.save(
+            RoadmapNode.builder()
+                .roadmap(roadmap)
+                .title("Docker")
+                .content("docker")
+                .nodeType("STEP")
+                .sortOrder(3)
+                .build());
+
+    nodeRequiredTagRepository.saveAll(
+        List.of(
+            NodeRequiredTag.builder().node(javaNode).tag(javaTag).build(),
+            NodeRequiredTag.builder().node(springNode).tag(springTag).build(),
+            NodeRequiredTag.builder().node(dockerNode).tag(dockerTag).build()));
+
+    Long customRoadmapId =
+        customRoadmapCopyService.copyToCustomRoadmap(user.getId(), roadmap.getRoadmapId());
+
+    CustomRoadmap customRoadmap = customRoadmapRepository.findById(customRoadmapId).orElseThrow();
+    customRoadmap.updateProgressRate(0);
+
+    MyRoadmapDto.DetailResponse detail =
+        customRoadmapQueryService.getMyRoadmap(user.getId(), customRoadmapId);
+
+    assertThat(detail.getProgressRate()).isEqualTo(66);
   }
 
   @Test

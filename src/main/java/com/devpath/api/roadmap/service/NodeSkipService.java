@@ -23,6 +23,7 @@ public class NodeSkipService {
   private final NodeRequiredTagRepository nodeRequiredTagRepository;
   private final UserTechStackRepository userTechStackRepository;
   private final TagValidationService tagValidationService;
+  private final RoadmapProgressService roadmapProgressService;
 
   /**
    * 노드 스킵 처리
@@ -64,6 +65,9 @@ public class NodeSkipService {
 
     // 6. 노드 상태를 COMPLETED로 변경
     customNode.complete();
+    roadmapProgressService.updateProgressRate(
+        customNode.getCustomRoadmap(),
+        customRoadmapNodeRepository.findAllByCustomRoadmap(customNode.getCustomRoadmap()));
 
     return Set.of(); // 성공 시 빈 Set 반환
   }

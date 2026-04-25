@@ -123,6 +123,7 @@ public class MyRoadmapDto {
 
     public static DetailResponse from(
         CustomRoadmap customRoadmap,
+        Integer progressRate,
         List<CustomRoadmapNode> nodes,
         Map<Long, List<Long>> prerequisiteIdsByNodeId,
         Map<Long, NodeStatus> statusByNodeId,
@@ -134,7 +135,7 @@ public class MyRoadmapDto {
           .title(customRoadmap.getTitle())
           .infoTitle(customRoadmap.getOriginalRoadmap().getInfoTitle())
           .infoContent(customRoadmap.getOriginalRoadmap().getInfoContent())
-          .progressRate(customRoadmap.getProgressRate())
+          .progressRate(progressRate)
           .createdAt(customRoadmap.getCreatedAt())
           .nodes(
               nodes.stream()

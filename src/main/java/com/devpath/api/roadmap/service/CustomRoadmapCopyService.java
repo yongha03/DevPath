@@ -45,6 +45,7 @@ public class CustomRoadmapCopyService {
   private final TagValidationService tagValidationService;
   private final UserTechStackRepository userTechStackRepository;
   private final NodeRequiredTagRepository nodeRequiredTagRepository;
+  private final RoadmapProgressService roadmapProgressService;
 
   @Transactional
   // 공식 로드맵의 구조를 복사해 사용자 전용 로드맵과 노드, 선수 관계를 생성한다.
@@ -116,6 +117,7 @@ public class CustomRoadmapCopyService {
     // 저장 후에는 "원본 노드 ID -> 커스텀 노드" 연결 정보가 필요하다.
     List<CustomRoadmapNode> savedCustomNodes =
         customRoadmapNodeRepository.saveAll(customNodesToSave);
+    roadmapProgressService.updateProgressRate(customRoadmap, savedCustomNodes);
     Map<Long, CustomRoadmapNode> customNodeByOriginalId =
         savedCustomNodes.stream()
             .collect(
