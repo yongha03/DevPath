@@ -134,17 +134,16 @@ public class MyRoadmapDto {
         List<CustomRoadmapNode> nodes,
         Map<Long, List<Long>> prerequisiteIdsByNodeId,
         Map<Long, NodeStatus> statusByNodeId,
-        Map<Long, NodeClearance> clearanceByNodeId) {
-      Roadmap orig = customRoadmap.getOriginalRoadmap();
         Map<Long, NodeClearance> clearanceByNodeId,
         Map<Long, List<RoadmapNodeResource>> resourcesByNodeId) {
+      Roadmap orig = customRoadmap.getOriginalRoadmap();
       return DetailResponse.builder()
           .customRoadmapId(customRoadmap.getId())
           .originalRoadmapId(orig != null ? orig.getRoadmapId() : null)
           .title(customRoadmap.getTitle())
           .infoTitle(orig != null ? orig.getInfoTitle() : null)
           .infoContent(orig != null ? orig.getInfoContent() : null)
-          .progressRate(customRoadmap.getProgressRate())
+          .progressRate(progressRate)
           .createdAt(customRoadmap.getCreatedAt())
           .isBuilderOrigin(customRoadmap.isBuilderOrigin())
           .nodes(
@@ -157,10 +156,10 @@ public class MyRoadmapDto {
                               statusByNodeId,
                               node.getOriginalNode() != null
                                   ? clearanceByNodeId.get(node.getOriginalNode().getNodeId())
-                                  : null))
-                              clearanceByNodeId.get(node.getOriginalNode().getNodeId()),
-                              resourcesByNodeId.getOrDefault(
-                                  node.getOriginalNode().getNodeId(), List.of())))
+                                  : null,
+                              node.getOriginalNode() != null
+                                  ? resourcesByNodeId.getOrDefault(node.getOriginalNode().getNodeId(), List.of())
+                                  : List.of()))
                   .toList())
           .build();
     }
@@ -254,7 +253,7 @@ public class MyRoadmapDto {
         CustomRoadmapNode node,
         List<Long> prerequisiteCustomNodeIds,
         Map<Long, NodeStatus> statusByNodeId,
-        NodeClearance clearance, List<RoadmapNodeResource> resources)
+        NodeClearance clearance, List<RoadmapNodeResource> resources) {
 
       boolean isBuilderOrigin = node.getOriginalNode() == null;
 
