@@ -70,7 +70,10 @@ public class CustomRoadmapQueryService {
             : Map.of();
 
     List<Long> originalNodeIds =
-        customNodes.stream().map(node -> node.getOriginalNode().getNodeId()).toList();
+        customNodes.stream()
+            .filter(node -> node.getOriginalNode() != null)
+            .map(node -> node.getOriginalNode().getNodeId())
+            .toList();
     Map<Long, List<RoadmapNodeResource>> resourcesByNodeId =
         originalNodeIds.isEmpty()
             ? Map.of()
