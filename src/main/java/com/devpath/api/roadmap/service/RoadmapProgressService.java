@@ -24,4 +24,10 @@ public class RoadmapProgressService {
     customRoadmap.updateProgressRate(progressRate);
     return progressRate;
   }
+
+  public int updateProgressRate(CustomRoadmap customRoadmap, long total, long completed) {
+    int progressRate = total == 0 ? 0 : (int) (completed * 100 / total);
+    customRoadmap.updateProgressRate(progressRate);
+    return progressRate;
+  }
 }

@@ -55,11 +55,8 @@ public class NodeClearanceCommandService {
         }
 
         // 선행 노드가 모두 완료되었는지 확인한다.
-        boolean prerequisiteNotMet = customNodePrerequisiteRepository
-                .findAllByCustomNode(customNode)
-                .stream()
-                .anyMatch(p -> p.getPrerequisiteCustomNode().getStatus() != NodeStatus.COMPLETED);
-        if (prerequisiteNotMet) {
+        if (customNodePrerequisiteRepository
+                .countByCustomNodeAndPrerequisiteNotCompleted(customNode, NodeStatus.COMPLETED) > 0) {
             throw new CustomException(ErrorCode.NODE_LOCKED);
         }
 
@@ -98,8 +95,9 @@ public class NodeClearanceCommandService {
         }
 
         // 진행률을 재계산한다.
-        List<CustomRoadmapNode> allNodes = customRoadmapNodeRepository.findAllByCustomRoadmap(customRoadmap);
-        roadmapProgressService.updateProgressRate(customRoadmap, allNodes);
+        long total = customRoadmapNodeRepository.countByCustomRoadmap(customRoadmap);
+        long completed = customRoadmapNodeRepository.countByCustomRoadmapAndStatus(customRoadmap, NodeStatus.COMPLETED);
+        roadmapProgressService.updateProgressRate(customRoadmap, total, completed);
 
         return NodeClearResponse.of(customNode);
     }

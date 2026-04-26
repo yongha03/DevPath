@@ -2,6 +2,7 @@ package com.devpath.domain.roadmap.repository;
 
 import com.devpath.domain.roadmap.entity.CustomRoadmap;
 import com.devpath.domain.roadmap.entity.CustomRoadmapNode;
+import com.devpath.domain.roadmap.entity.NodeStatus;
 import com.devpath.domain.roadmap.entity.RoadmapNode;
 import java.util.List;
 import java.util.Optional;
@@ -32,4 +33,12 @@ public interface CustomRoadmapNodeRepository extends JpaRepository<CustomRoadmap
   List<CustomRoadmapNode> findAllByOriginalNodeIdAndUserId(
       @Param("nodeId") Long nodeId,
       @Param("userId") Long userId);
+
+  @Query("SELECT COUNT(n) FROM CustomRoadmapNode n WHERE n.customRoadmap = :roadmap")
+  long countByCustomRoadmap(@Param("roadmap") CustomRoadmap roadmap);
+
+  @Query("SELECT COUNT(n) FROM CustomRoadmapNode n WHERE n.customRoadmap = :roadmap AND n.status = :status")
+  long countByCustomRoadmapAndStatus(
+      @Param("roadmap") CustomRoadmap roadmap,
+      @Param("status") NodeStatus status);
 }
