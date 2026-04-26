@@ -352,6 +352,18 @@ export const roadmapApi = {
     )
   },
 
+  // [TEMP] 추천 무료 강좌 courseId 조회 — 임시 하드코딩, 추후 삭제 예정
+  getRecommendedFreeCourse(customRoadmapId: number, customNodeId: number) {
+    const session = readStoredAuthSession()
+    const query = session?.userId ? `?userId=${session.userId}` : ''
+    return request<number | null>(
+      `/api/my-roadmaps/${customRoadmapId}/nodes/${customNodeId}/recommended-course${query}`,
+      { method: 'GET' },
+      { auth: true },
+    )
+  },
+  // [/TEMP]
+
   // [TEST] 노드 완료 즉시 분기 추천 테스트용 — 실 서비스 전 삭제 대상
   testRunDiagnosis(originalRoadmapId: number, originalNodeId: number) {
     return request<{ score: number; maxScore: number; branchType: string; recommendedNodes: string }>(

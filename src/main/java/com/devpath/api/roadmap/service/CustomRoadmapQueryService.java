@@ -3,6 +3,9 @@ package com.devpath.api.roadmap.service;
 import com.devpath.api.roadmap.dto.MyRoadmapDto;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
+import com.devpath.domain.course.entity.CourseStatus;
+import com.devpath.domain.course.repository.CourseRepository;
+import com.devpath.domain.course.repository.CourseTagMapRepository;
 import com.devpath.domain.learning.entity.clearance.NodeClearance;
 import com.devpath.domain.learning.repository.clearance.NodeClearanceRepository;
 import com.devpath.domain.roadmap.entity.CustomRoadmap;
@@ -37,6 +40,10 @@ public class CustomRoadmapQueryService {
   private final RoadmapNodeResourceRepository roadmapNodeResourceRepository;
   private final NodeRequiredTagRepository nodeRequiredTagRepository;
   private final RoadmapProgressService roadmapProgressService;
+  // [TEMP] 추천 무료 강좌 조회용 — 임시 하드코딩, 추후 삭제 예정
+  private final CourseRepository courseRepository;
+  private final CourseTagMapRepository courseTagMapRepository;
+  // [/TEMP]
 
   @Transactional(readOnly = true)
   public List<MyRoadmapDto.Item> getMyRoadmaps(Long userId) {
@@ -111,6 +118,32 @@ public class CustomRoadmapQueryService {
         resourcesByNodeId,
         requiredTagsByNodeId);
   }
+
+  // [TEMP] 추천 무료 강좌 courseId 조회 — 임시 하드코딩, 추후 삭제 예정
+  @Transactional(readOnly = true)
+  public Long getRecommendedFreeCourseId(Long customNodeId) {
+    CustomRoadmapNode node = customRoadmapNodeRepository.findById(customNodeId)
+        .orElseThrow(() -> new CustomException(ErrorCode.CUSTOM_NODE_NOT_FOUND));
+
+    if (node.getOriginalNode() == null) return null;
+
+    // 1차: '로드맵 실전: {노드제목}' 패턴 무료 강좌 직접 매칭
+    String targetTitle = "로드맵 실전: " + node.getOriginalNode().getTitle();
+    Long courseId = courseRepository
+        .findFirstByTitleAndStatus(targetTitle, CourseStatus.PUBLISHED)
+        .map(c -> c.getCourseId())
+        .orElse(null);
+
+    if (courseId != null) return courseId;
+
+    // 2차: 노드 필수 태그로 무료 공개 강좌 탐색
+    List<String> tags = nodeRequiredTagRepository.findTagNamesByNodeId(node.getOriginalNode().getNodeId());
+    if (tags.isEmpty()) return null;
+
+    List<Long> ids = courseTagMapRepository.findFreePublishedCourseIdsByTagNames(tags, CourseStatus.PUBLISHED);
+    return ids.isEmpty() ? null : ids.get(0);
+  }
+  // [/TEMP]
 
   @Transactional
   public void deleteMyRoadmap(Long userId, Long customRoadmapId) {

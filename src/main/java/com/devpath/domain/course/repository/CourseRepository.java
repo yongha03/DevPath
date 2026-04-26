@@ -35,4 +35,8 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
     long countByInstructorId(Long instructorId);
 
     long countByInstructorIdAndStatus(Long instructorId, CourseStatus status);
+
+    // [TEMP] 추천 무료 강좌 조회용 — 임시 하드코딩, 추후 삭제 예정
+    Optional<Course> findFirstByTitleAndStatus(String title, CourseStatus status);
+    // [/TEMP]
 }

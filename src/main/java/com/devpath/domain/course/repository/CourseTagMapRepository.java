@@ -1,5 +1,6 @@
 package com.devpath.domain.course.repository;
 
+import com.devpath.domain.course.entity.CourseStatus;
 import com.devpath.domain.course.entity.CourseTagMap;
 import java.util.Collection;
 import java.util.List;
@@ -48,4 +49,17 @@ public interface CourseTagMapRepository extends JpaRepository<CourseTagMap, Long
   boolean existsByCourseCourseIdAndTagTagId(Long courseId, Long tagId);
 
   void deleteAllByCourseCourseId(Long courseId);
+
+  // [TEMP] 추천 무료 강좌 조회용 — 임시 하드코딩, 추후 삭제 예정
+  @Query("""
+      SELECT ctm.course.courseId FROM CourseTagMap ctm
+      WHERE ctm.tag.name IN :tagNames
+      AND ctm.course.status = :status
+      AND (ctm.course.price IS NULL OR ctm.course.price = 0)
+      ORDER BY ctm.course.courseId ASC
+      """)
+  List<Long> findFreePublishedCourseIdsByTagNames(
+      @Param("tagNames") Collection<String> tagNames,
+      @Param("status") CourseStatus status);
+  // [/TEMP]
 }

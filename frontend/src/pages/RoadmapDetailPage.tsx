@@ -1114,11 +1114,25 @@ function NodeDrawer({ node, customRoadmapId, originalRoadmapId, onClose, onClear
                   }
                 </button>
               ) : (
+                // [TEMP] 추천 무료 강좌 이동 — 임시 하드코딩, 추후 삭제 예정
                 <button
+                  onClick={async () => {
+                    try {
+                      const courseId = await roadmapApi.getRecommendedFreeCourse(customRoadmapId, node.customNodeId)
+                      if (courseId) {
+                        window.location.href = `course-detail.html?courseId=${courseId}`
+                      } else {
+                        window.location.href = buildLectureListUrl(node.requiredTags ?? [])
+                      }
+                    } catch {
+                      window.location.href = buildLectureListUrl(node.requiredTags ?? [])
+                    }
+                  }}
                   className="w-full bg-[#00c471] hover:bg-green-600 text-white py-4 rounded-xl font-bold text-sm flex justify-center items-center gap-2 transition"
                 >
                   <i className="fas fa-play-circle" /> 추천 무료 강좌 보기
                 </button>
+                // [/TEMP]
               )
           )}
           <button
