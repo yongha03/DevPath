@@ -11628,6 +11628,804 @@ WHERE NOT EXISTS (
       AND ca.title = a.course_title || ' 커리큘럼 업데이트'
 );
 
+-- ============================================================
+-- BACKEND ROADMAP VIDEO CATALOG: 각 노드별 공개 영상 코스 추가
+-- ============================================================
+DROP TABLE IF EXISTS tmp_backend_roadmap_video_seed;
+
+CREATE TABLE tmp_backend_roadmap_video_seed (
+    node_title VARCHAR(255) NOT NULL,
+    instructor_email VARCHAR(255) NOT NULL,
+    difficulty_level VARCHAR(30) NOT NULL,
+    published_at TIMESTAMP NOT NULL,
+    thumbnail_url VARCHAR(1000) NOT NULL
+);
+
+INSERT INTO tmp_backend_roadmap_video_seed (
+    node_title, instructor_email, difficulty_level, published_at, thumbnail_url
+)
+VALUES
+    ('인터넷 & 웹 기초', 'frontend@devpath.com', 'BEGINNER', TIMESTAMP '2026-03-02 09:00:00', 'https://images.unsplash.com/photo-1510915228340-29c85a43dcfe?auto=format&fit=crop&w=1200&q=80'),
+    ('OS & 터미널', 'instructor@devpath.com', 'BEGINNER', TIMESTAMP '2026-03-03 09:00:00', 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1200&q=80'),
+    ('Java 기초', 'instructor@devpath.com', 'BEGINNER', TIMESTAMP '2026-03-04 09:00:00', 'https://images.unsplash.com/photo-1517430816045-df4b7de11d1d?auto=format&fit=crop&w=1200&q=80'),
+    ('Git & 버전 관리', 'frontend@devpath.com', 'BEGINNER', TIMESTAMP '2026-03-05 09:00:00', 'https://images.unsplash.com/photo-1496171367470-9ed9a91ea931?auto=format&fit=crop&w=1200&q=80'),
+    ('RDB & SQL', 'data@devpath.com', 'BEGINNER', TIMESTAMP '2026-03-06 09:00:00', 'https://images.unsplash.com/photo-1461749280684-dccba630e2f6?auto=format&fit=crop&w=1200&q=80'),
+    ('REST API 설계', 'frontend@devpath.com', 'INTERMEDIATE', TIMESTAMP '2026-03-07 09:00:00', 'https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?auto=format&fit=crop&w=1200&q=80'),
+    ('Spring Boot & MVC', 'instructor@devpath.com', 'INTERMEDIATE', TIMESTAMP '2026-03-08 09:00:00', 'https://images.unsplash.com/photo-1522542550221-31fd19575a2d?auto=format&fit=crop&w=1200&q=80'),
+    ('Spring Data JPA', 'instructor@devpath.com', 'INTERMEDIATE', TIMESTAMP '2026-03-09 09:00:00', 'https://images.unsplash.com/photo-1516116216624-53e697fedbea?auto=format&fit=crop&w=1200&q=80'),
+    ('Redis 기초', 'data@devpath.com', 'INTERMEDIATE', TIMESTAMP '2026-03-10 09:00:00', 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1200&q=80'),
+    ('Redis 심화', 'data@devpath.com', 'ADVANCED', TIMESTAMP '2026-03-11 09:00:00', 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=1200&q=80'),
+    ('JUnit5 & Mockito', 'instructor@devpath.com', 'INTERMEDIATE', TIMESTAMP '2026-03-12 09:00:00', 'https://images.unsplash.com/photo-1526379095098-d400fd0bf935?auto=format&fit=crop&w=1200&q=80'),
+    ('Spring Boot 테스트', 'instructor@devpath.com', 'INTERMEDIATE', TIMESTAMP '2026-03-13 09:00:00', 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?auto=format&fit=crop&w=1200&q=80'),
+    ('Spring Security & JWT', 'instructor@devpath.com', 'ADVANCED', TIMESTAMP '2026-03-14 09:00:00', 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1200&q=80'),
+    ('Docker & CI/CD', 'data@devpath.com', 'ADVANCED', TIMESTAMP '2026-03-15 09:00:00', 'https://images.unsplash.com/photo-1520607162513-77705c0f0d4a?auto=format&fit=crop&w=1200&q=80'),
+    ('SOLID & 디자인패턴', 'instructor@devpath.com', 'INTERMEDIATE', TIMESTAMP '2026-03-16 09:00:00', 'https://images.unsplash.com/photo-1517148815978-75f6acaaf32c?auto=format&fit=crop&w=1200&q=80'),
+    ('웹 보안 기초', 'frontend@devpath.com', 'INTERMEDIATE', TIMESTAMP '2026-03-17 09:00:00', 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1200&q=80'),
+    ('메시지 큐 & MSA', 'data@devpath.com', 'ADVANCED', TIMESTAMP '2026-03-18 09:00:00', 'https://images.unsplash.com/photo-1522252234503-e356532cafd5?auto=format&fit=crop&w=1200&q=80');
+
+INSERT INTO courses (
+    instructor_id, title, subtitle, description,
+    thumbnail_url, intro_video_url, video_asset_key, duration_seconds,
+    price, original_price, currency, difficulty_level, language,
+    has_certificate, status, published_at
+)
+SELECT
+    u.user_id,
+    '로드맵 실전: ' || seed.node_title,
+    seed.node_title || ' | ' || COALESCE(rn.sub_topics, '핵심 개념 정리'),
+    rn.content || ' 필수 태그: ' || COALESCE(rn.sub_topics, seed.node_title)
+        || '. 강의에서는 로드맵에서 요구하는 필수 태그를 실제 서비스 예제와 연결해 빠르게 정리합니다.',
+    seed.thumbnail_url,
+    CASE
+        WHEN seed.node_title = 'OS & 터미널' THEN '/samples/lesson-os-process.mp4'
+        WHEN seed.node_title IN ('Spring Boot & MVC', 'Spring Data JPA', 'Spring Boot 테스트', 'Spring Security & JWT')
+            THEN '/samples/lesson-spring-di.mp4'
+        ELSE '/samples/sample-intro.mp4'
+    END,
+    NULL,
+    CASE seed.difficulty_level
+        WHEN 'BEGINNER' THEN 7200
+        WHEN 'INTERMEDIATE' THEN 9600
+        ELSE 11400
+    END,
+    0,
+    0,
+    'KRW',
+    seed.difficulty_level,
+    'ko',
+    TRUE,
+    'PUBLISHED',
+    seed.published_at
+FROM tmp_backend_roadmap_video_seed seed
+JOIN users u ON u.email = seed.instructor_email
+JOIN roadmaps r ON r.title = 'Backend Master Roadmap'
+JOIN roadmap_nodes rn ON rn.roadmap_id = r.roadmap_id AND rn.title = seed.node_title
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM courses c
+    WHERE c.title = '로드맵 실전: ' || seed.node_title
+);
+
+UPDATE courses c
+SET
+    price = 0,
+    original_price = 0,
+    currency = 'KRW',
+    thumbnail_url = seed.thumbnail_url
+FROM tmp_backend_roadmap_video_seed seed
+WHERE c.title = '로드맵 실전: ' || seed.node_title
+  AND (
+      COALESCE(c.price, -1) <> 0
+      OR COALESCE(c.original_price, -1) <> 0
+      OR COALESCE(c.currency, '') <> 'KRW'
+      OR COALESCE(c.thumbnail_url, '') <> seed.thumbnail_url
+  );
+
+INSERT INTO course_prerequisites (course_id, prerequisite)
+WITH prerequisite_seed(prerequisite_text, display_order) AS (
+    VALUES
+        ('백엔드 로드맵의 앞선 개념을 함께 보면 이해가 더 빠릅니다.', 1),
+        ('기본적인 IDE 또는 터미널 사용 경험이 있으면 예제를 따라가기 쉽습니다.', 2)
+)
+SELECT c.course_id, ps.prerequisite_text
+FROM tmp_backend_roadmap_video_seed seed
+JOIN courses c ON c.title = '로드맵 실전: ' || seed.node_title
+JOIN prerequisite_seed ps ON 1 = 1
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM course_prerequisites cp
+    WHERE cp.course_id = c.course_id
+      AND cp.prerequisite = ps.prerequisite_text
+);
+
+INSERT INTO course_job_relevance (course_id, job_relevance)
+WITH relevance_seed(job_relevance, display_order) AS (
+    VALUES
+        ('백엔드 개발자', 1),
+        ('서버 개발자', 2)
+)
+SELECT c.course_id, rs.job_relevance
+FROM tmp_backend_roadmap_video_seed seed
+JOIN courses c ON c.title = '로드맵 실전: ' || seed.node_title
+JOIN relevance_seed rs ON 1 = 1
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM course_job_relevance cj
+    WHERE cj.course_id = c.course_id
+      AND cj.job_relevance = rs.job_relevance
+);
+
+INSERT INTO course_objectives (course_id, objective_text, display_order)
+WITH objective_seed(display_order) AS (
+    VALUES (1), (2)
+)
+SELECT
+    c.course_id,
+    CASE os.display_order
+        WHEN 1 THEN seed.node_title || '의 핵심 개념과 요청/데이터 흐름을 설명할 수 있습니다.'
+        ELSE '로드맵에서 요구하는 필수 태그를 예제와 연결해 실제 코드나 운영 흐름에 적용할 수 있습니다.'
+    END,
+    os.display_order
+FROM tmp_backend_roadmap_video_seed seed
+JOIN courses c ON c.title = '로드맵 실전: ' || seed.node_title
+JOIN objective_seed os ON 1 = 1
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM course_objectives co
+    WHERE co.course_id = c.course_id
+      AND co.display_order = os.display_order
+);
+
+INSERT INTO course_target_audiences (course_id, audience_description, display_order)
+WITH audience_seed(display_order) AS (
+    VALUES (1), (2)
+)
+SELECT
+    c.course_id,
+    CASE ads.display_order
+        WHEN 1 THEN seed.node_title || '를 실무 기준으로 다시 정리하고 싶은 백엔드 학습자'
+        ELSE 'Backend Master Roadmap에서 해당 노드가 막혀 보강 영상이 필요한 주니어 개발자'
+    END,
+    ads.display_order
+FROM tmp_backend_roadmap_video_seed seed
+JOIN courses c ON c.title = '로드맵 실전: ' || seed.node_title
+JOIN audience_seed ads ON 1 = 1
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM course_target_audiences cta
+    WHERE cta.course_id = c.course_id
+      AND cta.display_order = ads.display_order
+);
+
+INSERT INTO course_tag_maps (course_id, tag_id, proficiency_level)
+SELECT
+    c.course_id,
+    nrt.tag_id,
+    CASE seed.difficulty_level
+        WHEN 'BEGINNER' THEN 2
+        ELSE 3
+    END
+FROM tmp_backend_roadmap_video_seed seed
+JOIN courses c ON c.title = '로드맵 실전: ' || seed.node_title
+JOIN roadmaps r ON r.title = 'Backend Master Roadmap'
+JOIN roadmap_nodes rn ON rn.roadmap_id = r.roadmap_id AND rn.title = seed.node_title
+JOIN node_required_tags nrt ON nrt.node_id = rn.node_id
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM course_tag_maps ctm
+    WHERE ctm.course_id = c.course_id
+      AND ctm.tag_id = nrt.tag_id
+);
+
+INSERT INTO course_sections (course_id, title, description, sort_order, is_published)
+WITH section_seed(sort_order) AS (
+    VALUES (1), (2)
+)
+SELECT
+    c.course_id,
+    CASE ss.sort_order
+        WHEN 1 THEN seed.node_title || ' 핵심 개념'
+        ELSE seed.node_title || ' 실전 적용'
+    END,
+    CASE ss.sort_order
+        WHEN 1 THEN seed.node_title || ' 노드에서 반드시 이해해야 할 개념과 용어를 짧은 예제로 정리합니다.'
+        ELSE seed.node_title || '를 실제 서비스 흐름과 운영 체크포인트에 연결합니다.'
+    END,
+    ss.sort_order,
+    TRUE
+FROM tmp_backend_roadmap_video_seed seed
+JOIN courses c ON c.title = '로드맵 실전: ' || seed.node_title
+JOIN section_seed ss ON 1 = 1
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM course_sections cs
+    WHERE cs.course_id = c.course_id
+      AND cs.sort_order = ss.sort_order
+);
+
+INSERT INTO lessons (
+    section_id, title, description, lesson_type,
+    video_url, video_asset_key, video_provider,
+    thumbnail_url, duration_seconds, is_preview, is_published, sort_order
+)
+WITH lesson_seed(section_order, lesson_order, title_suffix, description_body, video_url, duration_seconds, is_preview) AS (
+    VALUES
+        (1, 1, '개념 지도', '핵심 개념과 전체 흐름을 먼저 잡습니다.', '/samples/sample-intro.mp4', 780, TRUE),
+        (1, 2, '필수 태그 해설', '로드맵 필수 태그를 예제와 함께 설명합니다.', '/samples/ocr-code-demo.mp4', 900, FALSE),
+        (2, 1, '실무 시나리오', '실제 서비스나 운영 상황에서 어떻게 연결되는지 살펴봅니다.', '/samples/lesson-spring-di.mp4', 840, FALSE),
+        (2, 2, '체크리스트와 흔한 실수', '자주 놓치는 포인트와 점검 순서를 정리합니다.', '/samples/lesson-os-context.mp4', 960, FALSE)
+)
+SELECT
+    cs.section_id,
+    seed.node_title || ' ' || ls.title_suffix,
+    seed.node_title || ' 학습을 위해 ' || ls.description_body,
+    'VIDEO',
+    CASE
+        WHEN seed.node_title = 'OS & 터미널' AND ls.section_order = 1 AND ls.lesson_order = 1
+            THEN '/samples/lesson-os-process.mp4'
+        WHEN seed.node_title = 'OS & 터미널' AND ls.section_order = 1 AND ls.lesson_order = 2
+            THEN '/samples/lesson-os-thread.mp4'
+        WHEN seed.node_title = 'OS & 터미널'
+            THEN '/samples/lesson-os-context.mp4'
+        WHEN seed.node_title IN ('Spring Boot & MVC', 'Spring Data JPA', 'Spring Boot 테스트', 'Spring Security & JWT')
+            AND ls.section_order = 1
+            THEN '/samples/lesson-spring-di.mp4'
+        WHEN seed.node_title IN ('Spring Boot & MVC', 'Spring Data JPA', 'Spring Boot 테스트', 'Spring Security & JWT')
+            THEN '/samples/lesson-spring-bean.mp4'
+        ELSE ls.video_url
+    END,
+    NULL,
+    NULL,
+    c.thumbnail_url,
+    ls.duration_seconds,
+    ls.is_preview,
+    TRUE,
+    ls.lesson_order
+FROM tmp_backend_roadmap_video_seed seed
+JOIN courses c ON c.title = '로드맵 실전: ' || seed.node_title
+JOIN lesson_seed ls ON 1 = 1
+JOIN course_sections cs ON cs.course_id = c.course_id AND cs.sort_order = ls.section_order
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM lessons l
+    WHERE l.section_id = cs.section_id
+      AND l.sort_order = ls.lesson_order
+);
+
+INSERT INTO course_node_mappings (course_id, node_id, created_at)
+SELECT
+    c.course_id,
+    rn.node_id,
+    seed.published_at
+FROM tmp_backend_roadmap_video_seed seed
+JOIN courses c ON c.title = '로드맵 실전: ' || seed.node_title
+JOIN roadmaps r ON r.title = 'Backend Master Roadmap'
+JOIN roadmap_nodes rn ON rn.roadmap_id = r.roadmap_id AND rn.title = seed.node_title
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM course_node_mappings cnm
+    WHERE cnm.course_id = c.course_id
+      AND cnm.node_id = rn.node_id
+);
+
+INSERT INTO roadmap_node_resources (
+    node_id, title, url, description, source_type, sort_order, active, created_at, updated_at
+)
+SELECT
+    rn.node_id,
+    c.title,
+    'course-detail.html?courseId=' || c.course_id,
+    '필수 태그: ' || COALESCE(rn.sub_topics, seed.node_title)
+        || '. ' || seed.node_title || ' 노드를 영상 중심으로 빠르게 보강할 수 있는 공개 강의입니다.',
+    'COURSE',
+    3,
+    TRUE,
+    seed.published_at,
+    seed.published_at
+FROM tmp_backend_roadmap_video_seed seed
+JOIN courses c ON c.title = '로드맵 실전: ' || seed.node_title
+JOIN roadmaps r ON r.title = 'Backend Master Roadmap'
+JOIN roadmap_nodes rn ON rn.roadmap_id = r.roadmap_id AND rn.title = seed.node_title
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM roadmap_node_resources existing
+    WHERE existing.node_id = rn.node_id
+      AND existing.url = 'course-detail.html?courseId=' || c.course_id
+);
+
+INSERT INTO course_announcements (
+    course_id, announcement_type, title, content, is_pinned, display_order,
+    published_at, exposure_start_at, exposure_end_at,
+    event_banner_text, event_link, created_at, updated_at
+)
+SELECT
+    c.course_id,
+    'NORMAL',
+    seed.node_title || ' 로드맵 연동 가이드',
+    '이 강의는 Backend Master Roadmap의 "' || seed.node_title || '" 노드와 직접 연결됩니다. '
+        || '필수 태그: ' || COALESCE(rn.sub_topics, seed.node_title)
+        || '. 노드 상세의 필수 태그를 먼저 확인하고 예제를 따라오면 더 빠르게 이해할 수 있습니다.',
+    FALSE,
+    1,
+    seed.published_at,
+    seed.published_at,
+    NULL,
+    NULL,
+    NULL,
+    seed.published_at,
+    seed.published_at
+FROM tmp_backend_roadmap_video_seed seed
+JOIN courses c ON c.title = '로드맵 실전: ' || seed.node_title
+JOIN roadmaps r ON r.title = 'Backend Master Roadmap'
+JOIN roadmap_nodes rn ON rn.roadmap_id = r.roadmap_id AND rn.title = seed.node_title
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM course_announcements ca
+    WHERE ca.course_id = c.course_id
+      AND ca.title = seed.node_title || ' 로드맵 연동 가이드'
+);
+
+DROP TABLE IF EXISTS tmp_backend_roadmap_video_seed;
+
+-- ============================================================
+-- BACKEND ROADMAP TAG VIDEO CATALOG: 필수 태그 중심 공개 강의 추가
+-- ============================================================
+DROP TABLE IF EXISTS tmp_backend_tag_video_tag_seed;
+DROP TABLE IF EXISTS tmp_backend_tag_video_seed;
+
+CREATE TABLE tmp_backend_tag_video_seed (
+    course_title VARCHAR(255) NOT NULL,
+    subtitle VARCHAR(255) NOT NULL,
+    description VARCHAR(2000) NOT NULL,
+    tag_summary VARCHAR(500) NOT NULL,
+    instructor_email VARCHAR(255) NOT NULL,
+    difficulty_level VARCHAR(30) NOT NULL,
+    published_at TIMESTAMP NOT NULL,
+    thumbnail_url VARCHAR(1000) NOT NULL,
+    intro_video_url VARCHAR(255) NOT NULL
+);
+
+CREATE TABLE tmp_backend_tag_video_tag_seed (
+    course_title VARCHAR(255) NOT NULL,
+    tag_name VARCHAR(255) NOT NULL
+);
+
+INSERT INTO tmp_backend_tag_video_seed (
+    course_title, subtitle, description, tag_summary,
+    instructor_email, difficulty_level, published_at, thumbnail_url, intro_video_url
+)
+VALUES
+    ('HTTP 요청/응답, 메서드, 상태코드', 'HTTP 규칙을 빠르게 잡는 백엔드 통신 기본기', 'HTTP 요청 라인, 헤더, 바디, 메서드, 상태코드를 예제로 풀어보고 클라이언트와 서버가 어떤 기준으로 응답을 해석하는지 정리합니다.', 'HTTP, HTTP 메서드, HTTP 상태코드', 'frontend@devpath.com', 'BEGINNER', TIMESTAMP '2026-03-19 09:00:00', 'https://picsum.photos/seed/devpath-backend-http-status/1200/675', '/samples/sample-intro.mp4'),
+    ('DNS, 도메인, 웹 호스팅 입문', '주소 입력부터 서버 도착까지 이해하는 네트워크 시작점', '도메인이 DNS 조회를 거쳐 실제 서버 IP로 연결되고, 웹 호스팅 환경에서 요청이 어떤 서버로 전달되는지 흐름 중심으로 설명합니다.', 'DNS, 도메인, 웹 호스팅', 'frontend@devpath.com', 'BEGINNER', TIMESTAMP '2026-03-20 09:00:00', 'https://picsum.photos/seed/devpath-backend-dns-hosting/1200/675', '/samples/sample-intro.mp4'),
+    ('브라우저 요청 흐름과 HTTP 응답 구조', '브라우저가 서버와 통신하는 전체 그림 정리', '브라우저가 URL을 해석하고 요청을 보내며 응답을 렌더링하기까지 어떤 단계와 기준을 거치는지 백엔드 관점에서 정리합니다.', '브라우저, HTTP', 'frontend@devpath.com', 'BEGINNER', TIMESTAMP '2026-03-21 09:00:00', 'https://picsum.photos/seed/devpath-backend-browser-http/1200/675', '/samples/sample-intro.mp4'),
+    ('Linux 프로세스와 스레드 관리', '운영체제에서 애플리케이션 실행 단위를 이해하는 강의', '프로세스와 스레드의 차이, 스케줄링 관점, 장애 상황에서 어떤 정보를 먼저 봐야 하는지 터미널 예제와 함께 설명합니다.', 'Linux, 프로세스 관리, 스레드', 'instructor@devpath.com', 'BEGINNER', TIMESTAMP '2026-03-22 09:00:00', 'https://picsum.photos/seed/devpath-backend-linux-process-thread/1200/675', '/samples/lesson-os-process.mp4'),
+    ('Linux 메모리 관리와 I/O 관리', '메모리와 디스크/네트워크 I/O를 같이 보는 운영 기본기', '메모리 사용량, 파일 디스크립터, 디스크와 네트워크 I/O 병목을 확인하는 방법을 예시 로그와 함께 정리합니다.', 'Linux, 메모리 관리, I/O 관리', 'instructor@devpath.com', 'BEGINNER', TIMESTAMP '2026-03-23 09:00:00', 'https://picsum.photos/seed/devpath-backend-linux-memory-io/1200/675', '/samples/lesson-os-context.mp4'),
+    ('Java OOP와 상속 설계', '객체 모델과 상속 구조를 코드 관점에서 다지는 기초', 'Java 클래스 설계, 캡슐화, 상속 구조, 다형성이 서비스 코드에 어떤 영향을 주는지 작은 예제로 설명합니다.', 'Java, OOP, 상속', 'instructor@devpath.com', 'BEGINNER', TIMESTAMP '2026-03-24 09:00:00', 'https://picsum.photos/seed/devpath-backend-java-oop-inheritance/1200/675', '/samples/ocr-code-demo.mp4'),
+    ('인터페이스, 제네릭, 컬렉션 실전', '타입 안정성과 재사용성을 높이는 Java 핵심 문법', '인터페이스 분리, 제네릭 타입 안정성, 컬렉션 사용 기준을 서비스 코드 예시와 함께 정리합니다.', '인터페이스, 제네릭, 컬렉션', 'instructor@devpath.com', 'BEGINNER', TIMESTAMP '2026-03-25 09:00:00', 'https://picsum.photos/seed/devpath-backend-java-generic-collection/1200/675', '/samples/ocr-code-demo.mp4'),
+    ('Git 브랜치 전략과 GitFlow', '혼자와 팀 작업 모두에 바로 쓰는 버전 관리 흐름', '브랜치 전략을 왜 나누는지부터 GitFlow를 언제 쓰고 언제 단순화할지까지 실제 개발 흐름에 맞춰 설명합니다.', 'Git, 브랜치 전략, GitFlow', 'frontend@devpath.com', 'BEGINNER', TIMESTAMP '2026-03-26 09:00:00', 'https://picsum.photos/seed/devpath-backend-git-branch-flow/1200/675', '/samples/sample-intro.mp4'),
+    ('Pull Request와 코드 리뷰 실무', '커밋 단위와 리뷰 포인트를 정리하는 협업 강의', 'Pull Request를 작게 쪼개는 기준, 리뷰 코멘트를 주고받는 방식, 충돌을 줄이는 협업 습관을 실무 관점에서 정리합니다.', 'Git, Pull Request, 코드 리뷰', 'frontend@devpath.com', 'BEGINNER', TIMESTAMP '2026-03-27 09:00:00', 'https://picsum.photos/seed/devpath-backend-pr-review/1200/675', '/samples/sample-intro.mp4'),
+    ('SQL JOIN과 서브쿼리 패턴', '조회 로직을 안정적으로 조합하는 관계형 쿼리 기본기', 'JOIN 종류별 차이와 서브쿼리를 어디까지 허용할지, 실무에서 읽기 쉬운 SQL을 만드는 기준을 예제로 정리합니다.', 'SQL, JOIN, 서브쿼리', 'data@devpath.com', 'BEGINNER', TIMESTAMP '2026-03-28 09:00:00', 'https://picsum.photos/seed/devpath-backend-sql-join-subquery/1200/675', '/samples/ocr-code-demo.mp4'),
+    ('인덱스, 트랜잭션, PostgreSQL 성능 기본기', '데이터 정합성과 조회 성능을 함께 보는 SQL 심화 입문', '인덱스가 언제 효율적인지, 트랜잭션 격리와 롤백이 어떤 의미인지, PostgreSQL에서 어떤 지점을 먼저 점검해야 하는지 다룹니다.', '인덱스, 트랜잭션, PostgreSQL', 'data@devpath.com', 'INTERMEDIATE', TIMESTAMP '2026-03-29 09:00:00', 'https://picsum.photos/seed/devpath-backend-postgres-index-transaction/1200/675', '/samples/ocr-code-demo.mp4'),
+    ('REST URI 설계와 HTTP 메서드', '리소스 중심 API 설계 감각을 만드는 강의', 'REST 스타일에 맞는 URI를 설계하고 HTTP 메서드를 일관되게 적용하는 기준을 실제 API 예제에 맞춰 설명합니다.', 'REST, URI 설계, HTTP 메서드', 'frontend@devpath.com', 'INTERMEDIATE', TIMESTAMP '2026-03-30 09:00:00', 'https://picsum.photos/seed/devpath-backend-rest-uri-method/1200/675', '/samples/sample-intro.mp4'),
+    ('Swagger와 REST API 문서화', 'OpenAPI 문서를 실무에 맞게 정리하는 방법', 'Swagger UI와 OpenAPI 문서를 통해 상태코드, 요청 바디, 응답 스키마를 일관되게 관리하는 방식을 설명합니다.', 'Swagger, REST, HTTP 상태코드', 'frontend@devpath.com', 'INTERMEDIATE', TIMESTAMP '2026-03-31 09:00:00', 'https://picsum.photos/seed/devpath-backend-swagger-rest/1200/675', '/samples/sample-intro.mp4'),
+    ('Spring Boot DI/IoC와 Spring Bean 등록 흐름', '객체 생성과 연결을 프레임워크에 맡기는 구조 이해', 'DI/IoC의 의미, Bean 등록 방식, 자동 주입이 실제 서비스 코드에서 어떻게 동작하는지 요청 흐름에 맞춰 설명합니다.', 'Spring Boot, DI/IoC, Spring Bean', 'instructor@devpath.com', 'INTERMEDIATE', TIMESTAMP '2026-04-01 09:00:00', 'https://picsum.photos/seed/devpath-backend-spring-di-bean/1200/675', '/samples/lesson-spring-di.mp4'),
+    ('Spring MVC 요청 처리와 3계층 구조', 'Controller부터 Service, Repository까지 흐름 정리', 'DispatcherServlet 이후 요청이 어떤 순서로 처리되는지와 3계층 구조가 왜 유지보수에 유리한지 예제로 설명합니다.', 'Spring Boot, Spring MVC, 3계층 구조', 'instructor@devpath.com', 'INTERMEDIATE', TIMESTAMP '2026-04-02 09:00:00', 'https://picsum.photos/seed/devpath-backend-spring-mvc-layered/1200/675', '/samples/lesson-spring-bean.mp4'),
+    ('JPA Entity 매핑과 JPQL 실전', 'ORM 기본기를 흔들리지 않게 잡는 데이터 접근 강의', 'Entity 매핑 규칙, 식별자 전략, JPQL이 SQL과 어떻게 다른지, 조회 코드가 어디서 복잡해지는지 실습 예제로 정리합니다.', 'JPA, Entity 매핑, JPQL', 'instructor@devpath.com', 'INTERMEDIATE', TIMESTAMP '2026-04-03 09:00:00', 'https://picsum.photos/seed/devpath-backend-jpa-entity-jpql/1200/675', '/samples/lesson-spring-di.mp4'),
+    ('FetchType, N+1, QueryDSL 최적화', 'JPA 성능 이슈를 초기에 피하는 실무 포인트', 'FetchType 설정이 조회 성능에 어떤 영향을 주는지, N+1 문제를 어떻게 찾고 QueryDSL로 어떻게 풀어갈지 설명합니다.', 'FetchType, N+1 문제, QueryDSL', 'instructor@devpath.com', 'ADVANCED', TIMESTAMP '2026-04-04 09:00:00', 'https://picsum.photos/seed/devpath-backend-jpa-querydsl-performance/1200/675', '/samples/lesson-spring-bean.mp4'),
+    ('Redis 자료구조, TTL, Spring Cache', '캐시 설계에 필요한 Redis 기초를 한 번에 정리', 'Redis 자료구조 선택 기준, TTL 설계, Spring Cache와 연결할 때 주의할 점을 백엔드 응답 속도 관점에서 설명합니다.', 'Redis, Redis 자료구조, Redis TTL, Spring Cache', 'data@devpath.com', 'INTERMEDIATE', TIMESTAMP '2026-04-05 09:00:00', 'https://picsum.photos/seed/devpath-backend-redis-ttl-cache/1200/675', '/samples/sample-intro.mp4'),
+    ('Redis Session, Pub/Sub, 분산 락', '여러 서버가 상태를 공유할 때 필요한 Redis 심화 패턴', '세션 저장, 메시지 전달, 분산 락을 어떤 상황에서 쓰는지와 TTL 및 장애 대응을 어떻게 함께 고려할지 설명합니다.', 'Redis, Redis Session, Pub/Sub, 분산 락', 'data@devpath.com', 'ADVANCED', TIMESTAMP '2026-04-06 09:00:00', 'https://picsum.photos/seed/devpath-backend-redis-session-lock/1200/675', '/samples/sample-intro.mp4'),
+    ('JUnit5와 Mockito 단위 테스트', '서비스 로직을 빠르게 검증하는 테스트 기본기', '테스트 생명주기, Assertion, Mock과 Stub, verify와 BDD 스타일을 통해 서비스 단위 테스트를 작성하는 흐름을 다룹니다.', 'JUnit5, Mockito, BDD, 단위 테스트', 'instructor@devpath.com', 'INTERMEDIATE', TIMESTAMP '2026-04-07 09:00:00', 'https://picsum.photos/seed/devpath-backend-junit-mockito/1200/675', '/samples/ocr-code-demo.mp4'),
+    ('MockMvc와 Spring Boot 통합 테스트', '웹 계층과 애플리케이션 컨텍스트를 같이 검증하는 방법', 'MockMvc, 테스트 슬라이스, 통합 테스트, 커버리지 점검을 통해 단위 테스트만으로 놓치기 쉬운 흐름을 보강합니다.', 'Spring Boot, MockMvc, 통합 테스트, 테스트 커버리지', 'instructor@devpath.com', 'INTERMEDIATE', TIMESTAMP '2026-04-08 09:00:00', 'https://picsum.photos/seed/devpath-backend-mockmvc-integration/1200/675', '/samples/lesson-spring-di.mp4'),
+    ('Spring Security 필터 체인과 JWT 인증', '인증과 인가 흐름을 필터 레벨에서 이해하는 강의', 'SecurityFilterChain 안에서 인증이 어떻게 처리되는지, JWT 검증과 권한 체크가 어떤 순서로 일어나는지 설명합니다.', 'Spring Security, JWT', 'instructor@devpath.com', 'ADVANCED', TIMESTAMP '2026-04-09 09:00:00', 'https://picsum.photos/seed/devpath-backend-security-jwt/1200/675', '/samples/lesson-spring-bean.mp4'),
+    ('OAuth2와 소셜 로그인 연동', '외부 인증 제공자를 서비스 로그인과 연결하는 실전 입문', 'OAuth2 로그인 흐름, 인가 코드, 사용자 정보 매핑, 소셜 로그인 이후 내부 계정과 연결하는 방식을 단계별로 정리합니다.', 'Spring Security, OAuth2, 소셜 로그인', 'instructor@devpath.com', 'ADVANCED', TIMESTAMP '2026-04-10 09:00:00', 'https://picsum.photos/seed/devpath-backend-oauth2-social-login/1200/675', '/samples/lesson-spring-bean.mp4'),
+    ('Docker와 docker-compose 실전', '개발 환경과 실행 환경 차이를 줄이는 컨테이너 입문', '이미지와 컨테이너 개념, Dockerfile 작성 포인트, docker-compose로 여러 서비스를 묶어 실행하는 흐름을 설명합니다.', 'Docker, docker-compose', 'data@devpath.com', 'INTERMEDIATE', TIMESTAMP '2026-04-11 09:00:00', 'https://picsum.photos/seed/devpath-backend-docker-compose/1200/675', '/samples/sample-intro.mp4'),
+    ('GitHub Actions와 CI/CD 자동화', '테스트부터 배포까지 자동화 파이프라인 만들기', 'GitHub Actions 워크플로우, CI/CD 기본 단계, AWS EC2 배포 연결 포인트를 예시 저장소 기준으로 정리합니다.', 'GitHub Actions, CI/CD, AWS EC2', 'data@devpath.com', 'ADVANCED', TIMESTAMP '2026-04-12 09:00:00', 'https://picsum.photos/seed/devpath-backend-github-actions-cicd/1200/675', '/samples/sample-intro.mp4'),
+    ('SOLID 원칙과 디자인 패턴 실전', '객체지향 설계를 변경에 강하게 만드는 기준', 'SOLID 원칙을 코드 분리에 어떻게 적용하는지, Singleton, Factory 패턴, Strategy 패턴을 언제 선택할지 사례 중심으로 설명합니다.', 'SOLID 원칙, 디자인 패턴, Singleton, Factory 패턴, Strategy 패턴', 'instructor@devpath.com', 'INTERMEDIATE', TIMESTAMP '2026-04-13 09:00:00', 'https://picsum.photos/seed/devpath-backend-solid-patterns/1200/675', '/samples/ocr-code-demo.mp4'),
+    ('OWASP, XSS, CSRF, SQL Injection, CORS', '백엔드 API에서 바로 막아야 할 웹 보안 기본기', 'OWASP Top 10 관점에서 XSS, CSRF, SQL Injection, CORS, HTTPS를 같이 보고 API 설계 단계에서 어떤 기본값을 잡아야 하는지 정리합니다.', 'OWASP, XSS, CSRF, SQL Injection, CORS, HTTPS', 'frontend@devpath.com', 'INTERMEDIATE', TIMESTAMP '2026-04-14 09:00:00', 'https://picsum.photos/seed/devpath-backend-web-security/1200/675', '/samples/sample-intro.mp4'),
+    ('Kafka와 Kafka 토픽 흐름', '이벤트 스트림을 이해하기 위한 메시지 큐 입문', 'Kafka 브로커와 토픽 구조, 파티션이 왜 필요한지, 메시지가 어떤 흐름으로 저장되고 소비되는지 백엔드 서비스 기준으로 설명합니다.', 'Kafka, Kafka 토픽', 'data@devpath.com', 'ADVANCED', TIMESTAMP '2026-04-15 09:00:00', 'https://picsum.photos/seed/devpath-backend-kafka-topic/1200/675', '/samples/sample-intro.mp4'),
+    ('MSA API Gateway와 서비스 분리 기준', '서비스 경계를 나누는 판단 기준을 잡는 설계 입문', 'API Gateway가 어떤 책임을 맡는지와 서비스 분리 기준을 어떻게 세우는지, MSA를 언제 도입해야 하는지 판단 포인트를 설명합니다.', 'MSA, API Gateway, 서비스 분리', 'data@devpath.com', 'ADVANCED', TIMESTAMP '2026-04-16 09:00:00', 'https://picsum.photos/seed/devpath-backend-msa-gateway/1200/675', '/samples/sample-intro.mp4');
+
+INSERT INTO tmp_backend_tag_video_tag_seed (course_title, tag_name)
+VALUES
+    ('HTTP 요청/응답, 메서드, 상태코드', 'HTTP'),
+    ('HTTP 요청/응답, 메서드, 상태코드', 'HTTP 메서드'),
+    ('HTTP 요청/응답, 메서드, 상태코드', 'HTTP 상태코드'),
+    ('DNS, 도메인, 웹 호스팅 입문', 'DNS'),
+    ('DNS, 도메인, 웹 호스팅 입문', '도메인'),
+    ('DNS, 도메인, 웹 호스팅 입문', '웹 호스팅'),
+    ('브라우저 요청 흐름과 HTTP 응답 구조', '브라우저'),
+    ('브라우저 요청 흐름과 HTTP 응답 구조', 'HTTP'),
+    ('Linux 프로세스와 스레드 관리', 'Linux'),
+    ('Linux 프로세스와 스레드 관리', '프로세스 관리'),
+    ('Linux 프로세스와 스레드 관리', '스레드'),
+    ('Linux 메모리 관리와 I/O 관리', 'Linux'),
+    ('Linux 메모리 관리와 I/O 관리', '메모리 관리'),
+    ('Linux 메모리 관리와 I/O 관리', 'I/O 관리'),
+    ('Java OOP와 상속 설계', 'Java'),
+    ('Java OOP와 상속 설계', 'OOP'),
+    ('Java OOP와 상속 설계', '상속'),
+    ('인터페이스, 제네릭, 컬렉션 실전', '인터페이스'),
+    ('인터페이스, 제네릭, 컬렉션 실전', '제네릭'),
+    ('인터페이스, 제네릭, 컬렉션 실전', '컬렉션'),
+    ('Git 브랜치 전략과 GitFlow', 'Git'),
+    ('Git 브랜치 전략과 GitFlow', '브랜치 전략'),
+    ('Git 브랜치 전략과 GitFlow', 'GitFlow'),
+    ('Pull Request와 코드 리뷰 실무', 'Git'),
+    ('Pull Request와 코드 리뷰 실무', 'Pull Request'),
+    ('Pull Request와 코드 리뷰 실무', '코드 리뷰'),
+    ('SQL JOIN과 서브쿼리 패턴', 'SQL'),
+    ('SQL JOIN과 서브쿼리 패턴', 'JOIN'),
+    ('SQL JOIN과 서브쿼리 패턴', '서브쿼리'),
+    ('인덱스, 트랜잭션, PostgreSQL 성능 기본기', '인덱스'),
+    ('인덱스, 트랜잭션, PostgreSQL 성능 기본기', '트랜잭션'),
+    ('인덱스, 트랜잭션, PostgreSQL 성능 기본기', 'PostgreSQL'),
+    ('REST URI 설계와 HTTP 메서드', 'REST'),
+    ('REST URI 설계와 HTTP 메서드', 'URI 설계'),
+    ('REST URI 설계와 HTTP 메서드', 'HTTP 메서드'),
+    ('Swagger와 REST API 문서화', 'Swagger'),
+    ('Swagger와 REST API 문서화', 'REST'),
+    ('Swagger와 REST API 문서화', 'HTTP 상태코드'),
+    ('Spring Boot DI/IoC와 Spring Bean 등록 흐름', 'Spring Boot'),
+    ('Spring Boot DI/IoC와 Spring Bean 등록 흐름', 'DI/IoC'),
+    ('Spring Boot DI/IoC와 Spring Bean 등록 흐름', 'Spring Bean'),
+    ('Spring MVC 요청 처리와 3계층 구조', 'Spring Boot'),
+    ('Spring MVC 요청 처리와 3계층 구조', 'Spring MVC'),
+    ('Spring MVC 요청 처리와 3계층 구조', '3계층 구조'),
+    ('JPA Entity 매핑과 JPQL 실전', 'JPA'),
+    ('JPA Entity 매핑과 JPQL 실전', 'Entity 매핑'),
+    ('JPA Entity 매핑과 JPQL 실전', 'JPQL'),
+    ('FetchType, N+1, QueryDSL 최적화', 'FetchType'),
+    ('FetchType, N+1, QueryDSL 최적화', 'N+1 문제'),
+    ('FetchType, N+1, QueryDSL 최적화', 'QueryDSL'),
+    ('Redis 자료구조, TTL, Spring Cache', 'Redis'),
+    ('Redis 자료구조, TTL, Spring Cache', 'Redis 자료구조'),
+    ('Redis 자료구조, TTL, Spring Cache', 'Redis TTL'),
+    ('Redis 자료구조, TTL, Spring Cache', 'Spring Cache'),
+    ('Redis Session, Pub/Sub, 분산 락', 'Redis'),
+    ('Redis Session, Pub/Sub, 분산 락', 'Redis Session'),
+    ('Redis Session, Pub/Sub, 분산 락', 'Pub/Sub'),
+    ('Redis Session, Pub/Sub, 분산 락', '분산 락'),
+    ('JUnit5와 Mockito 단위 테스트', 'JUnit5'),
+    ('JUnit5와 Mockito 단위 테스트', 'Mockito'),
+    ('JUnit5와 Mockito 단위 테스트', 'BDD'),
+    ('JUnit5와 Mockito 단위 테스트', '단위 테스트'),
+    ('MockMvc와 Spring Boot 통합 테스트', 'Spring Boot'),
+    ('MockMvc와 Spring Boot 통합 테스트', 'MockMvc'),
+    ('MockMvc와 Spring Boot 통합 테스트', '통합 테스트'),
+    ('MockMvc와 Spring Boot 통합 테스트', '테스트 커버리지'),
+    ('Spring Security 필터 체인과 JWT 인증', 'Spring Security'),
+    ('Spring Security 필터 체인과 JWT 인증', 'JWT'),
+    ('OAuth2와 소셜 로그인 연동', 'Spring Security'),
+    ('OAuth2와 소셜 로그인 연동', 'OAuth2'),
+    ('OAuth2와 소셜 로그인 연동', '소셜 로그인'),
+    ('Docker와 docker-compose 실전', 'Docker'),
+    ('Docker와 docker-compose 실전', 'docker-compose'),
+    ('GitHub Actions와 CI/CD 자동화', 'GitHub Actions'),
+    ('GitHub Actions와 CI/CD 자동화', 'CI/CD'),
+    ('GitHub Actions와 CI/CD 자동화', 'AWS EC2'),
+    ('SOLID 원칙과 디자인 패턴 실전', 'SOLID 원칙'),
+    ('SOLID 원칙과 디자인 패턴 실전', '디자인 패턴'),
+    ('SOLID 원칙과 디자인 패턴 실전', 'Singleton'),
+    ('SOLID 원칙과 디자인 패턴 실전', 'Factory 패턴'),
+    ('SOLID 원칙과 디자인 패턴 실전', 'Strategy 패턴'),
+    ('OWASP, XSS, CSRF, SQL Injection, CORS', 'OWASP'),
+    ('OWASP, XSS, CSRF, SQL Injection, CORS', 'XSS'),
+    ('OWASP, XSS, CSRF, SQL Injection, CORS', 'CSRF'),
+    ('OWASP, XSS, CSRF, SQL Injection, CORS', 'SQL Injection'),
+    ('OWASP, XSS, CSRF, SQL Injection, CORS', 'CORS'),
+    ('OWASP, XSS, CSRF, SQL Injection, CORS', 'HTTPS'),
+    ('Kafka와 Kafka 토픽 흐름', 'Kafka'),
+    ('Kafka와 Kafka 토픽 흐름', 'Kafka 토픽'),
+    ('MSA API Gateway와 서비스 분리 기준', 'MSA'),
+    ('MSA API Gateway와 서비스 분리 기준', 'API Gateway'),
+    ('MSA API Gateway와 서비스 분리 기준', '서비스 분리');
+
+INSERT INTO courses (
+    instructor_id, title, subtitle, description,
+    thumbnail_url, intro_video_url, video_asset_key, duration_seconds,
+    price, original_price, currency, difficulty_level, language,
+    has_certificate, status, published_at
+)
+SELECT
+    u.user_id,
+    seed.course_title,
+    seed.subtitle,
+    seed.description,
+    seed.thumbnail_url,
+    seed.intro_video_url,
+    NULL,
+    CASE seed.difficulty_level
+        WHEN 'BEGINNER' THEN 6600
+        WHEN 'INTERMEDIATE' THEN 8400
+        ELSE 10200
+    END,
+    0,
+    0,
+    'KRW',
+    seed.difficulty_level,
+    'ko',
+    TRUE,
+    'PUBLISHED',
+    seed.published_at
+FROM tmp_backend_tag_video_seed seed
+JOIN users u ON u.email = seed.instructor_email
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM courses c
+    WHERE c.title = seed.course_title
+);
+
+UPDATE courses c
+SET
+    price = 0,
+    original_price = 0,
+    currency = 'KRW',
+    thumbnail_url = seed.thumbnail_url,
+    intro_video_url = seed.intro_video_url,
+    status = 'PUBLISHED',
+    published_at = COALESCE(c.published_at, seed.published_at)
+FROM tmp_backend_tag_video_seed seed
+WHERE c.title = seed.course_title
+  AND (
+      COALESCE(c.price, -1) <> 0
+      OR COALESCE(c.original_price, -1) <> 0
+      OR COALESCE(c.currency, '') <> 'KRW'
+      OR COALESCE(c.thumbnail_url, '') <> seed.thumbnail_url
+      OR COALESCE(c.intro_video_url, '') <> seed.intro_video_url
+      OR COALESCE(c.status, '') <> 'PUBLISHED'
+      OR c.published_at IS NULL
+  );
+
+INSERT INTO course_prerequisites (course_id, prerequisite)
+WITH prerequisite_seed(prerequisite_text, display_order) AS (
+    VALUES
+        ('백엔드 기본 문법 또는 웹 서비스 흐름을 알고 있으면 예제를 더 빠르게 이해할 수 있습니다.', 1),
+        ('IDE 또는 터미널에서 간단한 프로젝트를 실행해 본 경험이 있으면 실습을 따라가기 쉽습니다.', 2)
+)
+SELECT c.course_id, ps.prerequisite_text
+FROM tmp_backend_tag_video_seed seed
+JOIN courses c ON c.title = seed.course_title
+JOIN prerequisite_seed ps ON 1 = 1
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM course_prerequisites cp
+    WHERE cp.course_id = c.course_id
+      AND cp.prerequisite = ps.prerequisite_text
+);
+
+INSERT INTO course_job_relevance (course_id, job_relevance)
+WITH relevance_seed(job_relevance, display_order) AS (
+    VALUES
+        ('백엔드 개발자', 1),
+        ('서버 애플리케이션 개발과 운영을 준비하는 주니어 개발자', 2)
+)
+SELECT c.course_id, rs.job_relevance
+FROM tmp_backend_tag_video_seed seed
+JOIN courses c ON c.title = seed.course_title
+JOIN relevance_seed rs ON 1 = 1
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM course_job_relevance cj
+    WHERE cj.course_id = c.course_id
+      AND cj.job_relevance = rs.job_relevance
+);
+
+INSERT INTO course_objectives (course_id, objective_text, display_order)
+WITH objective_seed(display_order) AS (
+    VALUES (1), (2)
+)
+SELECT
+    c.course_id,
+    CASE os.display_order
+        WHEN 1 THEN seed.tag_summary || ' 관련 핵심 개념과 요청/데이터 흐름을 설명할 수 있습니다.'
+        ELSE '관련 태그를 실제 백엔드 코드와 운영 시나리오에 연결해 적용할 수 있습니다.'
+    END,
+    os.display_order
+FROM tmp_backend_tag_video_seed seed
+JOIN courses c ON c.title = seed.course_title
+JOIN objective_seed os ON 1 = 1
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM course_objectives co
+    WHERE co.course_id = c.course_id
+      AND co.display_order = os.display_order
+);
+
+INSERT INTO course_target_audiences (course_id, audience_description, display_order)
+WITH audience_seed(display_order) AS (
+    VALUES (1), (2)
+)
+SELECT
+    c.course_id,
+    CASE ads.display_order
+        WHEN 1 THEN seed.tag_summary || ' 태그를 실무 기준으로 보강하고 싶은 백엔드 학습자'
+        ELSE 'Backend Master Roadmap에서 특정 태그가 막혀 추가 설명이 필요한 주니어 개발자'
+    END,
+    ads.display_order
+FROM tmp_backend_tag_video_seed seed
+JOIN courses c ON c.title = seed.course_title
+JOIN audience_seed ads ON 1 = 1
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM course_target_audiences cta
+    WHERE cta.course_id = c.course_id
+      AND cta.display_order = ads.display_order
+);
+
+INSERT INTO course_tag_maps (course_id, tag_id, proficiency_level)
+SELECT
+    c.course_id,
+    t.tag_id,
+    CASE seed.difficulty_level
+        WHEN 'BEGINNER' THEN 2
+        ELSE 3
+    END
+FROM tmp_backend_tag_video_seed seed
+JOIN courses c ON c.title = seed.course_title
+JOIN tmp_backend_tag_video_tag_seed ts ON ts.course_title = seed.course_title
+JOIN tags t ON t.name = ts.tag_name
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM course_tag_maps ctm
+    WHERE ctm.course_id = c.course_id
+      AND ctm.tag_id = t.tag_id
+);
+
+INSERT INTO course_sections (course_id, title, description, sort_order, is_published)
+WITH section_seed(sort_order) AS (
+    VALUES (1), (2)
+)
+SELECT
+    c.course_id,
+    CASE ss.sort_order
+        WHEN 1 THEN '핵심 태그 정리'
+        ELSE '실전 적용과 체크리스트'
+    END,
+    CASE ss.sort_order
+        WHEN 1 THEN seed.tag_summary || ' 개념을 빠르게 연결해 이해합니다.'
+        ELSE seed.tag_summary || '를 실제 서비스와 운영 상황에 적용하는 방법을 정리합니다.'
+    END,
+    ss.sort_order,
+    TRUE
+FROM tmp_backend_tag_video_seed seed
+JOIN courses c ON c.title = seed.course_title
+JOIN section_seed ss ON 1 = 1
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM course_sections cs
+    WHERE cs.course_id = c.course_id
+      AND cs.sort_order = ss.sort_order
+);
+
+INSERT INTO lessons (
+    section_id, title, description, lesson_type,
+    video_url, video_asset_key, video_provider,
+    thumbnail_url, duration_seconds, is_preview, is_published, sort_order
+)
+WITH lesson_seed(section_order, lesson_order, title_suffix, description_body, video_url, duration_seconds, is_preview) AS (
+    VALUES
+        (1, 1, '개념 지도', '핵심 태그의 전체 맥락을 먼저 잡습니다.', '/samples/sample-intro.mp4', 720, TRUE),
+        (1, 2, '태그별 실전 포인트', '자주 헷갈리는 기준과 예제를 함께 정리합니다.', '/samples/ocr-code-demo.mp4', 900, FALSE),
+        (2, 1, '실무 시나리오', '서비스 구현과 운영에서 어떻게 이어지는지 살펴봅니다.', '/samples/lesson-spring-di.mp4', 840, FALSE),
+        (2, 2, '체크리스트', '학습 후 바로 점검할 포인트를 정리합니다.', '/samples/lesson-os-context.mp4', 780, FALSE)
+)
+SELECT
+    cs.section_id,
+    seed.course_title || ' ' || ls.title_suffix,
+    seed.tag_summary || ' 학습을 위해 ' || ls.description_body,
+    'VIDEO',
+    CASE
+        WHEN ls.section_order = 1 AND ls.lesson_order = 1
+            THEN seed.intro_video_url
+        WHEN seed.course_title LIKE 'Spring %'
+            OR seed.course_title LIKE 'MockMvc%'
+            OR seed.course_title LIKE 'OAuth2%'
+            OR seed.course_title LIKE 'JPA %'
+            OR seed.course_title LIKE 'FetchType%'
+            THEN '/samples/lesson-spring-bean.mp4'
+        WHEN seed.course_title LIKE 'Linux %'
+            THEN '/samples/lesson-os-context.mp4'
+        ELSE ls.video_url
+    END,
+    NULL,
+    NULL,
+    c.thumbnail_url,
+    ls.duration_seconds,
+    ls.is_preview,
+    TRUE,
+    ls.lesson_order
+FROM tmp_backend_tag_video_seed seed
+JOIN courses c ON c.title = seed.course_title
+JOIN lesson_seed ls ON 1 = 1
+JOIN course_sections cs ON cs.course_id = c.course_id AND cs.sort_order = ls.section_order
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM lessons l
+    WHERE l.section_id = cs.section_id
+      AND l.sort_order = ls.lesson_order
+);
+
+INSERT INTO course_node_mappings (course_id, node_id, created_at)
+SELECT DISTINCT
+    c.course_id,
+    rn.node_id,
+    seed.published_at
+FROM tmp_backend_tag_video_seed seed
+JOIN courses c ON c.title = seed.course_title
+JOIN tmp_backend_tag_video_tag_seed ts ON ts.course_title = seed.course_title
+JOIN tags t ON t.name = ts.tag_name
+JOIN node_required_tags nrt ON nrt.tag_id = t.tag_id
+JOIN roadmap_nodes rn ON rn.node_id = nrt.node_id
+JOIN roadmaps r ON r.roadmap_id = rn.roadmap_id
+WHERE r.title = 'Backend Master Roadmap'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM course_node_mappings cnm
+      WHERE cnm.course_id = c.course_id
+        AND cnm.node_id = rn.node_id
+  );
+
+INSERT INTO roadmap_node_resources (
+    node_id, title, url, description, source_type, sort_order, active, created_at, updated_at
+)
+SELECT DISTINCT
+    rn.node_id,
+    c.title,
+    'course-detail.html?courseId=' || c.course_id,
+    '관련 태그: ' || seed.tag_summary || '. 노드에서 막힌 태그를 영상 중심으로 빠르게 보강할 수 있는 공개 강의입니다.',
+    'COURSE',
+    4,
+    TRUE,
+    seed.published_at,
+    seed.published_at
+FROM tmp_backend_tag_video_seed seed
+JOIN courses c ON c.title = seed.course_title
+JOIN tmp_backend_tag_video_tag_seed ts ON ts.course_title = seed.course_title
+JOIN tags t ON t.name = ts.tag_name
+JOIN node_required_tags nrt ON nrt.tag_id = t.tag_id
+JOIN roadmap_nodes rn ON rn.node_id = nrt.node_id
+JOIN roadmaps r ON r.roadmap_id = rn.roadmap_id
+WHERE r.title = 'Backend Master Roadmap'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM roadmap_node_resources existing
+      WHERE existing.node_id = rn.node_id
+        AND existing.url = 'course-detail.html?courseId=' || c.course_id
+  );
+
+INSERT INTO course_announcements (
+    course_id, announcement_type, title, content, is_pinned, display_order,
+    published_at, exposure_start_at, exposure_end_at,
+    event_banner_text, event_link, created_at, updated_at
+)
+SELECT
+    c.course_id,
+    'NORMAL',
+    seed.course_title || ' 학습 가이드',
+    '이 강의는 Backend Master Roadmap의 관련 태그를 빠르게 보강할 수 있도록 구성되었습니다. 태그: '
+        || seed.tag_summary
+        || '. 노드에서 막힌 태그를 먼저 확인한 뒤 필요한 섹션만 골라 들어도 흐름을 잡을 수 있습니다.',
+    FALSE,
+    1,
+    seed.published_at,
+    seed.published_at,
+    NULL,
+    NULL,
+    NULL,
+    seed.published_at,
+    seed.published_at
+FROM tmp_backend_tag_video_seed seed
+JOIN courses c ON c.title = seed.course_title
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM course_announcements ca
+    WHERE ca.course_id = c.course_id
+      AND ca.title = seed.course_title || ' 학습 가이드'
+);
+
+DROP TABLE IF EXISTS tmp_backend_tag_video_tag_seed;
+DROP TABLE IF EXISTS tmp_backend_tag_video_seed;
+
 -- =============================================
 -- 로드맵 빌더 모듈 데이터 (builder_modules)
 -- =============================================

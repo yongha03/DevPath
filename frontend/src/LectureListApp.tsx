@@ -54,6 +54,29 @@ function buildEmptyCatalogMenu(): CourseCatalogMenu {
   return { categories: [] }
 }
 
+function getCourseInstructorLabel(course: { instructorName: string; instructorChannelName: string | null }) {
+  const instructorName = course.instructorName?.trim()
+  if (instructorName) {
+    return instructorName
+  }
+
+  const channelName = course.instructorChannelName?.trim()
+  if (channelName) {
+    return channelName
+  }
+
+  return '강사'
+}
+
+function getCourseDisplayTitle(title: string) {
+  const normalizedTitle = title.trim()
+  if (normalizedTitle.startsWith('로드맵 실전: ')) {
+    return normalizedTitle.slice('로드맵 실전: '.length)
+  }
+
+  return normalizedTitle
+}
+
 export default function LectureListApp() {
   const [session, setSession] = useState(() => readStoredAuthSession())
   const [profileImage, setProfileImage] = useState<string | null>(null)
@@ -480,6 +503,14 @@ export default function LectureListApp() {
               {filteredCourses.map((course) => {
                 const displayPrice = getCourseDisplayPrice(course)
                 const priceLabel = formatCoursePrice(displayPrice)
+                const instructorLabel = getCourseInstructorLabel(course)
+                const courseTitle = getCourseDisplayTitle(course.title)
+                const instructorTooltip =
+                  course.instructorChannelName &&
+                  course.instructorChannelName.trim() &&
+                  course.instructorChannelName !== instructorLabel
+                    ? `채널: ${course.instructorChannelName}`
+                    : undefined
 
                 return (
                   <div
@@ -490,7 +521,7 @@ export default function LectureListApp() {
                     <div className="relative aspect-video overflow-hidden bg-gray-100">
                       <img
                         src={course.thumbnailUrl ?? 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?w=800&q=80'}
-                        alt={course.title}
+                        alt={courseTitle}
                         className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
                       />
                       {course.badge ? (
@@ -525,9 +556,9 @@ export default function LectureListApp() {
 
                     <div className="p-4">
                       <div className="mb-1 text-[10px] font-bold text-gray-500">{course.displayCategory}</div>
-                      <h3 className="line-clamp-2 h-10 text-sm leading-tight font-bold text-gray-900 transition group-hover:text-brand">{course.title}</h3>
+                      <h3 className="line-clamp-2 h-10 text-sm leading-tight font-bold text-gray-900 transition group-hover:text-brand">{courseTitle}</h3>
                       <div className="mt-2 flex items-center gap-1 text-xs text-gray-500">
-                        <span className="font-medium text-gray-700">DevPath</span>
+                        <span className="font-medium text-gray-700" title={instructorTooltip}>{instructorLabel}</span>
                         <div className="ml-auto flex text-yellow-400">
                           <i className="fas fa-star" />
                           <i className="fas fa-star" />
