@@ -25,6 +25,11 @@ function readAuthViewFromLocation(): AuthView | null {
   return value === 'login' || value === 'signup' ? value : null
 }
 
+function readNodeTagsFromLocation(): string[] {
+  const raw = new URLSearchParams(window.location.search).get('tags')
+  return raw ? raw.split(',').map(t => t.trim()).filter(Boolean) : []
+}
+
 function syncAuthViewInLocation(view: AuthView | null) {
   const url = new URL(window.location.href)
   if (view) url.searchParams.set('auth', view)
@@ -73,6 +78,7 @@ export default function LectureListApp() {
   const [megaMenuOpen, setMegaMenuOpen] = useState(false)
   const [pendingBookmarkCourseId, setPendingBookmarkCourseId] = useState<number | null>(null)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
+  const [nodeTagsFilter, setNodeTagsFilter] = useState<string[]>(() => readNodeTagsFromLocation())
   const deferredSearchTerm = useDeferredValue(searchTerm.trim().toLowerCase())
 
   const categoryConfigs = normalizeLectureCategoryConfigs(catalogMenu)
@@ -95,6 +101,9 @@ export default function LectureListApp() {
         || (priceFilter === 'UNDER_100000' && price > 0 && price <= 100000)
         || (priceFilter === 'OVER_100000' && price > 100000)
       const matchesSearch = !deferredSearchTerm || course.searchIndex.includes(deferredSearchTerm)
+      const matchesNodeTags =
+        nodeTagsFilter.length === 0
+        || nodeTagsFilter.some(tag => course.searchIndex.includes(tag.toLowerCase()))
 
       return (
         matchesCategory
@@ -102,6 +111,7 @@ export default function LectureListApp() {
         && matchesDifficulty
         && matchesPrice
         && matchesSearch
+        && matchesNodeTags
         && (!onlyFree || isFreeCourse(course))
       )
     }),
@@ -466,6 +476,19 @@ export default function LectureListApp() {
             <span>{activeCategory?.title ?? '강의 목록'}</span>
             <span className="ml-1 text-sm font-normal text-gray-400">({filteredCourses.length}개)</span>
           </h2>
+
+          {nodeTagsFilter.length > 0 && (
+            <div className="mb-4 flex items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800">
+              <i className="fas fa-filter" />
+              <span>로드맵 노드 관련 강좌 필터 적용 중: <strong>{nodeTagsFilter.join(', ')}</strong></span>
+              <button
+                onClick={() => setNodeTagsFilter([])}
+                className="ml-auto text-green-600 hover:text-green-800"
+              >
+                <i className="fas fa-times" /> 필터 해제
+              </button>
+            </div>
+          )}
 
           {loadingCourses ? <LoadingCards /> : null}
 

@@ -12,6 +12,7 @@ import com.devpath.domain.roadmap.entity.RoadmapNodeResource;
 import com.devpath.domain.roadmap.repository.CustomNodePrerequisiteRepository;
 import com.devpath.domain.roadmap.repository.CustomRoadmapNodeRepository;
 import com.devpath.domain.roadmap.repository.CustomRoadmapRepository;
+import com.devpath.domain.roadmap.repository.NodeRequiredTagRepository;
 import com.devpath.domain.roadmap.repository.RoadmapNodeResourceRepository;
 import com.devpath.domain.user.entity.User;
 import com.devpath.domain.user.repository.UserRepository;
@@ -32,6 +33,7 @@ public class CustomRoadmapQueryService {
   private final CustomNodePrerequisiteRepository customNodePrerequisiteRepository;
   private final NodeClearanceRepository nodeClearanceRepository;
   private final RoadmapNodeResourceRepository roadmapNodeResourceRepository;
+  private final NodeRequiredTagRepository nodeRequiredTagRepository;
   private final RoadmapProgressService roadmapProgressService;
 
   @Transactional(readOnly = true)
@@ -80,6 +82,14 @@ public class CustomRoadmapQueryService {
             : roadmapNodeResourceRepository.findActiveByNodeIds(originalNodeIds).stream()
                 .collect(Collectors.groupingBy(resource -> resource.getNode().getNodeId()));
 
+    Map<Long, List<String>> requiredTagsByNodeId =
+        originalNodeIds.isEmpty()
+            ? Map.of()
+            : nodeRequiredTagRepository.findTagNamesByNodeIds(originalNodeIds).stream()
+                .collect(Collectors.groupingBy(
+                    p -> p.getNodeId(),
+                    Collectors.mapping(p -> p.getTagName(), Collectors.toList())));
+
     return MyRoadmapDto.DetailResponse.from(
         customRoadmap,
         roadmapProgressService.calculateProgressRate(customNodes),
@@ -87,7 +97,8 @@ public class CustomRoadmapQueryService {
         prerequisiteIdsByNodeId,
         statusByNodeId,
         clearanceByNodeId,
-        resourcesByNodeId);
+        resourcesByNodeId,
+        requiredTagsByNodeId);
   }
 
   @Transactional

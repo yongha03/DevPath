@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -205,7 +206,16 @@ public class DiagnosisQuizService {
             String response = geminiProvider.generate(prompt);
             if (response != null) {
                 List<String> parsed = parseJsonArray(response);
-                if (!parsed.isEmpty()) return parsed;
+                if (!parsed.isEmpty()) {
+                    // Gemini 응답을 canonical 태그로 필터링 (case-insensitive)
+                    Map<String, String> canonicalByLower = tags.stream()
+                        .collect(Collectors.toMap(String::toLowerCase, t -> t, (a, b) -> a));
+                    List<String> validated = parsed.stream()
+                        .map(t -> canonicalByLower.get(t.toLowerCase()))
+                        .filter(Objects::nonNull)
+                        .toList();
+                    if (!validated.isEmpty()) return validated;
+                }
             }
         } catch (Exception e) {
             log.warn("[DiagnosisQuizService] Gemini 태그 추출 실패: {}", e.getMessage());
@@ -239,9 +249,8 @@ public class DiagnosisQuizService {
                 int end   = response.lastIndexOf('}');
                 if (start >= 0 && end > start) {
                     JsonNode json    = OBJECT_MAPPER.readTree(response.substring(start, end + 1));
-                    String title     = json.path("title").asText(null);
-                    String content   = json.path("content").asText(null);
-                    String subTopics = json.path("subTopics").asText(tagList);
+                    String title   = json.path("title").asText(null);
+                    String content = json.path("content").asText(null);
                     if (title != null) {
                         return roadmapNodeRepository.save(RoadmapNode.builder()
                             .roadmap(baseNode.getRoadmap())
@@ -249,7 +258,7 @@ public class DiagnosisQuizService {
                             .content(content)
                             .nodeType("BRANCH")
                             .sortOrder(null)
-                            .subTopics(subTopics)
+                            .subTopics(tagList)   // 항상 canonical 태그 사용
                             .branchGroup(null)
                             .build());
                     }

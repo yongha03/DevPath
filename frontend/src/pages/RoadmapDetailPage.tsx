@@ -127,10 +127,6 @@ function parseEssentialConcept(topic: string): EssentialConcept {
   }
 }
 
-function essentialConceptLabel(topic: string) {
-  return parseEssentialConcept(topic).title
-}
-
 function splitNodeDescription(content?: string | null) {
   const fallback = '상세 내용 준비 중입니다.'
   return (content && content.trim() ? content : fallback)
@@ -674,14 +670,14 @@ function RoadmapNodeCard({ node, proofCard, proofSide, pendingChange, badge, onN
         )}
       </div>
       {node.content && <div className="node-desc">{node.content}</div>}
-      {node.subTopics && node.subTopics.length > 0 && (
+      {node.requiredTags && node.requiredTags.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-2">
-          {node.subTopics.map((topic) => (
+          {node.requiredTags.map((tag) => (
             <span
-              key={topic}
+              key={tag}
               className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200"
             >
-              {essentialConceptLabel(topic)}
+              {tag}
             </span>
           ))}
         </div>
@@ -968,6 +964,13 @@ function RoadmapGraph({
   )
 }
 
+function buildLectureListUrl(tags: string[]): string {
+  const query = tags.length > 0
+    ? `?tags=${encodeURIComponent(tags.join(','))}`
+    : ''
+  return `lecture-list.html${query}`
+}
+
 interface NodeDrawerProps {
   node: RoadmapNodeItem | null
   customRoadmapId: number
@@ -1007,7 +1010,9 @@ function NodeDrawer({ node, customRoadmapId, originalRoadmapId, onClose, onClear
     }
   }
 
-  const canClear = node.status === 'PENDING' || node.status === 'IN_PROGRESS'
+  const canClear =
+    (node.status === 'PENDING' || node.status === 'IN_PROGRESS')
+    && node.requiredTagsSatisfied === true
   const resources = node.resources ?? []
   const descriptionParagraphs = splitNodeDescription(node.content)
   const concepts = (node.subTopics ?? []).map(parseEssentialConcept).filter((concept) => concept.title.length > 0)
@@ -1089,20 +1094,29 @@ function NodeDrawer({ node, customRoadmapId, originalRoadmapId, onClose, onClear
           </section>
         </div>
         <div className="p-6 border-t border-gray-100 bg-white space-y-3 shrink-0 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
-          {canClear && (
-            <button
-              onClick={handleClear}
-              disabled={clearing}
-              className="w-full bg-[#00c471] hover:bg-green-600 disabled:opacity-50 text-white py-4 rounded-xl font-bold text-sm flex justify-center items-center gap-2 transition"
-            >
-              {clearing
-                ? <><i className="fas fa-spinner fa-spin" /> 처리 중...</>
-                : <><i className="fas fa-check-circle" /> 이 노드 완료하기</>
-              }
-            </button>
+          {node.status !== 'COMPLETED' && (
+            canClear
+              ? (
+                <button
+                  onClick={handleClear}
+                  disabled={clearing}
+                  className="w-full bg-[#00c471] hover:bg-green-600 disabled:opacity-50 text-white py-4 rounded-xl font-bold text-sm flex justify-center items-center gap-2 transition"
+                >
+                  {clearing
+                    ? <><i className="fas fa-spinner fa-spin" /> 처리 중...</>
+                    : <><i className="fas fa-check-circle" /> 이 노드 완료하기</>
+                  }
+                </button>
+              ) : (
+                <button
+                  className="w-full bg-[#00c471] hover:bg-green-600 text-white py-4 rounded-xl font-bold text-sm flex justify-center items-center gap-2 transition"
+                >
+                  <i className="fas fa-play-circle" /> 추천 무료 강좌 보기
+                </button>
+              )
           )}
           <button
-            onClick={() => { window.location.href = 'lecture-list.html' }}
+            onClick={() => { window.location.href = buildLectureListUrl(node.requiredTags ?? []) }}
             className="w-full bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 py-4 rounded-xl font-bold text-sm flex justify-center items-center gap-2 transition"
           >
             <i className="fas fa-list" /> 전체 강좌 목록 보기
