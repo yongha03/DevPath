@@ -38,7 +38,7 @@ public class CustomRoadmapController {
       @Parameter(description = "유저 ID (JWT 적용 전 임시)", example = "1") @RequestParam Long userId) {
     return ResponseEntity.ok(
         ApiResponse.ok(
-            MyRoadmapDto.ListResponse.from(customRoadmapQueryService.getMyRoadmaps(userId))));
+            MyRoadmapDto.ListResponse.of(customRoadmapQueryService.getMyRoadmaps(userId))));
   }
 
   @Operation(

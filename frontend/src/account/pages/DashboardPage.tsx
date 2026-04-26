@@ -13,7 +13,7 @@ import type {
   NotificationItem,
   ProofCardGalleryItem,
 } from '../../types/learner'
-import type { RoadmapDetail, RoadmapNodeItem } from '../../types/roadmap'
+import type { MyRoadmapSummary, RoadmapDetail, RoadmapNodeItem } from '../../types/roadmap'
 
 type DashboardState = {
   summary: DashboardSummary
@@ -23,6 +23,7 @@ type DashboardState = {
   notifications: NotificationItem[]
   historySummary: LearningHistorySummary
   enrollments: Enrollment[]
+  roadmapSummary: MyRoadmapSummary | null
   roadmap: RoadmapDetail | null
   proofCards: ProofCardGalleryItem[]
   growthRecommendation: GrowthRecommendation | null
@@ -59,6 +60,7 @@ const emptyState: DashboardState = {
     supplementRecommendationCount: 0,
   },
   enrollments: [],
+  roadmapSummary: null,
   roadmap: null,
   proofCards: [],
   growthRecommendation: null,
@@ -95,9 +97,84 @@ function buildSidebarNodes(nodes: RoadmapNodeItem[]) {
     .filter((node) => node.branchGroup == null)
     .sort((left, right) => left.sortOrder - right.sortOrder)
 
+  if (sorted.length <= 5) {
+    return sorted
+  }
+
   const currentIndex = sorted.findIndex((node) => node.status === 'IN_PROGRESS')
-  const start = currentIndex >= 0 ? Math.max(0, currentIndex - 2) : 0
+  const pendingIndex = sorted.findIndex((node) => node.status === 'PENDING')
+  const anchorIndex = currentIndex >= 0 ? currentIndex : pendingIndex >= 0 ? pendingIndex : sorted.length - 1
+  let start = Math.max(0, anchorIndex - 1)
+
+  if (start + 5 > sorted.length) {
+    start = sorted.length - 5
+  }
+
   return sorted.slice(start, start + 5)
+}
+
+function getRoadmapFocusNode(nodes: RoadmapNodeItem[]) {
+  const sorted = [...nodes]
+    .filter((node) => node.branchGroup == null)
+    .sort((left, right) => left.sortOrder - right.sortOrder)
+
+  return (
+    sorted.find((node) => node.status === 'IN_PROGRESS') ??
+    sorted.find((node) => node.status === 'PENDING') ??
+    sorted.at(-1) ??
+    null
+  )
+}
+
+function getRoadmapNodeStatusLabel(node: RoadmapNodeItem) {
+  switch (node.status) {
+    case 'COMPLETED':
+      return '완료'
+    case 'IN_PROGRESS':
+      return '학습 중'
+    case 'LOCKED':
+      return '잠금'
+    default:
+      return '대기'
+  }
+}
+
+function getRoadmapNodeTone(node: RoadmapNodeItem) {
+  switch (node.status) {
+    case 'COMPLETED':
+      return {
+        dot: 'border-emerald-500 bg-emerald-500 text-white shadow-emerald-100',
+        card: 'border-emerald-100 bg-emerald-50/70 text-emerald-900',
+        chip: 'bg-emerald-100 text-emerald-700',
+      }
+    case 'IN_PROGRESS':
+      return {
+        dot: 'border-sky-500 bg-white text-sky-500 shadow-sky-100',
+        card: 'border-sky-200 bg-sky-50/80 text-slate-900',
+        chip: 'bg-sky-100 text-sky-700',
+      }
+    case 'LOCKED':
+      return {
+        dot: 'border-slate-300 bg-slate-100 text-slate-400 shadow-slate-100',
+        card: 'border-slate-200 bg-slate-50 text-slate-500',
+        chip: 'bg-slate-200 text-slate-500',
+      }
+    default:
+      return {
+        dot: 'border-violet-300 bg-violet-50 text-violet-500 shadow-violet-100',
+        card: 'border-violet-100 bg-violet-50/70 text-slate-800',
+        chip: 'bg-violet-100 text-violet-700',
+      }
+  }
+}
+
+function getRoadmapActivityAt(roadmapSummary: MyRoadmapSummary | null) {
+  return roadmapSummary?.lastStudiedAt ?? roadmapSummary?.updatedAt ?? roadmapSummary?.createdAt ?? null
+}
+
+function getRoadmapActivityTimestamp(roadmapSummary: MyRoadmapSummary) {
+  const activityAt = roadmapSummary.lastStudiedAt ?? roadmapSummary.updatedAt ?? roadmapSummary.createdAt
+  return activityAt ? new Date(activityAt).getTime() : 0
 }
 
 function formatRelativeTime(createdAt: string | null | undefined) {
@@ -232,13 +309,18 @@ export default function DashboardPage({ session }: { session: AuthSession }) {
     async function loadRoadmap() {
       try {
         const listResult = await roadmapApi.getMyRoadmaps(signal)
-        const firstRoadmap = listResult.roadmaps[0]
-        if (!firstRoadmap) return
+        const selectedRoadmap = [...listResult.roadmaps].sort(
+          (left, right) => getRoadmapActivityTimestamp(right) - getRoadmapActivityTimestamp(left),
+        )[0]
+        if (!selectedRoadmap) {
+          setState((current) => ({ ...current, roadmapSummary: null, roadmap: null }))
+          return
+        }
 
-        const detail = await roadmapApi.getMyRoadmapDetail(firstRoadmap.customRoadmapId, signal)
-        setState((current) => ({ ...current, roadmap: detail }))
+        const detail = await roadmapApi.getMyRoadmapDetail(selectedRoadmap.customRoadmapId, signal)
+        setState((current) => ({ ...current, roadmapSummary: selectedRoadmap, roadmap: detail }))
       } catch {
-        setState((current) => ({ ...current, roadmap: null }))
+        setState((current) => ({ ...current, roadmapSummary: null, roadmap: null }))
       }
     }
 
@@ -268,6 +350,16 @@ export default function DashboardPage({ session }: { session: AuthSession }) {
     ? clampProgress(state.roadmap.progressRate)
     : clampProgress(recentEnrollment?.progressPercentage)
   const sidebarNodes = state.roadmap ? buildSidebarNodes(state.roadmap.nodes) : []
+  const roadmapFocusNode = state.roadmap ? getRoadmapFocusNode(state.roadmap.nodes) : null
+  const roadmapFocusProgress =
+    roadmapFocusNode?.status === 'IN_PROGRESS'
+      ? clampProgress((roadmapFocusNode.lessonCompletionRate ?? 0) * 100)
+      : null
+  const roadmapActivityAt = getRoadmapActivityAt(state.roadmapSummary)
+  const roadmapCompletedNodeCount = state.roadmap
+    ? state.roadmap.nodes.filter((node) => node.status === 'COMPLETED').length
+    : 0
+  const roadmapEntryHref = state.roadmap ? `roadmap.html?id=${state.roadmap.customRoadmapId}` : 'roadmap-hub.html'
   const growthItems = state.growthRecommendation?.recommendations ?? []
 
   return (
@@ -703,8 +795,233 @@ export default function DashboardPage({ session }: { session: AuthSession }) {
         </section>
 
         <aside className="hidden w-80 shrink-0 xl:block">
-          <div className="sticky-roadmap rounded-2xl border border-gray-200 bg-white p-6 shadow-sm" style={{ top: '96px' }}>
-            <div className="mb-6 flex items-center justify-between">
+          <div
+            className="sticky-roadmap overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm"
+            style={{ top: '96px' }}
+          >
+            <div className="border-b border-slate-200 bg-[linear-gradient(160deg,#ecfdf5_0%,#eff6ff_52%,#ffffff_100%)] p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-[11px] font-black uppercase tracking-[0.18em] text-emerald-700/80">
+                    Last roadmap
+                  </p>
+                  <h3 className="mt-2 text-xl font-black text-slate-900">나의 학습자 로드맵</h3>
+                  <p className="mt-2 text-xs leading-relaxed text-slate-600">
+                    마지막으로 학습한 로드맵 기준으로 지금 위치를 미니 로드맵으로 보여줍니다.
+                  </p>
+                </div>
+
+                <div className="shrink-0 rounded-2xl border border-white/90 bg-white/90 px-3 py-2 text-right shadow-sm">
+                  <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">Progress</p>
+                  <p className="mt-1 text-2xl font-black text-slate-900">{roadmapProgress}%</p>
+                </div>
+              </div>
+
+              <div className="mt-5 h-2 rounded-full bg-white/80">
+                <div
+                  className="h-2 rounded-full bg-[linear-gradient(90deg,#10b981,#38bdf8)]"
+                  style={{ width: `${roadmapProgress}%` }}
+                />
+              </div>
+
+              {state.roadmapSummary ? (
+                <div className="mt-4 flex items-center justify-between gap-3 text-[11px] text-slate-500">
+                  <span className="min-w-0 truncate font-semibold text-slate-700">{state.roadmapSummary.title}</span>
+                  {roadmapActivityAt ? <span className="shrink-0">{formatRelativeTime(roadmapActivityAt)}</span> : null}
+                </div>
+              ) : null}
+            </div>
+
+            <div className="space-y-4 p-6">
+              {state.roadmap ? (
+                <>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                          Current focus
+                        </p>
+                        <h4 className="mt-2 line-clamp-2 text-sm font-bold text-slate-900">
+                          {roadmapFocusNode?.title ?? '다음 학습 노드 준비 중'}
+                        </h4>
+                      </div>
+
+                      {roadmapFocusNode ? (
+                        <span
+                          className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold ${getRoadmapNodeTone(
+                            roadmapFocusNode,
+                          ).chip}`}
+                        >
+                          {getRoadmapNodeStatusLabel(roadmapFocusNode)}
+                        </span>
+                      ) : null}
+                    </div>
+
+                    {roadmapFocusProgress != null ? (
+                      <div className="mt-4">
+                        <div className="flex items-center justify-between text-[11px] font-semibold text-sky-700">
+                          <span>현재 노드 진도</span>
+                          <span>{roadmapFocusProgress}%</span>
+                        </div>
+                        <div className="mt-2 h-2 rounded-full bg-white">
+                          <div
+                            className="h-2 rounded-full bg-[linear-gradient(90deg,#0ea5e9,#22c55e)]"
+                            style={{ width: `${roadmapFocusProgress}%` }}
+                          />
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="mt-4 text-xs leading-relaxed text-slate-500">
+                        {roadmapFocusNode?.status === 'COMPLETED'
+                          ? '최근 학습 로드맵의 메인 노드를 대부분 마쳤습니다. 다음 단계로 이어서 진행하면 됩니다.'
+                          : '다음으로 이어질 메인 노드를 기준으로 한눈에 보기 좋은 흐름으로 정리했습니다.'}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                    <div className="mb-4 flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                          Mini roadmap
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">최근 학습 흐름 기준 핵심 메인 노드</p>
+                      </div>
+                      <span className="shrink-0 rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-bold text-slate-600">
+                        {roadmapCompletedNodeCount}/{state.roadmap.nodes.length} 완료
+                      </span>
+                    </div>
+
+                    {sidebarNodes.length > 0 ? (
+                      <div className="space-y-3">
+                        {sidebarNodes.map((node, index) => {
+                          const tone = getRoadmapNodeTone(node)
+                          const nodeProgress =
+                            node.status === 'IN_PROGRESS'
+                              ? clampProgress((node.lessonCompletionRate ?? 0) * 100)
+                              : null
+                          const isFocusNode = roadmapFocusNode?.customNodeId === node.customNodeId
+                          const connectorTone =
+                            node.status === 'COMPLETED'
+                              ? 'bg-emerald-200'
+                              : node.status === 'IN_PROGRESS'
+                                ? 'bg-sky-200'
+                                : 'bg-slate-200'
+
+                          return (
+                            <div key={node.customNodeId} className="relative pl-12">
+                              {index < sidebarNodes.length - 1 ? (
+                                <div
+                                  className={`absolute left-[15px] top-9 w-px rounded-full ${connectorTone}`}
+                                  style={{ height: 'calc(100% + 0.75rem)' }}
+                                />
+                              ) : null}
+
+                              <div
+                                className={`absolute left-0 top-0 z-10 flex h-8 w-8 items-center justify-center rounded-2xl border-2 text-xs shadow-sm ${tone.dot}`}
+                              >
+                                {node.status === 'COMPLETED' ? (
+                                  <i className="fas fa-check" />
+                                ) : node.status === 'IN_PROGRESS' ? (
+                                  <i className="fas fa-play" />
+                                ) : node.status === 'LOCKED' ? (
+                                  <i className="fas fa-lock" />
+                                ) : (
+                                  <span className="text-[11px] font-black">{node.sortOrder}</span>
+                                )}
+                              </div>
+
+                              <div
+                                className={`rounded-[22px] border px-3.5 py-3 ${tone.card} ${
+                                  isFocusNode ? 'ring-2 ring-sky-200 ring-offset-2 ring-offset-white' : ''
+                                }`}
+                              >
+                                <div className="flex items-start justify-between gap-3">
+                                  <div className="min-w-0">
+                                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-slate-400">
+                                      Step {String(node.sortOrder).padStart(2, '0')}
+                                    </p>
+                                    <p className="mt-1 line-clamp-2 text-sm font-bold leading-5">{node.title}</p>
+                                  </div>
+
+                                  <span className={`shrink-0 rounded-full px-2 py-1 text-[9px] font-bold ${tone.chip}`}>
+                                    {getRoadmapNodeStatusLabel(node)}
+                                  </span>
+                                </div>
+
+                                <div className="mt-2 flex flex-wrap items-center gap-2 text-[10px] text-slate-500">
+                                  {isFocusNode ? (
+                                    <span className="rounded-full bg-white/85 px-2 py-1 font-bold text-sky-700">
+                                      현재 포커스
+                                    </span>
+                                  ) : null}
+                                  {nodeProgress != null ? (
+                                    <span className="font-semibold text-sky-700">{nodeProgress}% 진행</span>
+                                  ) : null}
+                                  {node.subTopics && node.subTopics.length > 0 ? (
+                                    <span className="line-clamp-1">
+                                      {node.subTopics.slice(0, 2).join(' · ')}
+                                    </span>
+                                  ) : null}
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center">
+                        <i className="fas fa-map text-2xl text-slate-300" />
+                        <p className="mt-3 text-sm font-bold text-slate-500">로드맵 노드가 아직 없습니다.</p>
+                        <p className="mt-1 text-xs text-slate-400">학습 이력이 쌓이면 여기에 미니 로드맵이 정리됩니다.</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      className="rounded-2xl bg-slate-900 px-4 py-3 text-sm font-bold text-white transition hover:bg-black"
+                      onClick={() => {
+                        window.location.href = roadmapEntryHref
+                      }}
+                    >
+                      로드맵 열기
+                    </button>
+                    <button
+                      className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 transition hover:bg-slate-50"
+                      onClick={() => {
+                        window.location.href = 'roadmap-hub.html'
+                      }}
+                    >
+                      허브 보기
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-4 py-8 text-center">
+                    <i className="fas fa-map text-3xl text-slate-300" />
+                    <p className="mt-3 text-sm font-bold text-slate-500">최근 학습 로드맵이 아직 없습니다.</p>
+                    <p className="mt-1 text-xs leading-relaxed text-slate-400">
+                      로드맵 허브에서 로드맵을 시작하거나 직접 만든 커스텀 로드맵을 학습하면
+                      <br />
+                      여기에 마지막 학습 기준 미니 로드맵이 표시됩니다.
+                    </p>
+                  </div>
+
+                  <button
+                    className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-bold text-white transition hover:bg-black"
+                    onClick={() => {
+                      window.location.href = 'roadmap-hub.html'
+                    }}
+                  >
+                    로드맵 허브로 이동
+                  </button>
+                </>
+              )}
+            </div>
+
+            <div className="hidden">
               <h3 className="flex items-center gap-2 font-bold text-gray-900">
                 <i className="fas fa-map text-brand" /> 나의 학습 로드맵
               </h3>
@@ -715,7 +1032,7 @@ export default function DashboardPage({ session }: { session: AuthSession }) {
               ) : null}
             </div>
 
-            <div className="roadmap-container relative pb-2">
+            <div className="hidden">
               <div className="roadmap-line" />
               <div className="roadmap-progress" style={{ height: `${roadmapProgress}%` }} />
 
@@ -788,7 +1105,7 @@ export default function DashboardPage({ session }: { session: AuthSession }) {
             </div>
 
             <button
-              className="mt-6 w-full rounded-xl bg-gray-900 py-3 text-sm font-bold text-white transition hover:bg-black"
+              className="hidden"
               onClick={() => {
                 window.location.href = 'roadmap-hub.html'
               }}

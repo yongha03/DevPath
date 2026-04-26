@@ -33,8 +33,8 @@ public class MyRoadmapDto {
       this.roadmaps = roadmaps;
     }
 
-    public static ListResponse from(List<CustomRoadmap> entities) {
-      return ListResponse.builder().roadmaps(entities.stream().map(Item::from).toList()).build();
+    public static ListResponse of(List<Item> roadmaps) {
+      return ListResponse.builder().roadmaps(roadmaps).build();
     }
   }
 
@@ -54,21 +54,36 @@ public class MyRoadmapDto {
     @Schema(description = "생성 시각")
     private LocalDateTime createdAt;
 
+    @Schema(description = "理쒓렐 ?섏젙 ?쒓컖")
+    private LocalDateTime updatedAt;
+
+    @Schema(description = "理쒓렐 ?숈뒿 ?쒓컖")
+    private LocalDateTime lastStudiedAt;
+
     @Builder
     private Item(
-        Long customRoadmapId, Long originalRoadmapId, String title, LocalDateTime createdAt) {
+        Long customRoadmapId,
+        Long originalRoadmapId,
+        String title,
+        LocalDateTime createdAt,
+        LocalDateTime updatedAt,
+        LocalDateTime lastStudiedAt) {
       this.customRoadmapId = customRoadmapId;
       this.originalRoadmapId = originalRoadmapId;
       this.title = title;
       this.createdAt = createdAt;
+      this.updatedAt = updatedAt;
+      this.lastStudiedAt = lastStudiedAt;
     }
 
-    public static Item from(CustomRoadmap entity) {
+    public static Item from(CustomRoadmap entity, LocalDateTime lastStudiedAt) {
       return Item.builder()
           .customRoadmapId(entity.getId())
           .originalRoadmapId(entity.getOriginalRoadmap() != null ? entity.getOriginalRoadmap().getRoadmapId() : null)
           .title(entity.getTitle())
           .createdAt(entity.getCreatedAt())
+          .updatedAt(entity.getUpdatedAt())
+          .lastStudiedAt(lastStudiedAt)
           .build();
     }
   }

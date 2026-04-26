@@ -9,6 +9,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface CustomRoadmapRepository extends JpaRepository<CustomRoadmap, Long> {
   List<CustomRoadmap> findAllByUserOrderByCreatedAtDesc(User user);
 
+  List<CustomRoadmap> findAllByUserOrderByUpdatedAtDescCreatedAtDesc(User user);
+
   boolean existsByUserIdAndOriginalRoadmapRoadmapId(Long userId, Long roadmapId);
 
   Optional<CustomRoadmap> findByUserIdAndOriginalRoadmapRoadmapId(Long userId, Long roadmapId);

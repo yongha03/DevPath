@@ -15,6 +15,8 @@ import com.devpath.domain.roadmap.repository.CustomRoadmapRepository;
 import com.devpath.domain.roadmap.repository.RoadmapNodeResourceRepository;
 import com.devpath.domain.user.entity.User;
 import com.devpath.domain.user.repository.UserRepository;
+import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -35,12 +37,21 @@ public class CustomRoadmapQueryService {
   private final RoadmapProgressService roadmapProgressService;
 
   @Transactional(readOnly = true)
-  public List<CustomRoadmap> getMyRoadmaps(Long userId) {
+  public List<MyRoadmapDto.Item> getMyRoadmaps(Long userId) {
     User user =
         userRepository
             .findById(userId)
             .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-    return customRoadmapRepository.findAllByUserOrderByCreatedAtDesc(user);
+    return customRoadmapRepository.findAllByUserOrderByUpdatedAtDescCreatedAtDesc(user).stream()
+        .map(roadmap -> MyRoadmapDto.Item.from(roadmap, resolveLastStudiedAt(userId, roadmap)))
+        .sorted(
+            Comparator.comparing(
+                    this::resolveListItemActivityAt,
+                    Comparator.nullsLast(Comparator.reverseOrder()))
+                .thenComparing(
+                    MyRoadmapDto.Item::getCreatedAt,
+                    Comparator.nullsLast(Comparator.reverseOrder())))
+        .toList();
   }
 
   @Transactional(readOnly = true)
@@ -114,5 +125,34 @@ public class CustomRoadmapQueryService {
     }
 
     return roadmap;
+  }
+
+  private LocalDateTime resolveLastStudiedAt(Long userId, CustomRoadmap customRoadmap) {
+    LocalDateTime roadmapActivityAt =
+        latestOf(customRoadmap.getUpdatedAt(), customRoadmap.getCreatedAt());
+
+    if (customRoadmap.getOriginalRoadmap() == null) {
+      return roadmapActivityAt;
+    }
+
+    LocalDateTime nodeActivityAt =
+        nodeClearanceRepository.findLatestActivityAtByUserIdAndRoadmapId(
+            userId, customRoadmap.getOriginalRoadmap().getRoadmapId());
+
+    return latestOf(roadmapActivityAt, nodeActivityAt);
+  }
+
+  private LocalDateTime resolveListItemActivityAt(MyRoadmapDto.Item item) {
+    return latestOf(item.getLastStudiedAt(), latestOf(item.getUpdatedAt(), item.getCreatedAt()));
+  }
+
+  private LocalDateTime latestOf(LocalDateTime first, LocalDateTime second) {
+    if (first == null) {
+      return second;
+    }
+    if (second == null) {
+      return first;
+    }
+    return first.isAfter(second) ? first : second;
   }
 }

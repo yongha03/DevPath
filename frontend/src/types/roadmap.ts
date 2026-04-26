@@ -4,7 +4,7 @@ export type DecisionStatus = 'PENDING' | 'APPLIED' | 'IGNORED'
 
 export interface RoadmapNodeItem {
   customNodeId: number
-  originalNodeId: number
+  originalNodeId: number | null
   title: string
   sortOrder: number
   status: NodeStatus
@@ -31,7 +31,7 @@ export interface RoadmapNodeResourceItem {
 
 export interface RoadmapDetail {
   customRoadmapId: number
-  originalRoadmapId: number
+  originalRoadmapId: number | null
   title: string
   infoTitle?: string | null
   infoContent?: string | null
@@ -68,9 +68,11 @@ export interface RecommendationChangeHistory {
 
 export interface MyRoadmapSummary {
   customRoadmapId: number
-  originalRoadmapId: number
+  originalRoadmapId: number | null
   title: string
   createdAt: string
+  updatedAt?: string | null
+  lastStudiedAt?: string | null
 }
 
 export interface ProofCardTagItem {

@@ -466,7 +466,10 @@ function buildRoadmapLayout(nodes: RoadmapNodeItem[], changes: RecommendationCha
     }, offset)
   }
 
-  function addSuggestions(sourceOriginalNodeId: number, sourceSlot: LayoutSlot) {
+  function addSuggestions(sourceOriginalNodeId: number | null, sourceSlot: LayoutSlot) {
+    if (sourceOriginalNodeId == null) {
+      return
+    }
     const suggestedNodes = suggestedNodesBySource.get(sourceOriginalNodeId) ?? []
     const suggestedAdds = suggestedAddsBySource.get(sourceOriginalNodeId) ?? []
     let offset = 0
@@ -895,12 +898,13 @@ function RoadmapGraph({
   function renderSlot(slot: LayoutSlot) {
     const proofSide: 'left' | 'right' = slot.lane === 'right' || slot.lane === 'side-right' ? 'left' : 'right'
     if (slot.node) {
+      const nodeOriginalId = slot.node.originalNodeId
       return (
         <RoadmapNodeCard
           node={slot.node}
-          proofCard={proofCardByNodeId[slot.node.originalNodeId]}
+          proofCard={nodeOriginalId == null ? undefined : proofCardByNodeId[nodeOriginalId]}
           proofSide={proofSide}
-          pendingChange={changeByNodeId[slot.node.originalNodeId]}
+          pendingChange={nodeOriginalId == null ? undefined : changeByNodeId[nodeOriginalId]}
           badge={slot.badge}
           onNodeClick={onNodeClick}
         />
@@ -971,7 +975,7 @@ function RoadmapGraph({
 interface NodeDrawerProps {
   node: RoadmapNodeItem | null
   customRoadmapId: number
-  originalRoadmapId: number
+  originalRoadmapId: number | null
   onClose: () => void
   onCleared: () => void
 }
@@ -990,11 +994,13 @@ function NodeDrawer({ node, customRoadmapId, originalRoadmapId, onClose, onClear
 
       // ── [TEST] 노드 완료 시 랜덤 점수로 즉시 분기 추천 생성 ─────────────────
       // 실 서비스에서는 진단 퀴즈 제출(submitQuizAnswer) 흐름으로 대체 예정
-      try {
-        const rec = await roadmapApi.testRunDiagnosis(originalRoadmapId, node.originalNodeId)
-        console.log(`[TEST] 진단 추천 결과 — 점수: ${rec.score}/${rec.maxScore}, 분기: ${rec.branchType}, 추천노드: ${rec.recommendedNodes}`)
-      } catch (recErr) {
-        console.warn('[TEST] 진단 추천 생성 실패 (무시):', (recErr as Error).message)
+      if (originalRoadmapId != null && node.originalNodeId != null) {
+        try {
+          const rec = await roadmapApi.testRunDiagnosis(originalRoadmapId, node.originalNodeId)
+          console.log(`[TEST] 진단 추천 결과 — 점수: ${rec.score}/${rec.maxScore}, 분기: ${rec.branchType}, 추천노드: ${rec.recommendedNodes}`)
+        } catch (recErr) {
+          console.warn('[TEST] 진단 추천 생성 실패 (무시):', (recErr as Error).message)
+        }
       }
       // ────────────────────────────────────────────────────────────────────────
 
@@ -1619,7 +1625,10 @@ export default function RoadmapDetailPage() {
       setChanges([])
       const updated = await roadmapApi.getMyRoadmapDetail(customRoadmapId)
       if (deleteNodeIds.size > 0) {
-        setRoadmap({ ...updated, nodes: updated.nodes.filter((n) => !deleteNodeIds.has(n.originalNodeId)) })
+        setRoadmap({
+          ...updated,
+          nodes: updated.nodes.filter((n) => n.originalNodeId == null || !deleteNodeIds.has(n.originalNodeId)),
+        })
       } else {
         setRoadmap(updated)
       }
