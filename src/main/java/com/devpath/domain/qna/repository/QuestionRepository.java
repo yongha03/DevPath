@@ -14,7 +14,13 @@ public interface QuestionRepository extends JpaRepository<Question, Long> {
 
     List<Question> findAllByCourseIdAndIsDeletedFalseOrderByCreatedAtDesc(Long courseId);
 
+    List<Question> findAllByUser_IdAndIsDeletedFalseOrderByCreatedAtDesc(Long userId);
+
+    List<Question> findAllByCourseIdAndUser_IdAndIsDeletedFalseOrderByCreatedAtDesc(Long courseId, Long userId);
+
     Optional<Question> findByIdAndIsDeletedFalse(Long questionId);
+
+    Optional<Question> findByIdAndUser_IdAndIsDeletedFalse(Long questionId, Long userId);
 
     List<Question> findTop10ByIsDeletedFalseAndTitleContainingIgnoreCaseOrderByCreatedAtDesc(String titleKeyword);
 

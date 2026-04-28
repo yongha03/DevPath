@@ -72,10 +72,10 @@ public class QnaService {
         return QuestionDetailResponse.from(savedQuestion, List.of());
     }
 
-    public List<QuestionSummaryResponse> getQuestions(Long courseId) {
+    public List<QuestionSummaryResponse> getQuestions(Long userId, Long courseId) {
         List<Question> questions = courseId == null
-                ? questionRepository.findAllByIsDeletedFalseOrderByCreatedAtDesc()
-                : questionRepository.findAllByCourseIdAndIsDeletedFalseOrderByCreatedAtDesc(courseId);
+                ? questionRepository.findAllByUser_IdAndIsDeletedFalseOrderByCreatedAtDesc(userId)
+                : questionRepository.findAllByCourseIdAndUser_IdAndIsDeletedFalseOrderByCreatedAtDesc(courseId, userId);
 
         Map<Long, Integer> answerCounts = buildAnswerCountMap(questions);
 
@@ -88,8 +88,9 @@ public class QnaService {
     }
 
     @Transactional
-    public QuestionDetailResponse getQuestionDetail(Long questionId) {
-        Question question = getActiveQuestion(questionId);
+    public QuestionDetailResponse getQuestionDetail(Long userId, Long questionId) {
+        Question question = questionRepository.findByIdAndUser_IdAndIsDeletedFalse(questionId, userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.QUESTION_NOT_FOUND));
 
         // 질문 상세 조회 시 조회수를 증가시킨다.
         question.incrementViewCount();

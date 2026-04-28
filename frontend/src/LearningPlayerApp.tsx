@@ -112,7 +112,7 @@ type PipVideoElement = HTMLVideoElement & {
 
 const COURSE_LOAD_TIMEOUT_MS = 4000
 const LESSON_LOAD_TIMEOUT_MS = 2500
-const QNA_LOAD_TIMEOUT_MS = 2500
+const QNA_LOAD_TIMEOUT_MS = 6000
 const ASSIGNMENT_LOADING_MESSAGES = [
   '코드 및 스크립트 검사 중...',
   '제출된 파일을 실행하고 있습니다...',
@@ -190,6 +190,13 @@ function createAssignmentFormState(assignment?: LearningLessonAssignment | null)
 
 function isQuestionAnswered(question: Pick<QnaQuestionSummary, 'qnaStatus' | 'adoptedAnswerId' | 'answerCount'>) {
   return question.qnaStatus === 'ANSWERED' || Boolean(question.adoptedAnswerId) || question.answerCount > 0
+}
+
+function isOwnQnaQuestion(
+  question: Pick<QnaQuestionSummary, 'authorId'> | null | undefined,
+  userId: number | null | undefined,
+) {
+  return Boolean(userId && question?.authorId === userId)
 }
 
 function hasLessonAssignment(item: LearningLesson | null | undefined): item is LearningLesson & { assignment: LearningLessonAssignment } {
@@ -870,6 +877,7 @@ export default function LearningPlayerApp() {
   )
   const visibleQuestions = useMemo(() => (
     qnaQuestions.filter((item) => {
+      if (!isOwnQnaQuestion(item, sessionUserId)) return false
       const answered = isQuestionAnswered(item)
       const statusMatched = qnaStatusFilter === 'ALL'
         || (qnaStatusFilter === 'ANSWERED' && answered)
@@ -879,7 +887,7 @@ export default function LearningPlayerApp() {
         .toLowerCase()
       return statusMatched && (!deferredQnaSearch || searchTarget.includes(deferredQnaSearch))
     })
-  ), [deferredQnaSearch, qnaDetails, qnaQuestions, qnaStatusFilter])
+  ), [deferredQnaSearch, qnaDetails, qnaQuestions, qnaStatusFilter, sessionUserId])
 
   const getPlaybackLimit = useCallback((video: HTMLVideoElement | null) => {
     // Math.floor 제거 — float 그대로 사용해야 영상 끝에서 강제 정지되지 않음
@@ -1199,19 +1207,21 @@ export default function LearningPlayerApp() {
     async function loadQna() {
       setLoadingQna(true)
       setQnaError(null)
+      setQnaQuestions([])
       setQnaDetails({})
       setOpenQuestionId(null)
       setQuestionForm(createQuestionFormState())
 
       const [questionsResult, templatesResult] = await Promise.allSettled([
-        requestWithTimeout(QNA_LOAD_TIMEOUT_MS, (signal) => qnaApi.getQuestions(courseId, signal)),
+        requestWithTimeout(QNA_LOAD_TIMEOUT_MS, (signal) => qnaApi.getMyQuestions(courseId, signal)),
         requestWithTimeout(QNA_LOAD_TIMEOUT_MS, (signal) => qnaApi.getTemplates(signal)),
       ])
 
       if (cancelled) return
 
-      if (questionsResult.status === 'fulfilled') setQnaQuestions(questionsResult.value)
-      else {
+      if (questionsResult.status === 'fulfilled') {
+        setQnaQuestions(questionsResult.value.filter((question) => isOwnQnaQuestion(question, sessionUserId)))
+      } else {
         setQnaQuestions([])
         setQnaError('Q&A 데이터를 불러오지 못했습니다.')
       }
@@ -1231,7 +1241,7 @@ export default function LearningPlayerApp() {
 
     void loadQna()
     return () => { cancelled = true }
-  }, [course?.courseId, session])
+  }, [course?.courseId, session, sessionUserId])
 
   useEffect(() => {
     if (!lesson || selectedLessonLocked || !isAssignmentLesson(lesson)) {
@@ -2012,7 +2022,18 @@ export default function LearningPlayerApp() {
   }
 
   async function handleSubmitQuestion() {
-    if (!course || !sessionUserId || !questionForm.templateType) return
+    if (!course) {
+      setQuestionMessage('강의 정보를 불러온 뒤 다시 시도해 주세요.')
+      return
+    }
+    if (!sessionUserId) {
+      setQuestionMessage('로그인이 필요합니다.')
+      return
+    }
+    if (!questionForm.templateType) {
+      setQuestionMessage('질문 템플릿을 불러온 뒤 다시 시도해 주세요.')
+      return
+    }
     const content = questionForm.content.trim()
     if (!content) {
       setQuestionMessage('질문 내용을 입력해 주세요.')
@@ -2042,8 +2063,8 @@ export default function LearningPlayerApp() {
         setActiveTab('qna')
         setOpenQuestionId(created.id)
       })
-    } catch {
-      setQuestionMessage('질문 등록에 실패했습니다.')
+    } catch (error) {
+      setQuestionMessage(error instanceof Error ? error.message : '질문 등록에 실패했습니다.')
     } finally {
       setQuestionBusy(false)
     }
@@ -2644,8 +2665,8 @@ export default function LearningPlayerApp() {
                 ) : (
                   <EmptyState
                     iconClassName="fas fa-comments"
-                    title="등록된 질문이 없습니다"
-                    description="이 강의에는 아직 Q&A가 없습니다. 첫 질문을 남겨 보세요."
+                    title="내가 등록한 질문이 없습니다"
+                    description="이 강의에서 궁금한 점을 강사에게 남겨 보세요."
                   />
                 )}
               </div>

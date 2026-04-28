@@ -74,10 +74,14 @@ public class QnaController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "질문 목록 조회 성공")
     })
     public ApiResponse<List<QuestionSummaryResponse>> getQuestions(
+            @Parameter(hidden = true) @AuthenticationPrincipal Long authenticatedUserId,
             @Parameter(description = "Course ID", example = "1")
             @RequestParam(required = false) Long courseId
     ) {
-        List<QuestionSummaryResponse> responses = qnaService.getQuestions(courseId);
+        List<QuestionSummaryResponse> responses = qnaService.getQuestions(
+                resolveUserId(authenticatedUserId, null),
+                courseId
+        );
         return ApiResponse.ok(responses);
     }
 
@@ -92,10 +96,14 @@ public class QnaController {
             )
     })
     public ApiResponse<QuestionDetailResponse> getQuestionDetail(
+            @Parameter(hidden = true) @AuthenticationPrincipal Long authenticatedUserId,
             @Parameter(description = "질문 ID입니다.", example = "1")
             @PathVariable Long questionId
     ) {
-        QuestionDetailResponse response = qnaService.getQuestionDetail(questionId);
+        QuestionDetailResponse response = qnaService.getQuestionDetail(
+                resolveUserId(authenticatedUserId, null),
+                questionId
+        );
         return ApiResponse.ok(response);
     }
 

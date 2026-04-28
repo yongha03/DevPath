@@ -739,21 +739,28 @@ export const qnaApi = {
     return request<QnaQuestionSummary[]>(
       `/api/qna/questions${buildQueryString({ courseId })}`,
       { method: 'GET', signal },
-      { auth: false },
+      { auth: true },
+    )
+  },
+  getMyQuestions(courseId?: number, signal?: AbortSignal) {
+    return request<QnaQuestionSummary[]>(
+      `/api/qna/questions${buildQueryString({ courseId })}`,
+      { method: 'GET', signal },
+      { auth: true },
     )
   },
   getQuestionDetail(questionId: number, signal?: AbortSignal) {
     return request<QnaQuestionDetail>(
       `/api/qna/questions/${questionId}`,
       { method: 'GET', signal },
-      { auth: false },
+      { auth: true },
     )
   },
   getTemplates(signal?: AbortSignal) {
     return request<QnaQuestionTemplate[]>(
       '/api/qna/templates',
       { method: 'GET', signal },
-      { auth: false },
+      { auth: true },
     )
   },
   createQuestion(payload: CreateQnaQuestionRequest, userId?: number | null) {
