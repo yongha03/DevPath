@@ -6,7 +6,7 @@ import type { ProofCardDetail, ProofCardGalleryItem } from '../../types/learner'
 
 type ProofCardViewItem = ProofCardGalleryItem & {
   type: 'language' | 'cs' | 'framework' | 'backend'
-  score: number
+  score: number | null
 }
 
 
@@ -35,10 +35,6 @@ function inferType(title: string): ProofCardViewItem['type'] {
   }
 
   return 'backend'
-}
-
-function buildScore(index: number) {
-  return 82 + (index % 5) * 3
 }
 
 function cardTheme(type: ProofCardViewItem['type']) {
@@ -102,10 +98,10 @@ export default function LearningLogGalleryPage() {
 
         if (response.length) {
           setItems(
-            response.map((item, index) => ({
+            response.map((item) => ({
               ...item,
               type: inferType(item.title),
-              score: buildScore(index),
+              score: null,
             })),
           )
         }
@@ -180,7 +176,7 @@ export default function LearningLogGalleryPage() {
 
     return [...filtered].sort((left, right) => {
       if (sortOrder === 'score') {
-        return right.score - left.score
+        return (right.score ?? -1) - (left.score ?? -1)
       }
 
       return new Date(right.issuedAt ?? 0).getTime() - new Date(left.issuedAt ?? 0).getTime()
@@ -272,7 +268,13 @@ export default function LearningLogGalleryPage() {
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-medium text-gray-500">{theme.scoreLabel}</span>
                             <span className="text-2xl font-bold text-gray-900">
-                              {item.score} <span className="text-xs font-normal text-gray-400">/ 100</span>
+                              {item.score !== null ? (
+                                <>
+                                  {item.score} <span className="text-xs font-normal text-gray-400">/ 100</span>
+                                </>
+                              ) : (
+                                <span className="text-sm text-gray-400">기록 없음</span>
+                              )}
                             </span>
                           </div>
                         </div>
@@ -414,7 +416,11 @@ export default function LearningLogGalleryPage() {
                   <p className="mt-1 text-xs text-gray-400 uppercase">발급일 (Date)</p>
                 </div>
                 <div className="text-center">
-                  <p className="font-bold text-gray-900">{selectedCard?.score ?? 0} / 100</p>
+                  <p className="font-bold text-gray-900">
+                    {selectedCard?.score !== null && selectedCard?.score !== undefined
+                      ? `${selectedCard.score} / 100`
+                      : '기록 없음'}
+                  </p>
                   <p className="mt-1 text-xs text-gray-400 uppercase">최종 점수 (Score)</p>
                 </div>
               </div>
