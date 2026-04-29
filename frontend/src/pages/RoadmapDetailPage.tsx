@@ -9,6 +9,7 @@ import {
   getPostLoginRedirect,
   readStoredAuthSession,
 } from '../lib/auth-session'
+import { showAuthToast } from '../lib/auth-toast'
 import type { ProofCardSummary } from '../types/learner'
 import type {
   RoadmapDetail,
@@ -636,7 +637,11 @@ function RoadmapNodeCard({ node, proofCard, proofSide, pendingChange, badge, onN
 
   function handleClick() {
     if (node.status === 'LOCKED') {
-      alert('이전 노드를 먼저 완료해야 합니다.')
+      showAuthToast({
+        message: '이전 노드를 먼저 완료해야 합니다.',
+        variant: 'error',
+        durationMs: 1000,
+      })
       return
     }
     onNodeClick?.(node)
