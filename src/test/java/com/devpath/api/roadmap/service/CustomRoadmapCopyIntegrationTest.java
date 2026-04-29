@@ -10,6 +10,7 @@ import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
 import com.devpath.domain.roadmap.entity.CustomRoadmap;
 import com.devpath.domain.roadmap.entity.CustomRoadmapNode;
+import com.devpath.domain.roadmap.entity.DisplayNodeStatus;
 import com.devpath.domain.roadmap.entity.NodeRequiredTag;
 import com.devpath.domain.roadmap.entity.NodeStatus;
 import com.devpath.domain.roadmap.entity.Prerequisite;
@@ -147,6 +148,64 @@ class CustomRoadmapCopyIntegrationTest {
     assertThat(copiedNodes.get(2).getStatus()).isEqualTo(NodeStatus.NOT_STARTED);
     assertThat(customRoadmap.getProgressRate()).isEqualTo(66);
     assertThat(customNodePrerequisiteRepository.findAllByCustomRoadmap(customRoadmap)).hasSize(2);
+  }
+
+  @Test
+  @Transactional
+  void copyToCustomRoadmap_infersSequentialPrerequisitesWhenOfficialEdgesAreMissing() {
+    User user =
+        userRepository.save(
+            User.builder().email("inferred@test.com").password("pw").name("inferred-user").build());
+
+    Roadmap roadmap =
+        roadmapRepository.save(
+            Roadmap.builder()
+                .title("Inferred Roadmap")
+                .description("official roadmap")
+                .isOfficial(true)
+                .isDeleted(false)
+                .build());
+
+    roadmapNodeRepository.save(
+        RoadmapNode.builder()
+            .roadmap(roadmap)
+            .title("Step 1")
+            .content("step 1")
+            .nodeType("STEP")
+            .sortOrder(1)
+            .build());
+    roadmapNodeRepository.save(
+        RoadmapNode.builder()
+            .roadmap(roadmap)
+            .title("Step 2")
+            .content("step 2")
+            .nodeType("STEP")
+            .sortOrder(2)
+            .build());
+    roadmapNodeRepository.save(
+        RoadmapNode.builder()
+            .roadmap(roadmap)
+            .title("Step 3")
+            .content("step 3")
+            .nodeType("STEP")
+            .sortOrder(3)
+            .build());
+
+    Long customRoadmapId =
+        customRoadmapCopyService.copyToCustomRoadmap(user.getId(), roadmap.getRoadmapId());
+    CustomRoadmap customRoadmap = customRoadmapRepository.findById(customRoadmapId).orElseThrow();
+
+    assertThat(customNodePrerequisiteRepository.findAllByCustomRoadmap(customRoadmap)).hasSize(2);
+
+    MyRoadmapDto.DetailResponse detail =
+        customRoadmapQueryService.getMyRoadmap(user.getId(), customRoadmapId);
+
+    assertThat(detail.getNodes())
+        .extracting(MyRoadmapDto.NodeItem::getStatus)
+        .containsExactly(
+            DisplayNodeStatus.PENDING,
+            DisplayNodeStatus.LOCKED,
+            DisplayNodeStatus.LOCKED);
   }
 
   @Test

@@ -46,6 +46,7 @@ public class CustomRoadmapCopyService {
   private final UserTechStackRepository userTechStackRepository;
   private final NodeRequiredTagRepository nodeRequiredTagRepository;
   private final RoadmapProgressService roadmapProgressService;
+  private final CustomRoadmapPrerequisiteSyncService prerequisiteSyncService;
 
   @Transactional
   // 공식 로드맵의 구조를 복사해 사용자 전용 로드맵과 노드, 선수 관계를 생성한다.
@@ -131,6 +132,7 @@ public class CustomRoadmapCopyService {
 
     // 마지막으로 선수 관계까지 저장되면 커스텀 로드맵 복사가 완료된다.
     customNodePrerequisiteRepository.saveAll(prerequisitesToSave);
+    prerequisiteSyncService.ensurePrerequisites(customRoadmap, savedCustomNodes);
     return customRoadmap.getId();
   }
 

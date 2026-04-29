@@ -52,6 +52,7 @@ class CustomRoadmapCopyServiceTest {
   @Mock private OfficialRoadmapReader officialRoadmapReader;
   @Mock private UserTechStackRepository userTechStackRepository;
   @Mock private NodeRequiredTagRepository nodeRequiredTagRepository;
+  @Mock private CustomRoadmapPrerequisiteSyncService prerequisiteSyncService;
 
   private CustomRoadmapCopyService service;
 
@@ -69,7 +70,8 @@ class CustomRoadmapCopyServiceTest {
             new TagValidationService(),
             userTechStackRepository,
             nodeRequiredTagRepository,
-            new RoadmapProgressService());
+            new RoadmapProgressService(),
+            prerequisiteSyncService);
 
     lenient()
         .when(customRoadmapRepository.save(any(CustomRoadmap.class)))

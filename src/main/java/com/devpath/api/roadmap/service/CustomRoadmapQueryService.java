@@ -40,6 +40,7 @@ public class CustomRoadmapQueryService {
   private final RoadmapNodeResourceRepository roadmapNodeResourceRepository;
   private final NodeRequiredTagRepository nodeRequiredTagRepository;
   private final RoadmapProgressService roadmapProgressService;
+  private final CustomRoadmapPrerequisiteSyncService prerequisiteSyncService;
   // [TEMP] 추천 무료 강좌 조회용 — 임시 하드코딩, 추후 삭제 예정
   private final CourseRepository courseRepository;
   private final CourseTagMapRepository courseTagMapRepository;
@@ -63,12 +64,13 @@ public class CustomRoadmapQueryService {
         .toList();
   }
 
-  @Transactional(readOnly = true)
+  @Transactional
   public MyRoadmapDto.DetailResponse getMyRoadmap(Long userId, Long customRoadmapId) {
     CustomRoadmap customRoadmap = getOwnedRoadmap(userId, customRoadmapId);
     List<CustomRoadmapNode> customNodes =
         customRoadmapNodeRepository.findAllByCustomRoadmapOrderByCustomSortOrderAsc(
             customRoadmap);
+    prerequisiteSyncService.ensurePrerequisites(customRoadmap, customNodes);
     Map<Long, List<Long>> prerequisiteIdsByNodeId =
         customNodePrerequisiteRepository.findAllByCustomRoadmap(customRoadmap).stream()
             .collect(
