@@ -4,6 +4,7 @@ import com.devpath.api.learning.dto.LessonProgressRequest;
 import com.devpath.api.learning.dto.LessonProgressResponse;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
+import com.devpath.domain.course.entity.Course;
 import com.devpath.domain.course.entity.Lesson;
 import com.devpath.domain.course.repository.LessonRepository;
 import com.devpath.domain.learning.entity.LessonProgress;
@@ -28,6 +29,8 @@ public class LessonProgressService {
 
     // User 저장소
     private final UserRepository userRepository;
+
+    private final CourseCompletionTagService courseCompletionTagService;
 
     // 강의 세션을 시작한다.
     @Transactional
@@ -54,6 +57,11 @@ public class LessonProgressService {
         );
 
         progress.updateProgress(normalizedProgressPercent, normalizedProgressSeconds);
+
+        if (normalizedProgressPercent >= 100) {
+            Course course = lesson.getSection().getCourse();
+            courseCompletionTagService.syncCourseCompletion(userId, course.getCourseId());
+        }
 
         return LessonProgressResponse.from(progress);
     }
