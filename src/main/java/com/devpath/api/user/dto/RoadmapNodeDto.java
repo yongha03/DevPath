@@ -48,5 +48,11 @@ public class RoadmapNodeDto {
 
     @Schema(description = "정렬 순서")
     private Integer sortOrder;
+
+    @Schema(description = "Node sub topics")
+    private String subTopics;
+
+    @Schema(description = "Branch group")
+    private Integer branchGroup;
   }
 }

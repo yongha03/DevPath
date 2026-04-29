@@ -12,12 +12,15 @@ import com.devpath.domain.builder.repository.BuilderModuleRepository;
 import com.devpath.domain.builder.repository.MyRoadmapRepository;
 import com.devpath.domain.roadmap.entity.CustomRoadmap;
 import com.devpath.domain.roadmap.entity.CustomRoadmapNode;
+import com.devpath.domain.roadmap.entity.RoadmapNode;
 import com.devpath.domain.roadmap.repository.CustomRoadmapNodeRepository;
 import com.devpath.domain.roadmap.repository.CustomRoadmapRepository;
+import com.devpath.domain.roadmap.repository.RoadmapNodeRepository;
 import com.devpath.domain.user.entity.User;
 import com.devpath.domain.user.repository.UserRepository;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -32,25 +35,44 @@ public class MyRoadmapService {
   private final UserRepository userRepository;
   private final CustomRoadmapRepository customRoadmapRepository;
   private final CustomRoadmapNodeRepository customRoadmapNodeRepository;
+  private final RoadmapNodeRepository roadmapNodeRepository;
 
   @Transactional
   public MyRoadmapResponse save(Long userId, MyRoadmapSaveRequest request) {
     User user = userRepository.findById(userId)
         .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
-    // 요청된 모든 builderModuleId를 한 번에 조회
+    request.getModules().forEach(this::validateModuleSource);
+
     List<Long> moduleIds = request.getModules().stream()
         .map(MyRoadmapSaveRequest.ModuleItem::getBuilderModuleId)
+        .filter(Objects::nonNull)
+        .distinct()
         .toList();
 
     Map<Long, BuilderModule> moduleMap = builderModuleRepository.findAllById(moduleIds)
         .stream()
         .collect(Collectors.toMap(BuilderModule::getId, m -> m));
 
-    // 요청에 없는 moduleId 검증
+    List<Long> originalNodeIds = request.getModules().stream()
+        .map(MyRoadmapSaveRequest.ModuleItem::getOriginalNodeId)
+        .filter(Objects::nonNull)
+        .distinct()
+        .toList();
+
+    Map<Long, RoadmapNode> originalNodeMap = roadmapNodeRepository.findAllById(originalNodeIds)
+        .stream()
+        .collect(Collectors.toMap(RoadmapNode::getNodeId, n -> n));
+
     for (Long id : moduleIds) {
       if (!moduleMap.containsKey(id)) {
         throw new CustomException(ErrorCode.BUILDER_MODULE_NOT_FOUND);
+      }
+    }
+
+    for (Long id : originalNodeIds) {
+      if (!originalNodeMap.containsKey(id)) {
+        throw new CustomException(ErrorCode.ROADMAP_NODE_NOT_FOUND);
       }
     }
 
@@ -59,20 +81,20 @@ public class MyRoadmapService {
         .title(request.getTitle())
         .build();
 
-    // 요청 순서 보장 — moduleMap에서 꺼내 MyRoadmapModule 생성
-    request.getModules().forEach(item -> {
-      MyRoadmapModule module = MyRoadmapModule.builder()
-          .myRoadmap(myRoadmap)
-          .builderModule(moduleMap.get(item.getBuilderModuleId()))
-          .sortOrder(item.getSortOrder())
-          .branchGroup(item.getBranchGroup())
-          .build();
-      myRoadmap.addModule(module);
-    });
+    request.getModules().stream()
+        .filter(item -> item.getBuilderModuleId() != null)
+        .forEach(item -> {
+          MyRoadmapModule module = MyRoadmapModule.builder()
+              .myRoadmap(myRoadmap)
+              .builderModule(moduleMap.get(item.getBuilderModuleId()))
+              .sortOrder(item.getSortOrder())
+              .branchGroup(item.getBranchGroup())
+              .build();
+          myRoadmap.addModule(module);
+        });
 
     myRoadmapRepository.save(myRoadmap);
 
-    // 빌더 기원 CustomRoadmap 생성 → roadmap.html에서 동일하게 접근 가능
     CustomRoadmap customRoadmap = CustomRoadmap.builderOriginBuilder()
         .user(user)
         .title(request.getTitle())
@@ -80,12 +102,21 @@ public class MyRoadmapService {
     customRoadmapRepository.save(customRoadmap);
 
     request.getModules().forEach(item -> {
-      CustomRoadmapNode node = CustomRoadmapNode.builderNodeBuilder()
-          .customRoadmap(customRoadmap)
-          .builderModule(moduleMap.get(item.getBuilderModuleId()))
-          .customSortOrder(item.getSortOrder())
-          .builderBranchGroup(item.getBranchGroup())
-          .build();
+      CustomRoadmapNode node = item.getBuilderModuleId() != null
+          ? CustomRoadmapNode.builderNodeBuilder()
+              .customRoadmap(customRoadmap)
+              .builderModule(moduleMap.get(item.getBuilderModuleId()))
+              .customSortOrder(item.getSortOrder())
+              .builderBranchGroup(item.getBranchGroup())
+              .build()
+          : CustomRoadmapNode.builder()
+              .customRoadmap(customRoadmap)
+              .originalNode(originalNodeMap.get(item.getOriginalNodeId()))
+              .customSortOrder(item.getSortOrder())
+              .isBranch(false)
+              .branchFromNodeId(null)
+              .branchType(null)
+              .build();
       customRoadmapNodeRepository.save(node);
     });
 
@@ -109,5 +140,15 @@ public class MyRoadmapService {
     MyRoadmap myRoadmap = myRoadmapRepository.findByIdWithModules(myRoadmapId, userId)
         .orElseThrow(() -> new CustomException(ErrorCode.MY_ROADMAP_NOT_FOUND));
     myRoadmapRepository.delete(myRoadmap);
+  }
+
+  private void validateModuleSource(MyRoadmapSaveRequest.ModuleItem item) {
+    boolean hasBuilderModule = item.getBuilderModuleId() != null;
+    boolean hasOriginalNode = item.getOriginalNodeId() != null;
+    if (hasBuilderModule == hasOriginalNode) {
+      throw new CustomException(
+          ErrorCode.INVALID_INPUT,
+          "Exactly one of builderModuleId or originalNodeId is required.");
+    }
   }
 }

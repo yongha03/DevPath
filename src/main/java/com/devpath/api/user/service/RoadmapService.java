@@ -55,6 +55,8 @@ public class RoadmapService {
                         .content(node.getContent())
                         .nodeType(node.getNodeType())
                         .sortOrder(node.getSortOrder())
+                        .subTopics(node.getSubTopics())
+                        .branchGroup(node.getBranchGroup())
                         .build())
             .collect(Collectors.toList());
 

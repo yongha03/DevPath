@@ -77,6 +77,7 @@ import type {
 } from '../types/learner'
 import { expireStoredAuthSession, readStoredAuthSession } from './auth-session'
 import type {
+  OfficialRoadmapDetail,
   RoadmapDetail,
   MyRoadmapSummary,
   RecommendationChange,
@@ -311,6 +312,9 @@ export const roadmapApi = {
   // 로드맵 허브 공개 화면에서 관리자 저장 결과를 그대로 불러온다.
   getHubCatalog(signal?: AbortSignal) {
     return request<RoadmapHubCatalog>('/api/roadmaps/hub-catalog', { method: 'GET', signal })
+  },
+  getOfficialRoadmapDetail(roadmapId: number, signal?: AbortSignal) {
+    return request<OfficialRoadmapDetail>(`/api/roadmaps/${roadmapId}`, { method: 'GET', signal })
   },
   getMyRoadmaps(signal?: AbortSignal) {
     const session = readStoredAuthSession()
