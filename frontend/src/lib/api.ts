@@ -317,19 +317,13 @@ export const roadmapApi = {
     return request<OfficialRoadmapDetail>(`/api/roadmaps/${roadmapId}`, { method: 'GET', signal })
   },
   getMyRoadmaps(signal?: AbortSignal) {
-    const session = readStoredAuthSession()
-    const query = session?.userId ? `?userId=${session.userId}` : ''
-    return request<{ roadmaps: MyRoadmapSummary[] }>(`/api/my-roadmaps${query}`, { method: 'GET', signal }, { auth: true })
+    return request<{ roadmaps: MyRoadmapSummary[] }>('/api/my-roadmaps', { method: 'GET', signal }, { auth: true })
   },
   getMyRoadmapDetail(customRoadmapId: number, signal?: AbortSignal) {
-    const session = readStoredAuthSession()
-    const query = session?.userId ? `?userId=${session.userId}` : ''
-    return request<RoadmapDetail>(`/api/my-roadmaps/${customRoadmapId}${query}`, { method: 'GET', signal }, { auth: true })
+    return request<RoadmapDetail>(`/api/my-roadmaps/${customRoadmapId}`, { method: 'GET', signal }, { auth: true })
   },
   copyRoadmap(originalRoadmapId: number) {
-    const session = readStoredAuthSession()
-    const query = session?.userId ? `?userId=${session.userId}` : ''
-    return request<{ customRoadmapId: number }>(`/api/my-roadmaps/${originalRoadmapId}${query}`, { method: 'POST' }, { auth: true })
+    return request<{ customRoadmapId: number }>(`/api/my-roadmaps/${originalRoadmapId}`, { method: 'POST' }, { auth: true })
   },
   getPendingChanges(signal?: AbortSignal) {
     return request<RecommendationChange[]>('/api/me/recommendation-changes', { method: 'GET', signal }, { auth: true })
@@ -347,10 +341,8 @@ export const roadmapApi = {
     return request<ProofCardSummary[]>('/api/me/proof-cards', { method: 'GET', signal }, { auth: true })
   },
   clearNode(customRoadmapId: number, customNodeId: number) {
-    const session = readStoredAuthSession()
-    const query = session?.userId ? `?userId=${session.userId}` : ''
     return request<{ customNodeId: number; title: string }>(
-      `/api/my-roadmaps/${customRoadmapId}/nodes/${customNodeId}/clear${query}`,
+      `/api/my-roadmaps/${customRoadmapId}/nodes/${customNodeId}/clear`,
       { method: 'POST' },
       { auth: true },
     )
@@ -358,10 +350,8 @@ export const roadmapApi = {
 
   // [TEMP] 추천 무료 강좌 courseId 조회 — 임시 하드코딩, 추후 삭제 예정
   getRecommendedFreeCourse(customRoadmapId: number, customNodeId: number) {
-    const session = readStoredAuthSession()
-    const query = session?.userId ? `?userId=${session.userId}` : ''
     return request<number | null>(
-      `/api/my-roadmaps/${customRoadmapId}/nodes/${customNodeId}/recommended-course${query}`,
+      `/api/my-roadmaps/${customRoadmapId}/nodes/${customNodeId}/recommended-course`,
       { method: 'GET' },
       { auth: true },
     )

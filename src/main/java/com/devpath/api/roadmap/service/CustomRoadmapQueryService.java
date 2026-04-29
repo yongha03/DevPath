@@ -139,9 +139,14 @@ public class CustomRoadmapQueryService {
 
   // [TEMP] 추천 무료 강좌 courseId 조회 — 임시 하드코딩, 추후 삭제 예정
   @Transactional(readOnly = true)
-  public Long getRecommendedFreeCourseId(Long customNodeId) {
+  public Long getRecommendedFreeCourseId(Long userId, Long customRoadmapId, Long customNodeId) {
+    CustomRoadmap customRoadmap = getOwnedRoadmap(userId, customRoadmapId);
     CustomRoadmapNode node = customRoadmapNodeRepository.findById(customNodeId)
         .orElseThrow(() -> new CustomException(ErrorCode.CUSTOM_NODE_NOT_FOUND));
+
+    if (!node.getCustomRoadmap().getId().equals(customRoadmap.getId())) {
+      throw new CustomException(ErrorCode.FORBIDDEN);
+    }
 
     if (node.getOriginalNode() == null) return null;
 

@@ -1,4 +1,4 @@
-import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
+import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import AuthModal, { type AuthView } from '../components/AuthModal'
 import RoadmapInfoContent from '../components/RoadmapInfoContent'
 import SiteHeader from '../components/SiteHeader'
@@ -1485,6 +1485,20 @@ export default function RoadmapDetailPage() {
   const [drawerNode, setDrawerNode] = useState<RoadmapNodeItem | null>(null)
   const abortRef = useRef<AbortController | null>(null)
 
+  const resetRoadmapPageState = useCallback((options?: { keepRoadmap?: boolean }) => {
+    if (!options?.keepRoadmap) {
+      setRoadmap(null)
+    }
+    setChanges([])
+    setHistories([])
+    setProofCards([])
+    setError(null)
+    setPanelOpen(false)
+    setInfoOpen(false)
+    setProcessing(false)
+    setDrawerNode(null)
+  }, [])
+
   useEffect(() => {
     const syncSession = () => {
       setSession(readStoredAuthSession())
@@ -1527,6 +1541,16 @@ export default function RoadmapDetailPage() {
   }, [session])
 
   useEffect(() => {
+    if (!session?.userId) {
+      abortRef.current?.abort()
+      resetRoadmapPageState({ keepRoadmap: true })
+      setLoading(false)
+      return
+    }
+
+    resetRoadmapPageState()
+    setLoading(true)
+
     const ctrl = new AbortController()
     abortRef.current = ctrl
 
@@ -1585,10 +1609,12 @@ export default function RoadmapDetailPage() {
       .catch((err: Error) => {
         if (err.name !== 'AbortError') setError(err.message)
       })
-      .finally(() => setLoading(false))
+      .finally(() => {
+        if (!signal.aborted) setLoading(false)
+      })
 
     return () => abortRef.current?.abort()
-  }, [customRoadmapId, originalRoadmapId])
+  }, [customRoadmapId, originalRoadmapId, resetRoadmapPageState, session?.userId])
 
   // ── 이벤트 핸들러 ────────────────────────────────────────────────────────────
 
@@ -1699,9 +1725,12 @@ export default function RoadmapDetailPage() {
     } catch {
       // Server logout failure should not block local session cleanup.
     } finally {
+      abortRef.current?.abort()
       clearStoredAuthSession()
       setSession(null)
       setProfileImage(null)
+      resetRoadmapPageState({ keepRoadmap: true })
+      setLoading(false)
     }
   }
 

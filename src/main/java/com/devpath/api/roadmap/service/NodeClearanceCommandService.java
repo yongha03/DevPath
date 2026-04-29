@@ -53,6 +53,10 @@ public class NodeClearanceCommandService {
         CustomRoadmapNode customNode = customRoadmapNodeRepository.findById(customNodeId)
                 .orElseThrow(() -> new CustomException(ErrorCode.CUSTOM_NODE_NOT_FOUND));
 
+        if (!customNode.getCustomRoadmap().getId().equals(customRoadmap.getId())) {
+            throw new CustomException(ErrorCode.FORBIDDEN);
+        }
+
         if (customNode.getStatus() == NodeStatus.COMPLETED) {
             throw new CustomException(ErrorCode.NODE_ALREADY_COMPLETED);
         }
