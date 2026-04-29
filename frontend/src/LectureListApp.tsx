@@ -1,4 +1,4 @@
-import { startTransition, useDeferredValue, useEffect, useState } from 'react'
+import { startTransition, useDeferredValue, useEffect, useRef, useState } from 'react'
 import AuthModal, { type AuthView } from './components/AuthModal'
 import SiteHeader from './components/SiteHeader'
 import {
@@ -19,6 +19,8 @@ import {
 import { authApi, courseApi, userApi, wishlistApi } from './lib/api'
 import { AUTH_SESSION_SYNC_EVENT, clearStoredAuthSession, readStoredAuthSession } from './lib/auth-session'
 import type { CourseCatalogMenu } from './types/course-catalog'
+
+const COURSES_PER_PAGE = 8
 
 function readAuthViewFromLocation(): AuthView | null {
   const value = new URLSearchParams(window.location.search).get('auth')
@@ -102,6 +104,8 @@ export default function LectureListApp() {
   const [pendingBookmarkCourseId, setPendingBookmarkCourseId] = useState<number | null>(null)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const [nodeTagsFilter, setNodeTagsFilter] = useState<string[]>(() => readNodeTagsFromLocation())
+  const [currentPage, setCurrentPage] = useState(1)
+  const listTopRef = useRef<HTMLDivElement | null>(null)
   const deferredSearchTerm = useDeferredValue(searchTerm.trim().toLowerCase())
 
   const categoryConfigs = normalizeLectureCategoryConfigs(catalogMenu)
@@ -140,6 +144,12 @@ export default function LectureListApp() {
     }),
     sortKey,
   )
+  const totalPages = Math.max(1, Math.ceil(filteredCourses.length / COURSES_PER_PAGE))
+  const paginatedCourses = filteredCourses.slice(
+    (currentPage - 1) * COURSES_PER_PAGE,
+    currentPage * COURSES_PER_PAGE,
+  )
+  const pageNumbers = Array.from({ length: totalPages }, (_, index) => index + 1)
 
   useEffect(() => {
     document.title = 'DevPath - 강의 탐색'
@@ -244,6 +254,25 @@ export default function LectureListApp() {
   }, [categoryConfigs, overviewCategoryKey, selectedCategoryKey])
 
   useEffect(() => {
+    setCurrentPage(1)
+  }, [
+    selectedCategoryKey,
+    selectedTag,
+    difficultyFilter,
+    priceFilter,
+    onlyFree,
+    searchTerm,
+    sortKey,
+    nodeTagsFilter,
+  ])
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages)
+    }
+  }, [currentPage, totalPages])
+
+  useEffect(() => {
     if (!toastMessage) return
     const timeoutId = window.setTimeout(() => setToastMessage(null), 2200)
     return () => window.clearTimeout(timeoutId)
@@ -280,6 +309,11 @@ export default function LectureListApp() {
       setSelectedTag(null)
       setMegaMenuOpen(false)
     })
+  }
+
+  function handlePageChange(nextPage: number) {
+    setCurrentPage(Math.min(totalPages, Math.max(1, nextPage)))
+    listTopRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
   function handleCourseOpen(courseId: number) {
@@ -493,7 +527,7 @@ export default function LectureListApp() {
           </div>
         </div>
 
-        <div className="mx-auto max-w-7xl px-6 py-8">
+        <div ref={listTopRef} className="mx-auto max-w-7xl px-6 py-8">
           <h2 className="mb-6 flex items-center gap-2 text-xl font-bold text-gray-900">
             <i className="fas fa-layer-group text-brand" />
             <span>{activeCategory?.title ?? '강의 목록'}</span>
@@ -522,8 +556,9 @@ export default function LectureListApp() {
           ) : null}
 
           {!loadingCourses && filteredCourses.length > 0 ? (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-              {filteredCourses.map((course) => {
+            <>
+              <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {paginatedCourses.map((course) => {
                 const displayPrice = getCourseDisplayPrice(course)
                 const priceLabel = formatCoursePrice(displayPrice)
                 const instructorLabel = getCourseInstructorLabel(course)
@@ -606,7 +641,44 @@ export default function LectureListApp() {
                   </div>
                 )
               })}
-            </div>
+              </div>
+
+              {totalPages > 1 ? (
+                <nav className="mt-10 flex flex-wrap items-center justify-center gap-2" aria-label="강의 목록 페이지">
+                  <button
+                    type="button"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className="h-10 rounded-lg border border-gray-200 px-3 text-sm font-bold text-gray-600 transition hover:border-gray-300 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    이전
+                  </button>
+                  {pageNumbers.map((pageNumber) => (
+                    <button
+                      key={pageNumber}
+                      type="button"
+                      onClick={() => handlePageChange(pageNumber)}
+                      aria-current={currentPage === pageNumber ? 'page' : undefined}
+                      className={`h-10 min-w-10 rounded-lg border px-3 text-sm font-bold transition ${
+                        currentPage === pageNumber
+                          ? 'border-[#00C471] bg-[#00C471] text-white'
+                          : 'border-gray-200 bg-white text-gray-600 hover:border-[#00C471] hover:text-[#00C471]'
+                      }`}
+                    >
+                      {pageNumber}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className="h-10 rounded-lg border border-gray-200 px-3 text-sm font-bold text-gray-600 transition hover:border-gray-300 hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    다음
+                  </button>
+                </nav>
+              ) : null}
+            </>
           ) : null}
         </div>
       </main>
