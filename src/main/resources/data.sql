@@ -14136,60 +14136,174 @@ WHERE item.section_id = section_item.id
 -- ============================================================
 -- Roadmap Hub 공식 로드맵 상세 데이터 보강
 -- - Backend Master Roadmap은 위쪽의 전용 상세 seed를 유지한다.
--- - 허브에 연결된 나머지 공식 로드맵은 공통 구조로 소개/노드/분기/선수조건/태그를 생성한다.
+-- - 허브에 연결된 나머지 공식 로드맵은 분야별 profile을 기준으로 소개/노드/분기/선수조건/태그를 생성한다.
 -- ============================================================
+DROP TABLE IF EXISTS roadmap_hub_node_profile_seed;
+DROP TABLE IF EXISTS roadmap_hub_node_detail_seed;
+
+CREATE TEMPORARY TABLE roadmap_hub_node_profile_seed (
+    display_name VARCHAR(120) PRIMARY KEY,
+    intro_topic TEXT NOT NULL,
+    core_topic TEXT NOT NULL,
+    tool_topic TEXT NOT NULL,
+    practice_topic TEXT NOT NULL,
+    model_topic TEXT NOT NULL,
+    quality_topic TEXT NOT NULL,
+    perf_topic TEXT NOT NULL,
+    ops_topic TEXT NOT NULL,
+    arch_topic TEXT NOT NULL,
+    security_topic TEXT NOT NULL,
+    project_topic TEXT NOT NULL
+);
+
+INSERT INTO roadmap_hub_node_profile_seed (
+    display_name,
+    intro_topic,
+    core_topic,
+    tool_topic,
+    practice_topic,
+    model_topic,
+    quality_topic,
+    perf_topic,
+    ops_topic,
+    arch_topic,
+    security_topic,
+    project_topic
+) VALUES
+    ('Frontend', '브라우저 화면 구현과 사용자 흐름', 'HTML CSS JavaScript 렌더링', 'Vite React DevTools 브라우저 디버거', '반응형 UI와 폼 검증', '클라이언트 상태 서버 상태 라우팅', '접근성 웹 성능 크로스브라우징', '번들 크기와 렌더링 비용', '정적 배포와 프리뷰 환경', '컴포넌트 계층과 디자인 시스템', 'XSS 입력 검증 토큰 저장', 'API 연동 대시보드 화면'),
+    ('Full Stack', '화면 API 데이터 저장소를 연결하는 제품 전체 흐름', 'HTTP 인증 UI 상태 데이터 모델링', 'React Spring Boot PostgreSQL Docker GitHub Actions', '로그인 CRUD 관리자 화면 통합 구현', '도메인 엔티티 API 계약 클라이언트 캐시', '단위 통합 E2E 테스트와 장애 로그', 'API 응답 시간 프론트 렌더링 DB 인덱스', '컨테이너 배포 CI 파이프라인 환경 분리', '계층형 구조 모듈 경계 프론트 백엔드 계약', '인증 인가 세션 토큰 민감 정보 보호', '풀스택 서비스 MVP와 배포 링크'),
+    ('DevOps', '개발과 운영 사이 배포 흐름을 자동화하는 책임', 'CI CD 인프라 모니터링 장애 대응', 'GitHub Actions Docker Kubernetes Terraform Prometheus', '빌드 테스트 이미지 배포 파이프라인 구축', '환경 변수 시크릿 배포 전략 인프라 상태', '재현 가능한 배포 롤백 헬스체크', '배포 시간 리소스 사용량 스케일링 지표', '알림 로그 메트릭 백업 복구 절차', '클러스터 네트워크 서비스 디스커버리 구성', '시크릿 관리 권한 분리 이미지 취약점 점검', '컨테이너 서비스 CI CD와 모니터링'),
+    ('DevSecOps', '보안을 개발 배포 운영 흐름 안에 넣는 책임', '위협 모델링 SAST DAST 시크릿 관리', 'GitHub Advanced Security Trivy OWASP ZAP Vault', '취약점 스캔이 포함된 배포 파이프라인', '보안 정책 예외 승인 감사 로그', '보안 게이트 오탐 관리 규정 준수', '스캔 시간과 릴리스 차단 기준 조율', '취약점 알림 패치 추적 사고 대응', '제로 트러스트 네트워크 권한 최소화', '공급망 보안 의존성 서명 SBOM', '보안 검사가 포함된 서비스 배포 흐름'),
+    ('Data Analyst', '비즈니스 질문을 데이터 지표로 바꾸는 분석 흐름', 'SQL 통계 지표 정의 코호트 분석', 'SQL BI 도구 스프레드시트 Python 노트북', '매출 전환 리텐션 대시보드 작성', '이벤트 로그 차원 측정값 데이터 마트', '지표 검증 결측치 이상치 재현성', '쿼리 비용과 대시보드 로딩 시간', '정기 리포트 자동 갱신 권한 관리', '분석 데이터 모델과 지표 사전', '개인정보 마스킹 접근 권한', '제품 개선 의사결정 분석 리포트'),
+    ('AI Engineer', 'AI 모델을 제품 기능으로 연결하는 엔지니어링 흐름', '모델 추론 벡터 검색 프롬프트 API', 'Python FastAPI LangChain 벡터DB Docker', '문서 질의응답 챗봇 기능 구현', '임베딩 청크 메타데이터 프롬프트 상태', '정답 품질 평가 hallucination 테스트', '추론 지연 토큰 비용 캐시 전략', '모델 서빙 로그 관찰 프롬프트 버전 관리', 'RAG 파이프라인 에이전트 도구 호출 구조', '프롬프트 주입 데이터 유출 안전장치', '운영 가능한 AI 기능 프로토타입'),
+    ('AI and Data Scientist', '데이터로 가설을 검증하고 모델 성능을 설명하는 흐름', '통계 머신러닝 피처 엔지니어링 실험 설계', 'Python pandas scikit-learn Jupyter MLflow', '예측 모델 학습과 성능 비교 실험', '피처 테이블 학습 검증 테스트 분리', '교차검증 편향 분산 재현 가능한 실험', '학습 시간 메모리 모델 복잡도 조절', '실험 추적 모델 등록 결과 공유', '모델링 파이프라인과 데이터 누수 방지', '개인정보 익명화 모델 편향 점검', '문제 정의부터 모델 리포트까지'),
+    ('Data Engineer', '데이터를 안정적으로 수집 변환 제공하는 파이프라인', '배치 스트리밍 ETL ELT 데이터 웨어하우스', 'Airflow Spark Kafka dbt Snowflake', '원천 데이터 적재와 변환 잡 구성', '스키마 파티션 데이터 계보 품질 규칙', '데이터 테스트 재처리 중복 방지', '잡 실행 시간 파일 크기 파티션 최적화', '스케줄링 알림 재시도 백필 운영', '레이크하우스와 웨어하우스 계층 설계', '민감 데이터 권한 마스킹 감사', '분석용 데이터 마트와 파이프라인'),
+    ('Android', 'Android 앱 화면과 기기 기능을 구현하는 흐름', 'Kotlin Activity Fragment Compose 생명주기', 'Android Studio Gradle Emulator Jetpack', '리스트 상세 화면과 로컬 저장 구현', 'ViewModel 상태 네비게이션 Room 데이터', 'UI 테스트 접근성 크래시 리포트', '렌더링 지연 배터리 네트워크 비용', '스토어 배포 버전 코드 Crashlytics', 'Clean Architecture 모듈화 의존성 주입', '권한 저장소 암호화 네트워크 보안', 'API 연동 Android 앱 완성'),
+    ('Machine Learning', '데이터에서 패턴을 학습하는 모델 개발 흐름', '지도학습 비지도학습 평가 지표 피처', 'Python scikit-learn pandas matplotlib', '분류 회귀 모델 학습 실습', '데이터셋 분할 피처 스케일링 레이블', '검증 지표 과적합 데이터 누수 점검', '모델 복잡도 학습 시간 추론 속도', '모델 저장 추론 스크립트 실험 기록', '파이프라인 전처리 모델 평가 구조', '편향 개인정보 설명 가능성', '문제별 ML 모델 비교 리포트'),
+    ('PostgreSQL', '관계형 데이터 저장과 조회 성능을 설계하는 흐름', '테이블 관계 SQL 트랜잭션 인덱스', 'psql pgAdmin EXPLAIN 백업 도구', '정규화된 스키마와 조회 쿼리 작성', '제약조건 외래키 뷰 파티션', 'ACID 락 격리수준 쿼리 검증', '실행 계획 인덱스 튜닝 VACUUM', '백업 복구 복제 모니터링', '스키마 설계와 마이그레이션 전략', '권한 Row Level Security 감사 로그', '업무용 PostgreSQL 데이터 모델'),
+    ('iOS', 'Apple 생태계 앱 화면과 상태 흐름을 구현하는 과정', 'Swift SwiftUI UIKit 생명주기', 'Xcode Simulator Instruments TestFlight', '목록 상세 폼 화면과 네트워크 연동', 'Observable 상태 네비게이션 CoreData', 'UI 테스트 접근성 크래시 분석', '앱 시작 시간 메모리 렌더링 최적화', '프로비저닝 TestFlight 릴리스 관리', 'MVVM 모듈화 의존성 주입', '키체인 권한 개인정보 보호', 'API 연동 iOS 앱 완성'),
+    ('Blockchain', '탈중앙 네트워크와 스마트 컨트랙트 서비스 구조', '트랜잭션 지갑 컨센서스 스마트 컨트랙트', 'Solidity Hardhat MetaMask Ethers.js', '토큰 전송과 컨트랙트 호출 DApp', '온체인 상태 이벤트 인덱싱 지갑 연결', '컨트랙트 테스트 감사 재현성', '가스 비용 저장소 접근 최적화', '테스트넷 배포 모니터링 업그레이드', '프록시 패턴 오라클 브릿지 구조', '재진입 공격 권한 검증 키 관리', '스마트 컨트랙트 기반 DApp'),
+    ('QA', '제품 품질을 요구사항과 테스트로 검증하는 흐름', '테스트 케이스 결함 리포트 회귀 테스트', 'TestRail Playwright Postman JMeter', '기능 테스트와 API 테스트 시나리오 작성', '요구사항 추적 결함 상태 테스트 데이터', '재현 절차 우선순위 커버리지', '테스트 실행 시간 병렬화 안정성', '릴리스 검수 자동화 리포트', '테스트 전략과 품질 게이트 설계', '권한 입력값 장애 상황 보안 테스트', '릴리스 품질 검증 리포트'),
+    ('Software Architect', '시스템 요구사항을 구조와 기술 결정으로 바꾸는 역할', '품질 속성 트레이드오프 아키텍처 패턴', 'C4 다이어그램 ADR 모델링 도구', '서비스 경계와 통신 방식 설계', '도메인 모델 데이터 흐름 의존성', '아키텍처 리뷰 위험 식별 검증 계획', '확장성 처리량 지연시간 비용', '운영성 관찰성 장애 격리 전략', '모듈 분리 이벤트 기반 마이크로서비스', '보안 경계 권한 데이터 보호', '아키텍처 결정 기록과 설계 문서'),
+    ('Cyber Security', '시스템을 공격 관점에서 분석하고 방어하는 흐름', '네트워크 웹 취약점 암호 권한', 'Burp Suite Nmap Wireshark SIEM', '취약점 진단과 침투 테스트 리포트', '자산 위협 공격 경로 로그 이벤트', '재현 가능한 취약점 검증과 심각도 평가', '스캔 범위 탐지 속도 오탐 관리', '보안 모니터링 사고 대응 플레이북', '방어 계층 인증 네트워크 분리', 'OWASP 권한 상승 데이터 유출 방지', '웹 서비스 보안 진단 보고서'),
+    ('UX Design', '사용자 문제를 화면 흐름과 인터랙션으로 해결하는 과정', '리서치 정보구조 와이어프레임 사용성', 'Figma FigJam 프로토타입 사용자 인터뷰', '핵심 사용자 여정과 화면 시안 제작', '페르소나 태스크 플로우 디자인 토큰', '사용성 테스트 접근성 디자인 리뷰', '전환율 과업 성공률 인터랙션 비용', '디자인 핸드오프 피드백 반영 버전 관리', '정보구조 네비게이션 컴포넌트 패턴', '개인정보 동의 오류 방지 접근성', '검증 가능한 프로토타입과 UX 리포트'),
+    ('Technical Writer', '복잡한 기술을 정확한 문서와 가이드로 전달하는 역할', '독자 분석 정보 설계 API 문서', 'Markdown OpenAPI Docs-as-Code Git', '설치 가이드와 튜토리얼 작성', '문서 구조 용어집 버전 릴리스 노트', '정확성 검수 링크 검증 스타일 가이드', '문서 탐색성 검색성 읽기 시간', '문서 배포 변경 이력 피드백 수집', '문서 IA와 콘텐츠 재사용 전략', '민감 정보 제거 권한별 문서 분리', '개발자 온보딩 문서 세트'),
+    ('Game Developer', '게임 규칙을 상호작용과 플레이 경험으로 구현하는 흐름', '게임 루프 물리 입력 애니메이션', 'Unity Unreal Godot Blender 디버거', '플레이어 이동 전투 UI 프로토타입', '씬 오브젝트 상태 저장 리소스 관리', '플레이 테스트 밸런스 버그 재현', '프레임 레이트 드로우콜 메모리 최적화', '빌드 패키징 패치 크래시 수집', '엔티티 컴포넌트 씬 전환 구조', '치트 방지 세이브 보호 입력 검증', '플레이 가능한 게임 프로토타입'),
+    ('Server Side Game Developer', '멀티플레이 게임 서버와 실시간 상태를 운영하는 흐름', '세션 매치메이킹 동기화 권위 서버', 'Netty WebSocket Redis Kubernetes', '실시간 방 생성과 상태 동기화 구현', '플레이어 상태 룸 서버 이벤트 큐', '부하 테스트 지연 재접속 시나리오', '틱 레이트 네트워크 지연 서버 부하', '매치 서버 배포 모니터링 장애 복구', '샤딩 로비 게임 서버 분리', '치트 검증 권위 서버 토큰 보호', '멀티플레이 게임 서버 데모'),
+    ('MLOps', '모델 개발부터 배포 모니터링까지 연결하는 운영 흐름', '모델 레지스트리 피처 스토어 서빙 모니터링', 'MLflow Kubeflow Docker Kubernetes Airflow', '모델 학습 배포 파이프라인 구축', '데이터 버전 모델 버전 피처 계약', '재현성 모델 검증 드리프트 테스트', '추론 지연 처리량 리소스 비용', '모델 모니터링 재학습 롤백 운영', '학습 서빙 파이프라인 분리 구조', '모델 접근 권한 데이터 보호 승인', '운영 가능한 ML 배포 파이프라인'),
+    ('Product Manager', '문제를 정의하고 제품 우선순위를 결정하는 흐름', '고객 문제 KPI 로드맵 우선순위', 'Jira Notion Figma Analytics 도구', 'PRD 작성과 실험 계획 수립', '사용자 세그먼트 지표 백로그 릴리스 범위', '가설 검증 성공 기준 리스크 관리', '전환율 리텐션 실험 비용 최적화', '릴리스 커뮤니케이션 피드백 루프', '제품 전략과 기능 의존성 구조', '개인정보 정책 권한 장애 대응 요구사항', '문제 정의부터 출시 회고까지'),
+    ('Engineering Manager', '팀이 지속적으로 성과를 내도록 사람과 시스템을 관리하는 역할', '목표 설정 피드백 채용 실행 관리', '1on1 문서화 로드맵 지표 대시보드', '스프린트 운영과 팀 실행 리듬 정리', '역할 책임 의사결정 지표 리스크', '성과 리뷰 성장 계획 팀 건강도', '리드타임 병목 WIP 배포 빈도', '온콜 회고 프로세스 개선 운영', '팀 구조 책임 위임 의사결정 체계', '권한 갈등 보안 책임 사고 대응', '팀 운영 계획과 성장 로드맵'),
+    ('Developer Relations', '개발자 커뮤니티와 제품 사용 경험을 연결하는 역할', 'API 이해 콘텐츠 커뮤니티 피드백', 'GitHub Discord 블로그 데모 도구', '샘플 앱 튜토리얼과 발표 자료 제작', '개발자 여정 피드백 이슈 콘텐츠 캘린더', '문서 정확성 데모 재현성 커뮤니티 반응', '온보딩 시간 샘플 실행 성공률', '릴리스 소통 이벤트 운영 피드백 정리', '커뮤니티 채널 콘텐츠 퍼널 설계', '민감 정보 공개 방지 라이선스 준수', '개발자 온보딩 캠페인과 데모'),
+    ('BI Analyst', '조직 의사결정용 지표와 리포트를 설계하는 흐름', '지표 정의 데이터 모델 대시보드 스토리텔링', 'SQL Power BI Tableau Looker', '경영 KPI 대시보드와 리포트 작성', '팩트 차원 테이블 필터 권한 모델', '수치 검산 데이터 신뢰도 알림 기준', '쿼리 성능 캐시 대시보드 응답 시간', '정기 리포트 배포 권한 관리', '스타 스키마 시맨틱 레이어 설계', '민감 지표 접근 제어 감사', '의사결정용 BI 대시보드'),
+    ('SQL', '데이터를 질문에 맞게 조회하고 변형하는 능력', 'SELECT JOIN GROUP BY 서브쿼리 윈도우 함수', 'PostgreSQL MySQL psql SQL 클라이언트', '분석용 조회 쿼리와 집계 작성', '테이블 관계 키 제약조건 NULL 처리', '쿼리 결과 검산 중복 누락 점검', '인덱스 실행 계획 쿼리 비용', '뷰 저장 프로시저 배치 실행', '정규화와 조회 패턴별 스키마 설계', 'SQL Injection 권한 최소화', '실무 데이터 분석 쿼리 모음'),
+    ('Computer Science', '소프트웨어가 동작하는 기본 원리를 이해하는 기반', '자료구조 운영체제 네트워크 데이터베이스', 'C Python Linux 디버거 시각화 도구', '알고리즘과 시스템 동작 실험', '메모리 프로세스 파일 네트워크 모델', '복잡도 검증 경계값 테스트', '시간복잡도 공간복잡도 병목 분석', '프로세스 스케줄링 I/O 관찰', '계층 구조 추상화 인터페이스 설계', '권한 격리 암호화 기본 원리', 'CS 개념 실험 노트와 구현'),
+    ('React', '컴포넌트 기반으로 상태 변화에 반응하는 UI 개발', 'JSX props state Hooks 렌더링', 'Vite React DevTools Testing Library', '컴포넌트 분리와 이벤트 처리 구현', '전역 상태 서버 상태 라우터 구조', '컴포넌트 테스트 접근성 회귀 확인', '메모이제이션 렌더링 횟수 번들 분석', '정적 빌드 배포 환경 변수 관리', '컴포넌트 합성 상태 경계 설계', 'XSS 안전한 렌더링 토큰 저장', 'API 연동 React 미니 앱'),
+    ('Vue', '템플릿과 반응형 상태로 화면을 구성하는 UI 개발', 'Composition API 반응성 컴포넌트 라우터', 'Vite Vue Devtools Pinia Vitest', '폼 목록 상세 화면 컴포넌트 구현', 'ref reactive store route 상태 모델', '컴포넌트 테스트 접근성 스타일 검증', '반응성 추적 번들 크기 렌더링 최적화', '정적 배포 빌드 환경 분리', '컴포저블과 컴포넌트 책임 분리', 'XSS 템플릿 안전성 인증 토큰', 'API 연동 Vue 애플리케이션'),
+    ('Angular', '프레임워크 구조로 대규모 프론트엔드를 구성하는 흐름', 'Component Service DI RxJS 라우팅', 'Angular CLI DevTools Jasmine Karma', '모듈형 화면과 폼 검증 구현', 'Observable 상태 서비스 계층 라우트 데이터', '단위 테스트 E2E 접근성 검증', 'Change Detection lazy loading 번들 최적화', '환경별 빌드 배포 릴리스 관리', '모듈 경계 DI 계층 구조', 'XSS sanitization guard 인증 보호', '업무용 Angular 관리 화면'),
+    ('JavaScript', '웹 런타임에서 동작하는 언어와 비동기 흐름', '스코프 클로저 프로토타입 비동기 이벤트 루프', '브라우저 DevTools Node.js npm ESLint', 'DOM 조작과 비동기 API 호출 구현', '객체 배열 모듈 이벤트 상태', '단위 테스트 타입 체크 린트 규칙', '이벤트 루프 렌더링 블로킹 메모리', '패키지 빌드 배포 스크립트 관리', '모듈 패턴 함수형 객체지향 구조', 'XSS 입력 검증 의존성 취약점', '순수 JavaScript 웹 기능'),
+    ('TypeScript', 'JavaScript 코드에 타입 계약을 세우는 개발 흐름', '타입 추론 제네릭 유니언 인터페이스', 'tsconfig ESLint Vite 타입 검사', '타입 안전한 API 응답 처리 구현', '도메인 타입 DTO 상태 타입 모델', '컴파일 오류 테스트 타입 커버리지', '타입 복잡도 빌드 시간 최적화', '패키지 타입 배포 버전 관리', '타입 계층 모듈 공개 API 설계', '민감 데이터 타입 분리 안전한 파싱', '타입 기반 프론트엔드 모듈'),
+    ('Node.js', 'JavaScript 런타임으로 서버와 도구를 만드는 흐름', '이벤트 루프 Express 비동기 I/O 모듈', 'Node npm Express Jest Docker', 'REST API와 파일 처리 기능 구현', '요청 응답 미들웨어 데이터베이스 연결', 'API 테스트 에러 핸들링 로깅', '비동기 처리량 메모리 누수 프로파일링', '프로세스 관리 배포 환경 변수', '계층형 서버 구조와 모듈 분리', '인증 rate limit 입력 검증', 'Node.js API 서버'),
+    ('Python', '간결한 문법으로 자동화 데이터 웹 기능을 만드는 흐름', '자료형 함수 모듈 예외 가상환경', 'Python pip venv pytest Jupyter', 'CLI 자동화와 데이터 처리 스크립트', '파일 데이터프레임 객체 패키지 구조', 'pytest 타입 힌트 린트 예외 검증', '반복문 벡터화 I/O 병목 최적화', '패키징 스케줄링 로그 관리', '모듈 패키지 객체 책임 분리', '입력 검증 시크릿 관리 의존성 점검', '자동화 스크립트와 분석 노트북'),
+    ('System Design', '대규모 서비스를 요구사항과 품질 속성으로 설계하는 사고', '확장성 가용성 캐시 큐 샤딩', '다이어그램 ADR 부하 산정 도구', 'URL 단축기 피드 설계 연습', '요구사항 트래픽 저장소 API 계약', '병목 검증 장애 시나리오 일관성', '캐시 히트율 처리량 지연시간', '모니터링 롤백 장애 복구 절차', '마이크로서비스 이벤트 소싱 CQRS 구조', '인증 권한 데이터 암호화 위협 모델', '시스템 설계 문서와 발표 자료'),
+    ('Java', '객체지향과 JVM 기반 애플리케이션 개발', '클래스 인터페이스 컬렉션 예외 제네릭', 'JDK IntelliJ Gradle JUnit', '콘솔 앱과 서비스 로직 구현', '객체 모델 컬렉션 스트림 패키지 구조', '단위 테스트 예외 케이스 코드 스타일', 'JVM 메모리 GC 컬렉션 성능', 'JAR 빌드 실행 환경 설정', 'OOP 계층 SOLID 패키지 분리', '입력 검증 직렬화 의존성 취약점', 'Java 서비스 모듈'),
+    ('ASP.NET Core', 'C# 기반 웹 API와 서버 애플리케이션 개발', 'Controller Middleware DI Entity Framework', 'Visual Studio dotnet CLI SQL Server Swagger', 'CRUD API와 인증 흐름 구현', 'DbContext DTO 서비스 계층 라우팅', 'xUnit 통합 테스트 로깅', 'Kestrel 응답 시간 EF 쿼리 최적화', 'IIS Docker Azure 배포 설정', 'Clean Architecture 레이어드 구조', 'Identity 권한 CORS 시크릿 관리', 'ASP.NET Core 업무 API'),
+    ('API Design', '클라이언트와 서버가 안정적으로 통신하는 계약 설계', 'REST 리소스 상태 코드 스키마 버전', 'OpenAPI Swagger Postman Mock Server', '회원 주문 같은 리소스 API 설계', '요청 응답 DTO 오류 모델 페이지네이션', '계약 테스트 호환성 에러 응답 검증', '응답 크기 캐싱 rate limit 최적화', '문서 배포 변경 로그 사용량 모니터링', 'API 버전 관리 리소스 경계 설계', '인증 인가 입력 검증 데이터 노출 방지', 'OpenAPI 명세와 샘플 서버'),
+    ('Spring Boot', 'Spring 생태계로 웹 서비스와 비즈니스 로직을 구현하는 흐름', 'DI Bean MVC JPA Security', 'IntelliJ Gradle Spring Initializr Docker', 'REST API와 데이터 저장 기능 구현', 'Controller Service Repository Entity 구조', 'JUnit MockMvc 통합 테스트 로깅', 'JPA 쿼리 캐시 응답 시간 최적화', '프로파일 배포 Actuator 모니터링', '계층형 아키텍처 트랜잭션 경계', 'Spring Security JWT CORS 검증', 'Spring Boot 서비스 API'),
+    ('Flutter', '하나의 코드베이스로 모바일 UI를 만드는 개발 흐름', 'Widget State Navigator async layout', 'Flutter SDK Dart DevTools Emulator', '크로스플랫폼 앱 화면과 API 연동', 'Provider Bloc 라우팅 로컬 저장소', '위젯 테스트 접근성 크래시 분석', '빌드 크기 렌더링 jank 최적화', '스토어 빌드 flavor 릴리스 관리', '위젯 트리 상태 관리 아키텍처', '토큰 저장 권한 플랫폼 보안', 'Flutter 모바일 앱'),
+    ('C++', '성능과 메모리 제어가 필요한 시스템 개발', '포인터 RAII STL 템플릿 동시성', 'CMake gdb clang-tidy sanitizer', '자료구조와 파일 처리 프로그램 구현', '메모리 소유권 객체 수명 스레드 상태', '단위 테스트 메모리 오류 정적 분석', '할당 비용 캐시 지역성 알고리즘 최적화', '빌드 타깃 패키징 크래시 덤프 분석', '모듈 경계 헤더 라이브러리 설계', '버퍼 오버플로우 UB 입력 검증', '성능 중심 C++ 모듈'),
+    ('Rust', '메모리 안전성과 성능을 함께 잡는 시스템 개발', '소유권 borrow trait enum async', 'Cargo rustfmt clippy Tokio', 'CLI 도구와 파일 처리 기능 구현', '소유권 수명 에러 처리 모듈 구조', '단위 테스트 property test clippy', 'zero-cost abstraction 할당 최소화', 'crate 배포 cross compile 로그', 'trait 기반 설계 모듈 경계', '메모리 안전성 입력 검증 unsafe 격리', 'Rust CLI 또는 서버 모듈'),
+    ('Go Roadmap', '단순한 문법으로 동시성 서버와 도구를 만드는 흐름', 'goroutine channel interface error handling', 'Go toolchain gin sqlc pprof', 'HTTP API와 concurrent worker 구현', 'struct interface context 데이터 흐름', 'go test race detector 에러 케이스', 'goroutine 누수 pprof latency 최적화', 'binary 배포 systemd Docker 운영', '패키지 경계 interface 의존성 설계', 'context timeout 입력 검증', 'Go API 서버와 CLI 도구'),
+    ('Design and Architecture', '문제 구조를 설계 원칙과 아키텍처 결정으로 풀어내는 흐름', 'SOLID DDD 패턴 품질 속성', 'C4 ADR UML 모델링 도구', '모듈 경계와 책임 분리 설계', '도메인 이벤트 의존성 데이터 흐름', '설계 리뷰 리스크 검증 테스트 전략', '확장 비용 복잡도 성능 트레이드오프', '운영성 로그 메트릭 장애 격리', '레이어드 헥사고날 이벤트 기반 구조', '보안 경계 권한 데이터 보호', '아키텍처 설계 문서'),
+    ('GraphQL', '클라이언트가 필요한 데이터를 선언적으로 요청하는 API 방식', 'Schema Query Mutation Resolver Type', 'Apollo GraphQL Codegen GraphiQL', '게시글 댓글 API 스키마 구현', '타입 관계 resolver 데이터로더 캐시', '스키마 테스트 N+1 검증 에러 정책', 'DataLoader 쿼리 복잡도 캐싱', '스키마 배포 버전 호환성 모니터링', 'Federation 모듈화 스키마 경계', '권한 필드 마스킹 introspection 제한', 'GraphQL API와 클라이언트 연동'),
+    ('React Native', 'React 방식으로 모바일 앱을 만드는 개발 흐름', 'Native component navigation bridge state', 'Expo React Native CLI Flipper EAS', '모바일 화면과 디바이스 기능 연동', 'navigation store async storage API 상태', '기기 테스트 접근성 크래시 분석', 'bridge 비용 렌더링 리스트 최적화', 'EAS build OTA 업데이트 스토어 배포', '네이티브 모듈 상태 관리 구조', '권한 토큰 저장 플랫폼 보안', 'React Native 모바일 앱'),
+    ('Design System', '제품 UI를 일관된 컴포넌트와 규칙으로 운영하는 체계', '디자인 토큰 컴포넌트 패턴 접근성', 'Figma Storybook Tokens Studio npm', '버튼 입력 카드 컴포넌트 라이브러리', '토큰 테마 variant 상태 문서 구조', '시각 회귀 테스트 접근성 체크', 'CSS 번들 크기 렌더링 영향', '패키지 버전 배포 변경 로그', '토큰 계층 컴포넌트 API 설계', '색 대비 포커스 상태 사용성 안전장치', 'Storybook 기반 디자인 시스템'),
+    ('Prompt Engineering', 'AI 모델이 원하는 결과를 내도록 맥락과 제약을 설계하는 기술', '지시문 컨텍스트 예시 평가 기준', 'ChatGPT Playground eval 도구', '요약 분류 생성 프롬프트 실험', '입력 형식 출력 스키마 메모리 컨텍스트', '정확도 일관성 hallucination 평가', '토큰 비용 응답 지연 프롬프트 압축', '프롬프트 버전 관리 로그 분석', '프롬프트 체인 도구 호출 구조', '프롬프트 주입 민감 정보 차단', '업무 자동화 프롬프트 세트'),
+    ('MongoDB', '문서 기반 데이터 모델과 조회 패턴을 설계하는 흐름', 'Document Collection Index Aggregation', 'MongoDB Compass mongosh Atlas', '게시글 댓글 문서 모델 구현', '임베디드 문서 참조 스키마 유연성', '쿼리 결과 검증 스키마 validation', '인덱스 aggregation pipeline 최적화', 'Atlas 백업 복제 모니터링', '조회 패턴 중심 문서 모델 설계', '역할 권한 암호화 injection 방지', 'MongoDB 기반 서비스 저장소'),
+    ('Linux', '서버 운영체제를 명령어와 프로세스로 다루는 능력', '파일 권한 프로세스 네트워크 systemd', 'bash ssh journalctl top vim', '로그 확인과 서비스 실행 자동화', '파일 시스템 사용자 환경 변수 포트', '명령 결과 검증 권한 오류 추적', 'CPU 메모리 I/O 네트워크 병목 분석', 'systemd cron 로그 로테이션 운영', '디렉터리 구조 프로세스 격리', '사용자 권한 방화벽 SSH 보안', 'Linux 서버 운영 실습'),
+    ('Kubernetes', '컨테이너 서비스를 클러스터에서 운영하는 플랫폼', 'Pod Deployment Service Ingress ConfigMap', 'kubectl Helm kind Prometheus', '웹 서비스를 클러스터에 배포', '리소스 요청 제한 Secret 볼륨 네임스페이스', 'readiness liveness rollout 검증', 'autoscaling scheduling resource tuning', 'Helm 배포 로그 모니터링 롤백', '네트워크 정책 서비스 메시 구조', 'RBAC Secret 이미지 보안', 'Kubernetes 운영 배포 구성'),
+    ('Docker', '애플리케이션 실행 환경을 이미지와 컨테이너로 고정하는 기술', 'Image Container Dockerfile Compose volume', 'Docker CLI Compose Registry', '웹 앱 컨테이너 이미지 작성', '레이어 환경 변수 네트워크 볼륨', '컨테이너 실행 검증 헬스체크', '이미지 크기 빌드 캐시 시작 시간', '레지스트리 푸시 Compose 운영', '멀티스테이지 빌드 서비스 분리', '이미지 취약점 rootless 시크릿 관리', 'Docker 기반 개발 배포 환경'),
+    ('AWS', '클라우드 인프라에서 서비스를 배포 운영하는 흐름', 'EC2 S3 RDS IAM VPC Lambda', 'AWS Console CLI CloudWatch CDK', '웹 서비스 배포와 스토리지 구성', '네트워크 보안그룹 IAM 정책 리소스 태그', '헬스체크 백업 알림 권한 검증', '비용 성능 오토스케일링 지표', 'CloudWatch 로그 배포 롤백 운영', 'VPC 서브넷 로드밸런서 아키텍처', 'IAM 최소권한 암호화 키 관리', 'AWS 기반 서비스 인프라'),
+    ('Terraform', '인프라를 코드로 정의하고 변경 이력을 관리하는 기술', 'Provider Resource State Module Plan', 'Terraform CLI AWS provider remote backend', 'VPC 서버 데이터베이스 코드화', 'state 변수 output workspace 구조', 'plan 검토 drift 탐지 정책 검증', '모듈 재사용 배포 시간 최적화', 'remote state lock CI 적용 운영', '모듈 경계 환경별 인프라 설계', '시크릿 노출 방지 IAM 최소권한', 'Terraform 인프라 코드 저장소'),
+    ('Data Structures & Algorithms', '문제를 효율적으로 풀기 위한 자료 표현과 절차', '배열 리스트 트리 그래프 정렬 탐색', 'Python Java C++ 시각화 도구', '자료구조 구현과 문제 풀이', '노드 간선 해시 힙 스택 큐', '정답 검증 경계값 복잡도 분석', '시간복잡도 공간복잡도 최적화', '풀이 기록 테스트 케이스 관리', '문제 유형별 알고리즘 선택 구조', '오버플로우 입력 범위 예외 처리', '알고리즘 풀이 노트와 구현'),
+    ('Redis', '메모리 기반 데이터 구조로 빠른 기능을 만드는 저장소', 'String Hash List Set ZSet TTL', 'redis-cli RedisInsight Docker', '캐시 세션 랭킹 기능 구현', '키 설계 만료 정책 자료구조 선택', '캐시 정합성 장애 재현 테스트', '메모리 사용량 eviction latency 최적화', 'replication persistence 모니터링', '캐시 전략 분산 락 PubSub 구조', '인증 네트워크 접근 키 노출 방지', 'Redis 캐시와 랭킹 서비스'),
+    ('Git and GitHub', '변경 이력을 관리하고 협업 흐름을 만드는 도구', 'commit branch merge rebase pull request', 'Git CLI GitHub Actions Codespaces', '브랜치 전략과 PR 리뷰 실습', '커밋 단위 충돌 이력 태그 릴리스', '리뷰 체크리스트 CI 상태 검증', '히스토리 정리 큰 파일 관리', '릴리스 태그 자동화 이슈 연결', 'trunk based flow GitFlow 저장소 구조', '권한 보호 브랜치 시크릿 관리', '협업 저장소와 릴리스 기록'),
+    ('PHP', '서버 렌더링과 웹 백엔드를 빠르게 만드는 언어', 'Composer PDO 세션 라우팅 템플릿', 'PHP CLI Composer Xdebug PHPUnit', '게시판 CRUD와 로그인 구현', '요청 응답 세션 데이터베이스 연결', 'PHPUnit 입력 검증 오류 로그', 'OPcache 쿼리 수 응답 시간 최적화', '배포 환경 composer autoload 운영', 'MVC 구조와 서비스 계층 분리', 'SQL Injection XSS CSRF 방어', 'PHP 웹 애플리케이션'),
+    ('Cloudflare', '엣지 네트워크로 보안 성능 배포를 강화하는 플랫폼', 'DNS CDN WAF Workers Pages', 'Cloudflare Dashboard Wrangler analytics', '정적 사이트와 Workers API 배포', 'DNS 레코드 캐시 규칙 라우팅', 'WAF 규칙 로그 캐시 동작 검증', '캐시 hit ratio edge latency 최적화', 'Pages 배포 DNS 모니터링 운영', '엣지 함수 CDN 보안 계층 구조', 'DDoS 방어 TLS 토큰 보호', 'Cloudflare 기반 엣지 서비스'),
+    ('AI Red Teaming', 'AI 시스템을 공격 관점에서 검증하는 보안 흐름', 'prompt injection jailbreak data exfiltration evaluation', 'LLM eval harness proxy logging 도구', 'AI 기능 공격 시나리오 작성', '프롬프트 정책 데이터 흐름 위험 모델', '공격 재현성 심각도 완화 검증', '평가 케이스 수 토큰 비용 최적화', '취약점 리포트 회귀 테스트 운영', '방어 계층 정책 필터 모니터링 구조', '민감 정보 유출 권한 우회 방지', 'AI 보안 평가 리포트'),
+    ('AI Agents', '모델이 도구를 호출하며 작업을 수행하는 시스템 설계', 'tool calling planning memory orchestration', 'LangGraph OpenAI SDK vector DB workflow tool', '도구 호출 기반 업무 자동화 에이전트', '상태 메모리 작업 큐 도구 스키마', 'eval 시나리오 실패 복구 테스트', '토큰 비용 latency tool 호출 수 최적화', '실행 로그 모니터링 프롬프트 버전 관리', 'planner executor retriever 구조', '권한 제한 tool sandbox prompt injection 방어', '업무 자동화 AI 에이전트'),
+    ('Next.js', 'React 기반 풀스택 웹 앱을 라우팅과 렌더링 전략으로 구성하는 프레임워크', 'App Router Server Component Route Handler', 'Next.js Vercel TypeScript Prisma', '페이지 라우팅과 API route 구현', '서버 상태 캐시 렌더링 경계 폼 액션', '컴포넌트 테스트 접근성 SEO 확인', 'ISR streaming bundle 이미지 최적화', 'Vercel 배포 환경 변수 로그', '서버 클라이언트 컴포넌트 경계 설계', '인증 쿠키 CSRF 데이터 노출 방지', 'Next.js 풀스택 웹 앱'),
+    ('Code Review', '코드 변경의 의도 품질 위험을 검토하는 협업 기술', 'diff 읽기 설계 의도 테스트 위험', 'GitHub Pull Request static analysis checklist', 'PR 리뷰와 개선 제안 작성', '변경 범위 의존성 테스트 근거', '버그 재현 리뷰 기준 회귀 위험', '리뷰 시간 코멘트 품질 병목 개선', '리뷰 프로세스 CODEOWNERS 자동화', '모듈 경계 책임 변경 영향 분석', '보안 취약점 권한 데이터 노출 점검', '실전 PR 리뷰 리포트'),
+    ('Kotlin', '간결한 타입 시스템으로 JVM과 Android 개발을 하는 언어', 'null safety data class coroutine extension', 'IntelliJ Gradle JUnit Android Studio', 'Kotlin 서비스 로직과 비동기 처리 구현', 'sealed class flow domain model package', '단위 테스트 null 처리 예외 케이스', 'coroutine dispatcher allocation 최적화', 'JAR Android build 배포 설정', '함수형 OOP 혼합 모듈 설계', 'null 안전성 직렬화 입력 검증', 'Kotlin 기반 앱 또는 API 모듈'),
+    ('HTML', '웹 문서의 의미 구조와 접근성 기반을 만드는 기술', 'semantic tag form media metadata', '브라우저 DevTools validator accessibility checker', '시맨틱 랜딩 페이지와 폼 작성', '문서 구조 폼 데이터 링크 메타 정보', '접근성 검사 유효성 검사 SEO 확인', 'DOM 크기 렌더링 차단 요소 최적화', '정적 파일 배포 검색 엔진 노출', '정보 구조 heading landmark 설계', '폼 보안 rel 속성 개인정보 입력', '접근성 있는 HTML 페이지'),
+    ('CSS', '화면 배치 스타일 반응형 표현을 제어하는 기술', 'box model flex grid cascade responsive', 'DevTools Sass PostCSS Tailwind', '반응형 레이아웃과 컴포넌트 스타일 작성', '토큰 변수 breakpoint 상태 스타일', '크로스브라우징 접근성 시각 회귀', 'layout shift selector 비용 애니메이션 최적화', 'CSS 빌드 purge 배포 관리', '레이어 cascade 컴포넌트 스타일 구조', '색 대비 focus-visible 사용자 설정 존중', '반응형 UI 스타일 시스템'),
+    ('Swift & Swift UI', 'Swift 언어와 선언형 UI로 Apple 앱을 만드는 흐름', 'Swift type system SwiftUI state binding', 'Xcode Instruments TestFlight Swift Package Manager', 'SwiftUI 화면과 데이터 바인딩 구현', 'Observable 상태 navigation persistence', '단위 UI 테스트 preview 접근성', '렌더링 diff 메모리 앱 시작 시간', 'TestFlight 배포 빌드 설정 운영', 'MVVM state ownership view composition', 'Keychain 개인정보 권한 관리', 'SwiftUI iOS 앱'),
+    ('Shell / Bash', '터미널 작업을 스크립트로 자동화하는 기술', 'pipe redirect variable function exit code', 'bash shellcheck cron ssh awk sed', '로그 처리와 배포 보조 스크립트 작성', '파일 경로 환경 변수 인자 처리', 'shellcheck dry run 오류 처리 검증', '프로세스 수 I/O 호출 최적화', 'cron systemd 로그 로테이션 운영', '작은 명령 조합과 스크립트 모듈화', '권한 chmod 시크릿 노출 방지', '운영 자동화 Bash 스크립트'),
+    ('Laravel', 'PHP 기반으로 웹 서비스를 빠르게 만드는 프레임워크', 'Route Controller Eloquent Blade Middleware', 'Composer Artisan Sail PHPUnit', '인증 포함 CRUD 웹 서비스 구현', 'Model migration request validation session', 'Feature test validation 에러 로그', '쿼리 eager loading cache 최적화', 'queue schedule deployment env 운영', 'MVC service repository 구조', 'CSRF policy guard secret 관리', 'Laravel 업무 웹 서비스'),
+    ('Elasticsearch', '검색과 로그 분석을 위한 분산 검색 엔진', 'index mapping analyzer query aggregation', 'Kibana Dev Tools Beats Logstash', '문서 검색과 필터 기능 구현', '문서 스키마 역색인 relevance score', '검색 결과 검증 mapping 테스트', 'shard 수 query latency heap 최적화', 'snapshot rollover monitoring 운영', 'index lifecycle cluster architecture', '권한 TLS field masking', '검색 서비스와 로그 대시보드'),
+    ('WordPress', '콘텐츠 관리 사이트를 테마와 플러그인으로 구성하는 플랫폼', 'theme plugin post type taxonomy hook', 'WordPress Admin WP CLI Local', '커스텀 테마와 게시글 타입 구현', '콘텐츠 모델 메뉴 위젯 사용자 권한', '브라우저 테스트 플러그인 충돌 점검', '캐시 이미지 최적화 쿼리 수 개선', '백업 업데이트 배포 운영', '테마 구조 플러그인 책임 분리', '권한 nonce 업데이트 취약점 관리', 'WordPress 콘텐츠 사이트'),
+    ('Django', 'Python 기반으로 안전한 웹 서비스를 빠르게 만드는 프레임워크', 'Model View Template ORM Admin', 'Django CLI pytest DRF PostgreSQL', '게시판 API와 관리자 기능 구현', 'Model migration serializer form session', '테스트 클라이언트 validation 권한 검증', 'ORM query prefetch cache 최적화', 'settings 분리 collectstatic 배포 운영', 'app 구조 service layer DRF 설계', 'CSRF authentication permission secret 관리', 'Django 웹 서비스 API'),
+    ('Ruby', '표현력 있는 객체지향 스크립팅 언어 개발', 'object block module gem metaprogramming', 'Ruby CLI bundler RSpec irb', 'CLI 도구와 데이터 처리 구현', '객체 메시지 예외 gem 구조', 'RSpec 테스트 rubocop 스타일 검증', '객체 할당 enumerable 성능 최적화', 'gem 배포 스크립트 실행 운영', '모듈 mixin 책임 분리', '입력 검증 의존성 취약점 관리', 'Ruby 자동화 도구'),
+    ('Ruby on Rails', '컨벤션 기반으로 웹 서비스를 빠르게 만드는 프레임워크', 'MVC ActiveRecord routing migration', 'Rails CLI bundler RSpec PostgreSQL', 'CRUD와 인증이 있는 웹 앱 구현', 'Model association controller view job', 'request spec validation authorization 검증', 'N+1 query cache background job 최적화', 'asset pipeline migration deploy 운영', 'MVC service object background job 구조', 'CSRF strong parameter secret 관리', 'Rails 웹 애플리케이션'),
+    ('Claude Code', 'AI 코딩 에이전트를 개발 작업에 안전하게 연결하는 흐름', 'prompt context tool execution code review', 'Claude Code Git terminal test runner', '이슈 기반 코드 수정과 테스트 실행', '작업 컨텍스트 파일 변경 diff 기록', '테스트 결과 리뷰 hallucination 검증', '토큰 사용량 컨텍스트 크기 반복 비용', '작업 로그 커밋 단위 리뷰 운영', '에이전트 작업 범위와 책임 분리', '비밀키 보호 명령 권한 검토', 'AI 보조 개발 작업 기록'),
+    ('Vibe Coding', 'AI와 빠르게 시제품을 만들되 검증으로 품질을 잡는 흐름', '요구사항 프롬프트 프로토타입 리뷰', 'ChatGPT Claude Cursor GitHub', '아이디어를 동작하는 MVP로 구현', '기능 명세 화면 흐름 코드 변경 이력', '실행 테스트 코드 리뷰 요구사항 대조', '반복 생성 비용과 수정 속도 관리', '버전 관리 피드백 반영 릴리스', '프롬프트 설계와 사람 검수 경계', '민감 정보 입력 금지 라이선스 확인', 'AI 협업 프로토타입 프로젝트'),
+    ('Scala', '함수형과 객체지향을 함께 쓰는 JVM 언어 개발', 'case class pattern matching collection Future', 'sbt ScalaTest IntelliJ Akka', '데이터 처리와 API 모듈 구현', 'immutable data algebraic type stream', 'property test 타입 안정성 검증', 'lazy evaluation collection 성능 최적화', 'JAR 배포 로그 설정 운영', '함수형 계층 effect 처리 구조', '타입 안전성 입력 검증 의존성 관리', 'Scala 서비스 또는 데이터 모듈'),
+    ('OpenClaw', 'AI 코딩 워크플로를 로컬 도구와 연결하는 실험적 개발 흐름', 'agent task context tool orchestration', 'OpenClaw Git terminal editor test command', '에이전트 작업 단위와 검증 루프 구성', '작업 지시 파일 범위 실행 로그 상태', '테스트 결과 diff 검토 실패 복구', '컨텍스트 크기 명령 실행 시간 최적화', '작업 기록 승인 절차 릴리스 관리', '에이전트 권한 경계와 도구 체인 설계', '명령 실행 제한 비밀 정보 보호', 'AI 에이전트 개발 워크플로');
+
 UPDATE roadmaps r
 SET
-    description = target.display_name || ' 학습 흐름을 기초, 실무 구현, 심화 분기, 포트폴리오까지 이어 주는 DevPath 공식 로드맵입니다.',
-    info_title = target.display_name || ' 로드맵이란 무엇인가요?',
+    description = detail.display_name || ' 로드맵은 ' || detail.intro_topic || '부터 ' || detail.project_topic || '까지 이어지는 DevPath 공식 학습 경로입니다.',
+    info_title = detail.display_name || ' 로드맵이란 무엇인가요?',
     info_content =
         '<div class="p-6 text-sm text-gray-700 leading-relaxed space-y-6">' ||
-        '<div><p class="mb-2"><span class="font-bold text-gray-900">' || target.display_name || '</span> 로드맵은 ' ||
-        CASE
-            WHEN target.roadmap_kind = '직무' THEN '해당 직무에서 실제로 맡게 되는 책임, 협업 방식, 산출물 품질 기준을 단계적으로 익히도록 구성했습니다.'
-            ELSE '해당 기술을 왜 쓰는지부터 실무 적용, 운영, 성능 개선까지 이어지는 학습 순서를 잡아 줍니다.'
-        END ||
-        '</p><p>기초 개념만 나열하지 않고 작은 실습, 품질 기준, 운영 관점, 포트폴리오 정리까지 한 번에 연결되도록 설계했습니다.</p></div>' ||
+        '<div><p class="mb-2"><span class="font-bold text-gray-900">' || detail.display_name || '</span> 로드맵은 ' || detail.intro_topic ||
+        '을 기준으로 기초 개념, 실습, 품질 기준, 심화 분기를 이어 갑니다.</p><p>' || detail.core_topic ||
+        '을 먼저 잡고, ' || detail.practice_topic || '을 직접 만들면서 ' || detail.project_topic || '로 정리할 수 있게 구성했습니다.</p></div>' ||
         '<div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">' ||
         '<strong class="block text-[#00C471] mb-2"><i class="fas fa-check-circle mr-1"></i> 이 로드맵에서 익히는 것</strong>' ||
         '<ul class="list-disc pl-5 space-y-1 text-gray-600">' ||
-        '<li><strong>핵심 개념:</strong> ' || target.display_name || ' 분야에서 반복해서 등장하는 용어와 판단 기준</li>' ||
-        '<li><strong>실무 흐름:</strong> 요구사항을 작은 단위로 쪼개고 구현, 검증, 문서화하는 방법</li>' ||
-        '<li><strong>심화 분기:</strong> 성능, 운영, 아키텍처, 협업 중 목표에 맞춰 깊게 파고드는 선택 경로</li>' ||
-        '<li><strong>포트폴리오:</strong> 학습 결과를 프로젝트와 설명 가능한 근거로 정리하는 방식</li>' ||
+        '<li><strong>핵심 개념:</strong> ' || detail.core_topic || '</li>' ||
+        '<li><strong>실습 흐름:</strong> ' || detail.practice_topic || '</li>' ||
+        '<li><strong>품질 기준:</strong> ' || detail.quality_topic || '</li>' ||
+        '<li><strong>심화 분기:</strong> ' || detail.perf_topic || ', ' || detail.arch_topic || '</li>' ||
+        '<li><strong>포트폴리오:</strong> ' || detail.project_topic || '</li>' ||
         '</ul></div></div>'
 FROM (
     SELECT
-        r.roadmap_id,
-        r.title AS roadmap_title,
-        COALESCE(MAX(item.subtitle), r.title) AS display_name,
-        CASE
-            WHEN MAX(CASE WHEN section_item.section_key = 'role-based' THEN 1 ELSE 0 END) = 1 THEN '직무'
-            ELSE '기술'
-        END AS roadmap_kind
-    FROM roadmap_hub_items item
-    JOIN roadmap_hub_sections section_item ON section_item.id = item.section_id
-    JOIN roadmaps r ON r.roadmap_id = item.linked_roadmap_id
-    WHERE item.linked_roadmap_id IS NOT NULL
-      AND item.is_active = TRUE
-      AND section_item.is_active = TRUE
-      AND r.is_official = TRUE
-      AND r.is_deleted = FALSE
-      AND r.title <> 'Backend Master Roadmap'
-    GROUP BY r.roadmap_id, r.title
-) target
-WHERE r.roadmap_id = target.roadmap_id;
+        target.roadmap_id,
+        target.display_name,
+        profile.intro_topic,
+        profile.core_topic,
+        profile.practice_topic,
+        profile.quality_topic,
+        profile.perf_topic,
+        profile.arch_topic,
+        profile.project_topic
+    FROM (
+        SELECT
+            r.roadmap_id,
+            r.title AS roadmap_title,
+            COALESCE(MAX(item.subtitle), r.title) AS display_name
+        FROM roadmap_hub_items item
+        JOIN roadmap_hub_sections section_item ON section_item.id = item.section_id
+        JOIN roadmaps r ON r.roadmap_id = item.linked_roadmap_id
+        WHERE item.linked_roadmap_id IS NOT NULL
+          AND item.is_active = TRUE
+          AND section_item.is_active = TRUE
+          AND r.is_official = TRUE
+          AND r.is_deleted = FALSE
+          AND r.title <> 'Backend Master Roadmap'
+        GROUP BY r.roadmap_id, r.title
+    ) target
+    JOIN roadmap_hub_node_profile_seed profile ON profile.display_name = target.display_name
+) detail
+WHERE r.roadmap_id = detail.roadmap_id;
 
-INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
+CREATE TEMPORARY TABLE roadmap_hub_node_detail_seed AS
 WITH target_roadmaps AS (
     SELECT
         r.roadmap_id,
         r.title AS roadmap_title,
-        COALESCE(MAX(item.subtitle), r.title) AS display_name,
-        CASE
-            WHEN MAX(CASE WHEN section_item.section_key = 'role-based' THEN 1 ELSE 0 END) = 1 THEN '직무'
-            ELSE '기술'
-        END AS roadmap_kind
+        COALESCE(MAX(item.subtitle), r.title) AS display_name
     FROM roadmap_hub_items item
     JOIN roadmap_hub_sections section_item ON section_item.id = item.section_id
     JOIN roadmaps r ON r.roadmap_id = item.linked_roadmap_id
@@ -14201,60 +14315,104 @@ WITH target_roadmaps AS (
       AND r.title <> 'Backend Master Roadmap'
     GROUP BY r.roadmap_id, r.title
 ),
-node_seed(sort_order, branch_group, node_type, title_suffix, stage_label) AS (
+node_seed(sort_order, branch_group, node_type, stage_label) AS (
     VALUES
-        (1, CAST(NULL AS INTEGER), 'CONCEPT', '개요와 역할 이해', 'FOUNDATION'),
-        (2, CAST(NULL AS INTEGER), 'CONCEPT', '핵심 개념과 용어', 'FOUNDATION'),
-        (3, CAST(NULL AS INTEGER), 'CONCEPT', '기본 도구와 작업 환경', 'FOUNDATION'),
-        (4, CAST(NULL AS INTEGER), 'PRACTICE', '작은 실습으로 흐름 잡기', 'PRACTICE'),
-        (5, CAST(NULL AS INTEGER), 'PRACTICE', '데이터와 상태 설계', 'PRACTICE'),
-        (6, CAST(NULL AS INTEGER), 'PRACTICE', '테스트와 품질 기준', 'PRACTICE'),
-        (7, CAST(NULL AS INTEGER), 'CONCEPT', '협업과 문서화', 'PRACTICE'),
-        (8, 1, 'PRACTICE', '성능 심화 분기', 'ADVANCED'),
-        (9, 1, 'PRACTICE', '운영 자동화 분기', 'ADVANCED'),
-        (8, 2, 'CONCEPT', '아키텍처 심화 분기', 'ADVANCED'),
-        (9, 2, 'PRACTICE', '보안과 안정성 분기', 'ADVANCED'),
-        (10, CAST(NULL AS INTEGER), 'PROJECT', '실전 프로젝트 설계', 'ADVANCED'),
-        (11, CAST(NULL AS INTEGER), 'PROJECT', '포트폴리오와 면접 정리', 'ADVANCED')
+        (1, CAST(NULL AS INTEGER), 'CONCEPT', 'FOUNDATION'),
+        (2, CAST(NULL AS INTEGER), 'CONCEPT', 'FOUNDATION'),
+        (3, CAST(NULL AS INTEGER), 'CONCEPT', 'FOUNDATION'),
+        (4, CAST(NULL AS INTEGER), 'PRACTICE', 'PRACTICE'),
+        (5, CAST(NULL AS INTEGER), 'PRACTICE', 'PRACTICE'),
+        (6, CAST(NULL AS INTEGER), 'PRACTICE', 'PRACTICE'),
+        (7, CAST(NULL AS INTEGER), 'CONCEPT', 'PRACTICE'),
+        (8, 1, 'PRACTICE', 'ADVANCED'),
+        (9, 1, 'PRACTICE', 'ADVANCED'),
+        (8, 2, 'CONCEPT', 'ADVANCED'),
+        (9, 2, 'PRACTICE', 'ADVANCED'),
+        (10, CAST(NULL AS INTEGER), 'PROJECT', 'ADVANCED'),
+        (11, CAST(NULL AS INTEGER), 'PROJECT', 'ADVANCED')
 )
 SELECT
     target.roadmap_id,
-    target.display_name || ' ' || seed.title_suffix,
-    CASE seed.sort_order
-        WHEN 1 THEN target.display_name || ' 분야가 해결하는 문제, 필요한 책임 범위, 학습 후 만들 수 있어야 하는 산출물을 먼저 잡습니다. 시작 지점에서 전체 그림을 알아야 이후 도구와 구현을 목적에 맞게 선택할 수 있습니다.'
-        WHEN 2 THEN target.display_name || ' 학습에서 반복해서 등장하는 핵심 용어와 개념을 정리합니다. 개념을 단어 암기가 아니라 실제 의사결정 기준으로 연결하는 것이 목표입니다.'
-        WHEN 3 THEN target.display_name || ' 작업에 필요한 기본 도구, 실행 환경, 파일 구조, 협업 규칙을 세팅합니다. 실습 환경을 안정적으로 만들면 이후 프로젝트를 빠르게 반복할 수 있습니다.'
-        WHEN 4 THEN target.display_name || '의 가장 작은 기능을 직접 만들어 보며 입력, 처리, 결과 확인까지 이어지는 기본 흐름을 경험합니다. 작은 성공 단위를 통해 실무 감각을 만듭니다.'
-        WHEN 5 THEN target.display_name || '에서 다루는 데이터, 상태, 이벤트, 산출물의 흐름을 모델링합니다. 어떤 정보를 어디에 두고 어떻게 변경할지 정해야 유지보수 가능한 결과물을 만들 수 있습니다.'
-        WHEN 6 THEN target.display_name || ' 결과물이 기대대로 동작하는지 검증하는 기준을 세웁니다. 테스트, 리뷰, 접근성, 성능, 오류 처리 중 해당 분야에 맞는 품질 체크를 반복합니다.'
-        WHEN 7 THEN target.display_name || ' 작업을 팀 안에서 공유할 수 있도록 문서, 이슈, 리뷰, 의사결정 기록을 정리합니다. 혼자 만든 결과를 협업 가능한 형태로 바꾸는 단계입니다.'
-        WHEN 8 THEN CASE
-            WHEN seed.branch_group = 1 THEN target.display_name || ' 결과물을 더 빠르고 효율적으로 만들기 위한 성능 측정, 병목 분석, 최적화 우선순위를 다룹니다.'
-            ELSE target.display_name || ' 전체 구조를 넓게 보고 모듈 경계, 책임 분리, 확장 전략을 선택하는 아키텍처 관점을 다룹니다.'
-        END
-        WHEN 9 THEN CASE
-            WHEN seed.branch_group = 1 THEN target.display_name || ' 작업을 반복 가능하게 운영하기 위한 자동화, 모니터링, 배포 또는 릴리스 흐름을 설계합니다.'
-            ELSE target.display_name || ' 결과물을 안전하게 유지하기 위한 보안 기본기, 예외 상황, 장애 대응, 안정성 기준을 정리합니다.'
-        END
-        WHEN 10 THEN target.display_name || ' 학습 내용을 하나의 실전 프로젝트로 묶습니다. 요구사항, 설계, 구현, 검증, 회고가 모두 드러나는 작은 완성물을 목표로 합니다.'
-        ELSE target.display_name || ' 프로젝트를 설명 가능한 포트폴리오로 정리합니다. 문제 정의, 선택한 기술, 트레이드오프, 개선 지점을 말할 수 있어야 합니다.'
-    END,
+    target.display_name || ' - ' ||
+        CASE
+            WHEN seed.sort_order = 1 THEN profile.intro_topic
+            WHEN seed.sort_order = 2 THEN profile.core_topic
+            WHEN seed.sort_order = 3 THEN profile.tool_topic
+            WHEN seed.sort_order = 4 THEN profile.practice_topic
+            WHEN seed.sort_order = 5 THEN profile.model_topic
+            WHEN seed.sort_order = 6 THEN profile.quality_topic
+            WHEN seed.sort_order = 7 THEN '협업 산출물과 변경 기록'
+            WHEN seed.sort_order = 8 AND seed.branch_group = 1 THEN profile.perf_topic
+            WHEN seed.sort_order = 9 AND seed.branch_group = 1 THEN profile.ops_topic
+            WHEN seed.sort_order = 8 AND seed.branch_group = 2 THEN profile.arch_topic
+            WHEN seed.sort_order = 9 AND seed.branch_group = 2 THEN profile.security_topic
+            WHEN seed.sort_order = 10 THEN profile.project_topic
+            ELSE '포트폴리오 설명과 면접 정리'
+        END AS title,
+    CASE
+        WHEN seed.sort_order = 1 THEN target.display_name || ' 학습은 ' || profile.intro_topic || '을 먼저 이해하는 데서 시작합니다. 이 단계에서는 ' || profile.core_topic || '이 왜 필요한지 확인하고, 최종적으로 ' || profile.project_topic || '까지 이어질 학습 범위를 잡습니다.'
+        WHEN seed.sort_order = 2 THEN profile.core_topic || '을 실제 판단 기준으로 정리합니다. 단어를 외우는 단계가 아니라 ' || target.display_name || ' 작업 중 어떤 문제를 만나면 어떤 개념을 꺼내 써야 하는지 연결합니다.'
+        WHEN seed.sort_order = 3 THEN profile.tool_topic || '을 설치하고 기본 작업 흐름을 맞춥니다. 실습을 반복할 수 있도록 프로젝트 구조, 실행 명령, 디버깅 방법, 협업 규칙을 함께 세팅합니다.'
+        WHEN seed.sort_order = 4 THEN profile.practice_topic || '을 작은 단위로 직접 구현합니다. 입력을 받고 처리한 뒤 결과를 확인하는 흐름을 만들면서 ' || profile.model_topic || '이 코드 안에서 어떻게 드러나는지 확인합니다.'
+        WHEN seed.sort_order = 5 THEN profile.model_topic || '을 기준으로 데이터와 상태 흐름을 설계합니다. 어떤 정보를 어디에 두고, 어떤 이벤트가 변경을 만들며, 어떤 산출물이 남아야 하는지 ' || profile.arch_topic || ' 관점으로 정리합니다.'
+        WHEN seed.sort_order = 6 THEN profile.quality_topic || '을 기준으로 결과물을 검증합니다. 정상 동작만 확인하지 않고 실패 케이스, 경계값, 리뷰 기준, ' || profile.security_topic || '까지 포함해 품질 기준을 세웁니다.'
+        WHEN seed.sort_order = 7 THEN profile.project_topic || '을 팀에 설명할 수 있도록 문서와 변경 기록을 남깁니다. 이슈, PR, 의사결정 이유, 테스트 결과를 정리해 다음 사람이 ' || profile.tool_topic || ' 흐름을 그대로 재현할 수 있게 만듭니다.'
+        WHEN seed.sort_order = 8 AND seed.branch_group = 1 THEN profile.perf_topic || '을 깊게 다룹니다. 측정 지표를 먼저 정하고 병목을 찾은 뒤, ' || target.display_name || ' 결과물에서 가장 효과가 큰 최적화 순서를 선택합니다.'
+        WHEN seed.sort_order = 9 AND seed.branch_group = 1 THEN profile.ops_topic || '을 운영 관점에서 설계합니다. 배포, 모니터링, 알림, 롤백, 반복 작업 자동화를 정리해 학습 결과물이 한 번 만들고 끝나는 수준에 머물지 않게 합니다.'
+        WHEN seed.sort_order = 8 AND seed.branch_group = 2 THEN profile.arch_topic || '을 기준으로 구조를 다시 봅니다. 책임 경계, 모듈 분리, 확장 전략을 점검하고 ' || profile.model_topic || '이 커져도 유지보수 가능한 형태인지 판단합니다.'
+        WHEN seed.sort_order = 9 AND seed.branch_group = 2 THEN profile.security_topic || '을 중심으로 안정성을 보강합니다. 권한, 입력값, 예외, 장애 상황을 검토하고 운영 중 문제가 생겼을 때 추적 가능한 기준을 만듭니다.'
+        WHEN seed.sort_order = 10 THEN profile.project_topic || '을 하나의 완성물로 묶습니다. 요구사항, 설계, 구현, 검증, 회고가 모두 남도록 만들고 ' || profile.quality_topic || '을 통과한 결과물을 목표로 합니다.'
+        ELSE target.display_name || ' 포트폴리오는 ' || profile.project_topic || '을 왜 만들었고 어떤 선택을 했는지 설명할 수 있어야 합니다. ' || profile.core_topic || ', ' || profile.arch_topic || ', ' || profile.security_topic || '에서 내린 판단을 면접 답변처럼 정리합니다.'
+    END AS content,
     seed.node_type,
     seed.sort_order,
     CASE seed.stage_label
-        WHEN 'FOUNDATION' THEN target.display_name || ' 기본기: 분야의 목적과 핵심 용어,' || target.display_name || ' 환경: 도구 설치와 작업 흐름,' || target.display_name || ' 판단 기준: 무엇을 먼저 배워야 하는지'
-        WHEN 'PRACTICE' THEN target.display_name || ' 실습: 작은 기능 만들기,' || target.display_name || ' 품질: 테스트와 리뷰,' || target.display_name || ' 협업: 문서와 변경 이력'
-        ELSE target.display_name || ' 심화: 성능 운영 아키텍처 보안,' || target.display_name || ' 프로젝트: 요구사항부터 회고까지,' || target.display_name || ' 포트폴리오: 설명 가능한 결과물'
-    END,
+        WHEN 'FOUNDATION' THEN profile.intro_topic || ': 학습 목표와 책임 범위,' || profile.core_topic || ': 반드시 구분해야 할 핵심 개념,' || profile.tool_topic || ': 실습을 반복할 기본 환경'
+        WHEN 'PRACTICE' THEN profile.practice_topic || ': 작은 기능 구현,' || profile.model_topic || ': 데이터와 상태 흐름,' || profile.quality_topic || ': 검증과 리뷰 기준,' || profile.project_topic || ': 협업 산출물 정리'
+        ELSE profile.perf_topic || ': 성능 개선 기준,' || profile.ops_topic || ': 운영과 자동화,' || profile.arch_topic || ': 구조와 확장 전략,' || profile.security_topic || ': 보안과 안정성,' || profile.project_topic || ': 포트폴리오 완성물'
+    END AS sub_topics,
     seed.branch_group
 FROM target_roadmaps target
-CROSS JOIN node_seed seed
+JOIN roadmap_hub_node_profile_seed profile ON profile.display_name = target.display_name
+CROSS JOIN node_seed seed;
+
+UPDATE roadmap_nodes rn
+SET
+    title = detail.title,
+    content = detail.content,
+    node_type = detail.node_type,
+    sub_topics = detail.sub_topics
+FROM roadmap_hub_node_detail_seed detail
+WHERE rn.roadmap_id = detail.roadmap_id
+  AND rn.sort_order = detail.sort_order
+  AND (
+      rn.branch_group = detail.branch_group
+      OR (rn.branch_group IS NULL AND detail.branch_group IS NULL)
+  );
+
+INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
+SELECT
+    detail.roadmap_id,
+    detail.title,
+    detail.content,
+    detail.node_type,
+    detail.sort_order,
+    detail.sub_topics,
+    detail.branch_group
+FROM roadmap_hub_node_detail_seed detail
 WHERE NOT EXISTS (
     SELECT 1
     FROM roadmap_nodes existing
-    WHERE existing.roadmap_id = target.roadmap_id
-      AND existing.title = target.display_name || ' ' || seed.title_suffix
+    WHERE existing.roadmap_id = detail.roadmap_id
+      AND existing.sort_order = detail.sort_order
+      AND (
+          existing.branch_group = detail.branch_group
+          OR (existing.branch_group IS NULL AND detail.branch_group IS NULL)
+      )
 );
+
+DROP TABLE IF EXISTS roadmap_hub_node_detail_seed;
+DROP TABLE IF EXISTS roadmap_hub_node_profile_seed;
 
 INSERT INTO prerequisites (node_id, pre_node_id)
 WITH target_roadmaps AS (
