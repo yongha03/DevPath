@@ -724,7 +724,7 @@ function EmptyState(props: { iconClassName: string; title: string; description: 
       <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-gray-100 text-gray-400">
         <i className={props.iconClassName} />
       </div>
-      <h3 className="mt-4 text-sm font-black text-gray-900">{props.title}</h3>
+      <h3 className="mt-4 text-sm font-semibold text-gray-900">{props.title}</h3>
       <p className="mt-2 text-sm leading-6 text-gray-500">{props.description}</p>
     </div>
   )
@@ -745,7 +745,7 @@ function LoginRequiredView() {
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-300">
           <i className="fas fa-user-lock text-2xl" />
         </div>
-        <h1 className="mt-6 text-3xl font-black">로그인이 필요합니다</h1>
+        <h1 className="mt-6 text-3xl font-semibold">로그인이 필요합니다</h1>
         <p className="mt-3 text-sm leading-7 text-white/70">학습 플레이어는 로그인한 사용자만 이용할 수 있습니다.</p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
           <a href="home.html?auth=login" className="rounded-full bg-[#00c471] px-6 py-3 text-sm font-bold text-white">
@@ -767,7 +767,7 @@ function ErrorView(props: { title: string; message: string; actionHref: string; 
         <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-rose-500/15 text-rose-300">
           <i className="fas fa-circle-exclamation text-2xl" />
         </div>
-        <h1 className="mt-6 text-3xl font-black">{props.title}</h1>
+        <h1 className="mt-6 text-3xl font-semibold">{props.title}</h1>
         <p className="mt-3 text-sm leading-7 text-white/70">{props.message}</p>
         <div className="mt-8">
           <a href={props.actionHref} className="inline-flex rounded-full bg-[#00c471] px-6 py-3 text-sm font-bold text-white">
@@ -2381,7 +2381,7 @@ export default function LearningPlayerApp() {
                       <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-rose-500/15 text-rose-300">
                         <i className="fas fa-circle-exclamation text-2xl" />
                       </div>
-                      <h2 className="mt-5 text-xl font-black">영상 로드 실패</h2>
+                      <h2 className="mt-5 text-xl font-semibold">영상 로드 실패</h2>
                       <p className="mt-3 text-sm leading-6 text-white/70">
                         {getVideoErrorMessage(videoRef.current, resolvedVideoUrl)}
                       </p>
@@ -2473,7 +2473,7 @@ export default function LearningPlayerApp() {
                 <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white/8 text-white/55">
                   <i className="fas fa-lock text-2xl" />
                 </div>
-                <h2 className="mt-6 text-2xl font-black">아직 잠겨 있습니다</h2>
+                <h2 className="mt-6 text-2xl font-semibold">아직 잠겨 있습니다</h2>
                 <p className="mt-3 text-sm leading-7 text-white/60">
                   {selectedLessonLock?.prerequisiteLessonTitle
                     ? `"${selectedLessonLock.prerequisiteLessonTitle}" 강의를 끝까지 보면 열립니다.`
@@ -2482,16 +2482,22 @@ export default function LearningPlayerApp() {
               </div>
             ) : (
               <div className="mx-6 w-full max-w-md rounded-[28px] border border-white/10 bg-white/5 px-8 py-10 text-center backdrop-blur">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white/8 text-white/45">
+                <div className={`mx-auto flex h-14 w-14 items-center justify-center rounded-full ${
+                  selectedLessonIsQuiz
+                    ? 'bg-amber-400/15 text-amber-200'
+                    : selectedLessonHasAssignment
+                      ? 'bg-violet-400/15 text-violet-200'
+                      : 'bg-white/8 text-white/45'
+                }`}>
                   <i className={`fas ${
                     selectedLessonIsQuiz
                       ? 'fa-circle-question'
                       : selectedLessonHasAssignment
-                        ? 'fa-laptop-code'
+                        ? 'fa-clipboard-check'
                         : 'fa-video-slash'
                   } text-2xl`} />
                 </div>
-                <h2 className="mt-6 text-2xl font-black">
+                <h2 className="mt-6 text-2xl font-semibold">
                   {selectedLessonIsQuiz ? '섹션 퀴즈' : selectedLessonHasAssignment ? '과제 제출' : '영상이 연결되지 않았습니다'}
                 </h2>
                 <p className="mt-3 text-sm leading-7 text-white/60">
@@ -2518,22 +2524,22 @@ export default function LearningPlayerApp() {
                 {selectedLessonHasAssignment && selectedLessonAssignment ? (
                   <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-4 text-left">
                     <div className="flex items-center gap-2">
-                      <span className="rounded-full bg-orange-500 px-2 py-1 text-[10px] font-black text-white">AUTO GRADED</span>
-                      <span className="text-[11px] font-bold text-white/55">
+                      <span className="rounded-full bg-violet-500 px-2 py-1 text-[10px] font-semibold text-white">자동 채점</span>
+                      <span className="text-[11px] font-medium text-white/55">
                         총점 {selectedLessonAssignment.totalScore ?? 100}점
                       </span>
                     </div>
-                    <div className="mt-3 text-sm font-bold text-white">{selectedLessonAssignment.title}</div>
+                    <div className="mt-3 text-sm font-semibold text-white">{selectedLessonAssignment.title}</div>
                     {selectedLessonAssignment.dueAt ? (
                       <div className="mt-2 text-xs text-white/50">마감일 {formatDateLabel(selectedLessonAssignment.dueAt)}</div>
                     ) : null}
                     {selectedAssignmentHistory ? (
-                      <div className="mt-4 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-xs font-bold text-emerald-100">
+                      <div className="mt-4 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-xs font-medium text-emerald-100">
                         최근 제출 점수 {selectedAssignmentHistory.totalScore ?? '-'} / {selectedLessonAssignment.totalScore ?? 100}
                         {selectedAssignmentHistory.qualityScore !== null ? ` · 품질 ${selectedAssignmentHistory.qualityScore}` : ''}
                       </div>
                     ) : (
-                      <div className="mt-4 rounded-xl border border-orange-400/20 bg-orange-400/10 px-3 py-2 text-xs font-bold text-orange-100">
+                      <div className="mt-4 rounded-xl border border-violet-400/20 bg-violet-400/10 px-3 py-2 text-xs font-medium text-violet-100">
                         아직 제출하지 않았습니다.
                       </div>
                     )}
@@ -2543,7 +2549,7 @@ export default function LearningPlayerApp() {
                   <button
                     type="button"
                     onClick={() => openQuizModal(lesson)}
-                    className="mt-6 rounded-lg bg-[#00C471] px-5 py-3 text-sm font-black text-white shadow-lg shadow-emerald-900/20 transition hover:bg-emerald-600"
+                    className="mt-6 rounded-lg bg-amber-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-amber-900/20 transition hover:bg-amber-600"
                   >
                     퀴즈 시작하기
                   </button>
@@ -2551,7 +2557,7 @@ export default function LearningPlayerApp() {
                   <button
                     type="button"
                     onClick={() => openAssignmentModal(lesson)}
-                    className="mt-6 rounded-lg bg-[#00C471] px-5 py-3 text-sm font-black text-white shadow-lg shadow-emerald-900/20 transition hover:bg-emerald-600"
+                    className="mt-6 rounded-lg bg-violet-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-900/20 transition hover:bg-violet-700"
                   >
                     과제 제출하기
                   </button>
@@ -2575,7 +2581,7 @@ export default function LearningPlayerApp() {
                 <button type="button" onClick={() => void handleTogglePlaySafe()}>
                   <i className={`fas ${isPlaying ? 'fa-pause' : 'fa-play'} text-gray-300 transition hover:text-white`} />
                 </button>
-                <span className="font-mono text-xs text-gray-400">{formatTime(currentTime)}</span>
+                <span className="text-xs tabular-nums text-gray-400">{formatTime(currentTime)}</span>
                 <input
                   type="range"
                   min={0}
@@ -2585,7 +2591,7 @@ export default function LearningPlayerApp() {
                   onChange={(event) => handleSeek(Number(event.target.value))}
                   className="h-1 flex-1 cursor-pointer appearance-none rounded-full bg-gray-700 accent-[#00C471]"
                 />
-                <span className="font-mono text-xs text-gray-400">{formatTime(duration || (lesson.durationSeconds ?? 0))}</span>
+                <span className="text-xs tabular-nums text-gray-400">{formatTime(duration || (lesson.durationSeconds ?? 0))}</span>
               </div>
               <div className="flex items-center gap-3 text-sm text-gray-400 lg:gap-4">
                 {/* 볼륨 */}
@@ -2627,7 +2633,7 @@ export default function LearningPlayerApp() {
             type="button"
             onClick={handlePreviousLesson}
             disabled={!previousLesson}
-            className="flex min-w-[132px] items-center justify-center gap-2 rounded-lg border border-gray-700 bg-gray-800 px-5 py-3 text-sm font-black text-gray-300 transition hover:bg-gray-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex min-w-[132px] items-center justify-center gap-2 rounded-lg border border-gray-700 bg-gray-800 px-5 py-3 text-sm font-semibold text-gray-300 transition hover:bg-gray-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
           >
             <i className="fas fa-chevron-left" />
             이전 강의
@@ -2636,7 +2642,7 @@ export default function LearningPlayerApp() {
             type="button"
             onClick={handleNextLesson}
             disabled={!nextLesson || selectedLessonLocked}
-            className="flex min-w-[132px] items-center justify-center gap-2 rounded-lg bg-[#00C471] px-5 py-3 text-sm font-black text-white shadow-lg shadow-emerald-900/30 transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-gray-700 disabled:text-gray-400 disabled:shadow-none"
+            className="flex min-w-[132px] items-center justify-center gap-2 rounded-lg bg-[#00C471] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-900/30 transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-gray-700 disabled:text-gray-400 disabled:shadow-none"
           >
             다음 강의
             <i className="fas fa-chevron-right" />
@@ -2682,7 +2688,7 @@ export default function LearningPlayerApp() {
 
                 return (
                 <div key={section.sectionId}>
-                  <h3 className={`mb-2 flex items-center gap-1.5 px-1 text-xs font-bold ${sectionLocked ? 'text-gray-400' : 'text-gray-500'}`}>
+                  <h3 className={`mb-2 flex items-center gap-1.5 px-1 text-xs font-semibold ${sectionLocked ? 'text-gray-400' : 'text-gray-500'}`}>
                     {sectionLocked ? <i className="fas fa-lock" aria-hidden="true" /> : null}
                     <span className="truncate">섹션 {sectionIndex + 1}. {section.title}</span>
                   </h3>
@@ -2695,7 +2701,7 @@ export default function LearningPlayerApp() {
                       const locked = Boolean(lockState?.locked)
                       const lessonDurationLabel = formatTime(item.durationSeconds ?? 0)
                       const quizItem = isQuizLesson(item)
-                      const assignmentItem = hasLessonAssignment(item) ? item.assignment : null
+                      const assignmentItem = resolveLessonAssignment(item)
                       const assignmentHistory = assignmentItem ? assignmentHistoryByAssignmentId[assignmentItem.assignmentId] ?? null : null
 
                       return (
@@ -2720,11 +2726,11 @@ export default function LearningPlayerApp() {
                               locked
                                 ? 'fa-lock text-gray-400'
                                 : quizItem
-                                  ? 'fa-circle-question text-[#00C471]'
+                                  ? 'fa-circle-question text-amber-500'
                                 : assignmentItem
                                   ? assignmentHistory
-                                    ? 'fa-check-circle text-[#00C471]'
-                                    : 'fa-laptop-code text-orange-500'
+                                    ? 'fa-clipboard-check text-[#00C471]'
+                                    : 'fa-clipboard-check text-violet-500'
                                 : completed
                                 ? 'fa-check-circle text-[#00C471]'
                                 : active
@@ -2736,7 +2742,7 @@ export default function LearningPlayerApp() {
                                 locked
                                   ? 'font-medium text-gray-400'
                                   : active
-                                    ? 'font-bold text-[#00C471]'
+                                    ? 'font-semibold text-[#00C471]'
                                     : 'font-medium text-gray-700'
                               }`}>
                                 {item.title}
@@ -2755,21 +2761,23 @@ export default function LearningPlayerApp() {
                             </div>
                           </div>
                           {locked ? (
-                            <span className="ml-3 flex shrink-0 items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1 text-[10px] font-bold text-gray-400">
+                            <span className="ml-3 flex shrink-0 items-center gap-1 rounded-md border border-gray-200 bg-white px-2 py-1 text-[10px] font-semibold text-gray-400">
                               <i className="fas fa-lock" />
                               잠김
                             </span>
                           ) : (
                             assignmentItem ? (
-                              <span className={`ml-3 shrink-0 rounded-md px-2 py-1 text-[10px] font-black ${
+                              <span className={`ml-3 shrink-0 rounded-md px-2 py-1 text-[10px] font-semibold ${
                                 assignmentHistory
                                   ? 'bg-emerald-50 text-[#00C471]'
-                                  : 'bg-orange-50 text-orange-600'
+                                  : 'bg-violet-50 text-violet-600'
                               }`}>
                                 {assignmentHistory ? `${assignmentHistory.totalScore ?? '-'}점` : '과제'}
                               </span>
                             ) : (
-                              <span className={`ml-3 shrink-0 font-mono text-xs ${active ? 'text-[#00C471]' : 'text-gray-400'}`}>
+                              <span className={`ml-3 shrink-0 text-xs font-medium ${
+                                quizItem ? 'text-amber-600' : active ? 'text-[#00C471]' : 'text-gray-400'
+                              }`}>
                                 {quizItem ? '퀴즈' : lessonDurationLabel}
                               </span>
                             )
@@ -3142,8 +3150,8 @@ export default function LearningPlayerApp() {
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex shrink-0 items-center justify-between border-b border-gray-100 bg-gray-50 px-6 py-5">
-              <h3 className="flex items-center gap-2 text-base font-bold text-gray-800">
-                <i className="fas fa-laptop-code text-[#00C471]" />
+              <h3 className="flex items-center gap-2 text-base font-semibold text-gray-800">
+                <i className="fas fa-clipboard-check text-violet-500" />
                 과제 제출
               </h3>
               <button
@@ -3263,8 +3271,8 @@ export default function LearningPlayerApp() {
               >
                 <i className="fas fa-times" />
               </button>
-              <span className="mb-3 rounded-full border border-green-200 bg-green-100 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-[#00C471]">
-                Submission Result
+              <span className="mb-3 rounded-full border border-green-200 bg-green-100 px-3 py-1 text-[10px] font-semibold text-[#00C471]">
+                제출 결과
               </span>
               <h3 className="mb-2 text-xl font-bold text-gray-900">
                 {assignmentGradingPassed === false ? '채점 완료, 보완이 필요합니다.' : '채점 완료! 결과를 확인해 주세요.'}
@@ -3289,11 +3297,11 @@ export default function LearningPlayerApp() {
               </div>
 
               <div>
-                <h4 className="mb-3 flex items-center gap-2 text-sm font-bold text-gray-800">
+                <h4 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-800">
                   <i className="fas fa-clipboard-check text-gray-400" />
                   자동 검증 리포트
                 </h4>
-                <div className="space-y-3 rounded-xl bg-gray-900 p-4 font-mono text-xs text-gray-300 shadow-inner">
+                <div className="space-y-3 rounded-xl bg-gray-900 p-4 text-xs text-gray-300 shadow-inner">
                   {assignmentGradingReportRows.map((row) => (
                     <div
                       key={`${row.label}-${row.value}`}
@@ -3358,8 +3366,8 @@ export default function LearningPlayerApp() {
 
           <div className="relative z-10 w-full max-w-4xl text-center">
             <div className="completion-fade-enter mb-10">
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#00C471]/30 bg-[#00C471]/20 px-3 py-1 text-sm font-bold text-[#00C471]">
-                <i className="fas fa-crown" /> MODULE CLEARED
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-[#00C471]/30 bg-[#00C471]/20 px-3 py-1 text-sm font-semibold text-[#00C471]">
+                <i className="fas fa-crown" /> 학습 완료
               </div>
               <h1 className="mb-3 text-4xl font-extrabold tracking-tight text-white md:text-5xl">수고하셨습니다!</h1>
               <p className="mx-auto max-w-2xl text-lg leading-relaxed text-gray-400">
@@ -3382,7 +3390,7 @@ export default function LearningPlayerApp() {
                       </div>
                       <i className={`${completionTheme.iconClassName} absolute bottom-[-10px] right-[-10px] text-8xl text-white/10`} />
                       <div className="relative z-10 text-left text-white">
-                        <h3 className="completion-proof-front-title mb-1 text-2xl font-black tracking-tight">{completionProofCard.frontTitle}</h3>
+                        <h3 className="completion-proof-front-title mb-1 text-2xl font-semibold tracking-tight">{completionProofCard.frontTitle}</h3>
                         <p className="flex items-center gap-1 text-xs font-medium text-white/80">
                           <i className="fas fa-check-circle text-[#00C471]" /> DevPath Verified
                         </p>
@@ -3396,7 +3404,7 @@ export default function LearningPlayerApp() {
                       <div className="mt-2 border-t border-gray-100 pt-4">
                         <div className="flex items-center justify-between gap-4">
                           <span className="text-xs font-bold text-gray-500">{completionTheme.scoreLabel}</span>
-                          <span className="text-3xl font-black text-gray-900">
+                          <span className="text-3xl font-bold text-gray-900">
                             {completionProofCard.score}
                             <span className="text-xs font-normal text-gray-400"> / 100</span>
                           </span>
@@ -3481,10 +3489,10 @@ export default function LearningPlayerApp() {
           >
             <div className="flex items-start justify-between gap-4 border-b border-gray-200 bg-gray-50 p-5 sm:p-6">
               <div className="min-w-0">
-                <span className="mb-2 inline-flex rounded bg-green-100 px-2 py-1 text-xs font-black text-[#00C471]">
-                  SECTION QUIZ
+                <span className="mb-2 inline-flex rounded bg-amber-100 px-2 py-1 text-xs font-semibold text-amber-700">
+                  섹션 퀴즈
                 </span>
-                <h2 id="learning-quiz-title" className="truncate text-xl font-black text-gray-900">
+                <h2 id="learning-quiz-title" className="truncate text-xl font-semibold text-gray-900">
                   {quizModalLesson.title}
                 </h2>
                 {quizModalLesson.description ? (
@@ -3515,7 +3523,7 @@ export default function LearningPlayerApp() {
             </div>
 
             <div className="max-h-[62vh] overflow-y-auto p-5 sm:p-8">
-              <p className="mb-6 text-lg font-bold leading-8 text-gray-900">
+              <p className="mb-6 text-lg font-semibold leading-8 text-gray-900">
                 Q. {activeQuizQuestion.questionText}
               </p>
 
@@ -3556,7 +3564,7 @@ export default function LearningPlayerApp() {
               </div>
 
               {quizFeedback ? (
-                <div className={`mt-6 rounded-lg p-4 text-sm font-bold leading-6 ${
+                <div className={`mt-6 rounded-lg p-4 text-sm font-medium leading-6 ${
                   quizFeedback === 'correct' ? 'bg-green-50 text-green-700' : 'bg-rose-50 text-rose-700'
                 }`}>
                   <i className={`fas ${quizFeedback === 'correct' ? 'fa-check-circle' : 'fa-exclamation-triangle'} mr-2`} />
@@ -3576,14 +3584,14 @@ export default function LearningPlayerApp() {
                   setQuizFeedback(null)
                 }}
                 disabled={quizQuestionIndex === 0}
-                className="rounded-lg px-4 py-2 text-sm font-black text-gray-500 transition hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded-lg px-4 py-2 text-sm font-semibold text-gray-500 transition hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 이전 문제
               </button>
               <button
                 type="button"
                 onClick={quizFeedback === 'correct' ? handleQuizNextQuestion : handleQuizCheckAnswer}
-                className="rounded-lg bg-[#00C471] px-6 py-3 text-sm font-black text-white shadow-md transition hover:bg-emerald-600 active:scale-[0.99]"
+                className="rounded-lg bg-amber-500 px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-amber-600 active:scale-[0.99]"
               >
                 {quizFeedback === 'correct'
                   ? quizQuestionIndex < quizModalQuestions.length - 1 ? '다음 문제로' : '퀴즈 완료하기'

@@ -16,9 +16,10 @@ import {
   fallbackCourseReviews,
   formatCourseDate,
   formatCoursePrice,
-  formatLessonDuration,
   formatRelativeTime,
   formatSectionMeta,
+  getCourseDetailLessonIconClassName,
+  getCourseDetailLessonMetaLabel,
   getLearningHref,
   getPreviewLesson,
   mergeCourseDetailWithFallback,
@@ -703,15 +704,19 @@ export default function CourseDetailApp() {
 
                           {opened ? (
                             <div className="bg-white">
-                              {section.lessons.map((lesson) => (
-                                <div key={lesson.lessonId} className="flex items-center justify-between border-b border-gray-50 px-6 py-3 transition last:border-b-0 hover:bg-gray-50">
-                                  <div className="flex items-center gap-3">
-                                    <i className={`fas fa-play-circle ${lesson.isPreview ? 'text-primary' : 'text-gray-400'}`} />
-                                    <span className="text-sm text-gray-700">{lesson.title}</span>
+                              {section.lessons.map((lesson) => {
+                                const metaLabel = getCourseDetailLessonMetaLabel(lesson)
+
+                                return (
+                                  <div key={lesson.lessonId} className="flex items-center justify-between border-b border-gray-50 px-6 py-3 transition last:border-b-0 hover:bg-gray-50">
+                                    <div className="flex min-w-0 items-center gap-3">
+                                      <i className={getCourseDetailLessonIconClassName(lesson)} />
+                                      <span className="truncate text-sm text-gray-700">{lesson.title}</span>
+                                    </div>
+                                    <span className="shrink-0 text-xs font-semibold text-gray-400">{metaLabel}</span>
                                   </div>
-                                  <span className="text-xs text-gray-400">{formatLessonDuration(lesson.durationSeconds)}</span>
-                                </div>
-                              ))}
+                                )
+                              })}
                             </div>
                           ) : null}
                         </div>
