@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import AuthModal, { type AuthView } from '../components/AuthModal'
 import SiteHeader from '../components/SiteHeader'
 import { authApi, roadmapApi, userApi } from '../lib/api'
@@ -12,6 +12,12 @@ import type { RoadmapHubCatalog, RoadmapHubItem } from '../types/roadmap-hub'
 
 function buildRoadmapHref(linkedRoadmapId: number | null) {
   return linkedRoadmapId ? `roadmap.html?original=${linkedRoadmapId}` : null
+}
+
+function getIconStyle(iconColor: string | null): CSSProperties | undefined {
+  const color = iconColor?.trim()
+
+  return color ? { color } : undefined
 }
 
 function readAuthViewFromLocation(): AuthView | null {
@@ -35,6 +41,7 @@ function syncAuthViewInLocation(view: AuthView | null) {
 function renderRoleCard(item: RoadmapHubItem) {
   const href = buildRoadmapHref(item.linkedRoadmapId)
   const iconClass = item.iconClass?.trim() || 'fas fa-map'
+  const iconStyle = getIconStyle(item.iconColor)
   const cardClassName = item.featured
     ? 'roadmap-hub-card relative overflow-hidden rounded-lg border-2 border-brand bg-green-50/30 p-5 shadow-md'
     : 'roadmap-hub-card rounded-lg border border-gray-200 p-5 shadow-sm'
@@ -43,7 +50,7 @@ function renderRoleCard(item: RoadmapHubItem) {
     <>
       <div className={item.featured ? 'relative mb-2 flex justify-between' : 'mb-2 flex justify-between'}>
         <h3 className={item.featured ? 'font-bold text-brand' : 'font-bold text-gray-900'}>{item.title}</h3>
-        <i className={`${iconClass} ${item.featured ? 'text-brand' : 'text-gray-400'}`} />
+        <i className={`${iconClass} ${item.featured ? 'text-brand' : 'text-gray-400'}`} style={iconStyle} />
       </div>
       <p className={item.featured ? 'relative text-xs text-gray-500' : 'text-xs text-gray-500'}>
         {item.subtitle || '공식 로드맵'}
@@ -73,19 +80,27 @@ function renderRoleCard(item: RoadmapHubItem) {
 function renderSkillChip(item: RoadmapHubItem) {
   const href = buildRoadmapHref(item.linkedRoadmapId)
   const chipKey = `${item.title}-${item.sortOrder}`
+  const iconClass = item.iconClass?.trim() || 'fas fa-code'
+  const iconStyle = getIconStyle(item.iconColor)
   const className = 'skill-btn rounded border border-gray-200 px-4 py-2 text-left text-sm text-gray-700 shadow-sm'
+  const content = (
+    <span className="flex min-w-0 items-center gap-2">
+      <i className={`${iconClass} w-5 shrink-0 text-center text-base opacity-80`} style={iconStyle} aria-hidden="true" />
+      <span className="min-w-0 leading-snug">{item.title}</span>
+    </span>
+  )
 
   if (!href) {
     return (
       <button key={chipKey} type="button" className={`${className} cursor-default`}>
-        {item.title}
+        {content}
       </button>
     )
   }
 
   return (
     <a key={chipKey} href={href} className={className}>
-      {item.title}
+      {content}
     </a>
   )
 }

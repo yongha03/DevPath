@@ -5,20 +5,36 @@ export const LOGIN_SUCCESS_AUTH_TOAST_MESSAGE = '로그인 성공했습니다.'
 export const LOGOUT_AUTH_TOAST_MESSAGE = '로그아웃 했습니다.'
 export const EXPIRED_AUTH_TOAST_MESSAGE = '세션이 만료되어 로그아웃되었습니다.'
 
-type AuthToastDetail = {
+export type AuthToastVariant = 'default' | 'error'
+
+export type AuthToastDetail = {
   message: string
+  variant?: AuthToastVariant
+  durationMs?: number
 }
 
-function dispatchAuthToast(message: string) {
+type AuthToastInput = string | AuthToastDetail
+
+function normalizeAuthToast(toast: AuthToastInput): AuthToastDetail {
+  if (typeof toast === 'string') {
+    return { message: toast }
+  }
+
+  return toast
+}
+
+function dispatchAuthToast(toast: AuthToastInput) {
+  const detail = normalizeAuthToast(toast)
+
   window.dispatchEvent(
     new CustomEvent<AuthToastDetail>(AUTH_TOAST_EVENT, {
-      detail: { message },
+      detail,
     }),
   )
 }
 
-export function showAuthToast(message: string) {
-  dispatchAuthToast(message)
+export function showAuthToast(toast: AuthToastInput) {
+  dispatchAuthToast(toast)
 }
 
 export function queueAuthToast(message: string) {

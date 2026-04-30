@@ -23,6 +23,9 @@ public class QuestionSummaryResponse {
     @Schema(description = "Course ID", example = "1", nullable = true)
     private Long courseId;
 
+    @Schema(description = "Lesson ID", example = "10", nullable = true)
+    private Long lessonId;
+
     @Schema(description = "질문 템플릿 타입", example = "DEBUGGING")
     private String templateType;
 
@@ -57,6 +60,7 @@ public class QuestionSummaryResponse {
                 .authorId(question.getUser().getId())
                 .authorName(question.getUser().getName())
                 .courseId(question.getCourseId())
+                .lessonId(question.getLessonId())
                 .templateType(question.getTemplateType().name())
                 .difficulty(question.getDifficulty().name())
                 .title(question.getTitle())

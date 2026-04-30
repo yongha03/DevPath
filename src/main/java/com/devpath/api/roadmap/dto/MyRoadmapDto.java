@@ -151,7 +151,8 @@ public class MyRoadmapDto {
         Map<Long, NodeStatus> statusByNodeId,
         Map<Long, NodeClearance> clearanceByNodeId,
         Map<Long, List<RoadmapNodeResource>> resourcesByNodeId,
-        Map<Long, List<String>> requiredTagsByNodeId) {
+        Map<Long, List<String>> requiredTagsByNodeId,
+        Map<Long, Boolean> requiredTagsSatisfiedByNodeId) {
       Roadmap orig = customRoadmap.getOriginalRoadmap();
       return DetailResponse.builder()
           .customRoadmapId(customRoadmap.getId())
@@ -178,7 +179,10 @@ public class MyRoadmapDto {
                                   : List.of(),
                               node.getOriginalNode() != null
                                   ? requiredTagsByNodeId.getOrDefault(node.getOriginalNode().getNodeId(), List.of())
-                                  : List.of()))
+                                  : List.of(),
+                              node.getOriginalNode() != null
+                                  ? requiredTagsSatisfiedByNodeId.get(node.getOriginalNode().getNodeId())
+                                  : null))
                   .toList())
           .build();
     }
@@ -279,7 +283,8 @@ public class MyRoadmapDto {
         Map<Long, NodeStatus> statusByNodeId,
         NodeClearance clearance,
         List<RoadmapNodeResource> resources,
-        List<String> requiredTags) {
+        List<String> requiredTags,
+        Boolean requiredTagsSatisfied) {
 
       boolean isBuilderOrigin = node.getOriginalNode() == null;
 
@@ -323,7 +328,9 @@ public class MyRoadmapDto {
           ? clearance.getLessonCompletionRate().doubleValue() : 0.0;
       boolean tagsSatisfied = isBuilderOrigin
           || requiredTags.isEmpty()
-          || (clearance != null && Boolean.TRUE.equals(clearance.getRequiredTagsSatisfied()));
+          || (requiredTagsSatisfied != null
+              ? requiredTagsSatisfied
+              : clearance != null && Boolean.TRUE.equals(clearance.getRequiredTagsSatisfied()));
 
       return NodeItem.builder()
           .customNodeId(node.getId())

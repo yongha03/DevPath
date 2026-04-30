@@ -66,6 +66,7 @@ function normalizeQuestion(question: InstructorQnaInboxItem): InstructorQnaInbox
     courseTitle: normalizeInstructorCourseTitle(
       normalizeLegacyText(question.courseTitle) ?? question.courseTitle,
     ),
+    lessonTitle: normalizeLegacyText(question.lessonTitle),
     learnerName: normalizeLegacyText(question.learnerName),
     title: normalizeLegacyText(question.title) ?? question.title,
     content: normalizeLegacyText(question.content) ?? question.content,
@@ -136,6 +137,31 @@ function buildStatusBadgeClasses(status: string) {
 
 function buildStatusLabel(status: string) {
   return status === 'UNANSWERED' ? '미답변' : '답변 완료'
+}
+
+function parseLectureTimestampSeconds(value: string | null | undefined) {
+  if (!value) {
+    return null
+  }
+
+  const parts = value
+    .split(':')
+    .map((part) => Number(part.trim()))
+    .filter((part) => Number.isFinite(part) && part >= 0)
+
+  if (parts.length === 2) {
+    return parts[0] * 60 + parts[1]
+  }
+
+  if (parts.length === 3) {
+    return parts[0] * 3600 + parts[1] * 60 + parts[2]
+  }
+
+  return null
+}
+
+function buildReturnToHref() {
+  return `${window.location.pathname}${window.location.search}${window.location.hash}`
 }
 
 function Modal({
@@ -336,6 +362,41 @@ export default function InstructorQnaPage({ session }: { session: AuthSession })
     sanitizeInstructorProfileImageUrl(timeline?.publishedAnswer?.authorProfileImage) ??
     null
   const showAnswerForm = current ? current.status === 'UNANSWERED' || editingAnswer : false
+
+  function openCourseScreen(question: InstructorQnaInboxItem) {
+    if (!question.courseId) {
+      setToast({ message: '연결된 강의 정보가 없습니다.', tone: 'info' })
+      return
+    }
+
+    const returnTo = buildReturnToHref()
+    const timestampSeconds = parseLectureTimestampSeconds(question.lectureTimestamp)
+    const url = new URL('learning.html', window.location.href)
+    url.searchParams.set('courseId', String(question.courseId))
+    url.searchParams.set('preview', 'student')
+    url.searchParams.set('autoplay', '1')
+    url.searchParams.set('returnTo', returnTo)
+    url.searchParams.set('from', 'instructor-qna')
+    url.searchParams.set('questionId', String(question.questionId))
+
+    if (question.lessonId) {
+      url.searchParams.set('lessonId', String(question.lessonId))
+    }
+
+    if (timestampSeconds !== null) {
+      url.searchParams.set('t', String(timestampSeconds))
+    }
+
+    const opened = window.open(url.toString(), '_blank')
+    if (opened) {
+      opened.opener = null
+      return
+    }
+
+    if (!opened) {
+      window.location.assign(url.toString())
+    }
+  }
 
   useEffect(() => {
     if (courseFilter !== 'all' && !courseOptions.some(([value]) => value === courseFilter)) {
@@ -748,7 +809,7 @@ export default function InstructorQnaPage({ session }: { session: AuthSession })
                   <i className="fas fa-chevron-right text-[10px] text-gray-300" />
                   <span className="flex items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-600">
                     <i className="fas fa-play-circle text-gray-400" />
-                    {current.lectureTimestamp ? '영상 구간 질문' : '일반 질문'}
+                    {current.lessonTitle ?? (current.lectureTimestamp ? '영상 구간 질문' : '일반 질문')}
                   </span>
                   {current.lectureTimestamp ? (
                     <span className="flex items-center gap-1.5 rounded-lg border border-green-200 bg-green-50 px-3 py-1.5 text-xs font-bold text-[#00c471]">
@@ -760,15 +821,13 @@ export default function InstructorQnaPage({ session }: { session: AuthSession })
 
                 <button
                   type="button"
-                  onClick={() =>
-                    setToast({
-                      message: current.lectureTimestamp
-                        ? `${current.lectureTimestamp} 구간 연결은 다음 단계에서 마무리하겠습니다.`
-                        : '강의 화면 연결은 다음 단계에서 마무리하겠습니다.',
-                      tone: 'info',
-                    })
-                  }
-                  className="flex h-9 items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 text-xs font-semibold text-gray-500 shadow-sm transition hover:bg-gray-50 hover:text-[#00c471]"
+                  onClick={() => openCourseScreen(current)}
+                  disabled={!current.courseId}
+                  className={`flex h-9 items-center gap-1.5 rounded-lg border px-3 text-xs font-semibold shadow-sm transition ${
+                    current.courseId
+                      ? 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50 hover:text-[#00c471]'
+                      : 'cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400'
+                  }`}
                 >
                   <i className="fas fa-external-link-alt" />
                   강의 화면 보기

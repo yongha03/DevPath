@@ -16,7 +16,10 @@ import com.devpath.api.instructor.repository.QnaTemplateRepository;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
 import com.devpath.domain.course.entity.Course;
+import com.devpath.domain.course.entity.Lesson;
+import com.devpath.domain.course.entity.LessonType;
 import com.devpath.domain.course.repository.CourseRepository;
+import com.devpath.domain.course.repository.LessonRepository;
 import com.devpath.domain.qna.entity.Answer;
 import com.devpath.domain.qna.entity.QnaStatus;
 import com.devpath.domain.qna.entity.Question;
@@ -26,8 +29,9 @@ import com.devpath.domain.user.entity.User;
 import com.devpath.domain.user.entity.UserProfile;
 import com.devpath.domain.user.repository.UserProfileRepository;
 import com.devpath.domain.user.repository.UserRepository;
-import java.util.Map;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -43,6 +47,7 @@ public class InstructorQnaInboxService {
     private final UserRepository userRepository;
     private final UserProfileRepository userProfileRepository;
     private final CourseRepository courseRepository;
+    private final LessonRepository lessonRepository;
     private final QnaAnswerDraftRepository draftRepository;
     private final QnaTemplateRepository templateRepository;
 
@@ -58,14 +63,20 @@ public class InstructorQnaInboxService {
         }
 
         Map<Long, String> courseTitles = resolveCourseTitles(questions);
+        Map<Long, Lesson> lessonsByQuestionId = resolveLessonsByQuestionId(questions);
         Map<Long, QnaStatus> statusesByQuestionId = resolveStatuses(questions);
 
         return questions.stream()
-                .map(question -> QnaInboxResponse.from(
-                        question,
-                        courseTitles.get(question.getCourseId()),
-                        statusesByQuestionId.getOrDefault(question.getId(), QnaStatus.UNANSWERED)
-                ))
+                .map(question -> {
+                    Lesson lesson = lessonsByQuestionId.get(question.getId());
+                    return QnaInboxResponse.from(
+                            question,
+                            courseTitles.get(question.getCourseId()),
+                            lesson == null ? question.getLessonId() : lesson.getLessonId(),
+                            lesson == null ? null : lesson.getTitle(),
+                            statusesByQuestionId.getOrDefault(question.getId(), QnaStatus.UNANSWERED)
+                    );
+                })
                 .toList();
     }
 
@@ -165,6 +176,8 @@ public class InstructorQnaInboxService {
     @Transactional(readOnly = true)
     public QnaTimelineResponse getTimeline(Long questionId, Long instructorId) {
         Question question = getManagedQuestion(questionId, instructorId);
+        Lesson lesson = resolveLesson(question);
+        String lessonTitle = lesson == null ? null : lesson.getTitle();
 
         QnaAnswerResponse publishedAnswer = answerRepository.findFirstByQuestionIdAndIsDeletedFalse(questionId)
                 .map(answer -> QnaAnswerResponse.from(
@@ -183,11 +196,13 @@ public class InstructorQnaInboxService {
                 QnaInboxResponse.from(
                         question,
                         resolveCourseTitle(question.getCourseId()),
+                        lesson == null ? question.getLessonId() : lesson.getLessonId(),
+                        lessonTitle,
                         publishedAnswer == null ? QnaStatus.UNANSWERED : QnaStatus.ANSWERED
                 ),
                 publishedAnswer,
                 draft,
-                question.getTitle(),
+                lessonTitle,
                 question.getLectureTimestamp()
         );
     }
@@ -267,6 +282,63 @@ public class InstructorQnaInboxService {
         return courseRepository.findById(courseId)
                 .map(Course::getTitle)
                 .orElse(null);
+    }
+
+    private Map<Long, Lesson> resolveLessonsByQuestionId(List<Question> questions) {
+        List<Long> lessonIds = questions.stream()
+                .map(Question::getLessonId)
+                .filter(lessonId -> lessonId != null)
+                .distinct()
+                .toList();
+
+        Map<Long, Lesson> lessonsById = lessonIds.isEmpty()
+                ? Map.of()
+                : lessonRepository.findAllById(lessonIds).stream()
+                        .collect(Collectors.toMap(Lesson::getLessonId, lesson -> lesson, (left, right) -> left));
+
+        Map<Long, Lesson> firstVideoLessonsByCourseId = resolveFirstVideoLessonsByCourseId(questions);
+        Map<Long, Lesson> result = new HashMap<>();
+
+        for (Question question : questions) {
+            Lesson lesson = question.getLessonId() == null
+                    ? firstVideoLessonsByCourseId.get(question.getCourseId())
+                    : lessonsById.get(question.getLessonId());
+
+            if (lesson != null) {
+                result.put(question.getId(), lesson);
+            }
+        }
+
+        return result;
+    }
+
+    private Lesson resolveLesson(Question question) {
+        if (question == null) {
+            return null;
+        }
+
+        return resolveLessonsByQuestionId(List.of(question)).get(question.getId());
+    }
+
+    private Map<Long, Lesson> resolveFirstVideoLessonsByCourseId(List<Question> questions) {
+        List<Long> courseIds = questions.stream()
+                .filter(question -> question.getLessonId() == null)
+                .map(Question::getCourseId)
+                .filter(courseId -> courseId != null)
+                .distinct()
+                .toList();
+
+        if (courseIds.isEmpty()) {
+            return Map.of();
+        }
+
+        return lessonRepository.findPublishedLessonsByCourseIdsAndTypeInDisplayOrder(courseIds, LessonType.VIDEO)
+                .stream()
+                .collect(Collectors.toMap(
+                        lesson -> lesson.getSection().getCourse().getCourseId(),
+                        lesson -> lesson,
+                        (left, right) -> left
+                ));
     }
 
     private String getInstructorDisplayName(Long instructorId) {

@@ -1,6 +1,7 @@
 package com.devpath.domain.course.repository;
 
 import com.devpath.domain.course.entity.Lesson;
+import com.devpath.domain.course.entity.LessonType;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -15,6 +16,22 @@ public interface LessonRepository extends JpaRepository<Lesson, Long> {
     List<Lesson> findAllByLessonIdInAndSectionCourseInstructorId(List<Long> lessonIds, Long instructorId);
 
     List<Lesson> findAllBySectionCourseCourseId(Long courseId);
+
+    @Query("""
+        select l
+        from Lesson l
+        join fetch l.section s
+        join fetch s.course c
+        where c.courseId in :courseIds
+          and coalesce(s.isPublished, true) = true
+          and coalesce(l.isPublished, true) = true
+          and l.lessonType = :lessonType
+        order by c.courseId asc, s.orderIndex asc, l.orderIndex asc, l.lessonId asc
+        """)
+    List<Lesson> findPublishedLessonsByCourseIdsAndTypeInDisplayOrder(
+            @Param("courseIds") Collection<Long> courseIds,
+            @Param("lessonType") LessonType lessonType
+    );
 
     @Query("""
         select l

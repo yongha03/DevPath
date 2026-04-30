@@ -9,6 +9,8 @@ import com.devpath.api.qna.dto.QuestionSummaryResponse;
 import com.devpath.api.qna.dto.QuestionTemplateResponse;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
+import com.devpath.domain.course.entity.Lesson;
+import com.devpath.domain.course.repository.LessonRepository;
 import com.devpath.domain.qna.entity.Answer;
 import com.devpath.domain.qna.entity.Question;
 import com.devpath.domain.qna.entity.QuestionTemplateType;
@@ -50,6 +52,7 @@ public class QnaService {
     private final AnswerRepository answerRepository;
     private final QuestionTemplateRepository questionTemplateRepository;
     private final UserRepository userRepository;
+    private final LessonRepository lessonRepository;
 
     @Transactional
     public QuestionDetailResponse createQuestion(Long userId, QuestionCreateRequest request) {
@@ -57,6 +60,7 @@ public class QnaService {
 
         // 활성화된 템플릿 타입만 질문 작성에 사용할 수 있게 제한한다.
         validateTemplateType(request.getTemplateType());
+        validateLessonContext(request.getCourseId(), request.getLessonId());
 
         Question question = Question.builder()
                 .user(user)
@@ -65,6 +69,7 @@ public class QnaService {
                 .title(request.getTitle())
                 .content(request.getContent())
                 .courseId(request.getCourseId())
+                .lessonId(request.getLessonId())
                 .lectureTimestamp(request.getLectureTimestamp())
                 .build();
 
@@ -338,6 +343,19 @@ public class QnaService {
     private User getUser(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+    }
+
+    private void validateLessonContext(Long courseId, Long lessonId) {
+        if (lessonId == null) {
+            return;
+        }
+
+        Lesson lesson = lessonRepository.findById(lessonId)
+                .orElseThrow(() -> new CustomException(ErrorCode.LESSON_NOT_FOUND));
+
+        if (courseId != null && !lesson.getSection().getCourse().getCourseId().equals(courseId)) {
+            throw new CustomException(ErrorCode.INVALID_INPUT, "질문 레슨이 강의에 속하지 않습니다.");
+        }
     }
 
     // 삭제되지 않은 질문만 조회 대상으로 허용한다.

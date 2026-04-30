@@ -2949,6 +2949,7 @@ function reindexRoadmapHubSections(sections: RoadmapHubSection[]): RoadmapHubSec
       title: item.title ?? '',
       subtitle: item.subtitle ?? null,
       iconClass: item.iconClass ?? null,
+      iconColor: item.iconColor ?? null,
       sortOrder: itemIndex,
       active: item.active ?? true,
       featured: item.featured ?? false,
@@ -2963,6 +2964,7 @@ function createEmptyRoadmapHubItem(layoutType: string): RoadmapHubItem {
     title: '',
     subtitle: layoutType === 'CARD_GRID' ? '공식 로드맵' : null,
     iconClass: layoutType === 'CARD_GRID' ? 'fas fa-map' : null,
+    iconColor: layoutType === 'CARD_GRID' ? '#64748B' : null,
     sortOrder: 0,
     active: true,
     featured: false,
@@ -3040,6 +3042,7 @@ function matchesRoadmapHubItem(section: RoadmapHubSection, item: RoadmapHubItem)
     item.title,
     item.subtitle,
     item.iconClass,
+    item.iconColor,
     item.linkedRoadmapId,
     item.linkedRoadmapTitle,
   ])
@@ -3432,7 +3435,7 @@ function renderRoadmapHubItemRow(sectionIndex: number, item: RoadmapHubItem, ite
         </label>
       </div>
 
-      <div class="mt-3 grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto_auto]">
+      <div class="mt-3 grid gap-3 xl:grid-cols-[minmax(0,1fr)_180px_auto_auto]">
         <label class="block">
           <span class="mb-1 block text-[11px] font-bold text-slate-500">아이콘 클래스</span>
           <input
@@ -3441,6 +3444,16 @@ function renderRoadmapHubItemRow(sectionIndex: number, item: RoadmapHubItem, ite
             type="text"
             class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
             placeholder="예: fas fa-server"
+          />
+        </label>
+        <label class="block">
+          <span class="mb-1 block text-[11px] font-bold text-slate-500">아이콘 색상</span>
+          <input
+            value="${escapeHtml(item.iconColor ?? '')}"
+            oninput="updateRoadmapHubItemField(${sectionIndex}, ${itemIndex}, 'iconColor', this.value)"
+            type="text"
+            class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+            placeholder="예: #00C471"
           />
         </label>
         <label class="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
@@ -4434,6 +4447,9 @@ function installGlobalActions() {
           break
         case 'iconClass':
           item.iconClass = value.trim() ? value : null
+          break
+        case 'iconColor':
+          item.iconColor = value.trim() ? value : null
           break
         case 'linkedRoadmapId':
           item.linkedRoadmapId = value.trim() && Number.isFinite(Number(value)) ? Number(value) : null

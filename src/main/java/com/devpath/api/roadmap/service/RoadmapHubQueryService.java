@@ -89,6 +89,7 @@ public class RoadmapHubQueryService {
         .title(item.getTitle())
         .subtitle(item.getSubtitle())
         .iconClass(item.getIconClass())
+        .iconColor(item.getIconColor())
         .sortOrder(item.getSortOrder())
         .active(item.getActive())
         .featured(item.getFeatured())

@@ -53,6 +53,9 @@ public class Question {
     @Column(name = "course_id")
     private Long courseId;
 
+    @Column(name = "lesson_id")
+    private Long lessonId;
+
     @Column(name = "lecture_timestamp", length = 20)
     private String lectureTimestamp;
 
@@ -80,6 +83,7 @@ public class Question {
             String title,
             String content,
             Long courseId,
+            Long lessonId,
             String lectureTimestamp
     ) {
         this.user = user;
@@ -88,6 +92,7 @@ public class Question {
         this.title = title;
         this.content = content;
         this.courseId = courseId;
+        this.lessonId = lessonId;
         this.lectureTimestamp = lectureTimestamp;
         this.qnaStatus = QnaStatus.UNANSWERED;
         this.adoptedAnswerId = null;

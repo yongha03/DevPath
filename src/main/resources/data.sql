@@ -9347,6 +9347,131 @@ SELECT r.roadmap_id, '메시지 큐 & MSA',
        'CONCEPT', 15, '메시지 큐: 작업을 즉시 처리하지 않고 큐에 쌓아 비동기로 처리하는 구조,Kafka Topic과 Partition: 메시지를 분류하고 병렬 처리를 가능하게 하는 저장 단위,Producer와 Consumer: 메시지를 발행하고 읽어 처리하는 구성 요소,API Gateway: 여러 서비스 앞에서 라우팅 인증 공통 처리를 담당하는 진입점,서비스 분리 기준: 하나의 기능을 독립 서비스로 나눌지 판단하는 경계', NULL
 FROM roadmaps r WHERE r.title = 'Backend Master Roadmap';
 
+-- Backend Master Roadmap 공식 선행 관계
+INSERT INTO prerequisites (node_id, pre_node_id)
+WITH target_nodes AS (
+    SELECT rn.node_id, rn.sort_order, rn.branch_group
+    FROM roadmap_nodes rn
+    JOIN roadmaps r ON r.roadmap_id = rn.roadmap_id
+    WHERE r.title = 'Backend Master Roadmap'
+),
+branch_bounds AS (
+    SELECT MIN(sort_order) AS min_branch_order, MAX(sort_order) AS max_branch_order
+    FROM target_nodes
+    WHERE branch_group IS NOT NULL
+),
+pre_branch_spine_edges AS (
+    SELECT child.node_id, pre_node.node_id AS pre_node_id
+    FROM target_nodes child
+    JOIN branch_bounds bounds ON bounds.min_branch_order IS NOT NULL
+    JOIN target_nodes pre_node
+        ON pre_node.branch_group IS NULL
+       AND pre_node.sort_order = (
+           SELECT MAX(prev.sort_order)
+           FROM target_nodes prev
+           WHERE prev.branch_group IS NULL
+             AND prev.sort_order < child.sort_order
+             AND prev.sort_order < bounds.min_branch_order
+       )
+    WHERE child.branch_group IS NULL
+      AND child.sort_order < bounds.min_branch_order
+),
+branch_first_edges AS (
+    SELECT child.node_id, pre_node.node_id AS pre_node_id
+    FROM target_nodes child
+    JOIN target_nodes pre_node
+        ON pre_node.branch_group IS NULL
+       AND pre_node.sort_order = (
+           SELECT MAX(prev.sort_order)
+           FROM target_nodes prev
+           WHERE prev.branch_group IS NULL
+             AND prev.sort_order < child.sort_order
+       )
+    WHERE child.branch_group IS NOT NULL
+      AND NOT EXISTS (
+          SELECT 1
+          FROM target_nodes prev
+          WHERE prev.branch_group = child.branch_group
+            AND prev.sort_order < child.sort_order
+      )
+),
+branch_chain_edges AS (
+    SELECT child.node_id, pre_node.node_id AS pre_node_id
+    FROM target_nodes child
+    JOIN target_nodes pre_node
+        ON pre_node.branch_group = child.branch_group
+       AND pre_node.sort_order = (
+           SELECT MAX(prev.sort_order)
+           FROM target_nodes prev
+           WHERE prev.branch_group = child.branch_group
+             AND prev.sort_order < child.sort_order
+       )
+    WHERE child.branch_group IS NOT NULL
+),
+branch_last_nodes AS (
+    SELECT branch_node.branch_group, branch_node.node_id
+    FROM target_nodes branch_node
+    WHERE branch_node.branch_group IS NOT NULL
+      AND branch_node.sort_order = (
+          SELECT MAX(prev.sort_order)
+          FROM target_nodes prev
+          WHERE prev.branch_group = branch_node.branch_group
+      )
+),
+first_post_branch_node AS (
+    SELECT post_node.node_id
+    FROM target_nodes post_node
+    JOIN branch_bounds bounds ON bounds.max_branch_order IS NOT NULL
+    WHERE post_node.branch_group IS NULL
+      AND post_node.sort_order = (
+          SELECT MIN(next_node.sort_order)
+          FROM target_nodes next_node
+          WHERE next_node.branch_group IS NULL
+            AND next_node.sort_order > bounds.max_branch_order
+      )
+),
+merge_edges AS (
+    SELECT post_node.node_id, branch_node.node_id AS pre_node_id
+    FROM first_post_branch_node post_node
+    JOIN branch_last_nodes branch_node ON 1 = 1
+),
+post_branch_spine_edges AS (
+    SELECT child.node_id, pre_node.node_id AS pre_node_id
+    FROM target_nodes child
+    JOIN branch_bounds bounds ON bounds.max_branch_order IS NOT NULL
+    JOIN target_nodes pre_node
+        ON pre_node.branch_group IS NULL
+       AND pre_node.sort_order = (
+           SELECT MAX(prev.sort_order)
+           FROM target_nodes prev
+           WHERE prev.branch_group IS NULL
+             AND prev.sort_order < child.sort_order
+             AND prev.sort_order > bounds.max_branch_order
+       )
+    WHERE child.branch_group IS NULL
+      AND child.sort_order > bounds.max_branch_order
+),
+desired_edges AS (
+    SELECT node_id, pre_node_id FROM pre_branch_spine_edges
+    UNION
+    SELECT node_id, pre_node_id FROM branch_first_edges
+    UNION
+    SELECT node_id, pre_node_id FROM branch_chain_edges
+    UNION
+    SELECT node_id, pre_node_id FROM merge_edges
+    UNION
+    SELECT node_id, pre_node_id FROM post_branch_spine_edges
+)
+SELECT edge.node_id, edge.pre_node_id
+FROM desired_edges edge
+WHERE edge.pre_node_id IS NOT NULL
+  AND NOT EXISTS (
+      SELECT 1
+      FROM prerequisites existing
+      WHERE existing.node_id = edge.node_id
+        AND existing.pre_node_id = edge.pre_node_id
+  );
+
 -- Backend Master Roadmap 노드 추천 무료 자료
 INSERT INTO roadmap_node_resources
     (node_id, title, url, description, source_type, sort_order, active, created_at, updated_at)
@@ -9445,25 +9570,24 @@ WHERE u.email = 'learner@devpath.com'
         AND crn.original_node_id = rn.node_id
   );
 
--- learner 커스텀 로드맵 순차 prerequisite 체인 (n+1번 노드는 n번 노드를 선행으로 가짐)
+-- 공식 prerequisite를 모든 커스텀 로드맵에 반영
 INSERT INTO custom_node_prerequisites (custom_roadmap_id, custom_node_id, prerequisite_custom_node_id)
-SELECT cr.custom_roadmap_id, n_cur.custom_node_id, n_pre.custom_node_id
+SELECT cr.custom_roadmap_id, child_node.custom_node_id, pre_node.custom_node_id
 FROM custom_roadmaps cr
-JOIN users u ON u.user_id = cr.user_id
-JOIN roadmaps r ON r.roadmap_id = cr.original_roadmap_id
-JOIN custom_roadmap_nodes n_cur ON n_cur.custom_roadmap_id = cr.custom_roadmap_id
-JOIN roadmap_nodes rn_cur ON rn_cur.node_id = n_cur.original_node_id
-JOIN roadmap_nodes rn_pre ON rn_pre.roadmap_id = r.roadmap_id AND rn_pre.sort_order = rn_cur.sort_order - 1
-JOIN custom_roadmap_nodes n_pre ON n_pre.custom_roadmap_id = cr.custom_roadmap_id AND n_pre.original_node_id = rn_pre.node_id
-WHERE u.email = 'learner@devpath.com'
-  AND r.title = 'Backend Master Roadmap'
-  AND rn_cur.sort_order > 1
-  AND rn_cur.title NOT LIKE '[TEST]%'
+JOIN custom_roadmap_nodes child_node
+    ON child_node.custom_roadmap_id = cr.custom_roadmap_id
+JOIN prerequisites prerequisite
+    ON prerequisite.node_id = child_node.original_node_id
+JOIN custom_roadmap_nodes pre_node
+    ON pre_node.custom_roadmap_id = cr.custom_roadmap_id
+   AND pre_node.original_node_id = prerequisite.pre_node_id
+WHERE cr.original_roadmap_id IS NOT NULL
+  AND child_node.custom_node_id <> pre_node.custom_node_id
   AND NOT EXISTS (
       SELECT 1 FROM custom_node_prerequisites cnp
       WHERE cnp.custom_roadmap_id = cr.custom_roadmap_id
-        AND cnp.custom_node_id = n_cur.custom_node_id
-        AND cnp.prerequisite_custom_node_id = n_pre.custom_node_id
+        AND cnp.custom_node_id = child_node.custom_node_id
+        AND cnp.prerequisite_custom_node_id = pre_node.custom_node_id
   );
 
 -- sort 1, 2 노드 NodeClearance 레코드 (CLEARED 상태)
@@ -11892,6 +12016,318 @@ WHERE NOT EXISTS (
       AND l.sort_order = ls.lesson_order
 );
 
+-- 로드맵 실전: Git & 버전 관리 강의는 OCR 실습 영상과 섹션 평가/과제를 고정 연결한다.
+UPDATE courses
+SET intro_video_url = '/samples/ocr-code-demo.mp4',
+    video_asset_key = NULL,
+    updated_at = TIMESTAMP '2026-04-30 09:00:00'
+WHERE title = '로드맵 실전: Git & 버전 관리'
+  AND (
+      COALESCE(intro_video_url, '') <> '/samples/ocr-code-demo.mp4'
+      OR video_asset_key IS NOT NULL
+  );
+
+UPDATE lessons l
+SET video_url = '/samples/ocr-code-demo.mp4',
+    video_asset_key = NULL,
+    video_provider = NULL
+FROM course_sections cs
+JOIN courses c ON c.course_id = cs.course_id
+WHERE l.section_id = cs.section_id
+  AND c.title = '로드맵 실전: Git & 버전 관리'
+  AND l.lesson_type = 'VIDEO'
+  AND (
+      COALESCE(l.video_url, '') <> '/samples/ocr-code-demo.mp4'
+      OR l.video_asset_key IS NOT NULL
+      OR l.video_provider IS NOT NULL
+  );
+
+INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
+WITH git_activity_nodes(course_title, section_order, activity_kind, node_title, node_content, sort_order) AS (
+    VALUES
+        (
+            '로드맵 실전: Git & 버전 관리',
+            1,
+            'QUIZ',
+            '[ROADMAP COURSE] 로드맵 실전: Git & 버전 관리 - 1 QUIZ',
+            '커밋 단위, 브랜치 전략, Pull Request 리뷰 흐름을 확인하는 섹션 1 마무리 퀴즈입니다.',
+            1081
+        ),
+        (
+            '로드맵 실전: Git & 버전 관리',
+            2,
+            'ASSIGNMENT',
+            '[ROADMAP COURSE] 로드맵 실전: Git & 버전 관리 - 2 ASSIGNMENT',
+            'feature 브랜치 생성부터 커밋 메시지, PR 본문, 리뷰 체크리스트까지 Git 협업 흐름을 문서로 정리하는 과제입니다.',
+            1082
+        )
+)
+SELECT
+    r.roadmap_id,
+    gan.node_title,
+    gan.node_content,
+    gan.activity_kind,
+    gan.sort_order,
+    gan.course_title,
+    gan.section_order
+FROM git_activity_nodes gan
+JOIN roadmaps r ON r.title = 'DevPath 공개 강의 평가 데이터'
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM roadmap_nodes rn
+    WHERE rn.title = gan.node_title
+);
+
+INSERT INTO course_node_mappings (course_id, node_id, created_at)
+SELECT c.course_id, rn.node_id, TIMESTAMP '2026-04-30 09:05:00'
+FROM courses c
+JOIN roadmap_nodes rn ON rn.sub_topics = c.title
+WHERE c.title = '로드맵 실전: Git & 버전 관리'
+  AND rn.title IN (
+      '[ROADMAP COURSE] 로드맵 실전: Git & 버전 관리 - 1 QUIZ',
+      '[ROADMAP COURSE] 로드맵 실전: Git & 버전 관리 - 2 ASSIGNMENT'
+  )
+  AND NOT EXISTS (
+      SELECT 1
+      FROM course_node_mappings cnm
+      WHERE cnm.course_id = c.course_id
+        AND cnm.node_id = rn.node_id
+  );
+
+INSERT INTO lessons (
+    section_id, title, description, lesson_type, video_url, video_asset_key, video_provider,
+    thumbnail_url, duration_seconds, is_preview, is_published, sort_order, quiz_node_id
+)
+SELECT
+    cs.section_id,
+    '섹션 마무리 퀴즈: Git 협업 흐름 점검',
+    '커밋 단위, 브랜치 전략, Pull Request 리뷰 목적을 확인하는 섹션 1 퀴즈입니다.',
+    'READING',
+    NULL,
+    NULL,
+    NULL,
+    c.thumbnail_url,
+    300,
+    FALSE,
+    TRUE,
+    3,
+    rn.node_id
+FROM courses c
+JOIN course_sections cs ON cs.course_id = c.course_id AND cs.sort_order = 1
+JOIN roadmap_nodes rn ON rn.title = '[ROADMAP COURSE] 로드맵 실전: Git & 버전 관리 - 1 QUIZ'
+WHERE c.title = '로드맵 실전: Git & 버전 관리'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM lessons l
+      WHERE l.section_id = cs.section_id
+        AND l.sort_order = 3
+        AND l.title = '섹션 마무리 퀴즈: Git 협업 흐름 점검'
+  );
+
+UPDATE lessons l
+SET quiz_node_id = rn.node_id
+FROM course_sections cs
+JOIN courses c ON c.course_id = cs.course_id
+JOIN roadmap_nodes rn ON rn.title = '[ROADMAP COURSE] 로드맵 실전: Git & 버전 관리 - 1 QUIZ'
+WHERE l.section_id = cs.section_id
+  AND c.title = '로드맵 실전: Git & 버전 관리'
+  AND cs.sort_order = 1
+  AND l.sort_order = 3
+  AND l.title = '섹션 마무리 퀴즈: Git 협업 흐름 점검'
+  AND l.quiz_node_id IS NULL;
+
+INSERT INTO lessons (
+    section_id, title, description, lesson_type, video_url, video_asset_key, video_provider,
+    thumbnail_url, duration_seconds, is_preview, is_published, sort_order, assignment_node_id
+)
+SELECT
+    cs.section_id,
+    '실습 과제: Git 브랜치 전략과 PR 회고',
+    '기능 브랜치, 커밋 메시지, PR 본문, 리뷰 체크리스트를 하나의 협업 흐름으로 정리해 제출합니다.',
+    'CODING',
+    NULL,
+    NULL,
+    NULL,
+    c.thumbnail_url,
+    900,
+    FALSE,
+    TRUE,
+    3,
+    rn.node_id
+FROM courses c
+JOIN course_sections cs ON cs.course_id = c.course_id AND cs.sort_order = 2
+JOIN roadmap_nodes rn ON rn.title = '[ROADMAP COURSE] 로드맵 실전: Git & 버전 관리 - 2 ASSIGNMENT'
+WHERE c.title = '로드맵 실전: Git & 버전 관리'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM lessons l
+      WHERE l.section_id = cs.section_id
+        AND l.sort_order = 3
+        AND l.title = '실습 과제: Git 브랜치 전략과 PR 회고'
+  );
+
+UPDATE lessons l
+SET assignment_node_id = rn.node_id
+FROM course_sections cs
+JOIN courses c ON c.course_id = cs.course_id
+JOIN roadmap_nodes rn ON rn.title = '[ROADMAP COURSE] 로드맵 실전: Git & 버전 관리 - 2 ASSIGNMENT'
+WHERE l.section_id = cs.section_id
+  AND c.title = '로드맵 실전: Git & 버전 관리'
+  AND cs.sort_order = 2
+  AND l.sort_order = 3
+  AND l.title = '실습 과제: Git 브랜치 전략과 PR 회고'
+  AND l.assignment_node_id IS NULL;
+
+INSERT INTO quizzes (
+    node_id, title, description, quiz_type, total_score, pass_score,
+    time_limit_minutes, is_published, is_active, expose_answer,
+    expose_explanation, is_deleted, created_at, updated_at
+)
+SELECT
+    rn.node_id,
+    'Git 브랜치와 PR 흐름 점검 퀴즈',
+    '커밋 단위, 브랜치 전략, Pull Request 리뷰 흐름을 확인하는 섹션 1 마무리 퀴즈입니다.',
+    'MANUAL',
+    10,
+    7,
+    10,
+    TRUE,
+    TRUE,
+    TRUE,
+    TRUE,
+    FALSE,
+    TIMESTAMP '2026-04-30 09:10:00',
+    TIMESTAMP '2026-04-30 09:10:00'
+FROM roadmap_nodes rn
+WHERE rn.title = '[ROADMAP COURSE] 로드맵 실전: Git & 버전 관리 - 1 QUIZ'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM quizzes q
+      WHERE q.node_id = rn.node_id
+  );
+
+INSERT INTO quiz_questions (
+    quiz_id, question_type, question_text, explanation, points,
+    display_order, source_timestamp, is_deleted, created_at, updated_at
+)
+SELECT
+    q.quiz_id,
+    'MULTIPLE_CHOICE',
+    'Git 협업에서 Pull Request를 여는 가장 적절한 목적은 무엇인가요?',
+    'PR은 기능 브랜치의 변경 내용을 공유하고 리뷰와 자동 검증을 거쳐 안전하게 기본 브랜치에 병합하기 위한 절차입니다.',
+    10,
+    1,
+    NULL,
+    FALSE,
+    TIMESTAMP '2026-04-30 09:15:00',
+    TIMESTAMP '2026-04-30 09:15:00'
+FROM quizzes q
+JOIN roadmap_nodes rn ON rn.node_id = q.node_id
+WHERE rn.title = '[ROADMAP COURSE] 로드맵 실전: Git & 버전 관리 - 1 QUIZ'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM quiz_questions qq
+      WHERE qq.quiz_id = q.quiz_id
+        AND qq.display_order = 1
+  );
+
+INSERT INTO quiz_question_options (
+    question_id, option_text, is_correct, display_order,
+    is_deleted, created_at, updated_at
+)
+WITH git_quiz_option_seed(option_text, is_correct, display_order) AS (
+    VALUES
+        ('변경 내용을 리뷰하고 자동 검증을 통과한 뒤 병합하기 위해서', TRUE, 1),
+        ('로컬 커밋 기록을 모두 삭제하기 위해서', FALSE, 2),
+        ('원격 저장소 연결 없이 브랜치를 만들기 위해서', FALSE, 3),
+        ('충돌이 발생하지 않도록 Git 사용을 중단하기 위해서', FALSE, 4)
+)
+SELECT
+    qq.question_id,
+    seed.option_text,
+    seed.is_correct,
+    seed.display_order,
+    FALSE,
+    TIMESTAMP '2026-04-30 09:20:00',
+    TIMESTAMP '2026-04-30 09:20:00'
+FROM git_quiz_option_seed seed
+JOIN roadmap_nodes rn ON rn.title = '[ROADMAP COURSE] 로드맵 실전: Git & 버전 관리 - 1 QUIZ'
+JOIN quizzes q ON q.node_id = rn.node_id
+JOIN quiz_questions qq ON qq.quiz_id = q.quiz_id AND qq.display_order = 1
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM quiz_question_options qo
+    WHERE qo.question_id = qq.question_id
+      AND qo.display_order = seed.display_order
+);
+
+INSERT INTO assignments (
+    node_id, title, description, submission_type, due_at, allowed_file_formats,
+    readme_required, test_required, lint_required, submission_rule_description,
+    total_score, pass_score, is_published, is_active, allow_late_submission,
+    ai_review_enabled, allow_text_submission,
+    allow_file_submission, allow_url_submission, is_deleted, created_at, updated_at
+)
+SELECT
+    rn.node_id,
+    'Git 브랜치 전략과 PR 회고 과제',
+    '기능 개발 흐름을 가정해 feature 브랜치를 만들고 의미 있는 커밋 단위로 변경 이력을 구성한 뒤, PR 설명과 충돌 해결/리뷰 체크리스트를 README로 정리합니다. 실제 코드를 작성하지 않아도 브랜치명, 커밋 메시지, PR 본문 예시가 포함되어야 합니다.',
+    'MULTIPLE',
+    TIMESTAMP '2026-05-31 23:59:59',
+    'md,pdf,zip,github-url',
+    TRUE,
+    FALSE,
+    FALSE,
+    'GitHub 저장소 URL 또는 README 파일을 제출하세요. README에는 브랜치 전략, 커밋 메시지 3개 이상, PR 본문, 리뷰 체크리스트, 충돌 발생 시 해결 절차를 포함해야 합니다.',
+    100,
+    70,
+    TRUE,
+    TRUE,
+    TRUE,
+    TRUE,
+    TRUE,
+    TRUE,
+    TRUE,
+    FALSE,
+    TIMESTAMP '2026-04-30 09:25:00',
+    TIMESTAMP '2026-04-30 09:25:00'
+FROM roadmap_nodes rn
+WHERE rn.title = '[ROADMAP COURSE] 로드맵 실전: Git & 버전 관리 - 2 ASSIGNMENT'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM assignments a
+      WHERE a.node_id = rn.node_id
+  );
+
+INSERT INTO assignment_rubrics (
+    assignment_id, criteria_name, criteria_description, max_points,
+    display_order, is_deleted, created_at, updated_at
+)
+WITH git_assignment_rubric_seed(criteria_name, criteria_description, max_points, display_order) AS (
+    VALUES
+        ('Git 작업 흐름 구성', 'feature 브랜치 생성, 의미 있는 커밋 단위, PR 생성 흐름이 실제 협업 흐름에 맞게 정리되었습니다.', 40, 1),
+        ('PR 설명과 리뷰 체크리스트', '변경 목적, 테스트/검증 방법, 리뷰어가 확인해야 할 항목을 PR 본문 형식으로 구체화했습니다.', 35, 2),
+        ('충돌 해결과 회고', '충돌이 발생했을 때의 해결 순서와 브랜치 전략을 적용하며 배운 점을 정리했습니다.', 25, 3)
+)
+SELECT
+    a.assignment_id,
+    seed.criteria_name,
+    seed.criteria_description,
+    seed.max_points,
+    seed.display_order,
+    FALSE,
+    TIMESTAMP '2026-04-30 09:30:00',
+    TIMESTAMP '2026-04-30 09:30:00'
+FROM git_assignment_rubric_seed seed
+JOIN roadmap_nodes rn ON rn.title = '[ROADMAP COURSE] 로드맵 실전: Git & 버전 관리 - 2 ASSIGNMENT'
+JOIN assignments a ON a.node_id = rn.node_id
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM assignment_rubrics ar
+    WHERE ar.assignment_id = a.assignment_id
+      AND ar.display_order = seed.display_order
+);
+
 INSERT INTO course_node_mappings (course_id, node_id, created_at)
 SELECT
     c.course_id,
@@ -12975,6 +13411,24 @@ WHERE NOT EXISTS (
       AND q.course_id = c.course_id
 );
 
+UPDATE qna_questions q
+SET lesson_id = first_lesson.lesson_id
+FROM (
+    SELECT DISTINCT ON (c.course_id)
+        c.course_id,
+        l.lesson_id
+    FROM courses c
+    JOIN course_sections cs ON cs.course_id = c.course_id
+    JOIN lessons l ON l.section_id = cs.section_id
+    WHERE COALESCE(cs.is_published, TRUE) = TRUE
+      AND COALESCE(l.is_published, TRUE) = TRUE
+      AND l.lesson_type = 'VIDEO'
+    ORDER BY c.course_id, cs.sort_order, l.sort_order, l.lesson_id
+) first_lesson
+WHERE q.course_id = first_lesson.course_id
+  AND q.lesson_id IS NULL
+  AND q.lecture_timestamp IS NOT NULL;
+
 INSERT INTO review (
     course_id, learner_id, rating, content, status,
     is_hidden, is_deleted, issue_tags_raw, created_at, updated_at
@@ -13336,12 +13790,20 @@ WHERE NOT EXISTS (
     WHERE roadmap.title = seed.title
 );
 
+DELETE FROM roadmap_hub_items
+WHERE section_id IN (
+    SELECT id
+    FROM roadmap_hub_sections
+    WHERE section_key IN ('project-ideas', 'best-practices')
+);
+
+DELETE FROM roadmap_hub_sections
+WHERE section_key IN ('project-ideas', 'best-practices');
+
 WITH roadmap_hub_section_seed(section_key, title, description, layout_type, sort_order, is_active) AS (
     VALUES
-        ('role-based', '역할 기반 로드맵', '직무 중심 로드맵 허브 구성입니다.', 'CARD_GRID', 0, TRUE),
-        ('skill-based', '기술 기반 로드맵', '기술 중심 로드맵 허브 구성입니다.', 'CHIP_GRID', 1, TRUE),
-        ('project-ideas', '프로젝트 아이디어', '프로젝트 아이디어 섹션입니다.', 'LINK_LIST', 2, TRUE),
-        ('best-practices', '베스트 프랙티스', '실무 베스트 프랙티스 섹션입니다.', 'LINK_LIST', 3, TRUE)
+        ('role-based', '직무별 학습 로드맵', '직무별 학습 로드맵 허브 구성입니다.', 'CARD_GRID', 0, TRUE),
+        ('skill-based', '기술별 학습 로드맵', '기술별 학습 로드맵 허브 구성입니다.', 'CHIP_GRID', 1, TRUE)
 )
 INSERT INTO roadmap_hub_sections (section_key, title, description, layout_type, sort_order, is_active)
 SELECT seed.section_key, seed.title, seed.description, seed.layout_type, seed.sort_order, seed.is_active
@@ -13353,14 +13815,18 @@ WHERE NOT EXISTS (
 );
 
 UPDATE roadmap_hub_sections
-SET title = CASE section_key
-        WHEN 'role-based' THEN '역할 기반 로드맵'
-        WHEN 'skill-based' THEN '기술 기반 로드맵'
-        WHEN 'project-ideas' THEN '프로젝트 아이디어'
-        WHEN 'best-practices' THEN '베스트 프랙티스'
+SET
+    title = CASE section_key
+        WHEN 'role-based' THEN '직무별 학습 로드맵'
+        WHEN 'skill-based' THEN '기술별 학습 로드맵'
         ELSE title
+    END,
+    description = CASE section_key
+        WHEN 'role-based' THEN '직무별 학습 로드맵 허브 구성입니다.'
+        WHEN 'skill-based' THEN '기술별 학습 로드맵 허브 구성입니다.'
+        ELSE description
     END
-WHERE section_key IN ('role-based', 'skill-based', 'project-ideas', 'best-practices');
+WHERE section_key IN ('role-based', 'skill-based');
 
 WITH roadmap_hub_item_seed(
     section_key,
@@ -13399,67 +13865,59 @@ WITH roadmap_hub_item_seed(
         ('role-based', '엔지니어링 매니저', 'Engineering Manager', 'fas fa-users', 'Engineering Manager', FALSE, 23, TRUE),
         ('role-based', '데브렐', 'Developer Relations', 'fas fa-bullhorn', 'Developer Relations', FALSE, 24, TRUE),
         ('role-based', 'BI 분석가', 'BI Analyst', 'fas fa-chart-pie', 'BI Analyst', FALSE, 25, TRUE),
-        ('skill-based', 'SQL', NULL, NULL, 'SQL', FALSE, 0, TRUE),
-        ('skill-based', 'Computer Science', NULL, NULL, 'Computer Science', FALSE, 1, TRUE),
-        ('skill-based', 'React', NULL, NULL, 'React', FALSE, 2, TRUE),
-        ('skill-based', 'Vue', NULL, NULL, 'Vue', FALSE, 3, TRUE),
-        ('skill-based', 'Angular', NULL, NULL, 'Angular', FALSE, 4, TRUE),
-        ('skill-based', 'JavaScript', NULL, NULL, 'JavaScript', FALSE, 5, TRUE),
-        ('skill-based', 'TypeScript', NULL, NULL, 'TypeScript', FALSE, 6, TRUE),
-        ('skill-based', 'Node.js', NULL, NULL, 'Node.js', FALSE, 7, TRUE),
-        ('skill-based', 'Python', NULL, NULL, 'Python', FALSE, 8, TRUE),
-        ('skill-based', 'System Design', NULL, NULL, 'System Design', FALSE, 9, TRUE),
-        ('skill-based', 'Java', NULL, NULL, 'Java', FALSE, 10, TRUE),
-        ('skill-based', 'ASP.NET Core', NULL, NULL, 'ASP.NET Core', FALSE, 11, TRUE),
-        ('skill-based', 'API Design', NULL, NULL, 'API Design', FALSE, 12, TRUE),
-        ('skill-based', 'Spring Boot', NULL, NULL, 'Spring Boot', FALSE, 13, TRUE),
-        ('skill-based', 'Flutter', NULL, NULL, 'Flutter', FALSE, 14, TRUE),
-        ('skill-based', 'C++', NULL, NULL, 'C++', FALSE, 15, TRUE),
-        ('skill-based', 'Rust', NULL, NULL, 'Rust', FALSE, 16, TRUE),
-        ('skill-based', 'Go Roadmap', NULL, NULL, 'Go Roadmap', FALSE, 17, TRUE),
-        ('skill-based', 'Design and Architecture', NULL, NULL, 'Design and Architecture', FALSE, 18, TRUE),
-        ('skill-based', 'GraphQL', NULL, NULL, 'GraphQL', FALSE, 19, TRUE),
-        ('skill-based', 'React Native', NULL, NULL, 'React Native', FALSE, 20, TRUE),
-        ('skill-based', 'Design System', NULL, NULL, 'Design System', FALSE, 21, TRUE),
-        ('skill-based', 'Prompt Engineering', NULL, NULL, 'Prompt Engineering', FALSE, 22, TRUE),
-        ('skill-based', 'MongoDB', NULL, NULL, 'MongoDB', FALSE, 23, TRUE),
-        ('skill-based', 'Linux', NULL, NULL, 'Linux', FALSE, 24, TRUE),
-        ('skill-based', 'Kubernetes', NULL, NULL, 'Kubernetes', FALSE, 25, TRUE),
-        ('skill-based', 'Docker', NULL, NULL, 'Docker', FALSE, 26, TRUE),
-        ('skill-based', 'AWS', NULL, NULL, 'AWS', FALSE, 27, TRUE),
-        ('skill-based', 'Terraform', NULL, NULL, 'Terraform', FALSE, 28, TRUE),
-        ('skill-based', 'Data Structures & Algorithms', NULL, NULL, 'Data Structures & Algorithms', FALSE, 29, TRUE),
-        ('skill-based', 'Redis', NULL, NULL, 'Redis', FALSE, 30, TRUE),
-        ('skill-based', 'Git and GitHub', NULL, NULL, 'Git and GitHub', FALSE, 31, TRUE),
-        ('skill-based', 'PHP', NULL, NULL, 'PHP', FALSE, 32, TRUE),
-        ('skill-based', 'Cloudflare', NULL, NULL, 'Cloudflare', FALSE, 33, TRUE),
-        ('skill-based', 'AI Red Teaming', NULL, NULL, 'AI Red Teaming', FALSE, 34, TRUE),
-        ('skill-based', 'AI Agents', NULL, NULL, 'AI Agents', FALSE, 35, TRUE),
-        ('skill-based', 'Next.js', NULL, NULL, 'Next.js', FALSE, 36, TRUE),
-        ('skill-based', 'Code Review', NULL, NULL, 'Code Review', FALSE, 37, TRUE),
-        ('skill-based', 'Kotlin', NULL, NULL, 'Kotlin', FALSE, 38, TRUE),
-        ('skill-based', 'HTML', NULL, NULL, 'HTML', FALSE, 39, TRUE),
-        ('skill-based', 'CSS', NULL, NULL, 'CSS', FALSE, 40, TRUE),
-        ('skill-based', 'Swift & Swift UI', NULL, NULL, 'Swift & Swift UI', FALSE, 41, TRUE),
-        ('skill-based', 'Shell / Bash', NULL, NULL, 'Shell / Bash', FALSE, 42, TRUE),
-        ('skill-based', 'Laravel', NULL, NULL, 'Laravel', FALSE, 43, TRUE),
-        ('skill-based', 'Elasticsearch', NULL, NULL, 'Elasticsearch', FALSE, 44, TRUE),
-        ('skill-based', 'WordPress', NULL, NULL, 'WordPress', FALSE, 45, TRUE),
-        ('skill-based', 'Django', NULL, NULL, 'Django', FALSE, 46, TRUE),
-        ('skill-based', 'Ruby', NULL, NULL, 'Ruby', FALSE, 47, TRUE),
-        ('skill-based', 'Ruby on Rails', NULL, NULL, 'Ruby on Rails', FALSE, 48, TRUE),
-        ('skill-based', 'Claude Code', NULL, NULL, 'Claude Code', FALSE, 49, TRUE),
-        ('skill-based', 'Vibe Coding', NULL, NULL, 'Vibe Coding', FALSE, 50, TRUE),
-        ('skill-based', 'Scala', NULL, NULL, 'Scala', FALSE, 51, TRUE),
-        ('skill-based', 'OpenClaw', NULL, NULL, 'OpenClaw', FALSE, 52, TRUE),
-        ('project-ideas', 'Frontend', NULL, NULL, NULL, FALSE, 0, TRUE),
-        ('project-ideas', 'Backend', NULL, NULL, NULL, FALSE, 1, TRUE),
-        ('project-ideas', 'DevOps', NULL, NULL, NULL, FALSE, 2, TRUE),
-        ('best-practices', 'AWS', NULL, NULL, NULL, FALSE, 0, TRUE),
-        ('best-practices', 'API Security', NULL, NULL, NULL, FALSE, 1, TRUE),
-        ('best-practices', 'Backend Performance', NULL, NULL, NULL, FALSE, 2, TRUE),
-        ('best-practices', 'Frontend Performance', NULL, NULL, NULL, FALSE, 3, TRUE),
-        ('best-practices', 'Code Review', NULL, NULL, NULL, FALSE, 4, TRUE)
+        ('skill-based', 'SQL', NULL, 'fas fa-database', 'SQL', FALSE, 0, TRUE),
+        ('skill-based', 'Computer Science', NULL, 'fas fa-microchip', 'Computer Science', FALSE, 1, TRUE),
+        ('skill-based', 'React', NULL, 'fab fa-react', 'React', FALSE, 2, TRUE),
+        ('skill-based', 'Vue', NULL, 'fab fa-vuejs', 'Vue', FALSE, 3, TRUE),
+        ('skill-based', 'Angular', NULL, 'fab fa-angular', 'Angular', FALSE, 4, TRUE),
+        ('skill-based', 'JavaScript', NULL, 'fab fa-js', 'JavaScript', FALSE, 5, TRUE),
+        ('skill-based', 'TypeScript', NULL, 'devpath-tech-icon devpath-icon-ts', 'TypeScript', FALSE, 6, TRUE),
+        ('skill-based', 'Node.js', NULL, 'fab fa-node-js', 'Node.js', FALSE, 7, TRUE),
+        ('skill-based', 'Python', NULL, 'fab fa-python', 'Python', FALSE, 8, TRUE),
+        ('skill-based', 'System Design', NULL, 'fas fa-sitemap', 'System Design', FALSE, 9, TRUE),
+        ('skill-based', 'Java', NULL, 'fab fa-java', 'Java', FALSE, 10, TRUE),
+        ('skill-based', 'ASP.NET Core', NULL, 'fab fa-microsoft', 'ASP.NET Core', FALSE, 11, TRUE),
+        ('skill-based', 'API Design', NULL, 'fas fa-plug', 'API Design', FALSE, 12, TRUE),
+        ('skill-based', 'Spring Boot', NULL, 'fas fa-leaf', 'Spring Boot', FALSE, 13, TRUE),
+        ('skill-based', 'Flutter', NULL, 'fas fa-mobile-alt', 'Flutter', FALSE, 14, TRUE),
+        ('skill-based', 'C++', NULL, 'fas fa-code', 'C++', FALSE, 15, TRUE),
+        ('skill-based', 'Rust', NULL, 'fab fa-rust', 'Rust', FALSE, 16, TRUE),
+        ('skill-based', 'Go Roadmap', NULL, 'devpath-tech-icon devpath-icon-go', 'Go Roadmap', FALSE, 17, TRUE),
+        ('skill-based', 'Design and Architecture', NULL, 'fas fa-drafting-compass', 'Design and Architecture', FALSE, 18, TRUE),
+        ('skill-based', 'GraphQL', NULL, 'fas fa-project-diagram', 'GraphQL', FALSE, 19, TRUE),
+        ('skill-based', 'React Native', NULL, 'fab fa-react', 'React Native', FALSE, 20, TRUE),
+        ('skill-based', 'Design System', NULL, 'fas fa-palette', 'Design System', FALSE, 21, TRUE),
+        ('skill-based', 'Prompt Engineering', NULL, 'fas fa-magic', 'Prompt Engineering', FALSE, 22, TRUE),
+        ('skill-based', 'MongoDB', NULL, 'fas fa-leaf', 'MongoDB', FALSE, 23, TRUE),
+        ('skill-based', 'Linux', NULL, 'fab fa-linux', 'Linux', FALSE, 24, TRUE),
+        ('skill-based', 'Kubernetes', NULL, 'fas fa-dharmachakra', 'Kubernetes', FALSE, 25, TRUE),
+        ('skill-based', 'Docker', NULL, 'fab fa-docker', 'Docker', FALSE, 26, TRUE),
+        ('skill-based', 'AWS', NULL, 'fab fa-aws', 'AWS', FALSE, 27, TRUE),
+        ('skill-based', 'Terraform', NULL, 'fas fa-cubes', 'Terraform', FALSE, 28, TRUE),
+        ('skill-based', 'Data Structures & Algorithms', NULL, 'fas fa-project-diagram', 'Data Structures & Algorithms', FALSE, 29, TRUE),
+        ('skill-based', 'Redis', NULL, 'fas fa-memory', 'Redis', FALSE, 30, TRUE),
+        ('skill-based', 'Git and GitHub', NULL, 'fab fa-github', 'Git and GitHub', FALSE, 31, TRUE),
+        ('skill-based', 'PHP', NULL, 'fab fa-php', 'PHP', FALSE, 32, TRUE),
+        ('skill-based', 'Cloudflare', NULL, 'fab fa-cloudflare', 'Cloudflare', FALSE, 33, TRUE),
+        ('skill-based', 'AI Red Teaming', NULL, 'fas fa-shield-alt', 'AI Red Teaming', FALSE, 34, TRUE),
+        ('skill-based', 'AI Agents', NULL, 'fas fa-robot', 'AI Agents', FALSE, 35, TRUE),
+        ('skill-based', 'Next.js', NULL, 'devpath-tech-icon devpath-icon-next', 'Next.js', FALSE, 36, TRUE),
+        ('skill-based', 'Code Review', NULL, 'fas fa-code-branch', 'Code Review', FALSE, 37, TRUE),
+        ('skill-based', 'Kotlin', NULL, 'devpath-tech-icon devpath-icon-kotlin', 'Kotlin', FALSE, 38, TRUE),
+        ('skill-based', 'HTML', NULL, 'fab fa-html5', 'HTML', FALSE, 39, TRUE),
+        ('skill-based', 'CSS', NULL, 'fab fa-css3-alt', 'CSS', FALSE, 40, TRUE),
+        ('skill-based', 'Swift & Swift UI', NULL, 'fab fa-swift', 'Swift & Swift UI', FALSE, 41, TRUE),
+        ('skill-based', 'Shell / Bash', NULL, 'devpath-tech-icon devpath-icon-bash', 'Shell / Bash', FALSE, 42, TRUE),
+        ('skill-based', 'Laravel', NULL, 'fab fa-laravel', 'Laravel', FALSE, 43, TRUE),
+        ('skill-based', 'Elasticsearch', NULL, 'fas fa-search', 'Elasticsearch', FALSE, 44, TRUE),
+        ('skill-based', 'WordPress', NULL, 'fab fa-wordpress', 'WordPress', FALSE, 45, TRUE),
+        ('skill-based', 'Django', NULL, 'fab fa-python', 'Django', FALSE, 46, TRUE),
+        ('skill-based', 'Ruby', NULL, 'fas fa-gem', 'Ruby', FALSE, 47, TRUE),
+        ('skill-based', 'Ruby on Rails', NULL, 'fas fa-train', 'Ruby on Rails', FALSE, 48, TRUE),
+        ('skill-based', 'Claude Code', NULL, 'devpath-tech-icon devpath-icon-claude', 'Claude Code', FALSE, 49, TRUE),
+        ('skill-based', 'Vibe Coding', NULL, 'fas fa-star', 'Vibe Coding', FALSE, 50, TRUE),
+        ('skill-based', 'Scala', NULL, 'fas fa-layer-group', 'Scala', FALSE, 51, TRUE),
+        ('skill-based', 'OpenClaw', NULL, 'devpath-tech-icon devpath-icon-openclaw', 'OpenClaw', FALSE, 52, TRUE)
 )
 INSERT INTO roadmap_hub_items (
     section_id,
@@ -13496,6 +13954,163 @@ WHERE NOT EXISTS (
           OR (seed.subtitle IS NOT NULL AND item.subtitle = seed.subtitle)
       )
 );
+
+WITH roadmap_hub_skill_icon_seed(item_title, icon_class) AS (
+    VALUES
+        ('SQL', 'fas fa-database'),
+        ('Computer Science', 'fas fa-microchip'),
+        ('React', 'fab fa-react'),
+        ('Vue', 'fab fa-vuejs'),
+        ('Angular', 'fab fa-angular'),
+        ('JavaScript', 'fab fa-js'),
+        ('TypeScript', 'devpath-tech-icon devpath-icon-ts'),
+        ('Node.js', 'fab fa-node-js'),
+        ('Python', 'fab fa-python'),
+        ('System Design', 'fas fa-sitemap'),
+        ('Java', 'fab fa-java'),
+        ('ASP.NET Core', 'fab fa-microsoft'),
+        ('API Design', 'fas fa-plug'),
+        ('Spring Boot', 'fas fa-leaf'),
+        ('Flutter', 'fas fa-mobile-alt'),
+        ('C++', 'fas fa-code'),
+        ('Rust', 'fab fa-rust'),
+        ('Go Roadmap', 'devpath-tech-icon devpath-icon-go'),
+        ('Design and Architecture', 'fas fa-drafting-compass'),
+        ('GraphQL', 'fas fa-project-diagram'),
+        ('React Native', 'fab fa-react'),
+        ('Design System', 'fas fa-palette'),
+        ('Prompt Engineering', 'fas fa-magic'),
+        ('MongoDB', 'fas fa-leaf'),
+        ('Linux', 'fab fa-linux'),
+        ('Kubernetes', 'fas fa-dharmachakra'),
+        ('Docker', 'fab fa-docker'),
+        ('AWS', 'fab fa-aws'),
+        ('Terraform', 'fas fa-cubes'),
+        ('Data Structures & Algorithms', 'fas fa-project-diagram'),
+        ('Redis', 'fas fa-memory'),
+        ('Git and GitHub', 'fab fa-github'),
+        ('PHP', 'fab fa-php'),
+        ('Cloudflare', 'fab fa-cloudflare'),
+        ('AI Red Teaming', 'fas fa-shield-alt'),
+        ('AI Agents', 'fas fa-robot'),
+        ('Next.js', 'devpath-tech-icon devpath-icon-next'),
+        ('Code Review', 'fas fa-code-branch'),
+        ('Kotlin', 'devpath-tech-icon devpath-icon-kotlin'),
+        ('HTML', 'fab fa-html5'),
+        ('CSS', 'fab fa-css3-alt'),
+        ('Swift & Swift UI', 'fab fa-swift'),
+        ('Shell / Bash', 'devpath-tech-icon devpath-icon-bash'),
+        ('Laravel', 'fab fa-laravel'),
+        ('Elasticsearch', 'fas fa-search'),
+        ('WordPress', 'fab fa-wordpress'),
+        ('Django', 'fab fa-python'),
+        ('Ruby', 'fas fa-gem'),
+        ('Ruby on Rails', 'fas fa-train'),
+        ('Claude Code', 'devpath-tech-icon devpath-icon-claude'),
+        ('Vibe Coding', 'fas fa-star'),
+        ('Scala', 'fas fa-layer-group'),
+        ('OpenClaw', 'devpath-tech-icon devpath-icon-openclaw')
+)
+UPDATE roadmap_hub_items item
+SET icon_class = seed.icon_class
+FROM roadmap_hub_skill_icon_seed seed
+JOIN roadmap_hub_sections section_item
+    ON section_item.section_key = 'skill-based'
+WHERE item.section_id = section_item.id
+  AND item.title = seed.item_title;
+
+WITH roadmap_hub_item_color_seed(section_key, item_title, subtitle, icon_color) AS (
+    VALUES
+        ('role-based', NULL, 'Frontend', '#38BDF8'),
+        ('role-based', NULL, 'Backend', '#00C471'),
+        ('role-based', NULL, 'Full Stack', '#8B5CF6'),
+        ('role-based', NULL, 'DevOps', '#F59E0B'),
+        ('role-based', NULL, 'DevSecOps', '#EF4444'),
+        ('role-based', NULL, 'Data Analyst', '#06B6D4'),
+        ('role-based', NULL, 'AI Engineer', '#A855F7'),
+        ('role-based', NULL, 'AI and Data Scientist', '#6366F1'),
+        ('role-based', NULL, 'Data Engineer', '#0EA5E9'),
+        ('role-based', NULL, 'Android', '#3DDC84'),
+        ('role-based', NULL, 'Machine Learning', '#F97316'),
+        ('role-based', NULL, 'PostgreSQL', '#336791'),
+        ('role-based', NULL, 'iOS', '#111827'),
+        ('role-based', NULL, 'Blockchain', '#F7931A'),
+        ('role-based', NULL, 'QA', '#14B8A6'),
+        ('role-based', NULL, 'Software Architect', '#64748B'),
+        ('role-based', NULL, 'Cyber Security', '#DC2626'),
+        ('role-based', NULL, 'UX Design', '#EC4899'),
+        ('role-based', NULL, 'Technical Writer', '#475569'),
+        ('role-based', NULL, 'Game Developer', '#7C3AED'),
+        ('role-based', NULL, 'Server Side Game Developer', '#2563EB'),
+        ('role-based', NULL, 'MLOps', '#22C55E'),
+        ('role-based', NULL, 'Product Manager', '#F59E0B'),
+        ('role-based', NULL, 'Engineering Manager', '#0F766E'),
+        ('role-based', NULL, 'Developer Relations', '#EAB308'),
+        ('role-based', NULL, 'BI Analyst', '#0284C7'),
+        ('skill-based', 'SQL', NULL, '#336791'),
+        ('skill-based', 'Computer Science', NULL, '#64748B'),
+        ('skill-based', 'React', NULL, '#61DAFB'),
+        ('skill-based', 'Vue', NULL, '#42B883'),
+        ('skill-based', 'Angular', NULL, '#DD0031'),
+        ('skill-based', 'JavaScript', NULL, '#F7DF1E'),
+        ('skill-based', 'TypeScript', NULL, '#3178C6'),
+        ('skill-based', 'Node.js', NULL, '#339933'),
+        ('skill-based', 'Python', NULL, '#3776AB'),
+        ('skill-based', 'System Design', NULL, '#475569'),
+        ('skill-based', 'Java', NULL, '#F89820'),
+        ('skill-based', 'ASP.NET Core', NULL, '#512BD4'),
+        ('skill-based', 'API Design', NULL, '#F97316'),
+        ('skill-based', 'Spring Boot', NULL, '#6DB33F'),
+        ('skill-based', 'Flutter', NULL, '#02569B'),
+        ('skill-based', 'C++', NULL, '#00599C'),
+        ('skill-based', 'Rust', NULL, '#DEA584'),
+        ('skill-based', 'Go Roadmap', NULL, '#00ADD8'),
+        ('skill-based', 'Design and Architecture', NULL, '#8B5CF6'),
+        ('skill-based', 'GraphQL', NULL, '#E10098'),
+        ('skill-based', 'React Native', NULL, '#61DAFB'),
+        ('skill-based', 'Design System', NULL, '#EC4899'),
+        ('skill-based', 'Prompt Engineering', NULL, '#8B5CF6'),
+        ('skill-based', 'MongoDB', NULL, '#47A248'),
+        ('skill-based', 'Linux', NULL, '#FCC624'),
+        ('skill-based', 'Kubernetes', NULL, '#326CE5'),
+        ('skill-based', 'Docker', NULL, '#2496ED'),
+        ('skill-based', 'AWS', NULL, '#FF9900'),
+        ('skill-based', 'Terraform', NULL, '#7B42BC'),
+        ('skill-based', 'Data Structures & Algorithms', NULL, '#0EA5E9'),
+        ('skill-based', 'Redis', NULL, '#DC382D'),
+        ('skill-based', 'Git and GitHub', NULL, '#181717'),
+        ('skill-based', 'PHP', NULL, '#777BB4'),
+        ('skill-based', 'Cloudflare', NULL, '#F38020'),
+        ('skill-based', 'AI Red Teaming', NULL, '#EF4444'),
+        ('skill-based', 'AI Agents', NULL, '#9333EA'),
+        ('skill-based', 'Next.js', NULL, '#111827'),
+        ('skill-based', 'Code Review', NULL, '#10B981'),
+        ('skill-based', 'Kotlin', NULL, '#7F52FF'),
+        ('skill-based', 'HTML', NULL, '#E34F26'),
+        ('skill-based', 'CSS', NULL, '#1572B6'),
+        ('skill-based', 'Swift & Swift UI', NULL, '#FA7343'),
+        ('skill-based', 'Shell / Bash', NULL, '#4EAA25'),
+        ('skill-based', 'Laravel', NULL, '#FF2D20'),
+        ('skill-based', 'Elasticsearch', NULL, '#005571'),
+        ('skill-based', 'WordPress', NULL, '#21759B'),
+        ('skill-based', 'Django', NULL, '#092E20'),
+        ('skill-based', 'Ruby', NULL, '#CC342D'),
+        ('skill-based', 'Ruby on Rails', NULL, '#CC0000'),
+        ('skill-based', 'Claude Code', NULL, '#D97757'),
+        ('skill-based', 'Vibe Coding', NULL, '#F59E0B'),
+        ('skill-based', 'Scala', NULL, '#DC322F'),
+        ('skill-based', 'OpenClaw', NULL, '#0F172A')
+)
+UPDATE roadmap_hub_items item
+SET icon_color = seed.icon_color
+FROM roadmap_hub_item_color_seed seed
+JOIN roadmap_hub_sections section_item
+    ON section_item.section_key = seed.section_key
+WHERE item.section_id = section_item.id
+  AND (
+      (seed.item_title IS NOT NULL AND item.title = seed.item_title)
+      OR (seed.subtitle IS NOT NULL AND item.subtitle = seed.subtitle)
+  );
 
 UPDATE roadmap_hub_items item
 SET
@@ -13535,3 +14150,824 @@ SET
 FROM roadmap_hub_sections section_item
 WHERE item.section_id = section_item.id
   AND section_item.section_key = 'role-based';
+
+-- ============================================================
+-- Roadmap Hub 공식 로드맵 상세 데이터 보강
+-- - Backend Master Roadmap은 위쪽의 전용 상세 seed를 유지한다.
+-- - 허브에 연결된 나머지 공식 로드맵은 분야별 profile을 기준으로 소개/노드/분기/선수조건/태그를 생성한다.
+-- ============================================================
+DROP TABLE IF EXISTS roadmap_hub_node_profile_seed;
+DROP TABLE IF EXISTS roadmap_hub_node_detail_seed;
+
+CREATE TEMPORARY TABLE roadmap_hub_node_profile_seed (
+    display_name VARCHAR(120) PRIMARY KEY,
+    intro_topic TEXT NOT NULL,
+    core_topic TEXT NOT NULL,
+    tool_topic TEXT NOT NULL,
+    practice_topic TEXT NOT NULL,
+    model_topic TEXT NOT NULL,
+    quality_topic TEXT NOT NULL,
+    perf_topic TEXT NOT NULL,
+    ops_topic TEXT NOT NULL,
+    arch_topic TEXT NOT NULL,
+    security_topic TEXT NOT NULL,
+    project_topic TEXT NOT NULL
+);
+
+INSERT INTO roadmap_hub_node_profile_seed (
+    display_name,
+    intro_topic,
+    core_topic,
+    tool_topic,
+    practice_topic,
+    model_topic,
+    quality_topic,
+    perf_topic,
+    ops_topic,
+    arch_topic,
+    security_topic,
+    project_topic
+) VALUES
+    ('Frontend', '브라우저 화면 구현과 사용자 흐름', 'HTML CSS JavaScript 렌더링', 'Vite React DevTools 브라우저 디버거', '반응형 UI와 폼 검증', '클라이언트 상태 서버 상태 라우팅', '접근성 웹 성능 크로스브라우징', '번들 크기와 렌더링 비용', '정적 배포와 프리뷰 환경', '컴포넌트 계층과 디자인 시스템', 'XSS 입력 검증 토큰 저장', 'API 연동 대시보드 화면'),
+    ('Full Stack', '화면 API 데이터 저장소를 연결하는 제품 전체 흐름', 'HTTP 인증 UI 상태 데이터 모델링', 'React Spring Boot PostgreSQL Docker GitHub Actions', '로그인 CRUD 관리자 화면 통합 구현', '도메인 엔티티 API 계약 클라이언트 캐시', '단위 통합 E2E 테스트와 장애 로그', 'API 응답 시간 프론트 렌더링 DB 인덱스', '컨테이너 배포 CI 파이프라인 환경 분리', '계층형 구조 모듈 경계 프론트 백엔드 계약', '인증 인가 세션 토큰 민감 정보 보호', '풀스택 서비스 MVP와 배포 링크'),
+    ('DevOps', '개발과 운영 사이 배포 흐름을 자동화하는 책임', 'CI CD 인프라 모니터링 장애 대응', 'GitHub Actions Docker Kubernetes Terraform Prometheus', '빌드 테스트 이미지 배포 파이프라인 구축', '환경 변수 시크릿 배포 전략 인프라 상태', '재현 가능한 배포 롤백 헬스체크', '배포 시간 리소스 사용량 스케일링 지표', '알림 로그 메트릭 백업 복구 절차', '클러스터 네트워크 서비스 디스커버리 구성', '시크릿 관리 권한 분리 이미지 취약점 점검', '컨테이너 서비스 CI CD와 모니터링'),
+    ('DevSecOps', '보안을 개발 배포 운영 흐름 안에 넣는 책임', '위협 모델링 SAST DAST 시크릿 관리', 'GitHub Advanced Security Trivy OWASP ZAP Vault', '취약점 스캔이 포함된 배포 파이프라인', '보안 정책 예외 승인 감사 로그', '보안 게이트 오탐 관리 규정 준수', '스캔 시간과 릴리스 차단 기준 조율', '취약점 알림 패치 추적 사고 대응', '제로 트러스트 네트워크 권한 최소화', '공급망 보안 의존성 서명 SBOM', '보안 검사가 포함된 서비스 배포 흐름'),
+    ('Data Analyst', '비즈니스 질문을 데이터 지표로 바꾸는 분석 흐름', 'SQL 통계 지표 정의 코호트 분석', 'SQL BI 도구 스프레드시트 Python 노트북', '매출 전환 리텐션 대시보드 작성', '이벤트 로그 차원 측정값 데이터 마트', '지표 검증 결측치 이상치 재현성', '쿼리 비용과 대시보드 로딩 시간', '정기 리포트 자동 갱신 권한 관리', '분석 데이터 모델과 지표 사전', '개인정보 마스킹 접근 권한', '제품 개선 의사결정 분석 리포트'),
+    ('AI Engineer', 'AI 모델을 제품 기능으로 연결하는 엔지니어링 흐름', '모델 추론 벡터 검색 프롬프트 API', 'Python FastAPI LangChain 벡터DB Docker', '문서 질의응답 챗봇 기능 구현', '임베딩 청크 메타데이터 프롬프트 상태', '정답 품질 평가 hallucination 테스트', '추론 지연 토큰 비용 캐시 전략', '모델 서빙 로그 관찰 프롬프트 버전 관리', 'RAG 파이프라인 에이전트 도구 호출 구조', '프롬프트 주입 데이터 유출 안전장치', '운영 가능한 AI 기능 프로토타입'),
+    ('AI and Data Scientist', '데이터로 가설을 검증하고 모델 성능을 설명하는 흐름', '통계 머신러닝 피처 엔지니어링 실험 설계', 'Python pandas scikit-learn Jupyter MLflow', '예측 모델 학습과 성능 비교 실험', '피처 테이블 학습 검증 테스트 분리', '교차검증 편향 분산 재현 가능한 실험', '학습 시간 메모리 모델 복잡도 조절', '실험 추적 모델 등록 결과 공유', '모델링 파이프라인과 데이터 누수 방지', '개인정보 익명화 모델 편향 점검', '문제 정의부터 모델 리포트까지'),
+    ('Data Engineer', '데이터를 안정적으로 수집 변환 제공하는 파이프라인', '배치 스트리밍 ETL ELT 데이터 웨어하우스', 'Airflow Spark Kafka dbt Snowflake', '원천 데이터 적재와 변환 잡 구성', '스키마 파티션 데이터 계보 품질 규칙', '데이터 테스트 재처리 중복 방지', '잡 실행 시간 파일 크기 파티션 최적화', '스케줄링 알림 재시도 백필 운영', '레이크하우스와 웨어하우스 계층 설계', '민감 데이터 권한 마스킹 감사', '분석용 데이터 마트와 파이프라인'),
+    ('Android', 'Android 앱 화면과 기기 기능을 구현하는 흐름', 'Kotlin Activity Fragment Compose 생명주기', 'Android Studio Gradle Emulator Jetpack', '리스트 상세 화면과 로컬 저장 구현', 'ViewModel 상태 네비게이션 Room 데이터', 'UI 테스트 접근성 크래시 리포트', '렌더링 지연 배터리 네트워크 비용', '스토어 배포 버전 코드 Crashlytics', 'Clean Architecture 모듈화 의존성 주입', '권한 저장소 암호화 네트워크 보안', 'API 연동 Android 앱 완성'),
+    ('Machine Learning', '데이터에서 패턴을 학습하는 모델 개발 흐름', '지도학습 비지도학습 평가 지표 피처', 'Python scikit-learn pandas matplotlib', '분류 회귀 모델 학습 실습', '데이터셋 분할 피처 스케일링 레이블', '검증 지표 과적합 데이터 누수 점검', '모델 복잡도 학습 시간 추론 속도', '모델 저장 추론 스크립트 실험 기록', '파이프라인 전처리 모델 평가 구조', '편향 개인정보 설명 가능성', '문제별 ML 모델 비교 리포트'),
+    ('PostgreSQL', '관계형 데이터 저장과 조회 성능을 설계하는 흐름', '테이블 관계 SQL 트랜잭션 인덱스', 'psql pgAdmin EXPLAIN 백업 도구', '정규화된 스키마와 조회 쿼리 작성', '제약조건 외래키 뷰 파티션', 'ACID 락 격리수준 쿼리 검증', '실행 계획 인덱스 튜닝 VACUUM', '백업 복구 복제 모니터링', '스키마 설계와 마이그레이션 전략', '권한 Row Level Security 감사 로그', '업무용 PostgreSQL 데이터 모델'),
+    ('iOS', 'Apple 생태계 앱 화면과 상태 흐름을 구현하는 과정', 'Swift SwiftUI UIKit 생명주기', 'Xcode Simulator Instruments TestFlight', '목록 상세 폼 화면과 네트워크 연동', 'Observable 상태 네비게이션 CoreData', 'UI 테스트 접근성 크래시 분석', '앱 시작 시간 메모리 렌더링 최적화', '프로비저닝 TestFlight 릴리스 관리', 'MVVM 모듈화 의존성 주입', '키체인 권한 개인정보 보호', 'API 연동 iOS 앱 완성'),
+    ('Blockchain', '탈중앙 네트워크와 스마트 컨트랙트 서비스 구조', '트랜잭션 지갑 컨센서스 스마트 컨트랙트', 'Solidity Hardhat MetaMask Ethers.js', '토큰 전송과 컨트랙트 호출 DApp', '온체인 상태 이벤트 인덱싱 지갑 연결', '컨트랙트 테스트 감사 재현성', '가스 비용 저장소 접근 최적화', '테스트넷 배포 모니터링 업그레이드', '프록시 패턴 오라클 브릿지 구조', '재진입 공격 권한 검증 키 관리', '스마트 컨트랙트 기반 DApp'),
+    ('QA', '제품 품질을 요구사항과 테스트로 검증하는 흐름', '테스트 케이스 결함 리포트 회귀 테스트', 'TestRail Playwright Postman JMeter', '기능 테스트와 API 테스트 시나리오 작성', '요구사항 추적 결함 상태 테스트 데이터', '재현 절차 우선순위 커버리지', '테스트 실행 시간 병렬화 안정성', '릴리스 검수 자동화 리포트', '테스트 전략과 품질 게이트 설계', '권한 입력값 장애 상황 보안 테스트', '릴리스 품질 검증 리포트'),
+    ('Software Architect', '시스템 요구사항을 구조와 기술 결정으로 바꾸는 역할', '품질 속성 트레이드오프 아키텍처 패턴', 'C4 다이어그램 ADR 모델링 도구', '서비스 경계와 통신 방식 설계', '도메인 모델 데이터 흐름 의존성', '아키텍처 리뷰 위험 식별 검증 계획', '확장성 처리량 지연시간 비용', '운영성 관찰성 장애 격리 전략', '모듈 분리 이벤트 기반 마이크로서비스', '보안 경계 권한 데이터 보호', '아키텍처 결정 기록과 설계 문서'),
+    ('Cyber Security', '시스템을 공격 관점에서 분석하고 방어하는 흐름', '네트워크 웹 취약점 암호 권한', 'Burp Suite Nmap Wireshark SIEM', '취약점 진단과 침투 테스트 리포트', '자산 위협 공격 경로 로그 이벤트', '재현 가능한 취약점 검증과 심각도 평가', '스캔 범위 탐지 속도 오탐 관리', '보안 모니터링 사고 대응 플레이북', '방어 계층 인증 네트워크 분리', 'OWASP 권한 상승 데이터 유출 방지', '웹 서비스 보안 진단 보고서'),
+    ('UX Design', '사용자 문제를 화면 흐름과 인터랙션으로 해결하는 과정', '리서치 정보구조 와이어프레임 사용성', 'Figma FigJam 프로토타입 사용자 인터뷰', '핵심 사용자 여정과 화면 시안 제작', '페르소나 태스크 플로우 디자인 토큰', '사용성 테스트 접근성 디자인 리뷰', '전환율 과업 성공률 인터랙션 비용', '디자인 핸드오프 피드백 반영 버전 관리', '정보구조 네비게이션 컴포넌트 패턴', '개인정보 동의 오류 방지 접근성', '검증 가능한 프로토타입과 UX 리포트'),
+    ('Technical Writer', '복잡한 기술을 정확한 문서와 가이드로 전달하는 역할', '독자 분석 정보 설계 API 문서', 'Markdown OpenAPI Docs-as-Code Git', '설치 가이드와 튜토리얼 작성', '문서 구조 용어집 버전 릴리스 노트', '정확성 검수 링크 검증 스타일 가이드', '문서 탐색성 검색성 읽기 시간', '문서 배포 변경 이력 피드백 수집', '문서 IA와 콘텐츠 재사용 전략', '민감 정보 제거 권한별 문서 분리', '개발자 온보딩 문서 세트'),
+    ('Game Developer', '게임 규칙을 상호작용과 플레이 경험으로 구현하는 흐름', '게임 루프 물리 입력 애니메이션', 'Unity Unreal Godot Blender 디버거', '플레이어 이동 전투 UI 프로토타입', '씬 오브젝트 상태 저장 리소스 관리', '플레이 테스트 밸런스 버그 재현', '프레임 레이트 드로우콜 메모리 최적화', '빌드 패키징 패치 크래시 수집', '엔티티 컴포넌트 씬 전환 구조', '치트 방지 세이브 보호 입력 검증', '플레이 가능한 게임 프로토타입'),
+    ('Server Side Game Developer', '멀티플레이 게임 서버와 실시간 상태를 운영하는 흐름', '세션 매치메이킹 동기화 권위 서버', 'Netty WebSocket Redis Kubernetes', '실시간 방 생성과 상태 동기화 구현', '플레이어 상태 룸 서버 이벤트 큐', '부하 테스트 지연 재접속 시나리오', '틱 레이트 네트워크 지연 서버 부하', '매치 서버 배포 모니터링 장애 복구', '샤딩 로비 게임 서버 분리', '치트 검증 권위 서버 토큰 보호', '멀티플레이 게임 서버 데모'),
+    ('MLOps', '모델 개발부터 배포 모니터링까지 연결하는 운영 흐름', '모델 레지스트리 피처 스토어 서빙 모니터링', 'MLflow Kubeflow Docker Kubernetes Airflow', '모델 학습 배포 파이프라인 구축', '데이터 버전 모델 버전 피처 계약', '재현성 모델 검증 드리프트 테스트', '추론 지연 처리량 리소스 비용', '모델 모니터링 재학습 롤백 운영', '학습 서빙 파이프라인 분리 구조', '모델 접근 권한 데이터 보호 승인', '운영 가능한 ML 배포 파이프라인'),
+    ('Product Manager', '문제를 정의하고 제품 우선순위를 결정하는 흐름', '고객 문제 KPI 로드맵 우선순위', 'Jira Notion Figma Analytics 도구', 'PRD 작성과 실험 계획 수립', '사용자 세그먼트 지표 백로그 릴리스 범위', '가설 검증 성공 기준 리스크 관리', '전환율 리텐션 실험 비용 최적화', '릴리스 커뮤니케이션 피드백 루프', '제품 전략과 기능 의존성 구조', '개인정보 정책 권한 장애 대응 요구사항', '문제 정의부터 출시 회고까지'),
+    ('Engineering Manager', '팀이 지속적으로 성과를 내도록 사람과 시스템을 관리하는 역할', '목표 설정 피드백 채용 실행 관리', '1on1 문서화 로드맵 지표 대시보드', '스프린트 운영과 팀 실행 리듬 정리', '역할 책임 의사결정 지표 리스크', '성과 리뷰 성장 계획 팀 건강도', '리드타임 병목 WIP 배포 빈도', '온콜 회고 프로세스 개선 운영', '팀 구조 책임 위임 의사결정 체계', '권한 갈등 보안 책임 사고 대응', '팀 운영 계획과 성장 로드맵'),
+    ('Developer Relations', '개발자 커뮤니티와 제품 사용 경험을 연결하는 역할', 'API 이해 콘텐츠 커뮤니티 피드백', 'GitHub Discord 블로그 데모 도구', '샘플 앱 튜토리얼과 발표 자료 제작', '개발자 여정 피드백 이슈 콘텐츠 캘린더', '문서 정확성 데모 재현성 커뮤니티 반응', '온보딩 시간 샘플 실행 성공률', '릴리스 소통 이벤트 운영 피드백 정리', '커뮤니티 채널 콘텐츠 퍼널 설계', '민감 정보 공개 방지 라이선스 준수', '개발자 온보딩 캠페인과 데모'),
+    ('BI Analyst', '조직 의사결정용 지표와 리포트를 설계하는 흐름', '지표 정의 데이터 모델 대시보드 스토리텔링', 'SQL Power BI Tableau Looker', '경영 KPI 대시보드와 리포트 작성', '팩트 차원 테이블 필터 권한 모델', '수치 검산 데이터 신뢰도 알림 기준', '쿼리 성능 캐시 대시보드 응답 시간', '정기 리포트 배포 권한 관리', '스타 스키마 시맨틱 레이어 설계', '민감 지표 접근 제어 감사', '의사결정용 BI 대시보드'),
+    ('SQL', '데이터를 질문에 맞게 조회하고 변형하는 능력', 'SELECT JOIN GROUP BY 서브쿼리 윈도우 함수', 'PostgreSQL MySQL psql SQL 클라이언트', '분석용 조회 쿼리와 집계 작성', '테이블 관계 키 제약조건 NULL 처리', '쿼리 결과 검산 중복 누락 점검', '인덱스 실행 계획 쿼리 비용', '뷰 저장 프로시저 배치 실행', '정규화와 조회 패턴별 스키마 설계', 'SQL Injection 권한 최소화', '실무 데이터 분석 쿼리 모음'),
+    ('Computer Science', '소프트웨어가 동작하는 기본 원리를 이해하는 기반', '자료구조 운영체제 네트워크 데이터베이스', 'C Python Linux 디버거 시각화 도구', '알고리즘과 시스템 동작 실험', '메모리 프로세스 파일 네트워크 모델', '복잡도 검증 경계값 테스트', '시간복잡도 공간복잡도 병목 분석', '프로세스 스케줄링 I/O 관찰', '계층 구조 추상화 인터페이스 설계', '권한 격리 암호화 기본 원리', 'CS 개념 실험 노트와 구현'),
+    ('React', '컴포넌트 기반으로 상태 변화에 반응하는 UI 개발', 'JSX props state Hooks 렌더링', 'Vite React DevTools Testing Library', '컴포넌트 분리와 이벤트 처리 구현', '전역 상태 서버 상태 라우터 구조', '컴포넌트 테스트 접근성 회귀 확인', '메모이제이션 렌더링 횟수 번들 분석', '정적 빌드 배포 환경 변수 관리', '컴포넌트 합성 상태 경계 설계', 'XSS 안전한 렌더링 토큰 저장', 'API 연동 React 미니 앱'),
+    ('Vue', '템플릿과 반응형 상태로 화면을 구성하는 UI 개발', 'Composition API 반응성 컴포넌트 라우터', 'Vite Vue Devtools Pinia Vitest', '폼 목록 상세 화면 컴포넌트 구현', 'ref reactive store route 상태 모델', '컴포넌트 테스트 접근성 스타일 검증', '반응성 추적 번들 크기 렌더링 최적화', '정적 배포 빌드 환경 분리', '컴포저블과 컴포넌트 책임 분리', 'XSS 템플릿 안전성 인증 토큰', 'API 연동 Vue 애플리케이션'),
+    ('Angular', '프레임워크 구조로 대규모 프론트엔드를 구성하는 흐름', 'Component Service DI RxJS 라우팅', 'Angular CLI DevTools Jasmine Karma', '모듈형 화면과 폼 검증 구현', 'Observable 상태 서비스 계층 라우트 데이터', '단위 테스트 E2E 접근성 검증', 'Change Detection lazy loading 번들 최적화', '환경별 빌드 배포 릴리스 관리', '모듈 경계 DI 계층 구조', 'XSS sanitization guard 인증 보호', '업무용 Angular 관리 화면'),
+    ('JavaScript', '웹 런타임에서 동작하는 언어와 비동기 흐름', '스코프 클로저 프로토타입 비동기 이벤트 루프', '브라우저 DevTools Node.js npm ESLint', 'DOM 조작과 비동기 API 호출 구현', '객체 배열 모듈 이벤트 상태', '단위 테스트 타입 체크 린트 규칙', '이벤트 루프 렌더링 블로킹 메모리', '패키지 빌드 배포 스크립트 관리', '모듈 패턴 함수형 객체지향 구조', 'XSS 입력 검증 의존성 취약점', '순수 JavaScript 웹 기능'),
+    ('TypeScript', 'JavaScript 코드에 타입 계약을 세우는 개발 흐름', '타입 추론 제네릭 유니언 인터페이스', 'tsconfig ESLint Vite 타입 검사', '타입 안전한 API 응답 처리 구현', '도메인 타입 DTO 상태 타입 모델', '컴파일 오류 테스트 타입 커버리지', '타입 복잡도 빌드 시간 최적화', '패키지 타입 배포 버전 관리', '타입 계층 모듈 공개 API 설계', '민감 데이터 타입 분리 안전한 파싱', '타입 기반 프론트엔드 모듈'),
+    ('Node.js', 'JavaScript 런타임으로 서버와 도구를 만드는 흐름', '이벤트 루프 Express 비동기 I/O 모듈', 'Node npm Express Jest Docker', 'REST API와 파일 처리 기능 구현', '요청 응답 미들웨어 데이터베이스 연결', 'API 테스트 에러 핸들링 로깅', '비동기 처리량 메모리 누수 프로파일링', '프로세스 관리 배포 환경 변수', '계층형 서버 구조와 모듈 분리', '인증 rate limit 입력 검증', 'Node.js API 서버'),
+    ('Python', '간결한 문법으로 자동화 데이터 웹 기능을 만드는 흐름', '자료형 함수 모듈 예외 가상환경', 'Python pip venv pytest Jupyter', 'CLI 자동화와 데이터 처리 스크립트', '파일 데이터프레임 객체 패키지 구조', 'pytest 타입 힌트 린트 예외 검증', '반복문 벡터화 I/O 병목 최적화', '패키징 스케줄링 로그 관리', '모듈 패키지 객체 책임 분리', '입력 검증 시크릿 관리 의존성 점검', '자동화 스크립트와 분석 노트북'),
+    ('System Design', '대규모 서비스를 요구사항과 품질 속성으로 설계하는 사고', '확장성 가용성 캐시 큐 샤딩', '다이어그램 ADR 부하 산정 도구', 'URL 단축기 피드 설계 연습', '요구사항 트래픽 저장소 API 계약', '병목 검증 장애 시나리오 일관성', '캐시 히트율 처리량 지연시간', '모니터링 롤백 장애 복구 절차', '마이크로서비스 이벤트 소싱 CQRS 구조', '인증 권한 데이터 암호화 위협 모델', '시스템 설계 문서와 발표 자료'),
+    ('Java', '객체지향과 JVM 기반 애플리케이션 개발', '클래스 인터페이스 컬렉션 예외 제네릭', 'JDK IntelliJ Gradle JUnit', '콘솔 앱과 서비스 로직 구현', '객체 모델 컬렉션 스트림 패키지 구조', '단위 테스트 예외 케이스 코드 스타일', 'JVM 메모리 GC 컬렉션 성능', 'JAR 빌드 실행 환경 설정', 'OOP 계층 SOLID 패키지 분리', '입력 검증 직렬화 의존성 취약점', 'Java 서비스 모듈'),
+    ('ASP.NET Core', 'C# 기반 웹 API와 서버 애플리케이션 개발', 'Controller Middleware DI Entity Framework', 'Visual Studio dotnet CLI SQL Server Swagger', 'CRUD API와 인증 흐름 구현', 'DbContext DTO 서비스 계층 라우팅', 'xUnit 통합 테스트 로깅', 'Kestrel 응답 시간 EF 쿼리 최적화', 'IIS Docker Azure 배포 설정', 'Clean Architecture 레이어드 구조', 'Identity 권한 CORS 시크릿 관리', 'ASP.NET Core 업무 API'),
+    ('API Design', '클라이언트와 서버가 안정적으로 통신하는 계약 설계', 'REST 리소스 상태 코드 스키마 버전', 'OpenAPI Swagger Postman Mock Server', '회원 주문 같은 리소스 API 설계', '요청 응답 DTO 오류 모델 페이지네이션', '계약 테스트 호환성 에러 응답 검증', '응답 크기 캐싱 rate limit 최적화', '문서 배포 변경 로그 사용량 모니터링', 'API 버전 관리 리소스 경계 설계', '인증 인가 입력 검증 데이터 노출 방지', 'OpenAPI 명세와 샘플 서버'),
+    ('Spring Boot', 'Spring 생태계로 웹 서비스와 비즈니스 로직을 구현하는 흐름', 'DI Bean MVC JPA Security', 'IntelliJ Gradle Spring Initializr Docker', 'REST API와 데이터 저장 기능 구현', 'Controller Service Repository Entity 구조', 'JUnit MockMvc 통합 테스트 로깅', 'JPA 쿼리 캐시 응답 시간 최적화', '프로파일 배포 Actuator 모니터링', '계층형 아키텍처 트랜잭션 경계', 'Spring Security JWT CORS 검증', 'Spring Boot 서비스 API'),
+    ('Flutter', '하나의 코드베이스로 모바일 UI를 만드는 개발 흐름', 'Widget State Navigator async layout', 'Flutter SDK Dart DevTools Emulator', '크로스플랫폼 앱 화면과 API 연동', 'Provider Bloc 라우팅 로컬 저장소', '위젯 테스트 접근성 크래시 분석', '빌드 크기 렌더링 jank 최적화', '스토어 빌드 flavor 릴리스 관리', '위젯 트리 상태 관리 아키텍처', '토큰 저장 권한 플랫폼 보안', 'Flutter 모바일 앱'),
+    ('C++', '성능과 메모리 제어가 필요한 시스템 개발', '포인터 RAII STL 템플릿 동시성', 'CMake gdb clang-tidy sanitizer', '자료구조와 파일 처리 프로그램 구현', '메모리 소유권 객체 수명 스레드 상태', '단위 테스트 메모리 오류 정적 분석', '할당 비용 캐시 지역성 알고리즘 최적화', '빌드 타깃 패키징 크래시 덤프 분석', '모듈 경계 헤더 라이브러리 설계', '버퍼 오버플로우 UB 입력 검증', '성능 중심 C++ 모듈'),
+    ('Rust', '메모리 안전성과 성능을 함께 잡는 시스템 개발', '소유권 borrow trait enum async', 'Cargo rustfmt clippy Tokio', 'CLI 도구와 파일 처리 기능 구현', '소유권 수명 에러 처리 모듈 구조', '단위 테스트 property test clippy', 'zero-cost abstraction 할당 최소화', 'crate 배포 cross compile 로그', 'trait 기반 설계 모듈 경계', '메모리 안전성 입력 검증 unsafe 격리', 'Rust CLI 또는 서버 모듈'),
+    ('Go Roadmap', '단순한 문법으로 동시성 서버와 도구를 만드는 흐름', 'goroutine channel interface error handling', 'Go toolchain gin sqlc pprof', 'HTTP API와 concurrent worker 구현', 'struct interface context 데이터 흐름', 'go test race detector 에러 케이스', 'goroutine 누수 pprof latency 최적화', 'binary 배포 systemd Docker 운영', '패키지 경계 interface 의존성 설계', 'context timeout 입력 검증', 'Go API 서버와 CLI 도구'),
+    ('Design and Architecture', '문제 구조를 설계 원칙과 아키텍처 결정으로 풀어내는 흐름', 'SOLID DDD 패턴 품질 속성', 'C4 ADR UML 모델링 도구', '모듈 경계와 책임 분리 설계', '도메인 이벤트 의존성 데이터 흐름', '설계 리뷰 리스크 검증 테스트 전략', '확장 비용 복잡도 성능 트레이드오프', '운영성 로그 메트릭 장애 격리', '레이어드 헥사고날 이벤트 기반 구조', '보안 경계 권한 데이터 보호', '아키텍처 설계 문서'),
+    ('GraphQL', '클라이언트가 필요한 데이터를 선언적으로 요청하는 API 방식', 'Schema Query Mutation Resolver Type', 'Apollo GraphQL Codegen GraphiQL', '게시글 댓글 API 스키마 구현', '타입 관계 resolver 데이터로더 캐시', '스키마 테스트 N+1 검증 에러 정책', 'DataLoader 쿼리 복잡도 캐싱', '스키마 배포 버전 호환성 모니터링', 'Federation 모듈화 스키마 경계', '권한 필드 마스킹 introspection 제한', 'GraphQL API와 클라이언트 연동'),
+    ('React Native', 'React 방식으로 모바일 앱을 만드는 개발 흐름', 'Native component navigation bridge state', 'Expo React Native CLI Flipper EAS', '모바일 화면과 디바이스 기능 연동', 'navigation store async storage API 상태', '기기 테스트 접근성 크래시 분석', 'bridge 비용 렌더링 리스트 최적화', 'EAS build OTA 업데이트 스토어 배포', '네이티브 모듈 상태 관리 구조', '권한 토큰 저장 플랫폼 보안', 'React Native 모바일 앱'),
+    ('Design System', '제품 UI를 일관된 컴포넌트와 규칙으로 운영하는 체계', '디자인 토큰 컴포넌트 패턴 접근성', 'Figma Storybook Tokens Studio npm', '버튼 입력 카드 컴포넌트 라이브러리', '토큰 테마 variant 상태 문서 구조', '시각 회귀 테스트 접근성 체크', 'CSS 번들 크기 렌더링 영향', '패키지 버전 배포 변경 로그', '토큰 계층 컴포넌트 API 설계', '색 대비 포커스 상태 사용성 안전장치', 'Storybook 기반 디자인 시스템'),
+    ('Prompt Engineering', 'AI 모델이 원하는 결과를 내도록 맥락과 제약을 설계하는 기술', '지시문 컨텍스트 예시 평가 기준', 'ChatGPT Playground eval 도구', '요약 분류 생성 프롬프트 실험', '입력 형식 출력 스키마 메모리 컨텍스트', '정확도 일관성 hallucination 평가', '토큰 비용 응답 지연 프롬프트 압축', '프롬프트 버전 관리 로그 분석', '프롬프트 체인 도구 호출 구조', '프롬프트 주입 민감 정보 차단', '업무 자동화 프롬프트 세트'),
+    ('MongoDB', '문서 기반 데이터 모델과 조회 패턴을 설계하는 흐름', 'Document Collection Index Aggregation', 'MongoDB Compass mongosh Atlas', '게시글 댓글 문서 모델 구현', '임베디드 문서 참조 스키마 유연성', '쿼리 결과 검증 스키마 validation', '인덱스 aggregation pipeline 최적화', 'Atlas 백업 복제 모니터링', '조회 패턴 중심 문서 모델 설계', '역할 권한 암호화 injection 방지', 'MongoDB 기반 서비스 저장소'),
+    ('Linux', '서버 운영체제를 명령어와 프로세스로 다루는 능력', '파일 권한 프로세스 네트워크 systemd', 'bash ssh journalctl top vim', '로그 확인과 서비스 실행 자동화', '파일 시스템 사용자 환경 변수 포트', '명령 결과 검증 권한 오류 추적', 'CPU 메모리 I/O 네트워크 병목 분석', 'systemd cron 로그 로테이션 운영', '디렉터리 구조 프로세스 격리', '사용자 권한 방화벽 SSH 보안', 'Linux 서버 운영 실습'),
+    ('Kubernetes', '컨테이너 서비스를 클러스터에서 운영하는 플랫폼', 'Pod Deployment Service Ingress ConfigMap', 'kubectl Helm kind Prometheus', '웹 서비스를 클러스터에 배포', '리소스 요청 제한 Secret 볼륨 네임스페이스', 'readiness liveness rollout 검증', 'autoscaling scheduling resource tuning', 'Helm 배포 로그 모니터링 롤백', '네트워크 정책 서비스 메시 구조', 'RBAC Secret 이미지 보안', 'Kubernetes 운영 배포 구성'),
+    ('Docker', '애플리케이션 실행 환경을 이미지와 컨테이너로 고정하는 기술', 'Image Container Dockerfile Compose volume', 'Docker CLI Compose Registry', '웹 앱 컨테이너 이미지 작성', '레이어 환경 변수 네트워크 볼륨', '컨테이너 실행 검증 헬스체크', '이미지 크기 빌드 캐시 시작 시간', '레지스트리 푸시 Compose 운영', '멀티스테이지 빌드 서비스 분리', '이미지 취약점 rootless 시크릿 관리', 'Docker 기반 개발 배포 환경'),
+    ('AWS', '클라우드 인프라에서 서비스를 배포 운영하는 흐름', 'EC2 S3 RDS IAM VPC Lambda', 'AWS Console CLI CloudWatch CDK', '웹 서비스 배포와 스토리지 구성', '네트워크 보안그룹 IAM 정책 리소스 태그', '헬스체크 백업 알림 권한 검증', '비용 성능 오토스케일링 지표', 'CloudWatch 로그 배포 롤백 운영', 'VPC 서브넷 로드밸런서 아키텍처', 'IAM 최소권한 암호화 키 관리', 'AWS 기반 서비스 인프라'),
+    ('Terraform', '인프라를 코드로 정의하고 변경 이력을 관리하는 기술', 'Provider Resource State Module Plan', 'Terraform CLI AWS provider remote backend', 'VPC 서버 데이터베이스 코드화', 'state 변수 output workspace 구조', 'plan 검토 drift 탐지 정책 검증', '모듈 재사용 배포 시간 최적화', 'remote state lock CI 적용 운영', '모듈 경계 환경별 인프라 설계', '시크릿 노출 방지 IAM 최소권한', 'Terraform 인프라 코드 저장소'),
+    ('Data Structures & Algorithms', '문제를 효율적으로 풀기 위한 자료 표현과 절차', '배열 리스트 트리 그래프 정렬 탐색', 'Python Java C++ 시각화 도구', '자료구조 구현과 문제 풀이', '노드 간선 해시 힙 스택 큐', '정답 검증 경계값 복잡도 분석', '시간복잡도 공간복잡도 최적화', '풀이 기록 테스트 케이스 관리', '문제 유형별 알고리즘 선택 구조', '오버플로우 입력 범위 예외 처리', '알고리즘 풀이 노트와 구현'),
+    ('Redis', '메모리 기반 데이터 구조로 빠른 기능을 만드는 저장소', 'String Hash List Set ZSet TTL', 'redis-cli RedisInsight Docker', '캐시 세션 랭킹 기능 구현', '키 설계 만료 정책 자료구조 선택', '캐시 정합성 장애 재현 테스트', '메모리 사용량 eviction latency 최적화', 'replication persistence 모니터링', '캐시 전략 분산 락 PubSub 구조', '인증 네트워크 접근 키 노출 방지', 'Redis 캐시와 랭킹 서비스'),
+    ('Git and GitHub', '변경 이력을 관리하고 협업 흐름을 만드는 도구', 'commit branch merge rebase pull request', 'Git CLI GitHub Actions Codespaces', '브랜치 전략과 PR 리뷰 실습', '커밋 단위 충돌 이력 태그 릴리스', '리뷰 체크리스트 CI 상태 검증', '히스토리 정리 큰 파일 관리', '릴리스 태그 자동화 이슈 연결', 'trunk based flow GitFlow 저장소 구조', '권한 보호 브랜치 시크릿 관리', '협업 저장소와 릴리스 기록'),
+    ('PHP', '서버 렌더링과 웹 백엔드를 빠르게 만드는 언어', 'Composer PDO 세션 라우팅 템플릿', 'PHP CLI Composer Xdebug PHPUnit', '게시판 CRUD와 로그인 구현', '요청 응답 세션 데이터베이스 연결', 'PHPUnit 입력 검증 오류 로그', 'OPcache 쿼리 수 응답 시간 최적화', '배포 환경 composer autoload 운영', 'MVC 구조와 서비스 계층 분리', 'SQL Injection XSS CSRF 방어', 'PHP 웹 애플리케이션'),
+    ('Cloudflare', '엣지 네트워크로 보안 성능 배포를 강화하는 플랫폼', 'DNS CDN WAF Workers Pages', 'Cloudflare Dashboard Wrangler analytics', '정적 사이트와 Workers API 배포', 'DNS 레코드 캐시 규칙 라우팅', 'WAF 규칙 로그 캐시 동작 검증', '캐시 hit ratio edge latency 최적화', 'Pages 배포 DNS 모니터링 운영', '엣지 함수 CDN 보안 계층 구조', 'DDoS 방어 TLS 토큰 보호', 'Cloudflare 기반 엣지 서비스'),
+    ('AI Red Teaming', 'AI 시스템을 공격 관점에서 검증하는 보안 흐름', 'prompt injection jailbreak data exfiltration evaluation', 'LLM eval harness proxy logging 도구', 'AI 기능 공격 시나리오 작성', '프롬프트 정책 데이터 흐름 위험 모델', '공격 재현성 심각도 완화 검증', '평가 케이스 수 토큰 비용 최적화', '취약점 리포트 회귀 테스트 운영', '방어 계층 정책 필터 모니터링 구조', '민감 정보 유출 권한 우회 방지', 'AI 보안 평가 리포트'),
+    ('AI Agents', '모델이 도구를 호출하며 작업을 수행하는 시스템 설계', 'tool calling planning memory orchestration', 'LangGraph OpenAI SDK vector DB workflow tool', '도구 호출 기반 업무 자동화 에이전트', '상태 메모리 작업 큐 도구 스키마', 'eval 시나리오 실패 복구 테스트', '토큰 비용 latency tool 호출 수 최적화', '실행 로그 모니터링 프롬프트 버전 관리', 'planner executor retriever 구조', '권한 제한 tool sandbox prompt injection 방어', '업무 자동화 AI 에이전트'),
+    ('Next.js', 'React 기반 풀스택 웹 앱을 라우팅과 렌더링 전략으로 구성하는 프레임워크', 'App Router Server Component Route Handler', 'Next.js Vercel TypeScript Prisma', '페이지 라우팅과 API route 구현', '서버 상태 캐시 렌더링 경계 폼 액션', '컴포넌트 테스트 접근성 SEO 확인', 'ISR streaming bundle 이미지 최적화', 'Vercel 배포 환경 변수 로그', '서버 클라이언트 컴포넌트 경계 설계', '인증 쿠키 CSRF 데이터 노출 방지', 'Next.js 풀스택 웹 앱'),
+    ('Code Review', '코드 변경의 의도 품질 위험을 검토하는 협업 기술', 'diff 읽기 설계 의도 테스트 위험', 'GitHub Pull Request static analysis checklist', 'PR 리뷰와 개선 제안 작성', '변경 범위 의존성 테스트 근거', '버그 재현 리뷰 기준 회귀 위험', '리뷰 시간 코멘트 품질 병목 개선', '리뷰 프로세스 CODEOWNERS 자동화', '모듈 경계 책임 변경 영향 분석', '보안 취약점 권한 데이터 노출 점검', '실전 PR 리뷰 리포트'),
+    ('Kotlin', '간결한 타입 시스템으로 JVM과 Android 개발을 하는 언어', 'null safety data class coroutine extension', 'IntelliJ Gradle JUnit Android Studio', 'Kotlin 서비스 로직과 비동기 처리 구현', 'sealed class flow domain model package', '단위 테스트 null 처리 예외 케이스', 'coroutine dispatcher allocation 최적화', 'JAR Android build 배포 설정', '함수형 OOP 혼합 모듈 설계', 'null 안전성 직렬화 입력 검증', 'Kotlin 기반 앱 또는 API 모듈'),
+    ('HTML', '웹 문서의 의미 구조와 접근성 기반을 만드는 기술', 'semantic tag form media metadata', '브라우저 DevTools validator accessibility checker', '시맨틱 랜딩 페이지와 폼 작성', '문서 구조 폼 데이터 링크 메타 정보', '접근성 검사 유효성 검사 SEO 확인', 'DOM 크기 렌더링 차단 요소 최적화', '정적 파일 배포 검색 엔진 노출', '정보 구조 heading landmark 설계', '폼 보안 rel 속성 개인정보 입력', '접근성 있는 HTML 페이지'),
+    ('CSS', '화면 배치 스타일 반응형 표현을 제어하는 기술', 'box model flex grid cascade responsive', 'DevTools Sass PostCSS Tailwind', '반응형 레이아웃과 컴포넌트 스타일 작성', '토큰 변수 breakpoint 상태 스타일', '크로스브라우징 접근성 시각 회귀', 'layout shift selector 비용 애니메이션 최적화', 'CSS 빌드 purge 배포 관리', '레이어 cascade 컴포넌트 스타일 구조', '색 대비 focus-visible 사용자 설정 존중', '반응형 UI 스타일 시스템'),
+    ('Swift & Swift UI', 'Swift 언어와 선언형 UI로 Apple 앱을 만드는 흐름', 'Swift type system SwiftUI state binding', 'Xcode Instruments TestFlight Swift Package Manager', 'SwiftUI 화면과 데이터 바인딩 구현', 'Observable 상태 navigation persistence', '단위 UI 테스트 preview 접근성', '렌더링 diff 메모리 앱 시작 시간', 'TestFlight 배포 빌드 설정 운영', 'MVVM state ownership view composition', 'Keychain 개인정보 권한 관리', 'SwiftUI iOS 앱'),
+    ('Shell / Bash', '터미널 작업을 스크립트로 자동화하는 기술', 'pipe redirect variable function exit code', 'bash shellcheck cron ssh awk sed', '로그 처리와 배포 보조 스크립트 작성', '파일 경로 환경 변수 인자 처리', 'shellcheck dry run 오류 처리 검증', '프로세스 수 I/O 호출 최적화', 'cron systemd 로그 로테이션 운영', '작은 명령 조합과 스크립트 모듈화', '권한 chmod 시크릿 노출 방지', '운영 자동화 Bash 스크립트'),
+    ('Laravel', 'PHP 기반으로 웹 서비스를 빠르게 만드는 프레임워크', 'Route Controller Eloquent Blade Middleware', 'Composer Artisan Sail PHPUnit', '인증 포함 CRUD 웹 서비스 구현', 'Model migration request validation session', 'Feature test validation 에러 로그', '쿼리 eager loading cache 최적화', 'queue schedule deployment env 운영', 'MVC service repository 구조', 'CSRF policy guard secret 관리', 'Laravel 업무 웹 서비스'),
+    ('Elasticsearch', '검색과 로그 분석을 위한 분산 검색 엔진', 'index mapping analyzer query aggregation', 'Kibana Dev Tools Beats Logstash', '문서 검색과 필터 기능 구현', '문서 스키마 역색인 relevance score', '검색 결과 검증 mapping 테스트', 'shard 수 query latency heap 최적화', 'snapshot rollover monitoring 운영', 'index lifecycle cluster architecture', '권한 TLS field masking', '검색 서비스와 로그 대시보드'),
+    ('WordPress', '콘텐츠 관리 사이트를 테마와 플러그인으로 구성하는 플랫폼', 'theme plugin post type taxonomy hook', 'WordPress Admin WP CLI Local', '커스텀 테마와 게시글 타입 구현', '콘텐츠 모델 메뉴 위젯 사용자 권한', '브라우저 테스트 플러그인 충돌 점검', '캐시 이미지 최적화 쿼리 수 개선', '백업 업데이트 배포 운영', '테마 구조 플러그인 책임 분리', '권한 nonce 업데이트 취약점 관리', 'WordPress 콘텐츠 사이트'),
+    ('Django', 'Python 기반으로 안전한 웹 서비스를 빠르게 만드는 프레임워크', 'Model View Template ORM Admin', 'Django CLI pytest DRF PostgreSQL', '게시판 API와 관리자 기능 구현', 'Model migration serializer form session', '테스트 클라이언트 validation 권한 검증', 'ORM query prefetch cache 최적화', 'settings 분리 collectstatic 배포 운영', 'app 구조 service layer DRF 설계', 'CSRF authentication permission secret 관리', 'Django 웹 서비스 API'),
+    ('Ruby', '표현력 있는 객체지향 스크립팅 언어 개발', 'object block module gem metaprogramming', 'Ruby CLI bundler RSpec irb', 'CLI 도구와 데이터 처리 구현', '객체 메시지 예외 gem 구조', 'RSpec 테스트 rubocop 스타일 검증', '객체 할당 enumerable 성능 최적화', 'gem 배포 스크립트 실행 운영', '모듈 mixin 책임 분리', '입력 검증 의존성 취약점 관리', 'Ruby 자동화 도구'),
+    ('Ruby on Rails', '컨벤션 기반으로 웹 서비스를 빠르게 만드는 프레임워크', 'MVC ActiveRecord routing migration', 'Rails CLI bundler RSpec PostgreSQL', 'CRUD와 인증이 있는 웹 앱 구현', 'Model association controller view job', 'request spec validation authorization 검증', 'N+1 query cache background job 최적화', 'asset pipeline migration deploy 운영', 'MVC service object background job 구조', 'CSRF strong parameter secret 관리', 'Rails 웹 애플리케이션'),
+    ('Claude Code', 'AI 코딩 에이전트를 개발 작업에 안전하게 연결하는 흐름', 'prompt context tool execution code review', 'Claude Code Git terminal test runner', '이슈 기반 코드 수정과 테스트 실행', '작업 컨텍스트 파일 변경 diff 기록', '테스트 결과 리뷰 hallucination 검증', '토큰 사용량 컨텍스트 크기 반복 비용', '작업 로그 커밋 단위 리뷰 운영', '에이전트 작업 범위와 책임 분리', '비밀키 보호 명령 권한 검토', 'AI 보조 개발 작업 기록'),
+    ('Vibe Coding', 'AI와 빠르게 시제품을 만들되 검증으로 품질을 잡는 흐름', '요구사항 프롬프트 프로토타입 리뷰', 'ChatGPT Claude Cursor GitHub', '아이디어를 동작하는 MVP로 구현', '기능 명세 화면 흐름 코드 변경 이력', '실행 테스트 코드 리뷰 요구사항 대조', '반복 생성 비용과 수정 속도 관리', '버전 관리 피드백 반영 릴리스', '프롬프트 설계와 사람 검수 경계', '민감 정보 입력 금지 라이선스 확인', 'AI 협업 프로토타입 프로젝트'),
+    ('Scala', '함수형과 객체지향을 함께 쓰는 JVM 언어 개발', 'case class pattern matching collection Future', 'sbt ScalaTest IntelliJ Akka', '데이터 처리와 API 모듈 구현', 'immutable data algebraic type stream', 'property test 타입 안정성 검증', 'lazy evaluation collection 성능 최적화', 'JAR 배포 로그 설정 운영', '함수형 계층 effect 처리 구조', '타입 안전성 입력 검증 의존성 관리', 'Scala 서비스 또는 데이터 모듈'),
+    ('OpenClaw', 'AI 코딩 워크플로를 로컬 도구와 연결하는 실험적 개발 흐름', 'agent task context tool orchestration', 'OpenClaw Git terminal editor test command', '에이전트 작업 단위와 검증 루프 구성', '작업 지시 파일 범위 실행 로그 상태', '테스트 결과 diff 검토 실패 복구', '컨텍스트 크기 명령 실행 시간 최적화', '작업 기록 승인 절차 릴리스 관리', '에이전트 권한 경계와 도구 체인 설계', '명령 실행 제한 비밀 정보 보호', 'AI 에이전트 개발 워크플로');
+
+UPDATE roadmaps r
+SET
+    description = detail.display_name || ' 로드맵은 ' || detail.intro_topic || '부터 ' || detail.project_topic || '까지 이어지는 DevPath 공식 학습 경로입니다.',
+    info_title = detail.display_name || ' 로드맵이란 무엇인가요?',
+    info_content =
+        '<div class="p-6 text-sm text-gray-700 leading-relaxed space-y-6">' ||
+        '<div><p class="mb-2"><span class="font-bold text-gray-900">' || detail.display_name || '</span> 로드맵은 ' || detail.intro_topic ||
+        '을 기준으로 기초 개념, 실습, 품질 기준, 심화 분기를 이어 갑니다.</p><p>' || detail.core_topic ||
+        '을 먼저 잡고, ' || detail.practice_topic || '을 직접 만들면서 ' || detail.project_topic || '로 정리할 수 있게 구성했습니다.</p></div>' ||
+        '<div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">' ||
+        '<strong class="block text-[#00C471] mb-2"><i class="fas fa-check-circle mr-1"></i> 이 로드맵에서 익히는 것</strong>' ||
+        '<ul class="list-disc pl-5 space-y-1 text-gray-600">' ||
+        '<li><strong>핵심 개념:</strong> ' || detail.core_topic || '</li>' ||
+        '<li><strong>실습 흐름:</strong> ' || detail.practice_topic || '</li>' ||
+        '<li><strong>품질 기준:</strong> ' || detail.quality_topic || '</li>' ||
+        '<li><strong>심화 분기:</strong> ' || detail.perf_topic || ', ' || detail.arch_topic || '</li>' ||
+        '<li><strong>포트폴리오:</strong> ' || detail.project_topic || '</li>' ||
+        '</ul></div></div>'
+FROM (
+    SELECT
+        target.roadmap_id,
+        target.display_name,
+        profile.intro_topic,
+        profile.core_topic,
+        profile.practice_topic,
+        profile.quality_topic,
+        profile.perf_topic,
+        profile.arch_topic,
+        profile.project_topic
+    FROM (
+        SELECT
+            r.roadmap_id,
+            r.title AS roadmap_title,
+            COALESCE(MAX(item.subtitle), r.title) AS display_name
+        FROM roadmap_hub_items item
+        JOIN roadmap_hub_sections section_item ON section_item.id = item.section_id
+        JOIN roadmaps r ON r.roadmap_id = item.linked_roadmap_id
+        WHERE item.linked_roadmap_id IS NOT NULL
+          AND item.is_active = TRUE
+          AND section_item.is_active = TRUE
+          AND r.is_official = TRUE
+          AND r.is_deleted = FALSE
+          AND r.title <> 'Backend Master Roadmap'
+        GROUP BY r.roadmap_id, r.title
+    ) target
+    JOIN roadmap_hub_node_profile_seed profile ON profile.display_name = target.display_name
+) detail
+WHERE r.roadmap_id = detail.roadmap_id;
+
+CREATE TEMPORARY TABLE roadmap_hub_node_detail_seed AS
+WITH target_roadmaps AS (
+    SELECT
+        r.roadmap_id,
+        r.title AS roadmap_title,
+        COALESCE(MAX(item.subtitle), r.title) AS display_name
+    FROM roadmap_hub_items item
+    JOIN roadmap_hub_sections section_item ON section_item.id = item.section_id
+    JOIN roadmaps r ON r.roadmap_id = item.linked_roadmap_id
+    WHERE item.linked_roadmap_id IS NOT NULL
+      AND item.is_active = TRUE
+      AND section_item.is_active = TRUE
+      AND r.is_official = TRUE
+      AND r.is_deleted = FALSE
+      AND r.title <> 'Backend Master Roadmap'
+    GROUP BY r.roadmap_id, r.title
+),
+node_seed(sort_order, branch_group, node_type, stage_label) AS (
+    VALUES
+        (1, CAST(NULL AS INTEGER), 'CONCEPT', 'FOUNDATION'),
+        (2, CAST(NULL AS INTEGER), 'CONCEPT', 'FOUNDATION'),
+        (3, CAST(NULL AS INTEGER), 'CONCEPT', 'FOUNDATION'),
+        (4, CAST(NULL AS INTEGER), 'PRACTICE', 'PRACTICE'),
+        (5, CAST(NULL AS INTEGER), 'PRACTICE', 'PRACTICE'),
+        (6, CAST(NULL AS INTEGER), 'PRACTICE', 'PRACTICE'),
+        (7, CAST(NULL AS INTEGER), 'CONCEPT', 'PRACTICE'),
+        (8, 1, 'PRACTICE', 'ADVANCED'),
+        (9, 1, 'PRACTICE', 'ADVANCED'),
+        (8, 2, 'CONCEPT', 'ADVANCED'),
+        (9, 2, 'PRACTICE', 'ADVANCED'),
+        (10, CAST(NULL AS INTEGER), 'PROJECT', 'ADVANCED'),
+        (11, CAST(NULL AS INTEGER), 'PROJECT', 'ADVANCED')
+)
+SELECT
+    target.roadmap_id,
+    target.display_name || ' - ' ||
+        CASE
+            WHEN seed.sort_order = 1 THEN profile.intro_topic
+            WHEN seed.sort_order = 2 THEN profile.core_topic
+            WHEN seed.sort_order = 3 THEN profile.tool_topic
+            WHEN seed.sort_order = 4 THEN profile.practice_topic
+            WHEN seed.sort_order = 5 THEN profile.model_topic
+            WHEN seed.sort_order = 6 THEN profile.quality_topic
+            WHEN seed.sort_order = 7 THEN '협업 산출물과 변경 기록'
+            WHEN seed.sort_order = 8 AND seed.branch_group = 1 THEN profile.perf_topic
+            WHEN seed.sort_order = 9 AND seed.branch_group = 1 THEN profile.ops_topic
+            WHEN seed.sort_order = 8 AND seed.branch_group = 2 THEN profile.arch_topic
+            WHEN seed.sort_order = 9 AND seed.branch_group = 2 THEN profile.security_topic
+            WHEN seed.sort_order = 10 THEN profile.project_topic
+            ELSE '포트폴리오 설명과 면접 정리'
+        END AS title,
+    CASE
+        WHEN seed.sort_order = 1 THEN target.display_name || ' 학습은 ' || profile.intro_topic || '을 먼저 이해하는 데서 시작합니다. 이 단계에서는 ' || profile.core_topic || '이 왜 필요한지 확인하고, 최종적으로 ' || profile.project_topic || '까지 이어질 학습 범위를 잡습니다.'
+        WHEN seed.sort_order = 2 THEN profile.core_topic || '을 실제 판단 기준으로 정리합니다. 단어를 외우는 단계가 아니라 ' || target.display_name || ' 작업 중 어떤 문제를 만나면 어떤 개념을 꺼내 써야 하는지 연결합니다.'
+        WHEN seed.sort_order = 3 THEN profile.tool_topic || '을 설치하고 기본 작업 흐름을 맞춥니다. 실습을 반복할 수 있도록 프로젝트 구조, 실행 명령, 디버깅 방법, 협업 규칙을 함께 세팅합니다.'
+        WHEN seed.sort_order = 4 THEN profile.practice_topic || '을 작은 단위로 직접 구현합니다. 입력을 받고 처리한 뒤 결과를 확인하는 흐름을 만들면서 ' || profile.model_topic || '이 코드 안에서 어떻게 드러나는지 확인합니다.'
+        WHEN seed.sort_order = 5 THEN profile.model_topic || '을 기준으로 데이터와 상태 흐름을 설계합니다. 어떤 정보를 어디에 두고, 어떤 이벤트가 변경을 만들며, 어떤 산출물이 남아야 하는지 ' || profile.arch_topic || ' 관점으로 정리합니다.'
+        WHEN seed.sort_order = 6 THEN profile.quality_topic || '을 기준으로 결과물을 검증합니다. 정상 동작만 확인하지 않고 실패 케이스, 경계값, 리뷰 기준, ' || profile.security_topic || '까지 포함해 품질 기준을 세웁니다.'
+        WHEN seed.sort_order = 7 THEN profile.project_topic || '을 팀에 설명할 수 있도록 문서와 변경 기록을 남깁니다. 이슈, PR, 의사결정 이유, 테스트 결과를 정리해 다음 사람이 ' || profile.tool_topic || ' 흐름을 그대로 재현할 수 있게 만듭니다.'
+        WHEN seed.sort_order = 8 AND seed.branch_group = 1 THEN profile.perf_topic || '을 깊게 다룹니다. 측정 지표를 먼저 정하고 병목을 찾은 뒤, ' || target.display_name || ' 결과물에서 가장 효과가 큰 최적화 순서를 선택합니다.'
+        WHEN seed.sort_order = 9 AND seed.branch_group = 1 THEN profile.ops_topic || '을 운영 관점에서 설계합니다. 배포, 모니터링, 알림, 롤백, 반복 작업 자동화를 정리해 학습 결과물이 한 번 만들고 끝나는 수준에 머물지 않게 합니다.'
+        WHEN seed.sort_order = 8 AND seed.branch_group = 2 THEN profile.arch_topic || '을 기준으로 구조를 다시 봅니다. 책임 경계, 모듈 분리, 확장 전략을 점검하고 ' || profile.model_topic || '이 커져도 유지보수 가능한 형태인지 판단합니다.'
+        WHEN seed.sort_order = 9 AND seed.branch_group = 2 THEN profile.security_topic || '을 중심으로 안정성을 보강합니다. 권한, 입력값, 예외, 장애 상황을 검토하고 운영 중 문제가 생겼을 때 추적 가능한 기준을 만듭니다.'
+        WHEN seed.sort_order = 10 THEN profile.project_topic || '을 하나의 완성물로 묶습니다. 요구사항, 설계, 구현, 검증, 회고가 모두 남도록 만들고 ' || profile.quality_topic || '을 통과한 결과물을 목표로 합니다.'
+        ELSE target.display_name || ' 포트폴리오는 ' || profile.project_topic || '을 왜 만들었고 어떤 선택을 했는지 설명할 수 있어야 합니다. ' || profile.core_topic || ', ' || profile.arch_topic || ', ' || profile.security_topic || '에서 내린 판단을 면접 답변처럼 정리합니다.'
+    END AS content,
+    seed.node_type,
+    seed.sort_order,
+    CASE seed.stage_label
+        WHEN 'FOUNDATION' THEN profile.intro_topic || ': 학습 목표와 책임 범위,' || profile.core_topic || ': 반드시 구분해야 할 핵심 개념,' || profile.tool_topic || ': 실습을 반복할 기본 환경'
+        WHEN 'PRACTICE' THEN profile.practice_topic || ': 작은 기능 구현,' || profile.model_topic || ': 데이터와 상태 흐름,' || profile.quality_topic || ': 검증과 리뷰 기준,' || profile.project_topic || ': 협업 산출물 정리'
+        ELSE profile.perf_topic || ': 성능 개선 기준,' || profile.ops_topic || ': 운영과 자동화,' || profile.arch_topic || ': 구조와 확장 전략,' || profile.security_topic || ': 보안과 안정성,' || profile.project_topic || ': 포트폴리오 완성물'
+    END AS sub_topics,
+    seed.branch_group
+FROM target_roadmaps target
+JOIN roadmap_hub_node_profile_seed profile ON profile.display_name = target.display_name
+CROSS JOIN node_seed seed;
+
+UPDATE roadmap_nodes rn
+SET
+    title = detail.title,
+    content = detail.content,
+    node_type = detail.node_type,
+    sub_topics = detail.sub_topics
+FROM roadmap_hub_node_detail_seed detail
+WHERE rn.roadmap_id = detail.roadmap_id
+  AND rn.sort_order = detail.sort_order
+  AND (
+      rn.branch_group = detail.branch_group
+      OR (rn.branch_group IS NULL AND detail.branch_group IS NULL)
+  );
+
+INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order, sub_topics, branch_group)
+SELECT
+    detail.roadmap_id,
+    detail.title,
+    detail.content,
+    detail.node_type,
+    detail.sort_order,
+    detail.sub_topics,
+    detail.branch_group
+FROM roadmap_hub_node_detail_seed detail
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM roadmap_nodes existing
+    WHERE existing.roadmap_id = detail.roadmap_id
+      AND existing.sort_order = detail.sort_order
+      AND (
+          existing.branch_group = detail.branch_group
+          OR (existing.branch_group IS NULL AND detail.branch_group IS NULL)
+      )
+);
+
+DROP TABLE IF EXISTS roadmap_hub_node_detail_seed;
+DROP TABLE IF EXISTS roadmap_hub_node_profile_seed;
+
+INSERT INTO prerequisites (node_id, pre_node_id)
+WITH target_roadmaps AS (
+    SELECT
+        r.roadmap_id,
+        COALESCE(MAX(item.subtitle), r.title) AS display_name
+    FROM roadmap_hub_items item
+    JOIN roadmap_hub_sections section_item ON section_item.id = item.section_id
+    JOIN roadmaps r ON r.roadmap_id = item.linked_roadmap_id
+    WHERE item.linked_roadmap_id IS NOT NULL
+      AND item.is_active = TRUE
+      AND section_item.is_active = TRUE
+      AND r.is_official = TRUE
+      AND r.is_deleted = FALSE
+      AND r.title <> 'Backend Master Roadmap'
+    GROUP BY r.roadmap_id, r.title
+),
+edge_seed(child_sort_order, child_branch_group, pre_sort_order, pre_branch_group) AS (
+    VALUES
+        (2, CAST(NULL AS INTEGER), 1, CAST(NULL AS INTEGER)),
+        (3, CAST(NULL AS INTEGER), 2, CAST(NULL AS INTEGER)),
+        (4, CAST(NULL AS INTEGER), 3, CAST(NULL AS INTEGER)),
+        (5, CAST(NULL AS INTEGER), 4, CAST(NULL AS INTEGER)),
+        (6, CAST(NULL AS INTEGER), 5, CAST(NULL AS INTEGER)),
+        (7, CAST(NULL AS INTEGER), 6, CAST(NULL AS INTEGER)),
+        (8, 1, 7, CAST(NULL AS INTEGER)),
+        (9, 1, 8, 1),
+        (8, 2, 7, CAST(NULL AS INTEGER)),
+        (9, 2, 8, 2),
+        (10, CAST(NULL AS INTEGER), 7, CAST(NULL AS INTEGER)),
+        (11, CAST(NULL AS INTEGER), 10, CAST(NULL AS INTEGER))
+)
+SELECT
+    child.node_id,
+    pre_node.node_id
+FROM target_roadmaps target
+JOIN edge_seed edge_item ON 1 = 1
+JOIN roadmap_nodes child
+    ON child.roadmap_id = target.roadmap_id
+   AND child.sort_order = edge_item.child_sort_order
+   AND (
+       child.branch_group = edge_item.child_branch_group
+       OR (child.branch_group IS NULL AND edge_item.child_branch_group IS NULL)
+   )
+JOIN roadmap_nodes pre_node
+    ON pre_node.roadmap_id = target.roadmap_id
+   AND pre_node.sort_order = edge_item.pre_sort_order
+   AND (
+       pre_node.branch_group = edge_item.pre_branch_group
+       OR (pre_node.branch_group IS NULL AND edge_item.pre_branch_group IS NULL)
+   )
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM prerequisites existing
+    WHERE existing.node_id = child.node_id
+      AND existing.pre_node_id = pre_node.node_id
+);
+
+INSERT INTO tags (name, category, is_official, is_deleted)
+WITH target_roadmaps AS (
+    SELECT
+        r.roadmap_id,
+        COALESCE(MAX(item.subtitle), r.title) AS display_name,
+        CASE
+            WHEN MAX(CASE WHEN section_item.section_key = 'role-based' THEN 1 ELSE 0 END) = 1 THEN 'Role Roadmap'
+            ELSE 'Skill Roadmap'
+        END AS tag_category
+    FROM roadmap_hub_items item
+    JOIN roadmap_hub_sections section_item ON section_item.id = item.section_id
+    JOIN roadmaps r ON r.roadmap_id = item.linked_roadmap_id
+    WHERE item.linked_roadmap_id IS NOT NULL
+      AND item.is_active = TRUE
+      AND section_item.is_active = TRUE
+      AND r.is_official = TRUE
+      AND r.is_deleted = FALSE
+      AND r.title <> 'Backend Master Roadmap'
+    GROUP BY r.roadmap_id, r.title
+),
+generated_tags AS (
+    SELECT display_name || ' Fundamentals' AS tag_name, tag_category AS category FROM target_roadmaps
+    UNION ALL
+    SELECT display_name || ' Practice' AS tag_name, tag_category AS category FROM target_roadmaps
+    UNION ALL
+    SELECT display_name || ' Advanced' AS tag_name, tag_category AS category FROM target_roadmaps
+)
+SELECT generated_tags.tag_name, generated_tags.category, TRUE, FALSE
+FROM generated_tags
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM tags existing
+    WHERE existing.name = generated_tags.tag_name
+);
+
+INSERT INTO node_required_tags (node_id, tag_id)
+WITH target_roadmaps AS (
+    SELECT
+        r.roadmap_id,
+        COALESCE(MAX(item.subtitle), r.title) AS display_name
+    FROM roadmap_hub_items item
+    JOIN roadmap_hub_sections section_item ON section_item.id = item.section_id
+    JOIN roadmaps r ON r.roadmap_id = item.linked_roadmap_id
+    WHERE item.linked_roadmap_id IS NOT NULL
+      AND item.is_active = TRUE
+      AND section_item.is_active = TRUE
+      AND r.is_official = TRUE
+      AND r.is_deleted = FALSE
+      AND r.title <> 'Backend Master Roadmap'
+    GROUP BY r.roadmap_id, r.title
+),
+node_stage AS (
+    SELECT
+        target.roadmap_id,
+        rn.node_id,
+        target.display_name ||
+            CASE
+                WHEN rn.branch_group IS NULL AND rn.sort_order <= 3 THEN ' Fundamentals'
+                WHEN rn.branch_group IS NULL AND rn.sort_order <= 7 THEN ' Practice'
+                ELSE ' Advanced'
+            END AS tag_name
+    FROM target_roadmaps target
+    JOIN roadmap_nodes rn ON rn.roadmap_id = target.roadmap_id
+)
+SELECT node_stage.node_id, tag_item.tag_id
+FROM node_stage
+JOIN tags tag_item ON tag_item.name = node_stage.tag_name
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM node_required_tags existing
+    WHERE existing.node_id = node_stage.node_id
+      AND existing.tag_id = tag_item.tag_id
+);
+
+-- 각 로드맵 노드별 상세 필수 태그 보강
+-- 노드마다 로드맵명, 단계, 노드 목적, 핵심 역량 태그가 함께 붙도록 구성한다.
+INSERT INTO tags (name, category, is_official, is_deleted)
+WITH target_roadmaps AS (
+    SELECT
+        r.roadmap_id,
+        COALESCE(MAX(item.subtitle), r.title) AS display_name,
+        CASE
+            WHEN MAX(CASE WHEN section_item.section_key = 'role-based' THEN 1 ELSE 0 END) = 1 THEN 'Role Roadmap'
+            ELSE 'Skill Roadmap'
+        END AS tag_category
+    FROM roadmap_hub_items item
+    JOIN roadmap_hub_sections section_item ON section_item.id = item.section_id
+    JOIN roadmaps r ON r.roadmap_id = item.linked_roadmap_id
+    WHERE item.linked_roadmap_id IS NOT NULL
+      AND item.is_active = TRUE
+      AND section_item.is_active = TRUE
+      AND r.is_official = TRUE
+      AND r.is_deleted = FALSE
+      AND r.title <> 'Backend Master Roadmap'
+    GROUP BY r.roadmap_id, r.title
+),
+detail_tag_seed(sort_order, branch_group, detail_suffix) AS (
+    VALUES
+        (1, CAST(NULL AS INTEGER), '개요'),
+        (2, CAST(NULL AS INTEGER), '핵심 개념'),
+        (3, CAST(NULL AS INTEGER), '작업 환경'),
+        (4, CAST(NULL AS INTEGER), '기초 실습'),
+        (5, CAST(NULL AS INTEGER), '데이터 설계'),
+        (6, CAST(NULL AS INTEGER), '테스트'),
+        (7, CAST(NULL AS INTEGER), '협업 문서화'),
+        (8, 1, '성능 최적화'),
+        (9, 1, '운영 자동화'),
+        (8, 2, '아키텍처 설계'),
+        (9, 2, '보안 안정성'),
+        (10, CAST(NULL AS INTEGER), '실전 프로젝트'),
+        (11, CAST(NULL AS INTEGER), '포트폴리오')
+),
+core_tag_seed(sort_order, branch_group, core_tag) AS (
+    VALUES
+        (1, CAST(NULL AS INTEGER), '로드맵 이해'),
+        (1, CAST(NULL AS INTEGER), '역할 정의'),
+        (1, CAST(NULL AS INTEGER), '학습 목표'),
+        (2, CAST(NULL AS INTEGER), '핵심 용어'),
+        (2, CAST(NULL AS INTEGER), '개념 모델링'),
+        (2, CAST(NULL AS INTEGER), '기초 원리'),
+        (3, CAST(NULL AS INTEGER), '개발 환경'),
+        (3, CAST(NULL AS INTEGER), '도구 설정'),
+        (3, CAST(NULL AS INTEGER), '워크플로우'),
+        (4, CAST(NULL AS INTEGER), '기초 실습'),
+        (4, CAST(NULL AS INTEGER), '기능 구현'),
+        (4, CAST(NULL AS INTEGER), '피드백 루프'),
+        (5, CAST(NULL AS INTEGER), '데이터 모델링'),
+        (5, CAST(NULL AS INTEGER), '상태 관리'),
+        (5, CAST(NULL AS INTEGER), '요구사항 분석'),
+        (6, CAST(NULL AS INTEGER), '테스트'),
+        (6, CAST(NULL AS INTEGER), '품질 관리'),
+        (6, CAST(NULL AS INTEGER), '오류 처리'),
+        (7, CAST(NULL AS INTEGER), '문서화'),
+        (7, CAST(NULL AS INTEGER), '코드 리뷰'),
+        (7, CAST(NULL AS INTEGER), '협업'),
+        (8, 1, '성능 측정'),
+        (8, 1, '병목 분석'),
+        (8, 1, '최적화'),
+        (9, 1, '자동화'),
+        (9, 1, '모니터링'),
+        (9, 1, '배포'),
+        (8, 2, '아키텍처'),
+        (8, 2, '모듈화'),
+        (8, 2, '확장성'),
+        (9, 2, '보안'),
+        (9, 2, '안정성'),
+        (9, 2, '장애 대응'),
+        (10, CAST(NULL AS INTEGER), '프로젝트 설계'),
+        (10, CAST(NULL AS INTEGER), 'MVP'),
+        (10, CAST(NULL AS INTEGER), '실전 구현'),
+        (11, CAST(NULL AS INTEGER), '포트폴리오'),
+        (11, CAST(NULL AS INTEGER), '면접 준비'),
+        (11, CAST(NULL AS INTEGER), '기술 설명')
+),
+generated_tags AS (
+    SELECT display_name AS tag_name, tag_category AS category
+    FROM target_roadmaps
+    UNION ALL
+    SELECT display_name || ' ' || detail_seed.detail_suffix AS tag_name, tag_category AS category
+    FROM target_roadmaps
+    CROSS JOIN detail_tag_seed detail_seed
+    UNION ALL
+    SELECT core_seed.core_tag AS tag_name, 'Roadmap Node' AS category
+    FROM core_tag_seed core_seed
+)
+SELECT generated_tags.tag_name, MIN(generated_tags.category), TRUE, FALSE
+FROM generated_tags
+LEFT JOIN tags existing ON existing.name = generated_tags.tag_name
+WHERE existing.tag_id IS NULL
+GROUP BY generated_tags.tag_name;
+
+INSERT INTO node_required_tags (node_id, tag_id)
+WITH target_roadmaps AS (
+    SELECT
+        r.roadmap_id,
+        COALESCE(MAX(item.subtitle), r.title) AS display_name
+    FROM roadmap_hub_items item
+    JOIN roadmap_hub_sections section_item ON section_item.id = item.section_id
+    JOIN roadmaps r ON r.roadmap_id = item.linked_roadmap_id
+    WHERE item.linked_roadmap_id IS NOT NULL
+      AND item.is_active = TRUE
+      AND section_item.is_active = TRUE
+      AND r.is_official = TRUE
+      AND r.is_deleted = FALSE
+      AND r.title <> 'Backend Master Roadmap'
+    GROUP BY r.roadmap_id, r.title
+),
+detail_tag_seed(sort_order, branch_group, detail_suffix) AS (
+    VALUES
+        (1, CAST(NULL AS INTEGER), '개요'),
+        (2, CAST(NULL AS INTEGER), '핵심 개념'),
+        (3, CAST(NULL AS INTEGER), '작업 환경'),
+        (4, CAST(NULL AS INTEGER), '기초 실습'),
+        (5, CAST(NULL AS INTEGER), '데이터 설계'),
+        (6, CAST(NULL AS INTEGER), '테스트'),
+        (7, CAST(NULL AS INTEGER), '협업 문서화'),
+        (8, 1, '성능 최적화'),
+        (9, 1, '운영 자동화'),
+        (8, 2, '아키텍처 설계'),
+        (9, 2, '보안 안정성'),
+        (10, CAST(NULL AS INTEGER), '실전 프로젝트'),
+        (11, CAST(NULL AS INTEGER), '포트폴리오')
+),
+core_tag_seed(sort_order, branch_group, core_tag) AS (
+    VALUES
+        (1, CAST(NULL AS INTEGER), '로드맵 이해'),
+        (1, CAST(NULL AS INTEGER), '역할 정의'),
+        (1, CAST(NULL AS INTEGER), '학습 목표'),
+        (2, CAST(NULL AS INTEGER), '핵심 용어'),
+        (2, CAST(NULL AS INTEGER), '개념 모델링'),
+        (2, CAST(NULL AS INTEGER), '기초 원리'),
+        (3, CAST(NULL AS INTEGER), '개발 환경'),
+        (3, CAST(NULL AS INTEGER), '도구 설정'),
+        (3, CAST(NULL AS INTEGER), '워크플로우'),
+        (4, CAST(NULL AS INTEGER), '기초 실습'),
+        (4, CAST(NULL AS INTEGER), '기능 구현'),
+        (4, CAST(NULL AS INTEGER), '피드백 루프'),
+        (5, CAST(NULL AS INTEGER), '데이터 모델링'),
+        (5, CAST(NULL AS INTEGER), '상태 관리'),
+        (5, CAST(NULL AS INTEGER), '요구사항 분석'),
+        (6, CAST(NULL AS INTEGER), '테스트'),
+        (6, CAST(NULL AS INTEGER), '품질 관리'),
+        (6, CAST(NULL AS INTEGER), '오류 처리'),
+        (7, CAST(NULL AS INTEGER), '문서화'),
+        (7, CAST(NULL AS INTEGER), '코드 리뷰'),
+        (7, CAST(NULL AS INTEGER), '협업'),
+        (8, 1, '성능 측정'),
+        (8, 1, '병목 분석'),
+        (8, 1, '최적화'),
+        (9, 1, '자동화'),
+        (9, 1, '모니터링'),
+        (9, 1, '배포'),
+        (8, 2, '아키텍처'),
+        (8, 2, '모듈화'),
+        (8, 2, '확장성'),
+        (9, 2, '보안'),
+        (9, 2, '안정성'),
+        (9, 2, '장애 대응'),
+        (10, CAST(NULL AS INTEGER), '프로젝트 설계'),
+        (10, CAST(NULL AS INTEGER), 'MVP'),
+        (10, CAST(NULL AS INTEGER), '실전 구현'),
+        (11, CAST(NULL AS INTEGER), '포트폴리오'),
+        (11, CAST(NULL AS INTEGER), '면접 준비'),
+        (11, CAST(NULL AS INTEGER), '기술 설명')
+),
+target_nodes AS (
+    SELECT
+        target.display_name,
+        rn.node_id,
+        rn.sort_order,
+        rn.branch_group,
+        target.display_name ||
+            CASE
+                WHEN rn.branch_group IS NULL AND rn.sort_order <= 3 THEN ' Fundamentals'
+                WHEN rn.branch_group IS NULL AND rn.sort_order <= 7 THEN ' Practice'
+                ELSE ' Advanced'
+            END AS stage_tag
+    FROM target_roadmaps target
+    JOIN roadmap_nodes rn ON rn.roadmap_id = target.roadmap_id
+),
+node_tag_candidates AS (
+    SELECT node_id, display_name AS tag_name
+    FROM target_nodes
+    UNION ALL
+    SELECT node_id, stage_tag AS tag_name
+    FROM target_nodes
+    UNION ALL
+    SELECT target_nodes.node_id, target_nodes.display_name || ' ' || detail_seed.detail_suffix AS tag_name
+    FROM target_nodes
+    JOIN detail_tag_seed detail_seed
+        ON detail_seed.sort_order = target_nodes.sort_order
+       AND (
+           detail_seed.branch_group = target_nodes.branch_group
+           OR (detail_seed.branch_group IS NULL AND target_nodes.branch_group IS NULL)
+       )
+    UNION ALL
+    SELECT target_nodes.node_id, core_seed.core_tag AS tag_name
+    FROM target_nodes
+    JOIN core_tag_seed core_seed
+        ON core_seed.sort_order = target_nodes.sort_order
+       AND (
+           core_seed.branch_group = target_nodes.branch_group
+           OR (core_seed.branch_group IS NULL AND target_nodes.branch_group IS NULL)
+       )
+)
+SELECT DISTINCT node_tags.node_id, tag_item.tag_id
+FROM node_tag_candidates node_tags
+JOIN tags tag_item ON tag_item.name = node_tags.tag_name
+WHERE NOT EXISTS (
+    SELECT 1
+    FROM node_required_tags existing
+    WHERE existing.node_id = node_tags.node_id
+      AND existing.tag_id = tag_item.tag_id
+);
+
+-- Roadmap Hub official roadmap free reference resources
+-- Adds primary official/free documentation links to every node of each official roadmap.
+INSERT INTO roadmap_node_resources (
+    node_id, title, url, description, source_type, sort_order, active, created_at, updated_at
+)
+WITH roadmap_resource_seed(roadmap_title, resource_title, url, description, source_type, sort_order) AS (
+    VALUES
+        ('Frontend Entry Roadmap', 'MDN Web Docs', 'https://developer.mozilla.org/en-US/docs/Web', 'Free web platform reference for HTML, CSS, JavaScript, Web APIs, performance, and security.', 'DOCS', 1),
+        ('Frontend Entry Roadmap', 'React Learn', 'https://react.dev/learn', 'Official React learning path for component-based UI development.', 'OFFICIAL', 2),
+        ('Backend Master Roadmap', 'Spring Boot Reference', 'https://docs.spring.io/spring-boot/index.html', 'Official Spring Boot reference for backend application development and production features.', 'OFFICIAL', 1),
+        ('Backend Master Roadmap', 'Java Documentation', 'https://docs.oracle.com/en/java/', 'Official Java documentation for language, platform, and standard library references.', 'OFFICIAL', 2),
+        ('Full Stack', 'MDN Web Docs', 'https://developer.mozilla.org/en-US/docs/Web', 'Free web platform reference for full stack developers working across browser and API boundaries.', 'DOCS', 1),
+        ('Full Stack', 'Spring Boot Reference', 'https://docs.spring.io/spring-boot/index.html', 'Official backend reference for building APIs and production-ready services.', 'OFFICIAL', 2),
+        ('DevOps', 'Docker Docs', 'https://docs.docker.com/', 'Official Docker documentation for images, containers, Compose, and build workflows.', 'OFFICIAL', 1),
+        ('DevOps', 'Kubernetes Documentation', 'https://kubernetes.io/docs/home/', 'Official Kubernetes documentation for deployment, scaling, services, and cluster operations.', 'OFFICIAL', 2),
+        ('DevSecOps', 'OWASP Top 10', 'https://owasp.org/www-project-top-ten/', 'Free OWASP reference for common web application security risks and mitigations.', 'OFFICIAL', 1),
+        ('DevSecOps', 'Kubernetes Security Documentation', 'https://kubernetes.io/docs/concepts/security/', 'Official Kubernetes security concepts for workloads, access, policy, and cluster hardening.', 'OFFICIAL', 2),
+        ('Data Analyst', 'Pandas Documentation', 'https://pandas.pydata.org/docs/', 'Official pandas documentation for tabular data analysis and transformation.', 'OFFICIAL', 1),
+        ('Data Analyst', 'Power BI Documentation', 'https://learn.microsoft.com/en-us/power-bi/', 'Microsoft Learn documentation for Power BI modeling, visualization, and reporting.', 'OFFICIAL', 2),
+        ('AI Engineer', 'OpenAI API Documentation', 'https://platform.openai.com/docs', 'Official OpenAI API documentation for models, prompting, tool use, and production integration.', 'OFFICIAL', 1),
+        ('AI Engineer', 'Anthropic Claude Documentation', 'https://docs.anthropic.com/en/docs/overview', 'Official Anthropic documentation for building with Claude and AI workflows.', 'OFFICIAL', 2),
+        ('AI and Data Scientist', 'Scikit-learn User Guide', 'https://scikit-learn.org/stable/user_guide.html', 'Official scikit-learn guide for classical machine learning workflows.', 'OFFICIAL', 1),
+        ('AI and Data Scientist', 'Pandas Documentation', 'https://pandas.pydata.org/docs/', 'Official pandas documentation for data preparation, exploration, and analysis.', 'OFFICIAL', 2),
+        ('Data Engineer', 'Apache Spark Documentation', 'https://spark.apache.org/docs/latest/', 'Official Spark documentation for distributed data processing.', 'OFFICIAL', 1),
+        ('Data Engineer', 'Apache Airflow Documentation', 'https://airflow.apache.org/docs/', 'Official Airflow documentation for workflow scheduling and data pipeline orchestration.', 'OFFICIAL', 2),
+        ('Android', 'Android Developers Documentation', 'https://developer.android.com/docs', 'Official Android developer documentation for app architecture, UI, storage, and platform APIs.', 'OFFICIAL', 1),
+        ('Android', 'Kotlin Documentation', 'https://kotlinlang.org/docs/home.html', 'Official Kotlin documentation for language features used in Android development.', 'OFFICIAL', 2),
+        ('Machine Learning', 'Scikit-learn User Guide', 'https://scikit-learn.org/stable/user_guide.html', 'Official scikit-learn guide for modeling, validation, and preprocessing.', 'OFFICIAL', 1),
+        ('Machine Learning', 'PyTorch Tutorials', 'https://pytorch.org/tutorials/', 'Official PyTorch tutorials for deep learning implementation and experimentation.', 'OFFICIAL', 2),
+        ('PostgreSQL', 'PostgreSQL Documentation', 'https://www.postgresql.org/docs/', 'Official PostgreSQL documentation for SQL, indexes, transactions, and administration.', 'OFFICIAL', 1),
+        ('PostgreSQL', 'PostgreSQL Tutorial', 'https://www.postgresql.org/docs/current/tutorial.html', 'Official PostgreSQL tutorial for practical database fundamentals.', 'OFFICIAL', 2),
+        ('iOS', 'Apple Developer Documentation', 'https://developer.apple.com/documentation/', 'Official Apple developer documentation for iOS frameworks and platform APIs.', 'OFFICIAL', 1),
+        ('iOS', 'Swift Documentation', 'https://developer.apple.com/swift/', 'Apple Swift documentation and learning resources for iOS development.', 'OFFICIAL', 2),
+        ('Blockchain', 'Ethereum Developer Documentation', 'https://ethereum.org/developers/docs/', 'Ethereum documentation for smart contracts, accounts, transactions, and dapps.', 'DOCS', 1),
+        ('Blockchain', 'Solidity Documentation', 'https://docs.soliditylang.org/', 'Official Solidity documentation for smart contract language fundamentals.', 'OFFICIAL', 2),
+        ('QA', 'Playwright Documentation', 'https://playwright.dev/docs/intro', 'Official Playwright documentation for reliable browser and end-to-end testing.', 'OFFICIAL', 1),
+        ('QA', 'Selenium Documentation', 'https://www.selenium.dev/documentation/', 'Official Selenium documentation for browser automation and test architecture.', 'OFFICIAL', 2),
+        ('Software Architect', 'AWS Well-Architected Framework', 'https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html', 'AWS guidance for reliability, security, performance, cost, and operational excellence.', 'OFFICIAL', 1),
+        ('Software Architect', 'Microsoft Azure Architecture Center', 'https://learn.microsoft.com/en-us/azure/architecture/', 'Microsoft architecture guidance for cloud application design and system patterns.', 'OFFICIAL', 2),
+        ('Cyber Security', 'OWASP Top 10', 'https://owasp.org/www-project-top-ten/', 'Free OWASP reference for common application security risks.', 'OFFICIAL', 1),
+        ('Cyber Security', 'NIST Cybersecurity Framework', 'https://www.nist.gov/cyberframework', 'NIST cybersecurity framework reference for identifying and managing security risk.', 'OFFICIAL', 2),
+        ('UX Design', 'Material Design', 'https://m3.material.io/', 'Google Material Design guidance for accessible interface components and interaction patterns.', 'OFFICIAL', 1),
+        ('UX Design', 'W3C Web Accessibility Initiative', 'https://www.w3.org/WAI/fundamentals/', 'W3C accessibility fundamentals for inclusive UX decisions.', 'OFFICIAL', 2),
+        ('Technical Writer', 'Google Developer Documentation Style Guide', 'https://developers.google.com/style', 'Google style guide for clear developer documentation.', 'OFFICIAL', 1),
+        ('Technical Writer', 'Microsoft Writing Style Guide', 'https://learn.microsoft.com/en-us/style-guide/welcome/', 'Microsoft writing guidance for concise, consistent technical content.', 'OFFICIAL', 2),
+        ('Game Developer', 'Unity Manual', 'https://docs.unity3d.com/Manual/UnityManual.html', 'Official Unity manual for game object, scene, asset, and build workflows.', 'OFFICIAL', 1),
+        ('Game Developer', 'Unreal Engine Documentation', 'https://dev.epicgames.com/documentation/en-us/unreal-engine/', 'Official Unreal Engine documentation for gameplay systems and production workflows.', 'OFFICIAL', 2),
+        ('Server Side Game Developer', 'Unity Netcode Documentation', 'https://docs-multiplayer.unity3d.com/netcode/current/about/', 'Official Unity Netcode documentation for multiplayer and server-aware game systems.', 'OFFICIAL', 1),
+        ('Server Side Game Developer', 'Nakama Documentation', 'https://docs.nakama.io/', 'Free Nakama documentation for realtime multiplayer, authentication, and game server features.', 'DOCS', 2),
+        ('MLOps', 'MLflow Documentation', 'https://mlflow.org/docs/latest/index.html', 'Official MLflow documentation for experiment tracking, model packaging, and registry workflows.', 'OFFICIAL', 1),
+        ('MLOps', 'Kubeflow Documentation', 'https://www.kubeflow.org/docs/', 'Kubeflow documentation for ML workflows on Kubernetes.', 'DOCS', 2),
+        ('Product Manager', 'Atlassian Product Management Guide', 'https://www.atlassian.com/agile/product-management', 'Free product management guide for discovery, prioritization, and delivery collaboration.', 'DOCS', 1),
+        ('Product Manager', 'Atlassian Agile Guide', 'https://www.atlassian.com/agile', 'Free agile product delivery guide for backlog, iteration, and team coordination.', 'DOCS', 2),
+        ('Engineering Manager', 'Google Engineering Practices', 'https://google.github.io/eng-practices/', 'Free Google engineering practices for code review, readability, and engineering quality.', 'DOCS', 1),
+        ('Engineering Manager', 'Microsoft Engineering Playbook', 'https://github.com/microsoft/code-with-engineering-playbook', 'Free Microsoft engineering playbook for team practices and delivery standards.', 'DOCS', 2),
+        ('Developer Relations', 'Google Developer Communities', 'https://developers.google.com/community', 'Google developer community material for programs, events, and developer engagement.', 'OFFICIAL', 1),
+        ('Developer Relations', 'GitHub Community Documentation', 'https://docs.github.com/en/communities', 'GitHub documentation for community health, contribution workflows, and collaboration.', 'OFFICIAL', 2),
+        ('BI Analyst', 'Power BI Documentation', 'https://learn.microsoft.com/en-us/power-bi/', 'Microsoft Power BI documentation for modeling, dashboards, and analytics reports.', 'OFFICIAL', 1),
+        ('BI Analyst', 'Tableau Help', 'https://help.tableau.com/current/guides/get-started-tutorial/en-us/get-started-tutorial-home.htm', 'Free Tableau getting started guide for BI dashboard creation.', 'DOCS', 2),
+        ('SQL', 'PostgreSQL Documentation', 'https://www.postgresql.org/docs/', 'Official PostgreSQL documentation for SQL, transactions, indexes, and query behavior.', 'OFFICIAL', 1),
+        ('SQL', 'SQLite Documentation', 'https://www.sqlite.org/docs.html', 'Official SQLite documentation for SQL features and embedded database behavior.', 'OFFICIAL', 2),
+        ('Computer Science', 'CS50', 'https://cs50.harvard.edu/x/', 'Free Harvard CS50 course material for computer science fundamentals.', 'DOCS', 1),
+        ('Computer Science', 'MIT OpenCourseWare Computer Science', 'https://ocw.mit.edu/search/?d=Electrical%20Engineering%20and%20Computer%20Science', 'Free MIT OpenCourseWare materials for computer science and engineering foundations.', 'DOCS', 2),
+        ('React', 'React Learn', 'https://react.dev/learn', 'Official React learning path for components, state, effects, and UI composition.', 'OFFICIAL', 1),
+        ('React', 'React Reference', 'https://react.dev/reference/react', 'Official React API reference for hooks, components, and runtime APIs.', 'OFFICIAL', 2),
+        ('Vue', 'Vue Guide', 'https://vuejs.org/guide/introduction.html', 'Official Vue guide for progressive UI development and component patterns.', 'OFFICIAL', 1),
+        ('Vue', 'Vue API Reference', 'https://vuejs.org/api/', 'Official Vue API reference for application, reactivity, and component APIs.', 'OFFICIAL', 2),
+        ('Angular', 'Angular Overview', 'https://angular.dev/overview', 'Official Angular documentation for framework concepts and application structure.', 'OFFICIAL', 1),
+        ('Angular', 'Angular Tutorials', 'https://angular.dev/tutorials', 'Official Angular tutorials for component and application implementation.', 'OFFICIAL', 2),
+        ('JavaScript', 'MDN JavaScript', 'https://developer.mozilla.org/en-US/docs/Web/JavaScript', 'MDN JavaScript reference for language fundamentals and browser use.', 'DOCS', 1),
+        ('JavaScript', 'ECMAScript Specification', 'https://tc39.es/ecma262/', 'Official ECMAScript language specification for JavaScript semantics.', 'OFFICIAL', 2),
+        ('TypeScript', 'TypeScript Documentation', 'https://www.typescriptlang.org/docs/', 'Official TypeScript documentation and handbook entry point.', 'OFFICIAL', 1),
+        ('TypeScript', 'TypeScript Handbook', 'https://www.typescriptlang.org/docs/handbook/intro.html', 'Official TypeScript handbook for types, generics, narrowing, and project structure.', 'OFFICIAL', 2),
+        ('Node.js', 'Node.js Learn', 'https://nodejs.org/en/learn', 'Official Node.js learning material for runtime fundamentals and application patterns.', 'OFFICIAL', 1),
+        ('Node.js', 'Node.js API Documentation', 'https://nodejs.org/api/', 'Official Node.js API reference for runtime modules and server-side JavaScript APIs.', 'OFFICIAL', 2),
+        ('Python', 'Python Documentation', 'https://docs.python.org/3/', 'Official Python documentation for language, standard library, and tutorials.', 'OFFICIAL', 1),
+        ('Python', 'Python Tutorial', 'https://docs.python.org/3/tutorial/', 'Official Python tutorial for language fundamentals and idiomatic usage.', 'OFFICIAL', 2),
+        ('System Design', 'AWS Well-Architected Framework', 'https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html', 'AWS framework for designing secure, reliable, efficient, and cost-aware systems.', 'OFFICIAL', 1),
+        ('System Design', 'Azure Architecture Center', 'https://learn.microsoft.com/en-us/azure/architecture/', 'Microsoft guidance for cloud system architecture patterns and tradeoffs.', 'OFFICIAL', 2),
+        ('Java', 'Java Documentation', 'https://docs.oracle.com/en/java/', 'Official Java documentation for platform and language references.', 'OFFICIAL', 1),
+        ('Java', 'Oracle Java Tutorials', 'https://docs.oracle.com/javase/tutorial/', 'Oracle Java tutorials for core language and platform fundamentals.', 'OFFICIAL', 2),
+        ('ASP.NET Core', 'ASP.NET Core Documentation', 'https://learn.microsoft.com/en-us/aspnet/core/', 'Microsoft documentation for ASP.NET Core web applications and APIs.', 'OFFICIAL', 1),
+        ('ASP.NET Core', '.NET Documentation', 'https://learn.microsoft.com/en-us/dotnet/', 'Microsoft .NET documentation for runtime, libraries, and application development.', 'OFFICIAL', 2),
+        ('API Design', 'OpenAPI Specification', 'https://spec.openapis.org/oas/latest.html', 'Official OpenAPI specification for describing HTTP APIs.', 'OFFICIAL', 1),
+        ('API Design', 'Microsoft REST API Guidelines', 'https://github.com/microsoft/api-guidelines', 'Free Microsoft API design guidelines for RESTful service consistency.', 'DOCS', 2),
+        ('Spring Boot', 'Spring Boot Reference', 'https://docs.spring.io/spring-boot/index.html', 'Official Spring Boot reference for application development and operations.', 'OFFICIAL', 1),
+        ('Spring Boot', 'Spring Guides', 'https://spring.io/guides', 'Official Spring guides for practical framework examples.', 'OFFICIAL', 2),
+        ('Flutter', 'Flutter Documentation', 'https://docs.flutter.dev/', 'Official Flutter documentation for UI, platform integration, state, and deployment.', 'OFFICIAL', 1),
+        ('Flutter', 'Dart Documentation', 'https://dart.dev/guides', 'Official Dart documentation for the language and ecosystem used by Flutter.', 'OFFICIAL', 2),
+        ('C++', 'Cppreference', 'https://en.cppreference.com/w/', 'Free C++ language and standard library reference.', 'DOCS', 1),
+        ('C++', 'ISO C++ Get Started', 'https://isocpp.org/get-started', 'Free ISO C++ getting started resources and language guidance.', 'DOCS', 2),
+        ('Rust', 'The Rust Book', 'https://doc.rust-lang.org/book/', 'Official Rust book for ownership, borrowing, lifetimes, and practical Rust programming.', 'OFFICIAL', 1),
+        ('Rust', 'Rust Standard Library', 'https://doc.rust-lang.org/std/', 'Official Rust standard library reference.', 'OFFICIAL', 2),
+        ('Go Roadmap', 'Go Documentation', 'https://go.dev/doc/', 'Official Go documentation for language, tools, modules, and effective usage.', 'OFFICIAL', 1),
+        ('Go Roadmap', 'Effective Go', 'https://go.dev/doc/effective_go', 'Official guide to idiomatic Go programming practices.', 'OFFICIAL', 2),
+        ('Design and Architecture', 'AWS Well-Architected Framework', 'https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html', 'AWS architecture guidance for tradeoff-driven system design.', 'OFFICIAL', 1),
+        ('Design and Architecture', 'Azure Architecture Center', 'https://learn.microsoft.com/en-us/azure/architecture/', 'Microsoft architecture center for design patterns and reference architectures.', 'OFFICIAL', 2),
+        ('GraphQL', 'GraphQL Learn', 'https://graphql.org/learn/', 'Official GraphQL learning material for schemas, queries, mutations, and execution.', 'OFFICIAL', 1),
+        ('GraphQL', 'GraphQL Specification', 'https://spec.graphql.org/', 'Official GraphQL specification reference.', 'OFFICIAL', 2),
+        ('React Native', 'React Native Documentation', 'https://reactnative.dev/docs/getting-started', 'Official React Native documentation for native app development with React.', 'OFFICIAL', 1),
+        ('React Native', 'Expo Documentation', 'https://docs.expo.dev/', 'Official Expo documentation for React Native tooling and app delivery.', 'OFFICIAL', 2),
+        ('Design System', 'Material Design', 'https://m3.material.io/', 'Google Material Design system guidance for components, patterns, and accessibility.', 'OFFICIAL', 1),
+        ('Design System', 'Storybook Documentation', 'https://storybook.js.org/docs', 'Official Storybook documentation for component-driven UI development.', 'OFFICIAL', 2),
+        ('Prompt Engineering', 'OpenAI Prompt Engineering Guide', 'https://platform.openai.com/docs/guides/prompt-engineering', 'OpenAI guide for prompt design and model instruction patterns.', 'OFFICIAL', 1),
+        ('Prompt Engineering', 'Anthropic Prompt Engineering', 'https://docs.anthropic.com/en/docs/build-with-claude/prompt-engineering/overview', 'Anthropic guide for structuring prompts and improving Claude responses.', 'OFFICIAL', 2),
+        ('MongoDB', 'MongoDB Documentation', 'https://www.mongodb.com/docs/', 'Official MongoDB documentation for data modeling, queries, indexes, and operations.', 'OFFICIAL', 1),
+        ('MongoDB', 'MongoDB Manual', 'https://www.mongodb.com/docs/manual/', 'Official MongoDB manual for server behavior and database features.', 'OFFICIAL', 2),
+        ('Linux', 'Linux man-pages', 'https://man7.org/linux/man-pages/', 'Free Linux manual pages for commands, system calls, and core operating system behavior.', 'DOCS', 1),
+        ('Linux', 'GNU Bash Manual', 'https://www.gnu.org/software/bash/manual/bash.html', 'Official GNU Bash manual for shell usage and scripting fundamentals.', 'OFFICIAL', 2),
+        ('Kubernetes', 'Kubernetes Documentation', 'https://kubernetes.io/docs/home/', 'Official Kubernetes documentation for workloads, networking, storage, and operations.', 'OFFICIAL', 1),
+        ('Kubernetes', 'Kubernetes Concepts', 'https://kubernetes.io/docs/concepts/', 'Official Kubernetes concepts guide for cluster architecture and resource models.', 'OFFICIAL', 2),
+        ('Docker', 'Docker Docs', 'https://docs.docker.com/', 'Official Docker documentation for container development and operations.', 'OFFICIAL', 1),
+        ('Docker', 'Dockerfile Reference', 'https://docs.docker.com/reference/dockerfile/', 'Official Dockerfile reference for image build instructions.', 'OFFICIAL', 2),
+        ('AWS', 'AWS Documentation', 'https://docs.aws.amazon.com/', 'Official AWS documentation entry point for cloud services.', 'OFFICIAL', 1),
+        ('AWS', 'AWS Well-Architected Framework', 'https://docs.aws.amazon.com/wellarchitected/latest/framework/welcome.html', 'AWS framework for secure, reliable, performant, and cost-aware cloud design.', 'OFFICIAL', 2),
+        ('Terraform', 'Terraform Documentation', 'https://developer.hashicorp.com/terraform/docs', 'Official Terraform documentation for infrastructure as code workflows.', 'OFFICIAL', 1),
+        ('Terraform', 'Terraform AWS Provider Documentation', 'https://registry.terraform.io/providers/hashicorp/aws/latest/docs', 'Official Terraform Registry documentation for AWS provider resources.', 'OFFICIAL', 2),
+        ('Data Structures & Algorithms', 'VisuAlgo', 'https://visualgo.net/en', 'Free visual explanations for core data structures and algorithms.', 'DOCS', 1),
+        ('Data Structures & Algorithms', 'CP Algorithms', 'https://cp-algorithms.com/', 'Free algorithm reference covering graph, dynamic programming, math, and data structures.', 'DOCS', 2),
+        ('Redis', 'Redis Documentation', 'https://redis.io/docs/latest/', 'Official Redis documentation for data structures, commands, and deployment concepts.', 'OFFICIAL', 1),
+        ('Redis', 'Redis Commands', 'https://redis.io/docs/latest/commands/', 'Official Redis command reference.', 'OFFICIAL', 2),
+        ('Git and GitHub', 'Git Documentation', 'https://git-scm.com/doc', 'Official Git documentation and book for version control workflows.', 'OFFICIAL', 1),
+        ('Git and GitHub', 'GitHub Docs', 'https://docs.github.com/en', 'Official GitHub documentation for repositories, pull requests, actions, and collaboration.', 'OFFICIAL', 2),
+        ('PHP', 'PHP Documentation', 'https://www.php.net/docs.php', 'Official PHP documentation for language and standard library references.', 'OFFICIAL', 1),
+        ('PHP', 'PHP The Right Way', 'https://phptherightway.com/', 'Free community guide for modern PHP practices.', 'DOCS', 2),
+        ('Cloudflare', 'Cloudflare Docs', 'https://developers.cloudflare.com/', 'Official Cloudflare developer documentation for edge, security, and deployment products.', 'OFFICIAL', 1),
+        ('Cloudflare', 'Cloudflare Workers Docs', 'https://developers.cloudflare.com/workers/', 'Official Cloudflare Workers documentation for edge compute applications.', 'OFFICIAL', 2),
+        ('AI Red Teaming', 'OWASP LLM Top 10', 'https://owasp.org/www-project-top-10-for-large-language-model-applications/', 'OWASP guidance for common LLM application risks and mitigations.', 'OFFICIAL', 1),
+        ('AI Red Teaming', 'NIST AI Risk Management Framework', 'https://www.nist.gov/itl/ai-risk-management-framework', 'NIST framework for managing AI system risks.', 'OFFICIAL', 2),
+        ('AI Agents', 'OpenAI Agents Guide', 'https://platform.openai.com/docs/guides/agents', 'OpenAI guide for building agentic workflows and tool-using AI systems.', 'OFFICIAL', 1),
+        ('AI Agents', 'LangChain Documentation', 'https://python.langchain.com/docs/', 'LangChain documentation for agent and orchestration patterns.', 'DOCS', 2),
+        ('Next.js', 'Next.js Documentation', 'https://nextjs.org/docs', 'Official Next.js documentation for routing, rendering, data fetching, and deployment.', 'OFFICIAL', 1),
+        ('Next.js', 'React Learn', 'https://react.dev/learn', 'Official React learning path for the UI foundation used by Next.js.', 'OFFICIAL', 2),
+        ('Code Review', 'Google Engineering Practices Code Review', 'https://google.github.io/eng-practices/review/', 'Free Google guidance for code review process and reviewer expectations.', 'DOCS', 1),
+        ('Code Review', 'GitHub Pull Request Reviews', 'https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/reviewing-changes-in-pull-requests', 'Official GitHub documentation for reviewing changes in pull requests.', 'OFFICIAL', 2),
+        ('Kotlin', 'Kotlin Documentation', 'https://kotlinlang.org/docs/home.html', 'Official Kotlin documentation for language, multiplatform, and tooling fundamentals.', 'OFFICIAL', 1),
+        ('Kotlin', 'Android Kotlin Guide', 'https://developer.android.com/kotlin', 'Official Android Kotlin guide for app development.', 'OFFICIAL', 2),
+        ('HTML', 'MDN HTML', 'https://developer.mozilla.org/en-US/docs/Web/HTML', 'MDN HTML reference for semantic markup and web document structure.', 'DOCS', 1),
+        ('HTML', 'WHATWG HTML Standard', 'https://html.spec.whatwg.org/', 'Living HTML standard for browser behavior and markup semantics.', 'OFFICIAL', 2),
+        ('CSS', 'MDN CSS', 'https://developer.mozilla.org/en-US/docs/Web/CSS', 'MDN CSS reference for styling, layout, animation, and responsive design.', 'DOCS', 1),
+        ('CSS', 'CSS Working Group Drafts', 'https://drafts.csswg.org/', 'W3C CSS Working Group drafts and specifications.', 'OFFICIAL', 2),
+        ('Swift & Swift UI', 'Swift Documentation', 'https://developer.apple.com/swift/', 'Apple Swift documentation and language resources.', 'OFFICIAL', 1),
+        ('Swift & Swift UI', 'SwiftUI Documentation', 'https://developer.apple.com/documentation/swiftui/', 'Official Apple SwiftUI framework documentation.', 'OFFICIAL', 2),
+        ('Shell / Bash', 'GNU Bash Manual', 'https://www.gnu.org/software/bash/manual/bash.html', 'Official GNU Bash manual for shell scripting and command behavior.', 'OFFICIAL', 1),
+        ('Shell / Bash', 'ShellCheck Wiki', 'https://www.shellcheck.net/wiki/Home', 'Free ShellCheck reference for shell script diagnostics and best practices.', 'DOCS', 2),
+        ('Laravel', 'Laravel Documentation', 'https://laravel.com/docs', 'Official Laravel documentation for framework fundamentals and application development.', 'OFFICIAL', 1),
+        ('Laravel', 'PHP Documentation', 'https://www.php.net/docs.php', 'Official PHP language and standard library documentation used by Laravel developers.', 'OFFICIAL', 2),
+        ('Elasticsearch', 'Elastic Docs', 'https://www.elastic.co/guide/', 'Official Elastic documentation for Elasticsearch, search, ingest, and operations.', 'OFFICIAL', 1),
+        ('Elasticsearch', 'Elasticsearch Guide', 'https://www.elastic.co/guide/en/elasticsearch/reference/current/index.html', 'Official Elasticsearch reference guide.', 'OFFICIAL', 2),
+        ('WordPress', 'WordPress Developer Resources', 'https://developer.wordpress.org/', 'Official WordPress developer resources for themes, plugins, APIs, and blocks.', 'OFFICIAL', 1),
+        ('WordPress', 'Learn WordPress', 'https://learn.wordpress.org/', 'Free WordPress learning materials and tutorials.', 'DOCS', 2),
+        ('Django', 'Django Getting Started', 'https://www.djangoproject.com/start/', 'Official Django getting started resources.', 'OFFICIAL', 1),
+        ('Django', 'Django Documentation', 'https://docs.djangoproject.com/en/stable/', 'Official Django documentation for models, views, templates, and deployment.', 'OFFICIAL', 2),
+        ('Ruby', 'Ruby Documentation', 'https://www.ruby-lang.org/en/documentation/', 'Official Ruby documentation entry point.', 'OFFICIAL', 1),
+        ('Ruby', 'Ruby in Twenty Minutes', 'https://www.ruby-lang.org/en/documentation/quickstart/', 'Official Ruby quickstart tutorial.', 'OFFICIAL', 2),
+        ('Ruby on Rails', 'Ruby on Rails Guides', 'https://guides.rubyonrails.org/', 'Official Rails guides for MVC, Active Record, routing, and deployment.', 'OFFICIAL', 1),
+        ('Ruby on Rails', 'Ruby Documentation', 'https://www.ruby-lang.org/en/documentation/', 'Official Ruby documentation for the language foundation behind Rails.', 'OFFICIAL', 2),
+        ('Claude Code', 'Claude Code Documentation', 'https://docs.anthropic.com/en/docs/claude-code/overview', 'Official Anthropic Claude Code documentation for setup and agentic coding workflows.', 'OFFICIAL', 1),
+        ('Claude Code', 'Claude Code Web Docs', 'https://code.claude.com/docs', 'Claude Code documentation for terminal, IDE, and browser workflows.', 'OFFICIAL', 2),
+        ('Vibe Coding', 'Claude Code Documentation', 'https://docs.anthropic.com/en/docs/claude-code/overview', 'Official Claude Code documentation for AI-assisted coding workflows.', 'OFFICIAL', 1),
+        ('Vibe Coding', 'OpenAI API Documentation', 'https://platform.openai.com/docs', 'Official OpenAI API documentation for AI coding assistants and workflow automation.', 'OFFICIAL', 2),
+        ('Scala', 'Scala Documentation', 'https://docs.scala-lang.org/', 'Official Scala documentation and learning material.', 'OFFICIAL', 1),
+        ('Scala', 'Scala 3 Book', 'https://docs.scala-lang.org/scala3/book/introduction.html', 'Official Scala 3 book for language fundamentals.', 'OFFICIAL', 2),
+        ('OpenClaw', 'GitHub OpenClaw Search', 'https://github.com/search?q=OpenClaw&type=repositories', 'Free GitHub search entry for OpenClaw-related repositories and examples.', 'LINK', 1),
+        ('OpenClaw', 'Open Source Guides', 'https://opensource.guide/', 'Free guide for evaluating and contributing to open source projects.', 'DOCS', 2)
+)
+SELECT
+    rn.node_id,
+    seed.resource_title,
+    seed.url,
+    seed.description,
+    seed.source_type,
+    seed.sort_order,
+    TRUE,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+FROM roadmap_resource_seed seed
+JOIN roadmaps r ON r.title = seed.roadmap_title
+JOIN roadmap_nodes rn ON rn.roadmap_id = r.roadmap_id
+WHERE r.is_official = TRUE
+  AND r.is_deleted = FALSE
+  AND NOT EXISTS (
+      SELECT 1
+      FROM roadmap_node_resources existing
+      WHERE existing.node_id = rn.node_id
+        AND existing.url = seed.url
+  );

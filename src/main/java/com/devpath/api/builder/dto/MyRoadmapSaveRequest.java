@@ -22,8 +22,9 @@ public class MyRoadmapSaveRequest {
   @NoArgsConstructor
   public static class ModuleItem {
 
-    @jakarta.validation.constraints.NotNull
     private Long builderModuleId;
+
+    private Long originalNodeId;
 
     private int sortOrder;
 

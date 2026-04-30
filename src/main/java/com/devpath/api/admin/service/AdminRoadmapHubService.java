@@ -13,6 +13,7 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AdminRoadmapHubService {
 
   private static final Set<String> SUPPORTED_LAYOUT_TYPES = Set.of("CARD_GRID", "CHIP_GRID", "LINK_LIST");
+  private static final Pattern HEX_COLOR_PATTERN = Pattern.compile("^#[0-9a-fA-F]{6}$");
 
   private final RoadmapHubSectionRepository roadmapHubSectionRepository;
   private final RoadmapHubItemRepository roadmapHubItemRepository;
@@ -81,6 +83,7 @@ public class AdminRoadmapHubService {
               .title(normalizeRequiredValue(itemRequest == null ? null : itemRequest.getTitle()))
               .subtitle(normalizeOptionalValue(itemRequest == null ? null : itemRequest.getSubtitle()))
               .iconClass(normalizeOptionalValue(itemRequest == null ? null : itemRequest.getIconClass()))
+              .iconColor(normalizeColorValue(itemRequest == null ? null : itemRequest.getIconColor()))
               .sortOrder(normalizeSortOrder(itemRequest == null ? null : itemRequest.getSortOrder(), itemIndex))
               .active(itemRequest == null || itemRequest.getActive() == null || itemRequest.getActive())
               .featured(itemRequest != null && Boolean.TRUE.equals(itemRequest.getFeatured()))
@@ -120,6 +123,19 @@ public class AdminRoadmapHubService {
     }
 
     return value.trim();
+  }
+
+  private String normalizeColorValue(String value) {
+    String normalized = normalizeOptionalValue(value);
+    if (normalized == null) {
+      return null;
+    }
+
+    if (!HEX_COLOR_PATTERN.matcher(normalized).matches()) {
+      throw new CustomException(ErrorCode.INVALID_INPUT);
+    }
+
+    return normalized.toUpperCase(Locale.ROOT);
   }
 
   private String normalizeLayoutType(String value) {

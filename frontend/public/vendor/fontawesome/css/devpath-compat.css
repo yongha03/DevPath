@@ -111,3 +111,51 @@
 .fa-wand-magic-sparkles:before {
   content: "\f0d0";
 }
+
+.devpath-tech-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: Arial, Helvetica, sans-serif;
+  font-style: normal;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0;
+  text-rendering: geometricPrecision;
+}
+
+.devpath-tech-icon:before {
+  display: inline-block;
+  font-size: 0.7em;
+  line-height: 1;
+}
+
+.devpath-icon-ts:before {
+  content: "TS";
+}
+
+.devpath-icon-go:before {
+  content: "Go";
+}
+
+.devpath-icon-next:before {
+  content: "N";
+  font-size: 0.78em;
+}
+
+.devpath-icon-kotlin:before {
+  content: "Kt";
+}
+
+.devpath-icon-bash:before {
+  content: "$_";
+  font-size: 0.72em;
+}
+
+.devpath-icon-claude:before {
+  content: "CC";
+}
+
+.devpath-icon-openclaw:before {
+  content: "OC";
+}

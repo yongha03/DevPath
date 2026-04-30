@@ -48,6 +48,9 @@ public class QuestionCreateRequest {
     @Schema(description = "媛뺤쓽 ID", example = "1", nullable = true)
     private Long courseId;
 
+    @Schema(description = "질문을 남긴 레슨 ID", example = "10", nullable = true)
+    private Long lessonId;
+
     @Schema(description = "媛뺤쓽 ?쒖젏 紐⑥떇", example = "00:12:44", nullable = true)
     private String lectureTimestamp;
 }

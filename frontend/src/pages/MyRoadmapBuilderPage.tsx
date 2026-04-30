@@ -12,20 +12,33 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core'
 import { readStoredAuthSession } from '../lib/auth-session'
+import { roadmapApi } from '../lib/api'
+import type { RoadmapHubCatalog, RoadmapHubItem } from '../types/roadmap-hub'
+import type { OfficialRoadmapDetail, OfficialRoadmapNode } from '../types/roadmap'
 
 // ────────────────────────────────────────────
 // 타입 정의
 // ────────────────────────────────────────────
 
 interface SkillModule {
-  dbId: number        // builder_modules.id (저장 요청 시 사용)
-  id: string          // moduleId 문자열 (중복 방지 키)
+  dbId: number
+  source: 'BUILDER_MODULE' | 'OFFICIAL_NODE'
+  builderModuleId: number | null
+  originalNodeId: number | null
+  id: string
   title: string
   category: string
   icon: string
   color: string
   bgColor: string
   topics: string[]
+}
+
+interface RoadmapTemplate {
+  roadmapId: number
+  label: string
+  sectionTitle: string
+  item: RoadmapHubItem
 }
 
 interface BuilderNode {
@@ -46,24 +59,108 @@ type ActiveDrag =
   | { kind: 'NODE'; instanceId: string; sortOrder: number; branchGroup: number | null }
 
 // ────────────────────────────────────────────
-// 카테고리 옵션
+// 템플릿 매핑 유틸
 // ────────────────────────────────────────────
-
-const CATEGORY_OPTIONS = [
-  { value: 'frontend',      label: '프런트엔드 (Frontend)' },
-  { value: 'backend',       label: '백엔드 (Backend) ⭐추천' },
-  { value: 'devops',        label: '데브옵스 (DevOps)' },
-  { value: 'fullstack',     label: '풀스택 (Full Stack)' },
-  { value: 'ai',            label: 'AI 엔지니어 (AI Engineer)' },
-  { value: 'data_engineer', label: '데이터 엔지니어 (Data Engineer)' },
-  { value: 'android',       label: '안드로이드 (Android)' },
-  { value: 'ios',           label: 'iOS (iOS)' },
-  { value: 'game',          label: '게임 개발자 (Game Developer)' },
-  { value: 'blockchain',    label: '블록체인 (Blockchain)' },
-]
 
 function makeInstanceId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
+}
+
+function getModuleUsageKey(module: SkillModule) {
+  return `${module.source}:${module.source === 'OFFICIAL_NODE' ? module.originalNodeId : module.builderModuleId}`
+}
+
+function splitSubTopics(value?: string | null) {
+  if (!value) return []
+  return value
+    .split(/[,;|]/)
+    .map((topic) => topic.trim())
+    .filter(Boolean)
+}
+
+function getNodeVisual(node: OfficialRoadmapNode) {
+  if (node.branchGroup !== null && node.branchGroup !== undefined) {
+    return { icon: 'fas fa-code-branch', color: 'text-amber-500', bgColor: 'bg-amber-50' }
+  }
+
+  switch ((node.nodeType ?? '').toUpperCase()) {
+    case 'PRACTICE':
+      return { icon: 'fas fa-laptop-code', color: 'text-blue-500', bgColor: 'bg-blue-50' }
+    case 'PROJECT':
+      return { icon: 'fas fa-cubes', color: 'text-violet-500', bgColor: 'bg-violet-50' }
+    case 'ADVANCED':
+      return { icon: 'fas fa-layer-group', color: 'text-rose-500', bgColor: 'bg-rose-50' }
+    default:
+      return { icon: 'fas fa-book-open', color: 'text-[#00C471]', bgColor: 'bg-green-50' }
+  }
+}
+
+function mapOfficialNodeToModule(
+  detail: OfficialRoadmapDetail,
+  node: OfficialRoadmapNode,
+  template: RoadmapTemplate | null,
+): SkillModule {
+  const visual = getNodeVisual(node)
+  const topics = splitSubTopics(node.subTopics)
+
+  return {
+    dbId: -node.nodeId,
+    source: 'OFFICIAL_NODE',
+    builderModuleId: null,
+    originalNodeId: node.nodeId,
+    id: `official-${node.nodeId}`,
+    title: node.title,
+    category: template?.sectionTitle ?? detail.title,
+    icon: visual.icon,
+    color: visual.color,
+    bgColor: visual.bgColor,
+    topics: topics.length > 0 ? topics : [node.nodeType ?? detail.title],
+  }
+}
+
+function mapDetailToModules(
+  detail: OfficialRoadmapDetail,
+  template: RoadmapTemplate | null,
+) {
+  return [...detail.nodes]
+    .sort((a, b) => a.sortOrder - b.sortOrder || a.nodeId - b.nodeId)
+    .map((node) => mapOfficialNodeToModule(detail, node, template))
+}
+
+function buildRoadmapTemplates(catalog: RoadmapHubCatalog): RoadmapTemplate[] {
+  return catalog.sections
+    .filter((section) => section.active)
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .flatMap((section) =>
+      section.items
+        .filter((item) => item.active && item.linkedRoadmapId !== null)
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map((item) => ({
+          roadmapId: item.linkedRoadmapId as number,
+          label: item.title || item.linkedRoadmapTitle || `Roadmap ${item.linkedRoadmapId}`,
+          sectionTitle: section.title,
+          item,
+        })),
+    )
+}
+
+function filterRoadmapTemplates(
+  templates: RoadmapTemplate[],
+  section: string,
+  keyword: string,
+) {
+  const q = keyword.trim().toLowerCase()
+  return templates.filter((template) => {
+    const matchesSection = section === 'ALL' || template.sectionTitle === section
+    const matchesKeyword =
+      !q ||
+      template.label.toLowerCase().includes(q) ||
+      template.sectionTitle.toLowerCase().includes(q) ||
+      (template.item.subtitle ?? '').toLowerCase().includes(q) ||
+      (template.item.linkedRoadmapTitle ?? '').toLowerCase().includes(q)
+
+    return matchesSection && matchesKeyword
+  })
 }
 
 // ────────────────────────────────────────────
@@ -72,7 +169,10 @@ function makeInstanceId() {
 
 function MyRoadmapBuilderPage() {
   const [session] = useState(() => readStoredAuthSession())
-  const [category, setCategory] = useState('backend')
+  const [templates, setTemplates] = useState<RoadmapTemplate[]>([])
+  const [selectedRoadmapId, setSelectedRoadmapId] = useState<number | null>(null)
+  const [templateSearch, setTemplateSearch] = useState('')
+  const [templateSection, setTemplateSection] = useState('ALL')
   const [search, setSearch] = useState('')
   const [items, setItems] = useState<SkillModule[]>([])
   const [loading, setLoading] = useState(false)
@@ -94,36 +194,118 @@ function MyRoadmapBuilderPage() {
     useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
   )
 
-  // ── 카테고리 변경 시 API 호출 ──
-  useEffect(() => {
+  // ── 로드맵 허브 템플릿 API 호출 ──
+  const selectedTemplate = useMemo(
+    () => templates.find((template) => template.roadmapId === selectedRoadmapId) ?? null,
+    [templates, selectedRoadmapId],
+  )
+
+  const templateSections = useMemo(
+    () => Array.from(new Set(templates.map((template) => template.sectionTitle))),
+    [templates],
+  )
+
+  const filteredTemplates = useMemo(
+    () => filterRoadmapTemplates(templates, templateSection, templateSearch),
+    [templateSearch, templateSection, templates],
+  )
+
+  const templateOptions = filteredTemplates
+
+  const loadSelectedRoadmap = useCallback(
+    async (roadmapId: number, signal?: AbortSignal) => {
+      setLoading(true)
+      setFetchError(null)
+
+      try {
+        const detail = await roadmapApi.getOfficialRoadmapDetail(roadmapId, signal)
+        const template = templates.find((item) => item.roadmapId === roadmapId) ?? null
+        setItems(mapDetailToModules(detail, template))
+        setBranchTarget(null)
+      } catch (err) {
+        if (err instanceof DOMException && err.name === 'AbortError') return
+        setFetchError(err instanceof Error ? err.message : 'Failed to load roadmap template.')
+      } finally {
+        if (!signal?.aborted) setLoading(false)
+      }
+    },
+    [templates],
+  )
+
+  const loadRoadmapCatalog = useCallback(async (signal?: AbortSignal) => {
     setLoading(true)
     setFetchError(null)
-    fetch(`/api/builder/modules?category=${category}`, {
-      headers: { Authorization: `Bearer ${session?.accessToken ?? ''}` },
-    })
-      .then((res) => {
-        if (!res.ok) throw new Error(`서버 오류 (${res.status})`)
-        return res.json()
-      })
-      .then((data) => {
-        const raw = (data.data ?? []) as Array<{
-          id: number; moduleId: string; category: string; title: string
-          icon: string; color: string; bgColor: string; topics: string[]
-        }>
-        setItems(raw.map((m) => ({
-          dbId: m.id,
-          id: m.moduleId,
-          title: m.title,
-          category: m.category,
-          icon: m.icon,
-          color: m.color,
-          bgColor: m.bgColor,
-          topics: m.topics,
-        })))
-      })
-      .catch((err: Error) => setFetchError(err.message))
-      .finally(() => setLoading(false))
-  }, [category])
+
+    try {
+      const catalog = await roadmapApi.getHubCatalog(signal)
+      const nextTemplates = buildRoadmapTemplates(catalog)
+      setTemplates(nextTemplates)
+      setSelectedRoadmapId((current) =>
+        nextTemplates.some((template) => template.roadmapId === current)
+          ? current
+          : nextTemplates[0]?.roadmapId ?? null,
+      )
+      if (nextTemplates.length === 0) {
+        setItems([])
+        setNodes([])
+      }
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return
+      setFetchError(err instanceof Error ? err.message : 'Failed to load roadmap catalog.')
+    } finally {
+      if (!signal?.aborted) setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    const controller = new AbortController()
+    void loadRoadmapCatalog(controller.signal)
+    return () => controller.abort()
+  }, [loadRoadmapCatalog])
+
+  useEffect(() => {
+    if (selectedRoadmapId === null || templates.length === 0) return
+    const controller = new AbortController()
+    void loadSelectedRoadmap(selectedRoadmapId, controller.signal)
+    return () => controller.abort()
+  }, [loadSelectedRoadmap, selectedRoadmapId, templates.length])
+
+  const handleTemplateChange = useCallback((roadmapId: number) => {
+    if (!Number.isFinite(roadmapId) || roadmapId <= 0) return
+    setSelectedRoadmapId(roadmapId)
+    setSearch('')
+    setBranchTarget(null)
+  }, [])
+
+  const resetTemplateSelection = useCallback((nextSection: string, nextSearch: string) => {
+    const nextTemplates = filterRoadmapTemplates(templates, nextSection, nextSearch)
+    const nextRoadmapId = nextTemplates[0]?.roadmapId ?? null
+    setSelectedRoadmapId(nextRoadmapId)
+    setSearch('')
+    setBranchTarget(null)
+
+    if (nextRoadmapId === null) {
+      setItems([])
+    }
+  }, [templates])
+
+  const handleTemplateSearchChange = useCallback((value: string) => {
+    setTemplateSearch(value)
+    resetTemplateSelection(templateSection, value)
+  }, [resetTemplateSelection, templateSection])
+
+  const handleTemplateSectionChange = useCallback((value: string) => {
+    setTemplateSection(value)
+    resetTemplateSelection(value, templateSearch)
+  }, [resetTemplateSelection, templateSearch])
+
+  const reloadSelectedTemplate = useCallback(() => {
+    if (selectedRoadmapId !== null) {
+      void loadSelectedRoadmap(selectedRoadmapId)
+    } else {
+      void loadRoadmapCatalog()
+    }
+  }, [loadRoadmapCatalog, loadSelectedRoadmap, selectedRoadmapId])
 
   // 모달 열릴 때 포커스
   useEffect(() => {
@@ -133,7 +315,7 @@ function MyRoadmapBuilderPage() {
   }, [saveModalOpen])
 
   // dbId 기준 중복 방지 (크로스 카테고리 혼합 시에도 정확)
-  const usedIds = useMemo(() => new Set(nodes.map((n) => n.module.dbId)), [nodes])
+  const usedIds = useMemo(() => new Set(nodes.map((n) => getModuleUsageKey(n.module))), [nodes])
 
   const maxSortOrder = useMemo(
     () => (nodes.length === 0 ? 0 : Math.max(...nodes.map((n) => n.sortOrder))),
@@ -172,7 +354,7 @@ function MyRoadmapBuilderPage() {
   // 모듈 추가 (척추 or 분기)
   const handleAdd = useCallback(
     (module: SkillModule) => {
-      if (usedIds.has(module.dbId)) return
+      if (usedIds.has(getModuleUsageKey(module))) return
 
       if (branchTarget === null) {
         setNodes((prev) => [
@@ -293,7 +475,8 @@ function MyRoadmapBuilderPage() {
         body: JSON.stringify({
           title: roadmapTitle.trim(),
           modules: nodes.map((n) => ({
-            builderModuleId: n.module.dbId,
+            builderModuleId: n.module.source === 'BUILDER_MODULE' ? n.module.builderModuleId : null,
+            originalNodeId: n.module.source === 'OFFICIAL_NODE' ? n.module.originalNodeId : null,
             sortOrder: n.sortOrder,
             branchGroup: n.branchGroup,
           })),
@@ -334,7 +517,7 @@ function MyRoadmapBuilderPage() {
     const overId = String(over.id)
 
     if (drag.kind === 'MODULE') {
-      if (usedIds.has(drag.module.dbId)) return
+      if (usedIds.has(getModuleUsageKey(drag.module))) return
 
       if (overId.startsWith('gap-')) {
         const insertAfter = parseInt(overId.slice(4))
@@ -563,20 +746,58 @@ function MyRoadmapBuilderPage() {
             <label className="mb-2 block text-[10px] font-black uppercase tracking-widest text-gray-400">
               로드맵 템플릿 선택
             </label>
+            <div className="mb-2 grid grid-cols-1 gap-2">
+              <div className="relative">
+                <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400" />
+                <input
+                  type="text"
+                  value={templateSearch}
+                  onChange={(e) => handleTemplateSearchChange(e.target.value)}
+                  placeholder="템플릿 검색"
+                  className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-8 pr-3 text-xs font-bold text-gray-700 shadow-sm transition focus:border-[#00C471] focus:outline-none focus:ring-2 focus:ring-[#00C471]/20"
+                />
+              </div>
+              <select
+                value={templateSection}
+                onChange={(e) => handleTemplateSectionChange(e.target.value)}
+                disabled={templates.length === 0}
+                className="w-full min-w-0 cursor-pointer rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700 shadow-sm focus:border-[#00C471] focus:outline-none focus:ring-2 focus:ring-[#00C471]/20"
+              >
+                <option value="ALL">전체 분야</option>
+                {templateSections.map((section) => (
+                  <option key={section} value={section}>{section}</option>
+                ))}
+              </select>
+            </div>
             <div className="relative">
               <select
-                value={category}
-                onChange={(e) => { setCategory(e.target.value); setBranchTarget(null) }}
+                value={selectedRoadmapId ?? ''}
+                onChange={(e) => handleTemplateChange(Number(e.target.value))}
+                disabled={templates.length === 0}
                 className="w-full cursor-pointer appearance-none rounded-lg border border-gray-300 bg-white px-3 py-2.5 pr-8 text-sm font-bold text-gray-900 shadow-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#00C471]"
               >
-                {CATEGORY_OPTIONS.map((opt) => (
-                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                {templates.length === 0 && <option value="">로드맵 템플릿 없음</option>}
+                {templates.length > 0 && templateOptions.length === 0 && <option value="">필터 결과 없음</option>}
+                {templateOptions.map((template) => (
+                  <option key={template.roadmapId} value={template.roadmapId}>
+                    {template.label} - {template.sectionTitle}
+                  </option>
                 ))}
               </select>
               <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400">
                 <i className="fas fa-chevron-down text-xs" />
               </div>
             </div>
+            {selectedTemplate && (
+              <p className="mt-2 line-clamp-2 text-[11px] font-medium leading-relaxed text-gray-500">
+                {selectedTemplate.item.subtitle ?? selectedTemplate.label}
+              </p>
+            )}
+            {templates.length > 0 && (
+              <p className="mt-2 text-[10px] font-bold text-gray-400">
+                {filteredTemplates.length} / {templates.length}
+              </p>
+            )}
           </div>
 
           {/* 분기 모드 배너 */}
@@ -631,7 +852,7 @@ function MyRoadmapBuilderPage() {
                 <p className="text-xs text-gray-400">{fetchError}</p>
                 <button
                   type="button"
-                  onClick={() => setCategory((c) => c)}
+                  onClick={reloadSelectedTemplate}
                   className="mt-1 rounded-lg border border-red-200 px-4 py-1.5 text-xs font-bold text-red-500 transition hover:bg-red-50"
                 >
                   다시 시도
@@ -645,11 +866,11 @@ function MyRoadmapBuilderPage() {
             ) : (
               <div className="space-y-3">
                 {filteredItems.map((module) => {
-                  const isUsed = usedIds.has(module.dbId)
+                  const isUsed = usedIds.has(getModuleUsageKey(module))
                   const isAvailableForBranch = branchTarget !== null && !isUsed
                   return (
                     <DraggableModuleCard
-                      key={module.dbId}
+                      key={getModuleUsageKey(module)}
                       module={module}
                       isUsed={isUsed}
                       isAvailableForBranch={isAvailableForBranch}
@@ -1055,7 +1276,7 @@ function DraggableModuleCard({
   onAdd: (module: SkillModule) => void
 }) {
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
-    id: `module-${module.dbId}`,
+    id: `module-${getModuleUsageKey(module)}`,
     data: { kind: 'MODULE', module } as ActiveDrag,
     disabled: isUsed,
   })

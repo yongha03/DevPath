@@ -22,6 +22,7 @@ export interface QnaQuestionSummary {
   authorId: number
   authorName: string
   courseId: number | null
+  lessonId: number | null
   templateType: string
   difficulty: QnaDifficulty
   title: string
@@ -45,5 +46,6 @@ export interface CreateQnaQuestionRequest {
   title: string
   content: string
   courseId?: number | null
+  lessonId?: number | null
   lectureTimestamp?: string | null
 }

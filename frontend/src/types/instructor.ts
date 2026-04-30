@@ -83,8 +83,10 @@ export interface InstructorAnnouncementDetail extends InstructorAnnouncementSumm
 export interface InstructorQnaInboxItem {
   questionId: number
   courseId: number | null
+  lessonId: number | null
   learnerId: number
   courseTitle: string | null
+  lessonTitle: string | null
   learnerName: string | null
   learnerAvatarSeed: string | null
   title: string

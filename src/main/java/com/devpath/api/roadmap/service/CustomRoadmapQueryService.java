@@ -1,5 +1,6 @@
 package com.devpath.api.roadmap.service;
 
+import com.devpath.api.learning.service.CourseCompletionTagService;
 import com.devpath.api.roadmap.dto.MyRoadmapDto;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
@@ -19,10 +20,14 @@ import com.devpath.domain.roadmap.repository.NodeRequiredTagRepository;
 import com.devpath.domain.roadmap.repository.RoadmapNodeResourceRepository;
 import com.devpath.domain.user.entity.User;
 import com.devpath.domain.user.repository.UserRepository;
+import com.devpath.domain.user.repository.UserTechStackRepository;
 import java.time.LocalDateTime;
 import java.util.Comparator;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -40,6 +45,9 @@ public class CustomRoadmapQueryService {
   private final RoadmapNodeResourceRepository roadmapNodeResourceRepository;
   private final NodeRequiredTagRepository nodeRequiredTagRepository;
   private final RoadmapProgressService roadmapProgressService;
+  private final CustomRoadmapPrerequisiteSyncService prerequisiteSyncService;
+  private final CourseCompletionTagService courseCompletionTagService;
+  private final UserTechStackRepository userTechStackRepository;
   // [TEMP] 추천 무료 강좌 조회용 — 임시 하드코딩, 추후 삭제 예정
   private final CourseRepository courseRepository;
   private final CourseTagMapRepository courseTagMapRepository;
@@ -63,12 +71,15 @@ public class CustomRoadmapQueryService {
         .toList();
   }
 
-  @Transactional(readOnly = true)
+  @Transactional
   public MyRoadmapDto.DetailResponse getMyRoadmap(Long userId, Long customRoadmapId) {
     CustomRoadmap customRoadmap = getOwnedRoadmap(userId, customRoadmapId);
+    courseCompletionTagService.syncCompletedCourseTags(userId);
+
     List<CustomRoadmapNode> customNodes =
         customRoadmapNodeRepository.findAllByCustomRoadmapOrderByCustomSortOrderAsc(
             customRoadmap);
+    prerequisiteSyncService.ensurePrerequisites(customRoadmap, customNodes);
     Map<Long, List<Long>> prerequisiteIdsByNodeId =
         customNodePrerequisiteRepository.findAllByCustomRoadmap(customRoadmap).stream()
             .collect(
@@ -107,6 +118,12 @@ public class CustomRoadmapQueryService {
                 .collect(Collectors.groupingBy(
                     p -> p.getNodeId(),
                     Collectors.mapping(p -> p.getTagName(), Collectors.toList())));
+    Set<String> userTags = normalizeTags(userTechStackRepository.findTagNamesByUserId(userId));
+    Map<Long, Boolean> requiredTagsSatisfiedByNodeId =
+        requiredTagsByNodeId.entrySet().stream()
+            .collect(Collectors.toMap(
+                Map.Entry::getKey,
+                entry -> areRequiredTagsSatisfied(entry.getValue(), userTags)));
 
     return MyRoadmapDto.DetailResponse.from(
         customRoadmap,
@@ -116,14 +133,20 @@ public class CustomRoadmapQueryService {
         statusByNodeId,
         clearanceByNodeId,
         resourcesByNodeId,
-        requiredTagsByNodeId);
+        requiredTagsByNodeId,
+        requiredTagsSatisfiedByNodeId);
   }
 
   // [TEMP] 추천 무료 강좌 courseId 조회 — 임시 하드코딩, 추후 삭제 예정
   @Transactional(readOnly = true)
-  public Long getRecommendedFreeCourseId(Long customNodeId) {
+  public Long getRecommendedFreeCourseId(Long userId, Long customRoadmapId, Long customNodeId) {
+    CustomRoadmap customRoadmap = getOwnedRoadmap(userId, customRoadmapId);
     CustomRoadmapNode node = customRoadmapNodeRepository.findById(customNodeId)
         .orElseThrow(() -> new CustomException(ErrorCode.CUSTOM_NODE_NOT_FOUND));
+
+    if (!node.getCustomRoadmap().getId().equals(customRoadmap.getId())) {
+      throw new CustomException(ErrorCode.FORBIDDEN);
+    }
 
     if (node.getOriginalNode() == null) return null;
 
@@ -198,5 +221,25 @@ public class CustomRoadmapQueryService {
       return first;
     }
     return first.isAfter(second) ? first : second;
+  }
+
+  private Set<String> normalizeTags(List<String> tags) {
+    if (tags == null || tags.isEmpty()) {
+      return Set.of();
+    }
+
+    return tags.stream()
+        .filter(tag -> tag != null && !tag.isBlank())
+        .map(tag -> tag.trim().toLowerCase(Locale.ROOT))
+        .collect(Collectors.toCollection(LinkedHashSet::new));
+  }
+
+  private boolean areRequiredTagsSatisfied(List<String> requiredTags, Set<String> userTags) {
+    if (requiredTags == null || requiredTags.isEmpty()) {
+      return true;
+    }
+
+    Set<String> normalizedRequiredTags = normalizeTags(requiredTags);
+    return !normalizedRequiredTags.isEmpty() && userTags.containsAll(normalizedRequiredTags);
   }
 }

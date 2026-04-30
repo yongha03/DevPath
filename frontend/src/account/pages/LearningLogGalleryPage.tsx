@@ -255,7 +255,7 @@ export default function LearningLogGalleryPage() {
                         </div>
                         <i className={`${theme.icon} absolute right-[-5px] bottom-[-10px] text-7xl text-white/20`} />
                         <div className="relative z-10 text-white">
-                          <h3 className="text-2xl font-extrabold tracking-tight">{item.title}</h3>
+                          <h3 className="proof-card-display-title text-2xl font-extrabold tracking-tight">{item.title}</h3>
                           <p className="mt-1 text-xs font-medium text-white/80">Verified</p>
                         </div>
                       </div>
@@ -288,14 +288,14 @@ export default function LearningLogGalleryPage() {
 
                     <div className="card-back flex flex-col border border-gray-700 bg-gray-900 p-5 text-white">
                       <div className="mb-4 border-b border-gray-700 pb-3">
-                        <h3 className="text-lg font-bold text-white">{detail?.title ?? item.title}</h3>
-                        <p className="mt-1 text-xs text-gray-400">{detail?.description ?? item.nodeTitle}</p>
+                        <h3 className="proof-card-back-title text-lg font-bold text-white">{detail?.title ?? item.title}</h3>
+                        <p className="proof-card-back-description mt-1 text-xs text-gray-400">{detail?.description ?? item.nodeTitle}</p>
                       </div>
                       <div className="custom-scrollbar flex-1 overflow-y-auto pr-2">
                         <p className={`mb-2 text-[10px] font-bold tracking-wider uppercase ${theme.marker}`}>포함된 핵심 개념</p>
                         <ul className={`list-inside list-disc space-y-2 text-sm text-gray-300 ${theme.marker}`}>
                           {detailTags.map((tag) => (
-                            <li key={`${item.proofCardId}-${tag.tagId}`}>{tag.tagName}</li>
+                            <li key={`${item.proofCardId}-${tag.tagId}`} className="proof-card-list-text">{tag.tagName}</li>
                           ))}
                         </ul>
                       </div>

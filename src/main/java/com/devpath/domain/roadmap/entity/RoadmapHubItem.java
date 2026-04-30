@@ -41,6 +41,9 @@ public class RoadmapHubItem {
   @Column(name = "icon_class", length = 120)
   private String iconClass;
 
+  @Column(name = "icon_color", length = 32)
+  private String iconColor;
+
   @Column(name = "sort_order", nullable = false)
   private Integer sortOrder;
 

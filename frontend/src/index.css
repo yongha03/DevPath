@@ -1086,6 +1086,61 @@ aside:hover .sidebar-text {
   transform: rotateY(180deg);
 }
 
+.completion-proof-text,
+.completion-proof-front-title,
+.completion-proof-back-title,
+.completion-proof-description,
+.completion-proof-list-text,
+.completion-proof-section-title,
+.proof-card-display-title,
+.proof-card-back-title,
+.proof-card-back-description,
+.proof-card-list-text {
+  overflow-wrap: anywhere;
+  word-break: keep-all;
+}
+
+.completion-proof-front-title,
+.proof-card-display-title {
+  display: -webkit-box;
+  line-height: 1.15;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+.completion-proof-back-title,
+.proof-card-back-title {
+  display: -webkit-box;
+  line-height: 1.25;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.completion-proof-description,
+.proof-card-back-description {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
+}
+
+.completion-proof-list-text,
+.proof-card-list-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.completion-proof-section-title {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
 .completion-confetti-piece {
   position: absolute;
   top: -10%;

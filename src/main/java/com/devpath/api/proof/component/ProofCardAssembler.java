@@ -21,6 +21,10 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class ProofCardAssembler {
 
+    private static final int TITLE_TOPIC_MAX_LENGTH = 28;
+    private static final int DESCRIPTION_NODE_MAX_LENGTH = 36;
+    private static final int DESCRIPTION_MAX_LENGTH = 96;
+
     // 노드 필수 태그 저장소다.
     private final NodeRequiredTagRepository nodeRequiredTagRepository;
 
@@ -83,12 +87,105 @@ public class ProofCardAssembler {
 
     // 카드 제목을 만든다.
     private String buildTitle(String nodeTitle) {
-        return nodeTitle + " Proof Card";
+        return buildConciseTitle(nodeTitle) + " Proof Card";
     }
 
     // 카드 설명을 만든다.
     private String buildDescription(String nodeTitle) {
-        return nodeTitle + " 노드의 학습 완료 및 검증 조건 충족 결과를 증명합니다.";
+        String limitedNodeTitle = limitText(buildConciseTitle(nodeTitle), DESCRIPTION_NODE_MAX_LENGTH, "학습 완료");
+        return limitText(
+            limitedNodeTitle + " 학습 완료와 검증 조건 충족을 증명합니다.",
+            DESCRIPTION_MAX_LENGTH,
+            "학습 완료와 검증 조건 충족을 증명합니다."
+        );
+    }
+
+    private String buildConciseTitle(String nodeTitle) {
+        String title = normalizeDisplayText(nodeTitle);
+        title = title.replaceFirst("^\\[[^\\]]+\\]\\s*", "");
+        title = title.replaceFirst("^로드맵\\s*실전\\s*:\\s*", "");
+        title = title.replaceFirst("^섹션\\s*마무리\\s*퀴즈\\s*:\\s*", "");
+        title = title.replaceFirst("^실습\\s*과제\\s*:\\s*", "");
+        title = title.replaceFirst("\\s*-\\s*\\d+\\s*(?i:QUIZ|ASSIGNMENT)\\s*$", "");
+        title = title.replaceFirst("\\s*(?i:QUIZ|ASSIGNMENT)\\s*$", "");
+        title = takeBeforeDelimiter(title, "|");
+        title = takeBeforeDelimiter(title, "｜");
+        title = takeBeforeDescriptiveColon(title);
+        title = takeBeforeDelimiter(title, " - ");
+        title = normalizeDisplayText(title);
+
+        if (title.isBlank()) {
+            title = "학습 완료";
+        }
+
+        return fitTitleWithoutEllipsis(title, TITLE_TOPIC_MAX_LENGTH);
+    }
+
+    private String takeBeforeDelimiter(String value, String delimiter) {
+        int delimiterIndex = value.indexOf(delimiter);
+        if (delimiterIndex < 0) {
+            return value;
+        }
+
+        String prefix = normalizeDisplayText(value.substring(0, delimiterIndex));
+        return prefix.codePointCount(0, prefix.length()) >= 2 ? prefix : value;
+    }
+
+    private String takeBeforeDescriptiveColon(String value) {
+        int delimiterIndex = value.indexOf(":");
+        if (delimiterIndex < 0) {
+            delimiterIndex = value.indexOf("：");
+        }
+        if (delimiterIndex < 0) {
+            return value;
+        }
+
+        String prefix = normalizeDisplayText(value.substring(0, delimiterIndex));
+        int prefixLength = prefix.codePointCount(0, prefix.length());
+        return prefixLength >= 2 && prefixLength <= TITLE_TOPIC_MAX_LENGTH ? prefix : value;
+    }
+
+    private String fitTitleWithoutEllipsis(String value, int maxLength) {
+        String normalized = normalizeDisplayText(value);
+        if (normalized.codePointCount(0, normalized.length()) <= maxLength) {
+            return normalized;
+        }
+
+        StringBuilder fitted = new StringBuilder();
+        for (String word : normalized.split(" ")) {
+            String next = fitted.length() == 0 ? word : fitted + " " + word;
+            if (next.codePointCount(0, next.length()) > maxLength) {
+                break;
+            }
+            fitted.setLength(0);
+            fitted.append(next);
+        }
+
+        if (fitted.length() > 0) {
+            return fitted.toString();
+        }
+
+        int endIndex = normalized.offsetByCodePoints(0, maxLength);
+        return normalized.substring(0, endIndex).stripTrailing();
+    }
+
+    private String limitText(String value, int maxLength, String fallback) {
+        String normalized = normalizeDisplayText(value);
+        if (normalized.isBlank()) {
+            normalized = normalizeDisplayText(fallback);
+        }
+
+        int textLength = normalized.codePointCount(0, normalized.length());
+        if (textLength <= maxLength) {
+            return normalized;
+        }
+
+        int endIndex = normalized.offsetByCodePoints(0, Math.max(0, maxLength - 3));
+        return normalized.substring(0, endIndex).stripTrailing() + "...";
+    }
+
+    private String normalizeDisplayText(String value) {
+        return value == null ? "" : value.trim().replaceAll("\\s+", " ");
     }
 
     // 문자열 목록을 정규화된 Set으로 변환한다.

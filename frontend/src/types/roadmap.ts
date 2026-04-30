@@ -41,6 +41,26 @@ export interface RoadmapDetail {
   nodes: RoadmapNodeItem[]
 }
 
+export interface OfficialRoadmapNode {
+  nodeId: number
+  roadmapId: number
+  title: string
+  content?: string | null
+  nodeType?: string | null
+  sortOrder: number
+  subTopics?: string | null
+  branchGroup?: number | null
+}
+
+export interface OfficialRoadmapDetail {
+  roadmapId: number
+  title: string
+  description?: string | null
+  isOfficial: boolean
+  createdAt: string
+  nodes: OfficialRoadmapNode[]
+}
+
 export interface RecommendationChange {
   changeId: number
   sourceRecommendationId: number | null

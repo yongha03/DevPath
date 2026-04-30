@@ -375,13 +375,57 @@ export function getPreviewLesson(course: LearningCourseDetail | null) {
 
 export function formatSectionMeta(section: LearningSection) {
   const lessonCount = section.lessons.length
-  const totalSeconds = section.lessons.reduce((sum, lesson) => sum + (lesson.durationSeconds ?? 0), 0)
+  const videoLessons = section.lessons.filter(isCourseDetailVideoLesson)
+  const totalSeconds = videoLessons.reduce((sum, lesson) => sum + (lesson.durationSeconds ?? 0), 0)
+
+  if (!videoLessons.length) {
+    return `${lessonCount}개 항목`
+  }
+
   const totalMinutes = Math.max(1, Math.round(totalSeconds / 60))
-  return `${lessonCount}강 • ${totalMinutes}분`
+  return `${lessonCount}개 항목 · 영상 ${videoLessons.length}개 · ${totalMinutes}분`
 }
 
 export function formatLessonDuration(value: number | null) {
   return formatTime(value ?? 0)
+}
+
+function normalizeLessonType(lesson: LearningLesson) {
+  return lesson.lessonType?.toUpperCase() ?? ''
+}
+
+export function isCourseDetailAssignmentLesson(lesson: LearningLesson) {
+  const lessonType = normalizeLessonType(lesson)
+  return Boolean(lesson.assignment?.assignmentId)
+    || lessonType === 'CODING'
+    || (lessonType !== 'VIDEO' && /과제|assignment/i.test(lesson.title))
+}
+
+export function isCourseDetailQuizLesson(lesson: LearningLesson) {
+  const lessonType = normalizeLessonType(lesson)
+  return lessonType !== 'VIDEO' && /퀴즈|quiz/i.test(lesson.title)
+}
+
+export function isCourseDetailVideoLesson(lesson: LearningLesson) {
+  return !isCourseDetailAssignmentLesson(lesson)
+    && !isCourseDetailQuizLesson(lesson)
+    && (normalizeLessonType(lesson) === 'VIDEO' || Boolean(lesson.videoUrl || lesson.videoAssetKey))
+}
+
+export function getCourseDetailLessonIconClassName(lesson: LearningLesson) {
+  if (isCourseDetailAssignmentLesson(lesson)) return 'fas fa-clipboard-check text-purple-500'
+  if (isCourseDetailQuizLesson(lesson)) return 'fas fa-circle-question text-amber-500'
+  if (isCourseDetailVideoLesson(lesson)) return `fas fa-play-circle ${lesson.isPreview ? 'text-primary' : 'text-gray-400'}`
+  if (normalizeLessonType(lesson) === 'READING') return 'fas fa-file-lines text-sky-500'
+  return 'fas fa-code text-indigo-500'
+}
+
+export function getCourseDetailLessonMetaLabel(lesson: LearningLesson) {
+  if (isCourseDetailAssignmentLesson(lesson)) return '과제'
+  if (isCourseDetailQuizLesson(lesson)) return '퀴즈'
+  if (isCourseDetailVideoLesson(lesson)) return formatLessonDuration(lesson.durationSeconds)
+  if (normalizeLessonType(lesson) === 'READING') return '읽기'
+  return '실습'
 }
 
 export function buildCourseNewsCards(course: LearningCourseDetail) {

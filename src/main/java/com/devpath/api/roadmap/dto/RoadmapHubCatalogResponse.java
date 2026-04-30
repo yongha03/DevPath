@@ -34,6 +34,7 @@ public class RoadmapHubCatalogResponse {
     private String title;
     private String subtitle;
     private String iconClass;
+    private String iconColor;
     private Integer sortOrder;
     private Boolean active;
     private Boolean featured;

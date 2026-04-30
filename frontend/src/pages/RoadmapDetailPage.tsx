@@ -1,4 +1,4 @@
-import { type CSSProperties, useEffect, useMemo, useRef, useState } from 'react'
+import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import AuthModal, { type AuthView } from '../components/AuthModal'
 import RoadmapInfoContent from '../components/RoadmapInfoContent'
 import SiteHeader from '../components/SiteHeader'
@@ -9,6 +9,7 @@ import {
   getPostLoginRedirect,
   readStoredAuthSession,
 } from '../lib/auth-session'
+import { showAuthToast } from '../lib/auth-toast'
 import type { ProofCardSummary } from '../types/learner'
 import type {
   RoadmapDetail,
@@ -17,6 +18,7 @@ import type {
   RecommendationChangeHistory,
   NodeStatus,
   ChangeType,
+  MyRoadmapSummary,
 } from '../types/roadmap'
 
 function readAuthViewFromLocation(): AuthView | null {
@@ -35,6 +37,18 @@ function syncAuthViewInLocation(view: AuthView | null) {
   }
 
   window.history.replaceState({}, '', `${url.pathname}${url.search}${url.hash}`)
+}
+
+function readPositiveNumberParam(params: URLSearchParams, key: string) {
+  const rawValue = params.get(key)
+  if (!rawValue) return 0
+
+  const value = Number(rawValue)
+  return Number.isInteger(value) && value > 0 ? value : 0
+}
+
+function findRoadmapByOriginalId(roadmaps: MyRoadmapSummary[], originalRoadmapId: number) {
+  return roadmaps.find((roadmap) => roadmap.originalRoadmapId === originalRoadmapId) ?? null
 }
 
 // ── 헬퍼 ─────────────────────────────────────────────────────────────────────
@@ -623,7 +637,11 @@ function RoadmapNodeCard({ node, proofCard, proofSide, pendingChange, badge, onN
 
   function handleClick() {
     if (node.status === 'LOCKED') {
-      alert('이전 노드를 먼저 완료해야 합니다.')
+      showAuthToast({
+        message: '이전 노드를 먼저 완료해야 합니다.',
+        variant: 'error',
+        durationMs: 1000,
+      })
       return
     }
     onNodeClick?.(node)
@@ -1449,8 +1467,8 @@ function RoadmapPageToolbar({
 
 export default function RoadmapDetailPage() {
   const params = new URLSearchParams(window.location.search)
-  const customRoadmapId = Number(params.get('id'))
-  const originalRoadmapId = Number(params.get('original'))
+  const customRoadmapId = readPositiveNumberParam(params, 'id')
+  const originalRoadmapId = readPositiveNumberParam(params, 'original')
 
   const [session, setSession]       = useState(() => readStoredAuthSession())
   const [profileImage, setProfileImage] = useState<string | null>(null)
@@ -1466,6 +1484,20 @@ export default function RoadmapDetailPage() {
   const [processing, setProcessing] = useState(false)
   const [drawerNode, setDrawerNode] = useState<RoadmapNodeItem | null>(null)
   const abortRef = useRef<AbortController | null>(null)
+
+  const resetRoadmapPageState = useCallback((options?: { keepRoadmap?: boolean }) => {
+    if (!options?.keepRoadmap) {
+      setRoadmap(null)
+    }
+    setChanges([])
+    setHistories([])
+    setProofCards([])
+    setError(null)
+    setPanelOpen(false)
+    setInfoOpen(false)
+    setProcessing(false)
+    setDrawerNode(null)
+  }, [])
 
   useEffect(() => {
     const syncSession = () => {
@@ -1509,6 +1541,16 @@ export default function RoadmapDetailPage() {
   }, [session])
 
   useEffect(() => {
+    if (!session?.userId) {
+      abortRef.current?.abort()
+      resetRoadmapPageState({ keepRoadmap: true })
+      setLoading(false)
+      return
+    }
+
+    resetRoadmapPageState()
+    setLoading(true)
+
     const ctrl = new AbortController()
     abortRef.current = ctrl
 
@@ -1522,8 +1564,10 @@ export default function RoadmapDetailPage() {
             } catch {
               // 이미 복사된 경우 기존 로드맵으로 이동
               const list = await roadmapApi.getMyRoadmaps(ctrl.signal)
-              if (list.roadmaps.length > 0) {
-                window.location.replace(`roadmap.html?id=${list.roadmaps[0].customRoadmapId}`)
+              const existingRoadmap = findRoadmapByOriginalId(list.roadmaps, originalRoadmapId)
+
+              if (existingRoadmap) {
+                window.location.replace(`roadmap.html?id=${existingRoadmap.customRoadmapId}`)
               } else {
                 window.location.replace('roadmap-hub.html')
               }
@@ -1565,10 +1609,12 @@ export default function RoadmapDetailPage() {
       .catch((err: Error) => {
         if (err.name !== 'AbortError') setError(err.message)
       })
-      .finally(() => setLoading(false))
+      .finally(() => {
+        if (!signal.aborted) setLoading(false)
+      })
 
     return () => abortRef.current?.abort()
-  }, [customRoadmapId, originalRoadmapId])
+  }, [customRoadmapId, originalRoadmapId, resetRoadmapPageState, session?.userId])
 
   // ── 이벤트 핸들러 ────────────────────────────────────────────────────────────
 
@@ -1679,9 +1725,12 @@ export default function RoadmapDetailPage() {
     } catch {
       // Server logout failure should not block local session cleanup.
     } finally {
+      abortRef.current?.abort()
       clearStoredAuthSession()
       setSession(null)
       setProfileImage(null)
+      resetRoadmapPageState({ keepRoadmap: true })
+      setLoading(false)
     }
   }
 

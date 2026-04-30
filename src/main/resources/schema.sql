@@ -56,6 +56,13 @@ ALTER TABLE ocr_results
 CREATE INDEX IF NOT EXISTS idx_ocr_results_user_lesson_frame
     ON ocr_results (user_id, lesson_id, frame_timestamp_second);
 
+-- QnA lesson link for opening the exact lecture screen from instructor inbox.
+ALTER TABLE qna_questions
+    ADD COLUMN IF NOT EXISTS lesson_id BIGINT;
+
+CREATE INDEX IF NOT EXISTS idx_qna_questions_lesson_id
+    ON qna_questions (lesson_id);
+
 -- Recommendation support columns for history, warning, and supplement tracking.
 ALTER TABLE recommendation_histories
     ADD COLUMN IF NOT EXISTS recommendation_id BIGINT;
@@ -158,6 +165,9 @@ CREATE INDEX IF NOT EXISTS idx_supplement_recommendations_user_node_created_at
 
 ALTER TABLE user_profiles
     ADD COLUMN IF NOT EXISTS is_public BOOLEAN NOT NULL DEFAULT TRUE;
+
+ALTER TABLE roadmap_hub_items
+    ADD COLUMN IF NOT EXISTS icon_color VARCHAR(32);
 
 -- Legacy local PostgreSQL rows can exist without these newer columns.
 UPDATE lesson_progress

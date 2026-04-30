@@ -34,6 +34,7 @@ public class NodeClearanceCommandService {
     private final UserTechStackRepository userTechStackRepository;
     private final NodeClearanceRepository nodeClearanceRepository;
     private final RoadmapProgressService roadmapProgressService;
+    private final CustomRoadmapPrerequisiteSyncService prerequisiteSyncService;
 
     @Transactional
     public NodeClearResponse clearNode(Long userId, Long customRoadmapId, Long customNodeId) {
@@ -47,8 +48,14 @@ public class NodeClearanceCommandService {
             throw new CustomException(ErrorCode.FORBIDDEN);
         }
 
+        prerequisiteSyncService.ensurePrerequisites(customRoadmap);
+
         CustomRoadmapNode customNode = customRoadmapNodeRepository.findById(customNodeId)
                 .orElseThrow(() -> new CustomException(ErrorCode.CUSTOM_NODE_NOT_FOUND));
+
+        if (!customNode.getCustomRoadmap().getId().equals(customRoadmap.getId())) {
+            throw new CustomException(ErrorCode.FORBIDDEN);
+        }
 
         if (customNode.getStatus() == NodeStatus.COMPLETED) {
             throw new CustomException(ErrorCode.NODE_ALREADY_COMPLETED);
