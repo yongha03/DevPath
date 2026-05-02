@@ -97,6 +97,10 @@ public enum ErrorCode {
   PROMOTION_NOT_FOUND(HttpStatus.NOT_FOUND, "프로모션을 찾을 수 없습니다."),
   INVALID_STATUS_TRANSITION(HttpStatus.BAD_REQUEST, "유효하지 않은 상태 전이입니다."),
 
+  MENTORING_POST_NOT_FOUND(HttpStatus.NOT_FOUND, "멘토링 공고를 찾을 수 없습니다."),
+  MENTORING_POST_ALREADY_CLOSED(HttpStatus.BAD_REQUEST, "이미 마감된 멘토링 공고입니다."),
+  MENTORING_POST_FORBIDDEN(HttpStatus.FORBIDDEN, "멘토링 공고를 수정할 권한이 없습니다."),
+
   INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다.");
 
   private final HttpStatus status;
