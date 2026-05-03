@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
 
-@Entity
+@Entity(name = "ProjectMentoringApplication")
 @Table(name = "mentoring_application")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

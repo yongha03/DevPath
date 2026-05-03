@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@RestController
+@RestController("projectMentoringApplicationController")
 @RequestMapping("/api/projects/mentoring-applications")
 @RequiredArgsConstructor
 @Tag(name = "Project - Mentoring", description = "Project mentoring application API")
