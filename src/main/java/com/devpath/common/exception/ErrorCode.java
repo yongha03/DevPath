@@ -107,6 +107,9 @@ public enum ErrorCode {
   MENTORING_APPLICATION_ALREADY_PROCESSED(HttpStatus.BAD_REQUEST, "이미 처리된 멘토링 신청입니다."),
   MENTORING_APPLICATION_FORBIDDEN(HttpStatus.FORBIDDEN, "멘토링 신청을 처리할 권한이 없습니다."),
   MENTORING_NOT_FOUND(HttpStatus.NOT_FOUND, "멘토링을 찾을 수 없습니다."),
+  MENTORING_MISSION_NOT_FOUND(HttpStatus.NOT_FOUND, "멘토링 미션을 찾을 수 없습니다."),
+  MENTORING_MISSION_WEEK_DUPLICATED(HttpStatus.CONFLICT, "이미 해당 주차의 멘토링 미션이 존재합니다."),
+  MENTORING_MISSION_FORBIDDEN(HttpStatus.FORBIDDEN, "멘토링 미션을 관리할 권한이 없습니다."),
 
   INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다.");
 
