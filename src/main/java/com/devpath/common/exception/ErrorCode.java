@@ -110,6 +110,9 @@ public enum ErrorCode {
   MENTORING_MISSION_NOT_FOUND(HttpStatus.NOT_FOUND, "멘토링 미션을 찾을 수 없습니다."),
   MENTORING_MISSION_WEEK_DUPLICATED(HttpStatus.CONFLICT, "이미 해당 주차의 멘토링 미션이 존재합니다."),
   MENTORING_MISSION_FORBIDDEN(HttpStatus.FORBIDDEN, "멘토링 미션을 관리할 권한이 없습니다."),
+  MENTORING_MATERIAL_NOT_FOUND(HttpStatus.NOT_FOUND, "멘토링 미션 자료를 찾을 수 없습니다."),
+  MENTORING_MATERIAL_FORBIDDEN(HttpStatus.FORBIDDEN, "멘토링 미션 자료를 관리할 권한이 없습니다."),
+  MENTORING_MATERIAL_INVALID_PAYLOAD(HttpStatus.BAD_REQUEST, "자료 타입에 맞는 필수값이 누락되었습니다."),
 
   INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다.");
 
