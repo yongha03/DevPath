@@ -101,6 +101,38 @@ public enum ErrorCode {
   MENTORING_POST_ALREADY_CLOSED(HttpStatus.BAD_REQUEST, "이미 마감된 멘토링 공고입니다."),
   MENTORING_POST_FORBIDDEN(HttpStatus.FORBIDDEN, "멘토링 공고를 수정할 권한이 없습니다."),
 
+  MENTORING_APPLICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "멘토링 신청을 찾을 수 없습니다."),
+  MENTORING_ALREADY_APPLIED(HttpStatus.CONFLICT, "이미 해당 멘토링 공고에 신청했습니다."),
+  MENTORING_CANNOT_APPLY_OWN_POST(HttpStatus.BAD_REQUEST, "본인이 작성한 멘토링 공고에는 신청할 수 없습니다."),
+  MENTORING_APPLICATION_ALREADY_PROCESSED(HttpStatus.BAD_REQUEST, "이미 처리된 멘토링 신청입니다."),
+  MENTORING_APPLICATION_FORBIDDEN(HttpStatus.FORBIDDEN, "멘토링 신청을 처리할 권한이 없습니다."),
+  MENTORING_NOT_FOUND(HttpStatus.NOT_FOUND, "멘토링을 찾을 수 없습니다."),
+  MENTORING_MISSION_NOT_FOUND(HttpStatus.NOT_FOUND, "멘토링 미션을 찾을 수 없습니다."),
+  MENTORING_MISSION_WEEK_DUPLICATED(HttpStatus.CONFLICT, "이미 해당 주차의 멘토링 미션이 존재합니다."),
+  MENTORING_MISSION_FORBIDDEN(HttpStatus.FORBIDDEN, "멘토링 미션을 관리할 권한이 없습니다."),
+  MENTORING_MISSION_ALREADY_CLOSED(HttpStatus.BAD_REQUEST, "이미 마감된 멘토링 미션입니다."),
+  MENTORING_MATERIAL_NOT_FOUND(HttpStatus.NOT_FOUND, "멘토링 미션 자료를 찾을 수 없습니다."),
+  MENTORING_MATERIAL_FORBIDDEN(HttpStatus.FORBIDDEN, "멘토링 미션 자료를 관리할 권한이 없습니다."),
+  MENTORING_MATERIAL_INVALID_PAYLOAD(HttpStatus.BAD_REQUEST, "자료 타입에 맞는 필수값이 누락되었습니다."),
+
+  REVIEW_PULL_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "PR 제출을 찾을 수 없습니다."),
+  REVIEW_PULL_REQUEST_FORBIDDEN(HttpStatus.FORBIDDEN, "PR 제출 또는 리뷰를 처리할 권한이 없습니다."),
+  REVIEW_DECISION_FORBIDDEN(HttpStatus.FORBIDDEN, "해당 리뷰를 승인 또는 반려할 권한이 없습니다."),
+  REVIEW_MISSION_SUBMISSION_NOT_FOUND(HttpStatus.NOT_FOUND, "미션 제출을 찾을 수 없습니다."),
+  REVIEW_MISSION_SUBMISSION_FORBIDDEN(HttpStatus.FORBIDDEN, "미션 제출을 판정할 권한이 없습니다."),
+  REVIEW_MISSION_ALREADY_SUBMITTED(HttpStatus.CONFLICT, "이미 해당 미션에 제출했습니다."),
+  REVIEW_MISSION_SUBMISSION_ALREADY_DECIDED(HttpStatus.BAD_REQUEST, "이미 최종 판정된 미션 제출입니다."),
+  APPLICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "라운지 신청을 찾을 수 없습니다."),
+  APPLICATION_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 동일한 대상에게 신청 또는 제안을 보냈습니다."),
+  APPLICATION_CANNOT_SEND_TO_SELF(HttpStatus.BAD_REQUEST, "자기 자신에게 신청 또는 제안을 보낼 수 없습니다."),
+  APPLICATION_ALREADY_PROCESSED(HttpStatus.BAD_REQUEST, "이미 처리된 라운지 신청입니다."),
+  APPLICATION_FORBIDDEN(HttpStatus.FORBIDDEN, "라운지 신청을 처리할 권한이 없습니다."),
+  APPLICATION_MESSAGE_FORBIDDEN(HttpStatus.FORBIDDEN, "라운지 신청 메시지를 조회하거나 작성할 권한이 없습니다."),
+  QNA_MENTORING_QUESTION_NOT_FOUND(HttpStatus.NOT_FOUND, "멘토링 질문을 찾을 수 없습니다."),
+  QNA_WORKSPACE_QUESTION_NOT_FOUND(HttpStatus.NOT_FOUND, "워크스페이스 질문을 찾을 수 없습니다."),
+  QNA_FORBIDDEN(HttpStatus.FORBIDDEN, "Q&A를 처리할 권한이 없습니다."),
+  QNA_QUESTION_CLOSED(HttpStatus.BAD_REQUEST, "닫힌 질문에는 답변을 작성할 수 없습니다."),
+
   INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다.");
 
   private final HttpStatus status;

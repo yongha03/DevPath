@@ -1,0 +1,160 @@
+package com.devpath.api.application.service;
+
+import com.devpath.api.application.dto.LoungeApplicationRequest;
+import com.devpath.api.application.dto.LoungeApplicationResponse;
+import com.devpath.common.exception.CustomException;
+import com.devpath.common.exception.ErrorCode;
+import com.devpath.domain.application.entity.LoungeApplication;
+import com.devpath.domain.application.repository.LoungeApplicationRepository;
+import com.devpath.domain.user.entity.User;
+import com.devpath.domain.user.repository.UserRepository;
+import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
+public class LoungeApplicationService {
+
+  private final LoungeApplicationRepository loungeApplicationRepository;
+  private final UserRepository userRepository;
+
+  @Transactional
+  public LoungeApplicationResponse.Detail create(LoungeApplicationRequest.Create request) {
+    User sender = getUser(request.senderId());
+    User receiver = getUser(request.receiverId());
+
+    // 자기 자신에게 신청서나 제안서를 보내는 잘못된 흐름을 막는다.
+    validateNotSelf(sender.getId(), receiver.getId());
+
+    // 같은 대상에게 같은 타입의 신청서/제안서를 중복해서 보내지 못하게 막는다.
+    validateNotDuplicated(request, sender.getId(), receiver.getId());
+
+    LoungeApplication application =
+        LoungeApplication.builder()
+            .sender(sender)
+            .receiver(receiver)
+            .type(request.type())
+            .targetId(request.targetId())
+            .targetTitle(request.targetTitle())
+            .title(request.title())
+            .content(request.content())
+            .build();
+
+    return LoungeApplicationResponse.Detail.from(loungeApplicationRepository.save(application));
+  }
+
+  public List<LoungeApplicationResponse.Summary> getSentApplications(Long senderId) {
+    // 존재하지 않는 사용자 기준으로 목록을 조회하지 않도록 막는다.
+    validateUserExists(senderId);
+
+    return loungeApplicationRepository
+        .findAllBySender_IdAndIsDeletedFalseOrderByCreatedAtDesc(senderId)
+        .stream()
+        .map(LoungeApplicationResponse.Summary::from)
+        .toList();
+  }
+
+  public List<LoungeApplicationResponse.Summary> getReceivedApplications(Long receiverId) {
+    // 존재하지 않는 사용자 기준으로 목록을 조회하지 않도록 막는다.
+    validateUserExists(receiverId);
+
+    return loungeApplicationRepository
+        .findAllByReceiver_IdAndIsDeletedFalseOrderByCreatedAtDesc(receiverId)
+        .stream()
+        .map(LoungeApplicationResponse.Summary::from)
+        .toList();
+  }
+
+  public LoungeApplicationResponse.Detail getApplication(Long applicationId) {
+    return LoungeApplicationResponse.Detail.from(getActiveApplication(applicationId));
+  }
+
+  public LoungeApplicationResponse.Status getStatus(Long applicationId) {
+    return LoungeApplicationResponse.Status.from(getActiveApplication(applicationId));
+  }
+
+  @Transactional
+  public LoungeApplicationResponse.Detail approve(
+      Long applicationId, LoungeApplicationRequest.Approve request) {
+    LoungeApplication application = getActiveApplication(applicationId);
+
+    // 신청을 받은 사용자만 승인할 수 있다.
+    validateReceiverOwner(application, request.receiverId());
+
+    // 이미 처리된 신청은 다시 승인할 수 없다.
+    validatePending(application);
+
+    application.approve();
+
+    return LoungeApplicationResponse.Detail.from(application);
+  }
+
+  @Transactional
+  public LoungeApplicationResponse.Detail reject(
+      Long applicationId, LoungeApplicationRequest.Reject request) {
+    LoungeApplication application = getActiveApplication(applicationId);
+
+    // 신청을 받은 사용자만 거절할 수 있다.
+    validateReceiverOwner(application, request.receiverId());
+
+    // 이미 처리된 신청은 다시 거절할 수 없다.
+    validatePending(application);
+
+    application.reject(request.rejectReason());
+
+    return LoungeApplicationResponse.Detail.from(application);
+  }
+
+  private LoungeApplication getActiveApplication(Long applicationId) {
+    // Soft Delete 된 신청서/제안서는 조회 대상에서 제외한다.
+    return loungeApplicationRepository
+        .findByIdAndIsDeletedFalse(applicationId)
+        .orElseThrow(() -> new CustomException(ErrorCode.APPLICATION_NOT_FOUND));
+  }
+
+  private User getUser(Long userId) {
+    // 잘못된 사용자 ID를 받은 경우 명확한 비즈니스 예외를 발생시킨다.
+    return userRepository
+        .findById(userId)
+        .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+  }
+
+  private void validateUserExists(Long userId) {
+    if (!userRepository.existsById(userId)) {
+      throw new CustomException(ErrorCode.USER_NOT_FOUND);
+    }
+  }
+
+  private void validateNotSelf(Long senderId, Long receiverId) {
+    if (senderId.equals(receiverId)) {
+      throw new CustomException(ErrorCode.APPLICATION_CANNOT_SEND_TO_SELF);
+    }
+  }
+
+  private void validateNotDuplicated(
+      LoungeApplicationRequest.Create request, Long senderId, Long receiverId) {
+    boolean exists =
+        loungeApplicationRepository
+            .existsByTypeAndTargetIdAndSender_IdAndReceiver_IdAndIsDeletedFalse(
+                request.type(), request.targetId(), senderId, receiverId);
+
+    if (exists) {
+      throw new CustomException(ErrorCode.APPLICATION_ALREADY_EXISTS);
+    }
+  }
+
+  private void validateReceiverOwner(LoungeApplication application, Long receiverId) {
+    if (!application.getReceiver().getId().equals(receiverId)) {
+      throw new CustomException(ErrorCode.APPLICATION_FORBIDDEN);
+    }
+  }
+
+  private void validatePending(LoungeApplication application) {
+    if (!application.isPending()) {
+      throw new CustomException(ErrorCode.APPLICATION_ALREADY_PROCESSED);
+    }
+  }
+}
