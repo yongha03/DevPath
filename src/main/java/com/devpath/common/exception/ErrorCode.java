@@ -122,6 +122,11 @@ public enum ErrorCode {
   REVIEW_MISSION_SUBMISSION_FORBIDDEN(HttpStatus.FORBIDDEN, "미션 제출을 판정할 권한이 없습니다."),
   REVIEW_MISSION_ALREADY_SUBMITTED(HttpStatus.CONFLICT, "이미 해당 미션에 제출했습니다."),
   REVIEW_MISSION_SUBMISSION_ALREADY_DECIDED(HttpStatus.BAD_REQUEST, "이미 최종 판정된 미션 제출입니다."),
+  APPLICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "라운지 신청을 찾을 수 없습니다."),
+  APPLICATION_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 동일한 대상에게 신청 또는 제안을 보냈습니다."),
+  APPLICATION_CANNOT_SEND_TO_SELF(HttpStatus.BAD_REQUEST, "자기 자신에게 신청 또는 제안을 보낼 수 없습니다."),
+  APPLICATION_ALREADY_PROCESSED(HttpStatus.BAD_REQUEST, "이미 처리된 라운지 신청입니다."),
+  APPLICATION_FORBIDDEN(HttpStatus.FORBIDDEN, "라운지 신청을 처리할 권한이 없습니다."),
 
   INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다.");
 
