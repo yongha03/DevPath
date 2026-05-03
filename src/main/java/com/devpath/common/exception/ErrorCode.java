@@ -101,6 +101,13 @@ public enum ErrorCode {
   MENTORING_POST_ALREADY_CLOSED(HttpStatus.BAD_REQUEST, "이미 마감된 멘토링 공고입니다."),
   MENTORING_POST_FORBIDDEN(HttpStatus.FORBIDDEN, "멘토링 공고를 수정할 권한이 없습니다."),
 
+  MENTORING_APPLICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "멘토링 신청을 찾을 수 없습니다."),
+  MENTORING_ALREADY_APPLIED(HttpStatus.CONFLICT, "이미 해당 멘토링 공고에 신청했습니다."),
+  MENTORING_CANNOT_APPLY_OWN_POST(HttpStatus.BAD_REQUEST, "본인이 작성한 멘토링 공고에는 신청할 수 없습니다."),
+  MENTORING_APPLICATION_ALREADY_PROCESSED(HttpStatus.BAD_REQUEST, "이미 처리된 멘토링 신청입니다."),
+  MENTORING_APPLICATION_FORBIDDEN(HttpStatus.FORBIDDEN, "멘토링 신청을 처리할 권한이 없습니다."),
+  MENTORING_NOT_FOUND(HttpStatus.NOT_FOUND, "멘토링을 찾을 수 없습니다."),
+
   INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다.");
 
   private final HttpStatus status;
