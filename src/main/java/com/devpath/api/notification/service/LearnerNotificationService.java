@@ -5,6 +5,7 @@ import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
 import com.devpath.domain.notification.entity.LearnerNotification;
 import com.devpath.domain.notification.repository.LearnerNotificationRepository;
+import com.devpath.domain.user.repository.UserRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -15,33 +16,34 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class LearnerNotificationService {
 
-    private final LearnerNotificationRepository notificationRepository;
+    private final LearnerNotificationRepository learnerNotificationRepository;
+    private final UserRepository userRepository;
 
     public List<NotificationResponse> getMyNotifications(Long learnerId) {
-        return notificationRepository.findAllByLearnerIdOrderByCreatedAtDesc(learnerId).stream()
-                .map(this::convertToDto)
+        // 존재하지 않는 사용자 기준으로 알림을 조회하지 않도록 막는다.
+        validateUserExists(learnerId);
+
+        return learnerNotificationRepository.findAllByLearnerIdOrderByCreatedAtDesc(learnerId)
+                .stream()
+                .map(NotificationResponse::from)
                 .toList();
     }
 
     @Transactional
-    public void markAsRead(Long learnerId, Long notificationId) {
-        LearnerNotification notification = notificationRepository.findById(notificationId)
-                .orElseThrow(() -> new CustomException(ErrorCode.RESOURCE_NOT_FOUND, "Notification not found."));
-
-        if (!notification.getLearnerId().equals(learnerId)) {
-            throw new CustomException(ErrorCode.UNAUTHORIZED_ACTION, "Only your notifications can be marked as read.");
-        }
+    public NotificationResponse markAsRead(Long learnerId, Long notificationId) {
+        // 본인의 알림만 읽음 처리할 수 있다.
+        LearnerNotification notification = learnerNotificationRepository
+                .findByIdAndLearnerId(notificationId, learnerId)
+                .orElseThrow(() -> new CustomException(ErrorCode.NOTIFICATION_NOT_FOUND));
 
         notification.markAsRead();
+
+        return NotificationResponse.from(notification);
     }
 
-    private NotificationResponse convertToDto(LearnerNotification notification) {
-        return NotificationResponse.builder()
-                .id(notification.getId())
-                .type(notification.getType())
-                .message(notification.getMessage())
-                .isRead(notification.getIsRead())
-                .createdAt(notification.getCreatedAt())
-                .build();
+    private void validateUserExists(Long userId) {
+        if (!userRepository.existsById(userId)) {
+            throw new CustomException(ErrorCode.USER_NOT_FOUND);
+        }
     }
 }
