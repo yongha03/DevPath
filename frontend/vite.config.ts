@@ -47,6 +47,7 @@ export default defineConfig({
         instructorChannel: resolve(__dirname, 'instructor-channel.html'),
         myLearning: resolve(__dirname, 'my-learning.html'),
         learning: resolve(__dirname, 'learning.html'),
+        learningMock: resolve(__dirname, 'learning-mock.html'),
         purchase: resolve(__dirname, 'purchase.html'),
         myPosts: resolve(__dirname, 'my-posts.html'),
         profile: resolve(__dirname, 'profile.html'),
