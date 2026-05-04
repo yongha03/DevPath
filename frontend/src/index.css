@@ -1209,6 +1209,93 @@ aside:hover .sidebar-text {
   height: fit-content;
 }
 
+.learning-player-surface .custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.learning-player-surface {
+  font-family: 'Pretendard', sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  letter-spacing: 0;
+  background-color: #F8F9FA;
+}
+
+.learning-player-surface *,
+.learning-player-surface *::before,
+.learning-player-surface *::after {
+  letter-spacing: 0;
+}
+
+.learning-player-surface button,
+.learning-player-surface input,
+.learning-player-surface textarea,
+.learning-player-surface select {
+  font: inherit;
+}
+
+.learning-player-surface .custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 3px;
+}
+
+@keyframes learningFadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes learningFadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes learningSlideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.learning-player-surface .animate-fade-in-up {
+  animation: learningFadeInUp 0.4s ease-out forwards;
+}
+
+.learning-player-surface .animate-fade-in {
+  animation: learningFadeIn 0.2s ease-out forwards;
+}
+
+.learning-player-surface .animate-slide-in {
+  animation: learningSlideInRight 0.3s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.learning-player-surface .accordion-content {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.3s ease-in-out, padding 0.3s ease-in-out;
+}
+
+.learning-player-surface .accordion-content.open {
+  max-height: 500px;
+}
+
 .roadmap-container {
   position: relative;
   padding-left: 0;

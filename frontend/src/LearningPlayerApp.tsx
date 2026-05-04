@@ -39,7 +39,7 @@ import type {
 } from './types/qna'
 
 type TabKey = 'curriculum' | 'qna' | 'notes'
-type QnaStatusFilter = 'ALL' | 'ANSWERED' | 'UNANSWERED'
+type QnaStatusFilter = 'ALL' | 'MINE' | 'UNANSWERED'
 type QuestionFormState = {
   templateType: string
   difficulty: QnaDifficulty
@@ -790,7 +790,8 @@ export default function LearningPlayerApp() {
   const [course, setCourse] = useState<LearningCourseDetail | null>(null)
   const [courseError, setCourseError] = useState<string | null>(null)
   const [selectedLessonId, setSelectedLessonId] = useState<number | null>(initialLessonId)
-  const [activeTab, setActiveTab] = useState<TabKey>('curriculum')
+  const [activeTab, setActiveTab] = useState<TabKey>('qna')
+  const [openSectionIds, setOpenSectionIds] = useState<Set<number>>(() => new Set())
   const [notice, setNotice] = useState<string | null>(null)
   const [loadingCourse, setLoadingCourse] = useState(true)
   const [loadingLesson, setLoadingLesson] = useState(false)
@@ -979,6 +980,22 @@ export default function LearningPlayerApp() {
       },
     }
   }, [assignmentGradingResult, lessonProgressById])
+
+  useEffect(() => {
+    if (!course || !lesson) return
+
+    const activeSection = course.sections.find((section) => (
+      section.lessons.some((item) => item.lessonId === lesson.lessonId)
+    ))
+    if (!activeSection) return
+
+    setOpenSectionIds((current) => {
+      if (current.has(activeSection.sectionId)) return current
+      const next = new Set(current)
+      next.add(activeSection.sectionId)
+      return next
+    })
+  }, [course, lesson])
   const assignmentResultCompletesCourse = assignmentGradingResult
     ? lessons.length > 0 && lessons.every((item) => isLessonProgressCompleted(assignmentResultProgressById[item.lessonId]))
     : false
@@ -1016,10 +1033,9 @@ export default function LearningPlayerApp() {
   )
   const visibleQuestions = useMemo(() => (
     qnaQuestions.filter((item) => {
-      if (!isOwnQnaQuestion(item, sessionUserId)) return false
       const answered = isQuestionAnswered(item)
       const statusMatched = qnaStatusFilter === 'ALL'
-        || (qnaStatusFilter === 'ANSWERED' && answered)
+        || (qnaStatusFilter === 'MINE' && isOwnQnaQuestion(item, sessionUserId))
         || (qnaStatusFilter === 'UNANSWERED' && !answered)
       const searchTarget = [item.authorName, item.title, item.lectureTimestamp ?? '', qnaDetails[item.id]?.content ?? '']
         .join(' ')
@@ -1370,14 +1386,14 @@ export default function LearningPlayerApp() {
       setQuestionForm(createQuestionFormState())
 
       const [questionsResult, templatesResult] = await Promise.allSettled([
-        requestWithTimeout(QNA_LOAD_TIMEOUT_MS, (signal) => qnaApi.getMyQuestions(courseId, signal)),
+        requestWithTimeout(QNA_LOAD_TIMEOUT_MS, (signal) => qnaApi.getQuestions(courseId, signal)),
         requestWithTimeout(QNA_LOAD_TIMEOUT_MS, (signal) => qnaApi.getTemplates(signal)),
       ])
 
       if (cancelled) return
 
       if (questionsResult.status === 'fulfilled') {
-        setQnaQuestions(questionsResult.value.filter((question) => isOwnQnaQuestion(question, sessionUserId)))
+        setQnaQuestions(questionsResult.value)
       } else {
         setQnaQuestions([])
         setQnaError('Q&A 데이터를 불러오지 못했습니다.')
@@ -2326,39 +2342,42 @@ export default function LearningPlayerApp() {
   const sortedNotes = [...notes].sort((left, right) => right.timestampSecond - left.timestampSecond)
   const activeNote = openNoteId ? notes.find((item) => item.noteId === openNoteId) ?? null : null
   const playbackMax = Math.max(duration, 1)
+  const playbackProgressPercent = Math.min(100, Math.max(0, (currentTime / playbackMax) * 100))
 
   return (
-    <div className="relative flex h-screen flex-col overflow-hidden bg-black text-white">
+    <div className="learning-player-surface h-screen flex flex-col overflow-hidden">
 
       {/* 상단 헤더 */}
-      <header className="z-50 flex h-14 shrink-0 items-center justify-between border-b border-gray-800 bg-gray-900 px-6">
-        <div className="flex min-w-0 items-center gap-4">
+      <header className="bg-gray-900 text-white h-14 flex items-center justify-between px-6 shrink-0 z-50 border-b border-gray-800">
+        <div className="flex items-center gap-4 min-w-0">
           <button
             type="button"
             onClick={() => window.location.assign(isStudentPreview ? studentPreviewReturnHref : courseDetailHref)}
-            className="flex shrink-0 items-center gap-2 text-sm text-gray-400 transition hover:text-white"
+            className="text-gray-400 hover:text-white transition text-sm shrink-0"
           >
             <i className="fas fa-chevron-left mr-2" />
             {isStudentPreview ? '질문 게시판으로 돌아가기' : '로드맵으로 돌아가기'}
           </button>
-          <div className="h-4 w-px shrink-0 bg-gray-700" />
-          <span className="truncate text-sm font-bold text-gray-100">{lesson.title}</span>
+          <div className="h-4 w-[1px] bg-gray-700 shrink-0" />
+          <span className="text-sm font-bold text-gray-100 truncate">{lesson.title}</span>
         </div>
-        <div className="flex shrink-0 items-center gap-2 text-sm text-gray-400">
-          <div className="h-2 w-32 overflow-hidden rounded-full bg-gray-700">
-            <div className="h-full bg-[#00C471] transition-[width]" style={{ width: `${courseProgressPercent}%` }} />
+        <div className="flex items-center gap-4 text-sm">
+          <div className="flex items-center gap-2 text-gray-400">
+            <div className="w-32 h-2 bg-gray-700 rounded-full overflow-hidden">
+              <div className="h-full bg-[#00C471] transition-[width]" style={{ width: `${courseProgressPercent}%` }} />
+            </div>
+            <span className="text-xs">{courseProgressPercent}% 완료</span>
           </div>
-          <span className="text-xs">{courseProgressPercent}% 완료</span>
         </div>
       </header>
 
-      <div className="flex flex-1 overflow-hidden lg:flex-row">
+      <div className="flex flex-1 overflow-hidden">
 
       {/* ── 영상 패널 (좌 3/4) ── */}
-      <main className="relative flex min-h-[52vh] flex-1 flex-col bg-black lg:w-[calc(100%-400px)]">
+      <main className="flex-1 bg-black flex flex-col min-w-0">
 
         {/* 영상 프레임 */}
-        <div ref={frameRef} className="group relative flex-1 overflow-hidden bg-[#050908]">
+        <div ref={frameRef} className="flex-1 relative flex flex-col justify-center items-center w-full overflow-hidden group">
 
           {/* 우측 상단 오버레이 버튼 */}
           <div className="absolute right-4 top-4 z-10 flex gap-2 opacity-0 transition-opacity duration-300 group-hover:opacity-100 lg:right-6">
@@ -2370,7 +2389,6 @@ export default function LearningPlayerApp() {
             >
               <i className={`fas ${ocrBusy ? 'fa-spinner fa-spin' : 'fa-wand-magic-sparkles'} text-xs text-yellow-400`} />
               <span className="text-xs">{ocrBusy ? '분석 중...' : '전체 화면 복사'}</span>
-              {ocrBusy ? '분석 중...' : '전체 화면 복사'}
             </button>
             <button
               type="button"
@@ -2384,7 +2402,6 @@ export default function LearningPlayerApp() {
             >
               <i className="fas fa-crop-simple text-xs" />
               <span className="text-xs">{isSelectMode ? '선택 취소' : '구간 선택'}</span>
-              {isSelectMode ? '선택 취소 (ESC)' : '구간 선택'}
             </button>
             <button
               type="button"
@@ -2397,12 +2414,11 @@ export default function LearningPlayerApp() {
             >
               <i className={`fas ${isPipActive ? 'fa-compress' : 'fa-up-right-from-square'} text-xs`} />
               <span className="text-xs">{isPipActive ? 'PIP 종료' : 'PIP 모드'}</span>
-              {isPipActive ? 'PIP 종료' : 'PIP 모드'}
             </button>
           </div>
 
           {/* 영상 또는 빈 화면 */}
-          <div className="absolute inset-0 flex items-center justify-center">
+          <div className="w-full h-full relative flex items-center justify-center bg-gray-900">
             {hasVideoSource ? (
               <>
                 <video
@@ -2410,7 +2426,7 @@ export default function LearningPlayerApp() {
                   ref={videoRef}
                   src={resolvedVideoUrl ?? undefined}
                   poster={lesson.thumbnailUrl ?? course.thumbnailUrl ?? undefined}
-                  className="h-full w-full bg-black object-contain"
+                  className="w-full h-full object-cover opacity-60"
                   playsInline
                   preload="auto"
                   onLoadedData={() => setVideoFailed(false)}
@@ -2500,15 +2516,16 @@ export default function LearningPlayerApp() {
                 <button
                   type="button"
                   onClick={() => void handleTogglePlaySafe()}
-                  className={`absolute inset-0 flex items-center justify-center transition ${
+                  className={`absolute text-white/80 hover:text-[#00C471] transition transform hover:scale-110 ${
                     isSelectMode ? 'pointer-events-none opacity-0' :
                     isPlaying ? 'opacity-0 lg:group-hover:opacity-100' : 'opacity-100'
                   }`}
                 >
-                  <span className="flex h-20 w-20 items-center justify-center rounded-full bg-black/45 text-white shadow-2xl transition duration-300 group-hover:scale-110">
-                    <i className={`fas ${isPlaying ? 'fa-pause' : 'fa-play'} text-3xl`} />
-                  </span>
+                  <i className={`far ${isPlaying ? 'fa-pause-circle' : 'fa-play-circle'} text-7xl drop-shadow-lg`} />
                 </button>
+                <div className="absolute top-6 left-6 text-white/80 font-bold text-xl drop-shadow-md">
+                  {lesson.title}
+                </div>
               </>
             ) : selectedLessonLocked ? (
               <div className="mx-6 w-full max-w-md rounded-[28px] border border-white/10 bg-white/5 px-8 py-10 text-center backdrop-blur">
@@ -2615,15 +2632,14 @@ export default function LearningPlayerApp() {
             </div>
           ) : null}
 
-          {/* 재생 컨트롤 바 — 호버 시 슬라이드 업, 마우스 아웃 시 슬라이드 다운 */}
+          {/* 재생 컨트롤 바 */}
           {hasVideoSource ? (
-          <div className="absolute bottom-0 left-0 right-0 z-20 translate-y-full opacity-0 transition-all duration-300 ease-in-out group-hover:translate-y-0 group-hover:opacity-100">
-            <div className="flex h-16 items-center justify-between bg-gradient-to-t from-black/95 to-black/60 px-4 backdrop-blur-sm lg:px-6">
-              <div className="mr-4 flex w-full items-center gap-4 lg:mr-12">
-                <button type="button" onClick={() => void handleTogglePlaySafe()}>
-                  <i className={`fas ${isPlaying ? 'fa-pause' : 'fa-play'} text-gray-300 transition hover:text-white`} />
-                </button>
-                <span className="text-xs tabular-nums text-gray-400">{formatTime(currentTime)}</span>
+          <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/80 to-transparent flex items-end px-6 pb-4 gap-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
+              <button type="button" onClick={() => void handleTogglePlaySafe()} className="text-white hover:text-[#00C471] transition">
+                <i className={`fas ${isPlaying ? 'fa-pause' : 'fa-play'}`} />
+              </button>
+              <div className="flex-1 h-1.5 bg-gray-600 rounded-full overflow-hidden cursor-pointer relative mb-1">
+                <div className="h-full bg-[#00C471]" style={{ width: `${playbackProgressPercent}%` }} />
                 <input
                   type="range"
                   min={0}
@@ -2631,86 +2647,88 @@ export default function LearningPlayerApp() {
                   step="any"
                   value={Math.min(currentTime, playbackMax)}
                   onChange={(event) => handleSeek(Number(event.target.value))}
-                  className="h-1 flex-1 cursor-pointer appearance-none rounded-full bg-gray-700 accent-[#00C471]"
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                  aria-label="재생 위치"
                 />
-                <span className="text-xs tabular-nums text-gray-400">{formatTime(duration || (lesson.durationSeconds ?? 0))}</span>
               </div>
-              <div className="flex items-center gap-3 text-sm text-gray-400 lg:gap-4">
-                {/* 볼륨 */}
-                <div className="group/vol flex items-center gap-1.5">
-                  <button type="button" onClick={handleToggleMute} className="transition hover:text-white">
-                    <i className={`fas ${isMuted || volume === 0 ? 'fa-volume-xmark' : volume < 0.5 ? 'fa-volume-low' : 'fa-volume-high'}`} />
-                  </button>
-                  <input
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.05}
-                    value={isMuted ? 0 : volume}
-                    onChange={(e) => handleVolumeChange(Number(e.target.value))}
-                    className="w-0 cursor-pointer appearance-none rounded-full bg-gray-700 accent-[#00C471] opacity-0 transition-all duration-200 group-hover/vol:w-20 group-hover/vol:opacity-100"
-                    style={{ height: '4px' }}
-                  />
-                </div>
-                <button type="button" onClick={() => handleSeek(currentTime - 10)} className="font-bold transition hover:text-white">-10s</button>
-                <button type="button" onClick={() => handleSeek(currentTime + 10)} className="font-bold transition hover:text-white">+10s</button>
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setSettingsOpen((current) => !current)}
-                    className="transition hover:text-white"
-                    aria-label="재생 설정"
-                  >
-                    <i className="fas fa-cog" />
-                  </button>
-                  {settingsOpen ? (
-                    <div className="absolute bottom-full right-0 mb-4 flex w-40 flex-col overflow-hidden rounded-lg border border-gray-700 bg-gray-900 text-left shadow-xl animate-fade-in">
-                      <div className="border-b border-gray-700 px-3 py-2">
-                        <span className="text-xs font-bold text-gray-400">재생 속도</span>
-                      </div>
-                      {PLAYER_SPEEDS.map((speed) => {
-                        const active = (playerConfig?.defaultPlaybackRate ?? 1) === speed
-                        return (
-                          <button
-                            key={speed}
-                            type="button"
-                            onClick={() => void handleSetPlaybackRate(speed)}
-                            className={`flex items-center justify-between px-4 py-2 text-sm transition ${
-                              active
-                                ? 'bg-gray-800 font-bold text-[#00C471]'
-                                : 'text-gray-200 hover:bg-gray-800 hover:text-white'
-                            }`}
-                          >
-                            {speed.toFixed(2).replace(/\.00$/, '')}x
-                            {active ? <i className="fas fa-check text-xs" /> : null}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  ) : null}
-                </div>
-                <button type="button" onClick={() => void handleCyclePlaybackRate()} className="font-bold transition hover:text-white">
-                  {(playerConfig?.defaultPlaybackRate ?? 1).toFixed(2).replace(/\.00$/, '')}x
-                </button>
+              <span className="text-xs text-white font-mono mb-1">
+                {formatTime(currentTime)} / {formatTime(duration || (lesson.durationSeconds ?? 0))}
+              </span>
+              <button type="button" onClick={handleToggleMute} className="text-white hover:text-[#00C471] transition">
+                <i className={`fas ${isMuted || volume === 0 ? 'fa-volume-xmark' : 'fa-volume-up'}`} />
+              </button>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.05}
+                value={isMuted ? 0 : volume}
+                onChange={(event) => handleVolumeChange(Number(event.target.value))}
+                className="sr-only"
+                aria-label="볼륨"
+              />
+              <div className="relative">
                 <button
                   type="button"
-                  onClick={() => void frameRef.current?.requestFullscreen().catch(() => setNotice('전체 화면 전환에 실패했습니다.'))}
-                  className="transition hover:text-white/90"
+                  onClick={() => setSettingsOpen((current) => !current)}
+                  onDoubleClick={() => void handleCyclePlaybackRate()}
+                  className="text-white hover:text-[#00C471] transition"
+                  aria-label="재생 설정"
                 >
-                  <i className="fas fa-expand" />
+                  <i className="fas fa-cog" />
                 </button>
+                {settingsOpen ? (
+                  <div className="absolute bottom-full right-0 mb-4 w-40 bg-gray-900 border border-gray-700 rounded-lg shadow-xl flex flex-col overflow-hidden animate-fade-in z-50">
+                    <div className="px-3 py-2 border-b border-gray-700">
+                      <span className="text-xs text-gray-400 font-bold">재생 속도</span>
+                    </div>
+                    {PLAYER_SPEEDS.map((speed) => {
+                      const active = (playerConfig?.defaultPlaybackRate ?? 1) === speed
+                      return (
+                        <button
+                          key={speed}
+                          type="button"
+                          onClick={() => void handleSetPlaybackRate(speed)}
+                          className={`text-left px-4 py-2 text-sm transition ${
+                            active
+                              ? 'text-[#00C471] bg-gray-800 font-bold flex justify-between items-center'
+                              : 'text-gray-200 hover:bg-gray-800 hover:text-white'
+                          }`}
+                        >
+                          {speed.toFixed(1)}x {active ? <i className="fas fa-check text-xs" /> : null}
+                        </button>
+                      )
+                    })}
+                    <div className="px-3 py-2 border-b border-t border-gray-700 mt-1">
+                      <span className="text-xs text-gray-400 font-bold">화질</span>
+                    </div>
+                    <button type="button" className="text-left px-4 py-2 text-sm text-[#00C471] bg-gray-800 font-bold flex justify-between items-center transition">
+                      1080p <i className="fas fa-check text-xs" />
+                    </button>
+                    <button type="button" className="text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-800 hover:text-white transition">
+                      720p
+                    </button>
+                  </div>
+                ) : null}
               </div>
-            </div>
+              <button
+                type="button"
+                onClick={() => void frameRef.current?.requestFullscreen().catch(() => setNotice('전체 화면 전환에 실패했습니다.'))}
+                className="text-white hover:text-[#00C471] transition"
+                aria-label="전체화면"
+              >
+                <i className="fas fa-expand" />
+              </button>
           </div>
           ) : null}
         </div>
 
-        <div className="flex h-20 shrink-0 items-center justify-center gap-4 border-t border-gray-800 bg-gray-900 px-4">
+        <div className="h-20 bg-gray-900 border-t border-gray-800 flex items-center justify-center gap-6 shrink-0 z-30 relative">
           <button
             type="button"
             onClick={handlePreviousLesson}
             disabled={!previousLesson}
-            className="flex min-w-[132px] items-center justify-center gap-2 rounded-lg border border-gray-700 bg-gray-800 px-5 py-3 text-sm font-semibold text-gray-300 transition hover:bg-gray-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex items-center gap-3 px-8 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold transition hover:text-white border border-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <i className="fas fa-chevron-left" />
             이전 강의
@@ -2719,7 +2737,7 @@ export default function LearningPlayerApp() {
             type="button"
             onClick={handleNextLesson}
             disabled={!nextLesson || selectedLessonLocked}
-            className="flex min-w-[132px] items-center justify-center gap-2 rounded-lg bg-[#00C471] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-900/30 transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-gray-700 disabled:text-gray-400 disabled:shadow-none"
+            className="flex items-center gap-3 px-8 py-3 rounded-xl bg-[#00C471] hover:bg-green-600 text-white font-bold transition shadow-lg hover:shadow-green-500/30 transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-gray-700 disabled:shadow-none disabled:hover:translate-y-0"
           >
             다음 강의
             <i className="fas fa-chevron-right" />
@@ -2728,10 +2746,10 @@ export default function LearningPlayerApp() {
       </main>
 
       {/* ── 사이드바 (우 1/4) ── */}
-      <aside className="relative z-40 flex h-[48vh] w-full shrink-0 flex-col border-t border-gray-200 bg-white text-gray-800 lg:h-full lg:w-[400px] lg:border-l lg:border-t-0">
+      <aside className="w-[400px] bg-white border-l border-gray-200 flex flex-col shrink-0 z-40 relative">
 
         {/* 탭 버튼 */}
-        <div className="flex shrink-0 border-b border-gray-200">
+        <div className="flex border-b border-gray-200 shrink-0" id="tab-buttons">
           {(['curriculum', 'qna', 'notes'] as const).map((key) => (
             <button
               key={key}
@@ -2740,11 +2758,9 @@ export default function LearningPlayerApp() {
                 setActiveTab(key)
                 if (key !== 'qna') setOpenQuestionId(null)
               }}
-              className={`flex-1 border-b-2 py-4 text-sm transition ${
-                activeTab === key
-                  ? 'border-[#00C471] bg-green-50/50 font-bold text-[#00C471]'
-                  : 'border-transparent font-medium text-gray-500 hover:text-gray-800'
-              }`}
+              className={activeTab === key
+                ? 'tab-btn flex-1 py-4 text-sm font-bold text-[#00C471] border-b-2 border-[#00C471] bg-green-50/50 transition'
+                : 'tab-btn flex-1 py-4 text-sm font-medium text-gray-500 hover:text-gray-800 border-b-2 border-transparent transition'}
             >
               {key === 'curriculum' ? '커리큘럼' : key === 'qna' ? 'Q&A' : '노트'}
             </button>
@@ -2752,7 +2768,7 @@ export default function LearningPlayerApp() {
         </div>
 
         {/* 탭 콘텐츠 */}
-        <div className="relative flex-1 overflow-hidden bg-[#F8F9FA]">
+        <div className="flex-1 overflow-hidden relative bg-gray-50/30 flex flex-col">
           {loadingLesson ? (
             <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/70">
               <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#00C471] border-t-transparent" />
@@ -2761,13 +2777,13 @@ export default function LearningPlayerApp() {
 
           {/* 커리큘럼 탭 */}
           {activeTab === 'curriculum' ? (
-            <div className="h-full space-y-4 overflow-y-auto p-4">
+            <div className="tab-content h-full overflow-y-auto custom-scrollbar p-4 animate-fade-in">
               {course.sections.map((section, sectionIndex) => {
                 const sectionLockState = section.lessons[0] ? lessonLockMap.get(section.lessons[0].lessonId) : null
                 const sectionLocked = Boolean(sectionLockState?.locked)
 
                 return (
-                <div key={section.sectionId}>
+                <div key={section.sectionId} data-open={openSectionIds.has(section.sectionId)}>
                   <h3 className={`mb-2 flex items-center gap-1.5 px-1 text-xs font-semibold ${sectionLocked ? 'text-gray-400' : 'text-gray-500'}`}>
                     {sectionLocked ? <i className="fas fa-lock" aria-hidden="true" /> : null}
                     <span className="truncate">섹션 {sectionIndex + 1}. {section.title}</span>
@@ -2895,10 +2911,10 @@ export default function LearningPlayerApp() {
 
           {/* Q&A 탭 */}
           {activeTab === 'qna' ? (
-            <div className="flex h-full flex-col">
-              <div className="shrink-0 bg-gray-50/30 px-6 pb-3 pt-6">
+            <div className="tab-content block h-full relative overflow-hidden">
+              <div className="absolute inset-0 flex flex-col p-6 overflow-y-auto custom-scrollbar bg-gray-50/30 transition-transform duration-300">
                 <div className="mb-4 flex items-center justify-between">
-                  <h3 className="text-lg font-bold text-gray-900">질문 답변</h3>
+                  <h3 className="font-bold text-gray-900 text-lg">질문 및 답변</h3>
                   <span className="text-sm text-gray-500">총 {visibleQuestions.length}개</span>
                 </div>
                 <div className="relative mb-4">
@@ -2906,26 +2922,24 @@ export default function LearningPlayerApp() {
                     type="text"
                     value={qnaSearch}
                     onChange={(event) => setQnaSearch(event.target.value)}
-                    className="w-full rounded-lg border border-gray-200 py-2.5 pl-10 pr-4 text-sm outline-none transition focus:border-[#00C471] focus:ring-1 focus:ring-[#00C471]"
-                    placeholder="질문을 검색해보세요"
+                    className="w-full border border-gray-200 rounded-lg py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:border-[#00C471] focus:ring-1 focus:ring-[#00C471]"
+                    placeholder="궁금한 내용을 검색해보세요."
                   />
                   <i className="fas fa-search absolute left-3.5 top-3.5 text-gray-400" />
                 </div>
-                <div className="custom-scrollbar flex gap-2 overflow-x-auto pb-1">
+                <div className="flex gap-2 mb-6 overflow-x-auto custom-scrollbar pb-1 shrink-0">
                   {([
                     ['ALL', '전체 질문'],
-                    ['ANSWERED', '답변 완료'],
-                    ['UNANSWERED', '답변 대기'],
+                    ['MINE', '내 질문'],
+                    ['UNANSWERED', '답변 대기중'],
                   ] as const).map(([value, label]) => (
                     <button
                       key={value}
                       type="button"
                       onClick={() => setQnaStatusFilter(value)}
-                      className={`shrink-0 rounded-full px-3.5 py-1.5 text-xs transition ${
-                        qnaStatusFilter === value
-                          ? 'bg-gray-900 font-bold text-white'
-                          : 'bg-gray-100 font-medium text-gray-600 hover:bg-gray-200'
-                      }`}
+                      className={qnaStatusFilter === value
+                        ? 'qna-filter-btn px-3.5 py-1.5 text-xs font-bold rounded-full bg-gray-900 text-white transition shrink-0'
+                        : 'qna-filter-btn px-3.5 py-1.5 text-xs font-medium rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition shrink-0'}
                     >
                       {label}
                     </button>
@@ -2933,7 +2947,7 @@ export default function LearningPlayerApp() {
                 </div>
               </div>
 
-              <div className="custom-scrollbar flex-1 space-y-3 overflow-y-auto bg-gray-50/30 px-6 pb-24 pt-3">
+              <div className="space-y-3 pb-20">
                 {qnaError ? (
                   <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-600">
                     {qnaError}
@@ -2954,46 +2968,34 @@ export default function LearningPlayerApp() {
                         key={question.id}
                         type="button"
                         onClick={() => void handleToggleQuestion(question.id)}
-                        className="group block w-full rounded-xl border border-gray-200 bg-white p-4 text-left shadow-sm transition hover:border-[#00C471] hover:shadow-md"
+                        className="qna-item p-4 bg-white border border-gray-200 rounded-xl hover:border-[#00C471] transition cursor-pointer shadow-sm group w-full text-left"
                       >
-                        <div className="mb-3 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
-                              answered
-                                ? 'bg-blue-100 text-blue-600'
-                                : 'bg-orange-100 text-orange-600'
-                            }`}>
-                              {answered ? '답변완료' : '미답변'}
-                            </span>
-                            <span className="text-xs font-bold text-gray-800">{question.authorName}</span>
-                          </div>
-                          <span className="text-[10px] font-medium text-gray-400">{formatRelativeTime(question.createdAt)}</span>
+                        <div className="flex gap-2 items-start mb-2">
+                          <span className={`${answered ? 'bg-[#00C471] text-white' : 'bg-gray-200 text-gray-600'} text-[10px] font-bold px-1.5 py-0.5 rounded`}>
+                            {answered ? '해결됨' : '답변대기'}
+                          </span>
+                          <h4 className="text-sm font-bold text-gray-800 leading-tight group-hover:text-[#00C471] transition">
+                            {question.title}
+                          </h4>
                         </div>
 
-                        {question.lectureTimestamp ? (
-                          <div className="mb-3 inline-flex items-center gap-2 rounded-lg border border-gray-100 bg-gray-50 p-2 shadow-sm">
-                            <span className="flex items-center gap-1 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-bold text-gray-600 shadow-sm">
-                              <i className="fas fa-play-circle text-[#00C471]" />
-                              {question.lectureTimestamp}
-                            </span>
-                            <span className="truncate text-[11px] font-bold text-gray-600">{lesson.title}</span>
-                          </div>
-                        ) : null}
-
-                        <h4 className="mb-1 text-sm font-bold text-gray-900 transition group-hover:text-[#00C471]">
-                          {question.title}
-                        </h4>
-                        <p className="line-clamp-2 text-xs leading-relaxed text-gray-600">
-                          {detail?.content ?? '질문 상세 내용을 보려면 눌러주세요.'}
+                        <p className="text-xs text-gray-500 line-clamp-2 mb-3">
+                          {detail?.content ?? (question.lectureTimestamp ? `${question.lectureTimestamp} 구간 질문입니다.` : '질문 상세 내용을 보려면 눌러주세요.')}
                         </p>
+                        <div className="flex justify-between items-center text-xs text-gray-400">
+                          <span className={isOwnQnaQuestion(question, sessionUserId) ? 'font-bold text-[#00C471]' : ''}>
+                            {question.authorName}{isOwnQnaQuestion(question, sessionUserId) ? ' (나)' : ''} · {formatRelativeTime(question.createdAt)}
+                          </span>
+                          <span><i className="far fa-comment-dots mr-1" />{question.answerCount}</span>
+                        </div>
                       </button>
                     )
                   })
                 ) : (
                   <EmptyState
                     iconClassName="fas fa-comments"
-                    title="내가 등록한 질문이 없습니다"
-                    description="이 강의에서 궁금한 점을 강사에게 남겨 보세요."
+                    title="등록된 질문이 없습니다"
+                    description="이 강의에서 궁금한 점을 커뮤니티에 남겨 보세요."
                   />
                 )}
               </div>
@@ -3071,7 +3073,7 @@ export default function LearningPlayerApp() {
                   </button>
                 </div>
               </div>
-              <div className="absolute bottom-0 left-0 z-20 w-full border-t border-gray-200 bg-white p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+              <div className="hidden absolute bottom-0 left-0 z-20 w-full border-t border-gray-200 bg-white p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
                 <button
                   type="button"
                   onClick={() => setQuestionComposerOpen(true)}
@@ -3179,35 +3181,35 @@ export default function LearningPlayerApp() {
 
           {/* 노트 탭 */}
           {activeTab === 'notes' ? (
-            <div className="flex h-full flex-col gap-4 p-6">
-              <div className="flex shrink-0 items-center justify-between">
-                <h3 className="text-lg font-bold text-gray-900">내 노트</h3>
+            <div className="tab-content h-full overflow-y-auto custom-scrollbar p-6 animate-fade-in">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="font-bold text-gray-900 text-lg">내 노트</h3>
                 <button
                   type="button"
                   onClick={() => setNoteComposerOpen((current) => !current)}
-                  className="flex items-center text-sm font-bold text-[#00C471] transition hover:text-green-600"
+                  className="text-[#00C471] hover:text-green-600 text-sm font-bold transition flex items-center"
                 >
                   <i className="fas fa-plus mr-1" />
                   새 노트
                 </button>
               </div>
               {noteComposerOpen ? (
-                <div className="shrink-0 rounded-xl border border-[#00C471] bg-white p-4 shadow-sm animate-fade-in">
-                  <div className="mb-3 flex items-center gap-2">
-                    <span className="rounded bg-green-100 px-2 py-1 text-xs font-bold text-[#00C471]">{formatTime(currentTime)}</span>
-                    <span className="text-xs text-gray-500">현재 재생 시간에 추가합니다</span>
+                <div className="bg-white border border-[#00C471] rounded-xl p-4 shadow-sm mb-6 animate-fade-in-up">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="bg-green-100 text-[#00C471] text-xs font-bold px-2 py-1 rounded">{formatTime(currentTime)}</span>
+                    <span className="text-xs text-gray-500">현재 재생 시간에 추가됩니다.</span>
                   </div>
                   <textarea
                     value={noteContent}
                     onChange={(event) => setNoteContent(event.target.value)}
-                    className="mb-3 h-24 w-full resize-none rounded-lg border border-gray-200 p-3 text-sm text-gray-700 outline-none transition focus:border-[#00C471] focus:ring-1 focus:ring-[#00C471]"
-                    placeholder="강의를 들으며 중요한 점을 메모해보세요"
+                    className="w-full h-24 p-3 border border-gray-200 rounded-lg text-sm mb-3 focus:outline-none focus:border-[#00C471] focus:ring-1 focus:ring-[#00C471] resize-none"
+                    placeholder="강의를 들으며 중요한 점을 메모해보세요."
                   />
                   <div className="flex justify-end gap-2">
                     <button
                       type="button"
                       onClick={() => setNoteComposerOpen(false)}
-                      className="rounded-lg bg-gray-100 px-4 py-2 text-sm font-medium text-gray-600 transition hover:bg-gray-200"
+                      className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
                     >
                       취소
                     </button>
@@ -3215,7 +3217,7 @@ export default function LearningPlayerApp() {
                       type="button"
                       onClick={() => void handleSaveNote()}
                       disabled={!noteContent.trim()}
-                      className="rounded-lg bg-[#00C471] px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-green-600 disabled:cursor-not-allowed disabled:bg-emerald-300"
+                      className="px-4 py-2 text-sm font-bold text-white bg-[#00C471] rounded-lg hover:bg-green-600 shadow-sm transition disabled:cursor-not-allowed disabled:bg-emerald-300"
                     >
                       저장하기
                     </button>
@@ -3229,31 +3231,43 @@ export default function LearningPlayerApp() {
                 </p>
               </div>
 
-              <div className="custom-scrollbar flex-1 space-y-4 overflow-y-auto pb-20">
+              <div className="space-y-4 pb-20">
                 {sortedNotes.length ? (
                   sortedNotes.map((note) => (
-                    <button
-                      key={note.noteId}
-                      type="button"
-                      onClick={() => {
-                        setOpenNoteId(note.noteId)
-                        setEditingNoteContent(note.content)
-                      }}
-                      className="group block w-full rounded-xl border border-gray-200 bg-white p-3.5 text-left transition hover:border-[#00C471] hover:shadow-md"
-                    >
-                      <div className="mb-2 flex items-center justify-between">
-                        <span className="flex items-center gap-1 rounded border border-gray-200 bg-gray-50 px-2 py-0.5 text-[10px] font-bold text-gray-600">
-                          <i className="fas fa-play-circle text-[#00C471]" />
+                    <div key={note.noteId} className="p-4 border border-gray-200 bg-white shadow-sm rounded-xl hover:border-gray-300 transition">
+                      <div className="flex justify-between items-center mb-2">
+                        <button
+                          type="button"
+                          onClick={() => handleSeek(note.seekSecond ?? note.timestampSecond)}
+                          className="text-xs text-[#00C471] font-bold bg-green-50 px-2 py-1 rounded cursor-pointer hover:bg-green-100"
+                        >
+                          <i className="fas fa-play mr-1" />
                           {note.timestampLabel || formatTime(note.timestampSecond)}
-                        </span>
-                        <span className="text-[10px] font-medium text-gray-400">
-                          {formatDateLabel(note.updatedAt ?? note.createdAt)}
-                        </span>
+                        </button>
+                        <div className="flex gap-2 text-gray-400">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOpenNoteId(note.noteId)
+                              setEditingNoteContent(note.content)
+                            }}
+                            className="hover:text-gray-600"
+                            aria-label="노트 수정"
+                          >
+                            <i className="fas fa-pen text-xs" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleDeleteNote(note)}
+                            className="hover:text-red-400"
+                            aria-label="노트 삭제"
+                          >
+                            <i className="fas fa-trash text-xs" />
+                          </button>
+                        </div>
                       </div>
-                      <p className="line-clamp-2 text-xs leading-relaxed text-gray-700 transition group-hover:text-black">
-                        {note.content}
-                      </p>
-                    </button>
+                      <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{note.content}</p>
+                    </div>
                   ))
                 ) : (
                   <EmptyState
@@ -3294,6 +3308,17 @@ export default function LearningPlayerApp() {
               </div>
             </div>
           ) : null}
+        </div>
+        <div className={`absolute bottom-0 left-0 w-full p-4 border-t border-gray-200 bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20 transition-transform duration-300 ${
+          activeQuestionSummary ? 'translate-y-full pointer-events-none' : 'translate-y-0'
+        }`}>
+          <button
+            type="button"
+            onClick={() => setQuestionComposerOpen(true)}
+            className="w-full bg-gray-900 hover:bg-gray-800 text-white py-3.5 rounded-xl font-bold text-sm transition shadow-md hover:shadow-lg transform active:scale-95 flex justify-center items-center gap-2"
+          >
+            <i className="far fa-comment-dots" /> 커뮤니티에 질문하기
+          </button>
         </div>
       </aside>
 
