@@ -28,6 +28,7 @@ public class SwaggerGroupConfig {
                         "/api/me/**",
                         "/api/meetings/**",
                         "/api/mentoring-applications/**",
+                        "/api/mentoring-materials/**",
                         "/api/mentoring-missions/**",
                         "/api/mentoring-posts/**",
                         "/api/mentoring-questions/**",
