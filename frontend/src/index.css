@@ -1,4 +1,4 @@
-@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
 @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700&display=swap');
 @import "tailwindcss";
 
@@ -29,7 +29,7 @@ body {
   font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
   overflow-x: hidden;
   overflow-y: scroll;
-  background: #f6f8fb;
+  background-color: #F8F9FA;
 }
 
 body.devpath-modal-open {
@@ -121,26 +121,6 @@ pre {
 @media (max-width: 1023px) {
   .app-responsive-row {
     flex-direction: column;
-  }
-}
-
-@media (max-width: 640px) {
-  .app-viewport :where(.p-8) {
-    padding: 1rem;
-  }
-
-  .app-viewport :where(.px-8, .px-10) {
-    padding-left: 1rem;
-    padding-right: 1rem;
-  }
-
-  .app-viewport :where(.py-10, .py-12, .py-16, .py-20) {
-    padding-top: 2rem;
-    padding-bottom: 2rem;
-  }
-
-  .app-viewport :where(.gap-8, .gap-10, .gap-12) {
-    gap: 1.25rem;
   }
 }
 
