@@ -135,6 +135,8 @@ public enum ErrorCode {
 
   REALTIME_CANNOT_MESSAGE_SELF(HttpStatus.BAD_REQUEST, "자기 자신에게 메시지를 보낼 수 없습니다."),
 
+  NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "알림을 찾을 수 없습니다."),
+
   INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다.");
 
   private final HttpStatus status;

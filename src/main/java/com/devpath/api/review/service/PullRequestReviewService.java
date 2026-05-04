@@ -1,5 +1,6 @@
 package com.devpath.api.review.service;
 
+import com.devpath.api.notification.service.NotificationEventService;
 import com.devpath.api.review.dto.PullRequestReviewRequest;
 import com.devpath.api.review.dto.PullRequestReviewResponse;
 import com.devpath.api.review.dto.PullRequestSubmissionRequest;
@@ -33,6 +34,7 @@ public class PullRequestReviewService {
   private final MissionSubmissionRepository missionSubmissionRepository;
   private final PullRequestSubmissionRepository pullRequestSubmissionRepository;
   private final PullRequestReviewRepository pullRequestReviewRepository;
+  private final NotificationEventService notificationEventService;
   private final UserRepository userRepository;
 
   @Transactional
@@ -109,7 +111,14 @@ public class PullRequestReviewService {
             .comment(request.comment())
             .build();
 
-    return PullRequestReviewResponse.ReviewDetail.from(pullRequestReviewRepository.save(review));
+    PullRequestReview savedReview = pullRequestReviewRepository.save(review);
+
+    // PR 리뷰 작성 시 제출자에게 알림을 저장하고 SSE로 전송한다.
+    notificationEventService.notifySystem(
+        pullRequestSubmission.getMissionSubmission().getSubmitter().getId(),
+        "PR 리뷰가 등록되었습니다: " + pullRequestSubmission.getTitle());
+
+    return PullRequestReviewResponse.ReviewDetail.from(savedReview);
   }
 
   @Transactional
