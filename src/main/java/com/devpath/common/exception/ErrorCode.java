@@ -133,6 +133,8 @@ public enum ErrorCode {
   QNA_FORBIDDEN(HttpStatus.FORBIDDEN, "Q&A를 처리할 권한이 없습니다."),
   QNA_QUESTION_CLOSED(HttpStatus.BAD_REQUEST, "닫힌 질문에는 답변을 작성할 수 없습니다."),
 
+  REALTIME_CANNOT_MESSAGE_SELF(HttpStatus.BAD_REQUEST, "자기 자신에게 메시지를 보낼 수 없습니다."),
+
   INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다.");
 
   private final HttpStatus status;
