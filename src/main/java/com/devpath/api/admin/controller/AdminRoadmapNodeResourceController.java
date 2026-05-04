@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Admin - Roadmap Node Resources", description = "관리자 로드맵 노드 추천 자료 API")
+@Tag(name = "관리자 - 로드맵 노드 추천 자료", description = "관리자 로드맵 노드 추천 자료 API")
 @RestController
 @RequestMapping("/api/admin/node-resources")
 @RequiredArgsConstructor

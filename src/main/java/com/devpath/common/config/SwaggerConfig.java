@@ -30,8 +30,8 @@ public class SwaggerConfig {
     return new OpenAPI()
         .info(
             new Info()
-                .title("DevPath API")
-                .description("DevPath Week 2 common baseline and API specification")
+                .title("DevPath API 명세")
+                .description("DevPath 학습자, 강사, 관리자 기능별 API 명세입니다.")
                 .version("v1.1.0"))
         .addSecurityItem(securityRequirement)
         .components(components);

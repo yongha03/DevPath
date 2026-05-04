@@ -23,13 +23,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController("projectMentoringApplicationController")
 @RequestMapping("/api/projects/mentoring-applications")
 @RequiredArgsConstructor
-@Tag(name = "Project - Mentoring", description = "Project mentoring application API")
+@Tag(name = "프로젝트 - 멘토링", description = "프로젝트 멘토링 신청 API")
 public class MentoringApplicationController {
 
     private final MentoringApplicationService mentoringApplicationService;
 
     @PostMapping
-    @Operation(summary = "Apply for mentoring", description = "Apply for mentoring for a project.")
+    @Operation(summary = "프로젝트 멘토링 신청", description = "프로젝트에 대한 멘토링을 신청합니다.")
     public ApiResponse<MentoringResponse> applyForMentoring(
             @Valid @RequestBody MentoringRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal Long requesterId
@@ -38,7 +38,7 @@ public class MentoringApplicationController {
     }
 
     @GetMapping
-    @Operation(summary = "Get mentoring applications", description = "Get mentoring applications for a project.")
+    @Operation(summary = "프로젝트 멘토링 신청 목록 조회", description = "프로젝트의 멘토링 신청 목록을 조회합니다.")
     public ApiResponse<List<MentoringResponse>> getMentoringApplications(
             @RequestParam Long projectId,
             @Parameter(hidden = true) @AuthenticationPrincipal Long requesterId

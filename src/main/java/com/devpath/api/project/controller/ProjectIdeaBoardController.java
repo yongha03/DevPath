@@ -25,13 +25,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/project-ideas")
 @RequiredArgsConstructor
-@Tag(name = "Project - Idea Board", description = "Project idea board API")
+@Tag(name = "프로젝트 - 아이디어 게시판", description = "프로젝트 아이디어 게시판 API")
 public class ProjectIdeaBoardController {
 
     private final ProjectIdeaBoardService projectIdeaBoardService;
 
     @PostMapping
-    @Operation(summary = "Create idea post", description = "Create an idea post for the authenticated user.")
+    @Operation(summary = "아이디어 게시글 생성", description = "로그인한 사용자의 아이디어 게시글을 생성합니다.")
     public ApiResponse<IdeaPostResponse> createIdeaPost(
             @Valid @RequestBody IdeaPostRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal Long authorId
@@ -40,19 +40,19 @@ public class ProjectIdeaBoardController {
     }
 
     @GetMapping
-    @Operation(summary = "Get idea posts", description = "Get all idea posts.")
+    @Operation(summary = "아이디어 게시글 목록 조회", description = "전체 아이디어 게시글을 조회합니다.")
     public ApiResponse<List<IdeaPostResponse>> getIdeaPostList() {
         return ApiResponse.ok(projectIdeaBoardService.getIdeaPostList());
     }
 
     @GetMapping("/{ideaId}")
-    @Operation(summary = "Get idea post", description = "Get one idea post by id.")
+    @Operation(summary = "아이디어 게시글 상세 조회", description = "아이디어 게시글을 ID 기준으로 조회합니다.")
     public ApiResponse<IdeaPostResponse> getIdeaPostDetail(@PathVariable Long ideaId) {
         return ApiResponse.ok(projectIdeaBoardService.getIdeaPostDetail(ideaId));
     }
 
     @PutMapping("/{ideaId}")
-    @Operation(summary = "Update idea post", description = "Update an idea post owned by the authenticated user.")
+    @Operation(summary = "아이디어 게시글 수정", description = "로그인한 사용자가 작성한 아이디어 게시글을 수정합니다.")
     public ApiResponse<IdeaPostResponse> updateIdeaPost(
             @PathVariable Long ideaId,
             @Valid @RequestBody IdeaPostRequest request,
@@ -62,7 +62,7 @@ public class ProjectIdeaBoardController {
     }
 
     @DeleteMapping("/{ideaId}")
-    @Operation(summary = "Delete idea post", description = "Delete an idea post owned by the authenticated user.")
+    @Operation(summary = "아이디어 게시글 삭제", description = "로그인한 사용자가 작성한 아이디어 게시글을 삭제합니다.")
     public ApiResponse<Void> deleteIdeaPost(
             @PathVariable Long ideaId,
             @Parameter(hidden = true) @AuthenticationPrincipal Long requesterId

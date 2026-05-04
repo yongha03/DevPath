@@ -18,14 +18,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-// Proof Card Share API 컨트롤러
-@Tag(name = "Learner - Proof Card Share", description = "Proof Card 공유 API")
+// Proof Card 공유 API 컨트롤러다.
+@Tag(name = "학습자 - Proof Card 공유", description = "Proof Card 공유 API")
 @RestController
 @RequestMapping("/api/proof-card-shares")
 @RequiredArgsConstructor
 public class ProofCardShareController {
 
-    // Proof Card Share 서비스
+    // Proof Card 공유 서비스다.
     private final ProofCardShareService proofCardShareService;
 
     // 공유 링크를 생성한다.

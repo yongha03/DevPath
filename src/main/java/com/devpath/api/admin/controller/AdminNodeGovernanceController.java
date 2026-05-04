@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Admin - Node Governance", description = "관리자 노드 거버넌스 API")
+@Tag(name = "관리자 - 노드 거버넌스", description = "관리자 노드 거버넌스 API")
 @RestController
 @RequestMapping("/api/admin/nodes")
 @RequiredArgsConstructor

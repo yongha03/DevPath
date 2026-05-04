@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Instructor - Notification", description = "Instructor notification API")
+@Tag(name = "강사 - 알림", description = "강사 알림 API")
 @RestController
 @RequestMapping("/api/instructor/notifications")
 @RequiredArgsConstructor
@@ -23,7 +23,7 @@ public class InstructorNotificationController {
 
     private final InstructorNotificationService instructorNotificationService;
 
-    @Operation(summary = "List instructor notifications")
+    @Operation(summary = "강사 알림 목록 조회")
     @GetMapping
     public ApiResponse<List<NotificationResponse>> getNotifications(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId
@@ -31,7 +31,7 @@ public class InstructorNotificationController {
         return ApiResponse.success("Notifications loaded.", instructorNotificationService.getNotifications(userId));
     }
 
-    @Operation(summary = "Mark instructor notification as read")
+    @Operation(summary = "강사 알림 읽음 처리")
     @PatchMapping("/{notificationId}/read")
     public ApiResponse<Void> markAsRead(
             @PathVariable Long notificationId,

@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Instructor - Analytics", description = "Instructor analytics API")
+@Tag(name = "강사 - 분석", description = "강사 분석 대시보드 API")
 @RestController
 @RequestMapping("/api/instructor/analytics")
 @RequiredArgsConstructor
@@ -21,7 +21,7 @@ public class InstructorAnalyticsController {
 
     private final InstructorAnalyticsService instructorAnalyticsService;
 
-    @Operation(summary = "Get instructor analytics dashboard")
+    @Operation(summary = "강사 분석 대시보드 조회")
     @GetMapping("/dashboard")
     public ApiResponse<InstructorAnalyticsDashboardResponse> getDashboard(
             @RequestParam(required = false) Long courseId,

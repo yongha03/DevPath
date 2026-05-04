@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Instructor - Community", description = "강사 채널 커뮤니티 API")
+@Tag(name = "강사 - 커뮤니티", description = "강사 채널 커뮤니티 API")
 @RestController
 @RequestMapping("/api/instructor/community")
 @RequiredArgsConstructor

@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "PR Review", description = "PR 제출, 코드 리뷰, 미션 Pass/Reject API")
+@Tag(name = "멘토링 PR 리뷰", description = "PR 제출, 코드 리뷰, 미션 Pass/Reject API")
 @RestController
 @RequiredArgsConstructor
 public class PullRequestReviewController {
@@ -83,7 +83,7 @@ public class PullRequestReviewController {
   }
 
   @PatchMapping("/api/mission-submissions/{submissionId}/pass")
-  @Operation(summary = "미션 제출 Pass", description = "멘토가 미션 제출물을 통과 처리합니다.")
+  @Operation(summary = "미션 제출 통과", description = "멘토가 미션 제출물을 통과 처리합니다.")
   public ResponseEntity<ApiResponse<PullRequestReviewResponse.MissionSubmissionDetail>>
       passSubmission(
           @PathVariable Long submissionId,
@@ -94,7 +94,7 @@ public class PullRequestReviewController {
   }
 
   @PatchMapping("/api/mission-submissions/{submissionId}/reject")
-  @Operation(summary = "미션 제출 Reject", description = "멘토가 미션 제출물을 반려 처리합니다.")
+  @Operation(summary = "미션 제출 반려", description = "멘토가 미션 제출물을 반려 처리합니다.")
   public ResponseEntity<ApiResponse<PullRequestReviewResponse.MissionSubmissionDetail>>
       rejectSubmission(
           @PathVariable Long submissionId,

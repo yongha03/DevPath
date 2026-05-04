@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Mentoring Hub", description = "멘토링 허브 및 내 멘토링 조회 API")
+@Tag(name = "멘토링 허브", description = "멘토링 허브 및 내 멘토링 조회 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/mentorings")

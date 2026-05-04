@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 // Lesson Progress API 컨트롤러
-@Tag(name = "Learner - Lesson Progress", description = "강의 세션 시작 및 진도율 저장/조회 API")
+@Tag(name = "학습자 - 레슨 진도", description = "강의 세션 시작 및 진도율 저장/조회 API")
 @RestController
 @RequestMapping("/api/learning/sessions")
 @RequiredArgsConstructor

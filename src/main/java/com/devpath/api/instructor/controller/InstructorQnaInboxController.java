@@ -30,7 +30,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Instructor - QnA Inbox", description = "강사 QnA Inbox 관리 API")
+@Tag(name = "강사 - QnA 인박스", description = "강사 QnA 인박스 관리 API")
 @RestController
 @RequestMapping("/api/instructor/qna-inbox")
 @RequiredArgsConstructor
@@ -38,7 +38,7 @@ public class InstructorQnaInboxController {
 
     private final InstructorQnaInboxService instructorQnaInboxService;
 
-    @Operation(summary = "QnA Inbox 목록 조회", description = "status 파라미터로 미답변/답변완료 필터")
+    @Operation(summary = "QnA 인박스 목록 조회", description = "status 파라미터로 미답변/답변완료 필터")
     @GetMapping
     public ApiResponse<List<QnaInboxResponse>> getInbox(
             @Parameter(description = "QnA 상태 필터") @RequestParam(required = false) QnaStatus status,

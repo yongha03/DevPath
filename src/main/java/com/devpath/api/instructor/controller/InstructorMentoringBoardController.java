@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Instructor - Mentoring Board", description = "Instructor mentoring board API")
+@Tag(name = "강사 - 멘토링 보드", description = "강사 멘토링 보드 API")
 @RestController
 @RequestMapping("/api/instructor/mentoring")
 @RequiredArgsConstructor
@@ -22,7 +22,7 @@ public class InstructorMentoringBoardController {
 
     private final InstructorMentoringBoardService instructorMentoringBoardService;
 
-    @Operation(summary = "Get mentoring board")
+    @Operation(summary = "멘토링 보드 조회")
     @GetMapping("/board")
     public ApiResponse<InstructorMentoringBoardPayload> getBoard(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId
@@ -30,7 +30,7 @@ public class InstructorMentoringBoardController {
         return ApiResponse.success("Mentoring board loaded.", instructorMentoringBoardService.getBoard(userId));
     }
 
-    @Operation(summary = "Save mentoring board")
+    @Operation(summary = "멘토링 보드 저장")
     @PutMapping("/board")
     public ApiResponse<InstructorMentoringBoardPayload> saveBoard(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId,

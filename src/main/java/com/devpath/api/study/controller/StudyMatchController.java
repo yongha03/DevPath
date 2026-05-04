@@ -19,13 +19,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/study-matches")
 @RequiredArgsConstructor
-@Tag(name = "Learner - Study Match", description = "Learner study match and recommendation API")
+@Tag(name = "학습자 - 스터디 매칭", description = "학습자 스터디 매칭 및 추천 API")
 public class StudyMatchController {
 
     private final StudyMatchService studyMatchService;
 
     @GetMapping
-    @Operation(summary = "Get my matches")
+    @Operation(summary = "내 스터디 매칭 조회")
     public ApiResponse<List<StudyMatchResponse>> getMyMatches(
             @Parameter(hidden = true) @AuthenticationPrincipal Long learnerId
     ) {
@@ -33,7 +33,7 @@ public class StudyMatchController {
     }
 
     @GetMapping("/recommendations")
-    @Operation(summary = "Get study match recommendations")
+    @Operation(summary = "스터디 매칭 추천 조회")
     public ApiResponse<List<StudyMatchRecommendationResponse>> getRecommendations(
             @Parameter(hidden = true) @AuthenticationPrincipal Long learnerId
     ) {

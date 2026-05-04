@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-@Tag(name = "Notification SSE", description = "알림 목록, 읽음 처리, SSE 구독 API")
+@Tag(name = "알림 SSE", description = "알림 목록, 읽음 처리, SSE 구독 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/notifications")

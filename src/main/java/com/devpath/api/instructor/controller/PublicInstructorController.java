@@ -12,8 +12,8 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-// Public API for loading instructor profile and channel summaries.
-@Tag(name = "강사 공개 채널 API", description = "강사 공개 프로필/채널 조회 API")
+// 공개 강사 프로필과 채널 요약 정보를 조회하는 API다.
+@Tag(name = "강사 공개 채널", description = "강사 공개 프로필 및 채널 조회 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/instructors")

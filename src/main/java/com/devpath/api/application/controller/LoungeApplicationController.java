@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Lounge Application", description = "라운지 신청서/제안서 및 지원 현황 API")
+@Tag(name = "라운지 신청", description = "라운지 신청서/제안서 및 지원 현황 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/lounge/applications")

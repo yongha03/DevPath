@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Mentoring Post", description = "멘토링 공고 API")
+@Tag(name = "멘토링 공고", description = "멘토링 공고 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/mentoring-posts")

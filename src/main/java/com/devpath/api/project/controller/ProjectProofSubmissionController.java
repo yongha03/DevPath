@@ -24,13 +24,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/projects/proof-submissions")
 @RequiredArgsConstructor
-@Tag(name = "Project - Proof Submission", description = "Project proof submission API")
+@Tag(name = "프로젝트 - Proof 제출", description = "프로젝트 Proof Card 제출 API")
 public class ProjectProofSubmissionController {
 
     private final ProjectProofSubmissionService projectProofSubmissionService;
 
     @PostMapping
-    @Operation(summary = "Submit proof", description = "Submit a proof card for the authenticated user.")
+    @Operation(summary = "Proof Card 제출", description = "로그인한 사용자의 Proof Card를 프로젝트에 제출합니다.")
     public ApiResponse<ProofSubmissionResponse> submitProof(
             @Valid @RequestBody ProofSubmissionRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal Long submitterId
@@ -39,13 +39,13 @@ public class ProjectProofSubmissionController {
     }
 
     @GetMapping
-    @Operation(summary = "Get submissions", description = "Get proof submissions for one project.")
+    @Operation(summary = "Proof 제출 목록 조회", description = "특정 프로젝트의 Proof 제출 목록을 조회합니다.")
     public ApiResponse<List<ProofSubmissionResponse>> getSubmissions(@RequestParam Long projectId) {
         return ApiResponse.ok(projectProofSubmissionService.getSubmissions(projectId));
     }
 
     @GetMapping("/{submissionId}")
-    @Operation(summary = "Get submission", description = "Get one proof submission by id.")
+    @Operation(summary = "Proof 제출 상세 조회", description = "Proof 제출을 ID 기준으로 조회합니다.")
     public ApiResponse<ProofSubmissionResponse> getSubmissionDetail(@PathVariable Long submissionId) {
         return ApiResponse.ok(projectProofSubmissionService.getSubmissionDetail(submissionId));
     }

@@ -24,13 +24,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/projects")
 @RequiredArgsConstructor
-@Tag(name = "Project - Core", description = "Project creation and management API")
+@Tag(name = "프로젝트 - 기본", description = "프로젝트 생성 및 관리 API")
 public class ProjectController {
 
     private final ProjectService projectService;
 
     @PostMapping
-    @Operation(summary = "Create project", description = "Create a new team project.")
+    @Operation(summary = "프로젝트 생성", description = "새 팀 프로젝트를 생성합니다.")
     public ApiResponse<ProjectResponse> createProject(
             @Valid @RequestBody ProjectRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal Long creatorId
@@ -39,19 +39,19 @@ public class ProjectController {
     }
 
     @GetMapping
-    @Operation(summary = "Get projects", description = "Get all projects.")
+    @Operation(summary = "프로젝트 목록 조회", description = "전체 프로젝트 목록을 조회합니다.")
     public ApiResponse<List<ProjectResponse>> getAllProjects() {
         return ApiResponse.ok(projectService.getAllProjects());
     }
 
     @GetMapping("/{projectId}")
-    @Operation(summary = "Get project", description = "Get project detail.")
+    @Operation(summary = "프로젝트 상세 조회", description = "프로젝트 상세 정보를 조회합니다.")
     public ApiResponse<ProjectResponse> getProject(@PathVariable Long projectId) {
         return ApiResponse.ok(projectService.getProject(projectId));
     }
 
     @PutMapping("/{projectId}")
-    @Operation(summary = "Update project", description = "Update a project as an authenticated member.")
+    @Operation(summary = "프로젝트 수정", description = "로그인한 프로젝트 멤버가 프로젝트를 수정합니다.")
     public ApiResponse<ProjectResponse> updateProject(
             @PathVariable Long projectId,
             @Valid @RequestBody ProjectRequest request,

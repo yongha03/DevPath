@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "AI Design Review", description = "ERD/API 명세 기반 AI 설계 리뷰 API")
+@Tag(name = "AI 설계 리뷰", description = "ERD/API 명세 기반 AI 설계 리뷰 API")
 @RestController
 @RequiredArgsConstructor
 public class AiDesignReviewController {

@@ -19,14 +19,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-// Proof Card API 컨트롤러
-@Tag(name = "Learner - Proof Card", description = "학습자 Proof Card API")
+// Proof Card API 컨트롤러다.
+@Tag(name = "학습자 - Proof Card", description = "학습자 Proof Card API")
 @RestController
 @RequestMapping("/api/me/proof-cards")
 @RequiredArgsConstructor
 public class ProofCardController {
 
-    // Proof Card 서비스
+    // Proof Card 서비스다.
     private final ProofCardService proofCardService;
 
     // Proof Card를 발급한다.
@@ -53,7 +53,7 @@ public class ProofCardController {
     @GetMapping("/{proofCardId}")
     public ResponseEntity<ApiResponse<ProofCardResponse.Detail>> getProofCard(
         @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
-        @Parameter(description = "Proof Card ID", example = "1") @PathVariable Long proofCardId
+        @Parameter(description = "Proof Card 식별자", example = "1") @PathVariable Long proofCardId
     ) {
         return ResponseEntity.ok(ApiResponse.ok(proofCardService.getProofCard(userId, proofCardId)));
     }

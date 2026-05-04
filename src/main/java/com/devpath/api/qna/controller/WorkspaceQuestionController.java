@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Workspace Q&A", description = "팀 워크스페이스 전용 Q&A API")
+@Tag(name = "워크스페이스 Q&A", description = "팀 워크스페이스 전용 Q&A API")
 @RestController
 @RequiredArgsConstructor
 public class WorkspaceQuestionController {
@@ -53,7 +53,7 @@ public class WorkspaceQuestionController {
   @Operation(summary = "워크스페이스 답변 작성", description = "워크스페이스 질문에 답변을 작성하고 질문 상태를 ANSWERED로 변경합니다.")
   public ResponseEntity<ApiResponse<QnaResponse.AnswerDetail>> createAnswer(
       @PathVariable Long questionId, @Valid @RequestBody QnaRequest.AnswerCreate request) {
-    // 답변 작성 시 질문 상태를 ANSWERED로 변경한다.
+    // 답변 작성 후 질문 상태를 ANSWERED로 변경한다.
     return ResponseEntity.ok(
         ApiResponse.ok(workspaceQuestionService.createAnswer(questionId, request)));
   }

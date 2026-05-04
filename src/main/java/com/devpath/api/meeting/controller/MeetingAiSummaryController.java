@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "AI Meeting Summary", description = "AI 회의 요약 API")
+@Tag(name = "AI 회의 요약", description = "AI 회의 요약 API")
 @RestController
 @RequiredArgsConstructor
 public class MeetingAiSummaryController {

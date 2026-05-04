@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/admin")
 @RequiredArgsConstructor
-@Tag(name = "Admin - Roadmap", description = "관리자 오피셜 로드맵 관리 API")
+@Tag(name = "관리자 - 오피셜 로드맵", description = "관리자 오피셜 로드맵 관리 API")
 public class AdminController {
 
     private final AdminService adminService;

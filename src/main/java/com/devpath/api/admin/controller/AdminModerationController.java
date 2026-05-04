@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Admin - Moderation", description = "관리자 제재/신고 관리 API")
+@Tag(name = "관리자 - 제재/신고", description = "관리자 제재/신고 관리 API")
 @RestController
 @RequestMapping("/api/admin/moderations")
 @RequiredArgsConstructor

@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Meeting", description = "회의방, 참가, 출석, 녹화 URL API")
+@Tag(name = "회의", description = "회의방, 참가, 출석, 녹화 URL API")
 @RestController
 @RequiredArgsConstructor
 public class MeetingController {

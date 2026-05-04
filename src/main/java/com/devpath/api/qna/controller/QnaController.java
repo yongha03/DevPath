@@ -75,7 +75,7 @@ public class QnaController {
     })
     public ApiResponse<List<QuestionSummaryResponse>> getQuestions(
             @Parameter(hidden = true) @AuthenticationPrincipal Long authenticatedUserId,
-            @Parameter(description = "Course ID", example = "1")
+            @Parameter(description = "강의 ID", example = "1")
             @RequestParam(required = false) Long courseId
     ) {
         List<QuestionSummaryResponse> responses = qnaService.getQuestions(

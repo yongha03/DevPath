@@ -22,13 +22,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/projects/roles")
 @RequiredArgsConstructor
-@Tag(name = "Project - Role", description = "Project role management API")
+@Tag(name = "프로젝트 - 역할", description = "프로젝트 역할 관리 API")
 public class ProjectRoleController {
 
     private final ProjectRoleService projectRoleService;
 
     @PostMapping
-    @Operation(summary = "Add role", description = "Add a role to a project.")
+    @Operation(summary = "프로젝트 역할 추가", description = "프로젝트에 역할을 추가합니다.")
     public ApiResponse<RoleResponse> addRole(
             @Valid @RequestBody RoleRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal Long requesterId
@@ -37,7 +37,7 @@ public class ProjectRoleController {
     }
 
     @PutMapping("/{roleId}")
-    @Operation(summary = "Update role", description = "Update a role for a project.")
+    @Operation(summary = "프로젝트 역할 수정", description = "프로젝트 역할을 수정합니다.")
     public ApiResponse<RoleResponse> updateRole(
             @PathVariable Long roleId,
             @Valid @RequestBody RoleRequest request,

@@ -26,13 +26,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/me/planner")
 @RequiredArgsConstructor
-@Tag(name = "Learner - Planner", description = "Learner planner and goal management API")
+@Tag(name = "학습자 - 플래너", description = "학습자 목표 및 주간 계획 관리 API")
 public class LearnerPlannerController {
 
     private final LearnerPlannerService learnerPlannerService;
 
     @PostMapping("/goals")
-    @Operation(summary = "Create goal", description = "Create a learner goal for the authenticated user.")
+    @Operation(summary = "학습 목표 생성", description = "로그인한 학습자의 학습 목표를 생성합니다.")
     public ApiResponse<PlannerGoalResponse> createGoal(
             @Parameter(hidden = true) @AuthenticationPrincipal Long learnerId,
             @Valid @RequestBody PlannerGoalRequest request
@@ -41,7 +41,7 @@ public class LearnerPlannerController {
     }
 
     @GetMapping("/goals")
-    @Operation(summary = "Get my goals", description = "Get learner goals for the authenticated user.")
+    @Operation(summary = "내 학습 목표 조회", description = "로그인한 학습자의 학습 목표 목록을 조회합니다.")
     public ApiResponse<List<PlannerGoalResponse>> getMyGoals(
             @Parameter(hidden = true) @AuthenticationPrincipal Long learnerId
     ) {
@@ -49,7 +49,7 @@ public class LearnerPlannerController {
     }
 
     @PostMapping("/weekly-plans")
-    @Operation(summary = "Create weekly plan", description = "Create a weekly plan for the authenticated user.")
+    @Operation(summary = "주간 계획 생성", description = "로그인한 학습자의 주간 계획을 생성합니다.")
     public ApiResponse<WeeklyPlanResponse> createWeeklyPlan(
             @Parameter(hidden = true) @AuthenticationPrincipal Long learnerId,
             @Valid @RequestBody WeeklyPlanRequest request
@@ -58,7 +58,7 @@ public class LearnerPlannerController {
     }
 
     @GetMapping("/weekly-plans")
-    @Operation(summary = "Get my weekly plans", description = "Get weekly plans for the authenticated user.")
+    @Operation(summary = "내 주간 계획 조회", description = "로그인한 학습자의 주간 계획 목록을 조회합니다.")
     public ApiResponse<List<WeeklyPlanResponse>> getMyWeeklyPlans(
             @Parameter(hidden = true) @AuthenticationPrincipal Long learnerId
     ) {
@@ -66,7 +66,7 @@ public class LearnerPlannerController {
     }
 
     @PutMapping("/weekly-plans/{planId}")
-    @Operation(summary = "Update weekly plan", description = "Update a weekly plan owned by the authenticated user.")
+    @Operation(summary = "주간 계획 수정", description = "로그인한 학습자가 보유한 주간 계획을 수정합니다.")
     public ApiResponse<WeeklyPlanResponse> updateWeeklyPlan(
             @PathVariable Long planId,
             @Parameter(hidden = true) @AuthenticationPrincipal Long learnerId,
@@ -76,7 +76,7 @@ public class LearnerPlannerController {
     }
 
     @PostMapping("/weekly-plans/{planId}/adjust")
-    @Operation(summary = "Adjust weekly plan", description = "Adjust a weekly plan for the authenticated user.")
+    @Operation(summary = "주간 계획 조정", description = "로그인한 학습자의 주간 계획을 조정합니다.")
     public ApiResponse<WeeklyPlanResponse> adjustWeeklyPlan(
             @PathVariable Long planId,
             @Parameter(hidden = true) @AuthenticationPrincipal Long learnerId,

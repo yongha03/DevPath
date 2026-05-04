@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "AI Code Review", description = "AI 코드 리뷰 및 리뷰 코멘트 승인/반려 API")
+@Tag(name = "AI 코드 리뷰", description = "AI 코드 리뷰 및 리뷰 코멘트 승인/반려 API")
 @RestController
 @RequiredArgsConstructor
 public class AiCodeReviewController {

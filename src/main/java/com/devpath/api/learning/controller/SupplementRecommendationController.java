@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Learner - Supplement Recommendation", description = "보강 추천 후보 생성 및 상태 관리 API")
+@Tag(name = "학습자 - 보강 추천", description = "보강 추천 후보 생성 및 상태 관리 API")
 @RestController
 @RequestMapping("/api/learning/supplement-recommendations")
 @RequiredArgsConstructor
@@ -30,8 +30,8 @@ public class SupplementRecommendationController {
     private final SupplementRecommendationService supplementRecommendationService;
 
     @Operation(
-        summary = "Create supplement recommendation",
-        description = "Creates supplement recommendation candidates manually or automatically."
+        summary = "보강 추천 생성",
+        description = "보강 추천 후보를 수동 또는 자동으로 생성합니다."
     )
     @PostMapping
     public ResponseEntity<ApiResponse<SupplementRecommendationResponse>> createRecommendation(
@@ -43,7 +43,7 @@ public class SupplementRecommendationController {
             .body(ApiResponse.ok(supplementRecommendationService.createRecommendation(userId, nodeId, reason)));
     }
 
-    @Operation(summary = "Get supplement recommendations", description = "Returns supplement recommendations with status filtering.")
+    @Operation(summary = "보강 추천 목록 조회", description = "상태 필터를 적용해 보강 추천 목록을 조회합니다.")
     @GetMapping
     public ResponseEntity<ApiResponse<List<SupplementRecommendationResponse>>> getRecommendations(
         @AuthenticationPrincipal Long userId,
@@ -52,7 +52,7 @@ public class SupplementRecommendationController {
         return ResponseEntity.ok(ApiResponse.ok(supplementRecommendationService.getRecommendations(userId, status)));
     }
 
-    @Operation(summary = "Approve supplement recommendation", description = "Approves a supplement recommendation.")
+    @Operation(summary = "보강 추천 승인", description = "보강 추천을 승인합니다.")
     @PatchMapping("/{recommendationId}/approve")
     public ResponseEntity<ApiResponse<SupplementRecommendationResponse>> approveRecommendation(
         @AuthenticationPrincipal Long userId,
@@ -63,7 +63,7 @@ public class SupplementRecommendationController {
         ));
     }
 
-    @Operation(summary = "Reject supplement recommendation", description = "Rejects a supplement recommendation.")
+    @Operation(summary = "보강 추천 거절", description = "보강 추천을 거절합니다.")
     @PatchMapping("/{recommendationId}/reject")
     public ResponseEntity<ApiResponse<SupplementRecommendationResponse>> rejectRecommendation(
         @AuthenticationPrincipal Long userId,
@@ -75,8 +75,8 @@ public class SupplementRecommendationController {
     }
 
     @Operation(
-        summary = "Get existing recommendation histories",
-        description = "Returns recommendation histories filtered by recommendation id or node id."
+        summary = "추천 이력 조회",
+        description = "추천 ID 또는 노드 ID 기준으로 추천 이력을 조회합니다."
     )
     @GetMapping("/histories")
     public ResponseEntity<ApiResponse<List<RecommendationHistoryResponse>>> getRecommendationHistories(
@@ -90,8 +90,8 @@ public class SupplementRecommendationController {
     }
 
     @Operation(
-        summary = "Get existing risk warnings",
-        description = "Returns existing risk warnings with optional unacknowledged and node filters."
+        summary = "리스크 경고 조회",
+        description = "미확인 여부와 노드 조건으로 리스크 경고 목록을 조회합니다."
     )
     @GetMapping("/risk-warnings")
     public ResponseEntity<ApiResponse<List<RiskWarningResponse>>> getRiskWarnings(

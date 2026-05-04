@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Learner - Weakness Analysis", description = "진단 퀴즈 기반 취약점 분석 결과 조회 API")
+@Tag(name = "학습자 - 취약점 분석", description = "진단 퀴즈 기반 취약점 분석 결과 조회 API")
 @RestController
 @RequestMapping("/api/learning/weakness-analysis")
 @RequiredArgsConstructor
@@ -22,8 +22,8 @@ public class WeaknessAnalysisController {
     private final WeaknessAnalysisService weaknessAnalysisService;
 
     @Operation(
-        summary = "Get weakness analysis by result id",
-        description = "Returns weak tags and recommended nodes for a diagnosis result."
+        summary = "진단 결과 기준 취약점 분석 조회",
+        description = "진단 결과의 취약 태그와 추천 노드를 조회합니다."
     )
     @GetMapping("/results/{resultId}")
     public ResponseEntity<ApiResponse<WeaknessAnalysisResponse>> getAnalysisByResultId(
@@ -36,8 +36,8 @@ public class WeaknessAnalysisController {
     }
 
     @Operation(
-        summary = "Get latest weakness analysis for roadmap",
-        description = "Returns the latest weakness analysis for a roadmap."
+        summary = "로드맵 최신 취약점 분석 조회",
+        description = "로드맵 기준 최신 취약점 분석 결과를 조회합니다."
     )
     @GetMapping("/roadmaps/{roadmapId}/latest")
     public ResponseEntity<ApiResponse<WeaknessAnalysisResponse>> getLatestAnalysis(

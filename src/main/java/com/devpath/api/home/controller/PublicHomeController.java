@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Public Home API", description = "Landing page overview API")
+@Tag(name = "공개 홈", description = "랜딩 페이지 개요 조회 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/home")
@@ -18,7 +18,7 @@ public class PublicHomeController {
 
   private final PublicHomeService publicHomeService;
 
-  @Operation(summary = "Get landing page overview", description = "Returns public overview data for the landing page.")
+  @Operation(summary = "랜딩 페이지 개요 조회", description = "랜딩 페이지에 노출할 공개 개요 데이터를 조회합니다.")
   @GetMapping("/overview")
   public ApiResponse<PublicHomeDto.OverviewResponse> getOverview() {
     return ApiResponse.ok(publicHomeService.getOverview());

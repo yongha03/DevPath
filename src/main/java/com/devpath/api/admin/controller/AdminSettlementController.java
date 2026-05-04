@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Admin - Settlement", description = "관리자 정산 관리 API")
+@Tag(name = "관리자 - 정산", description = "관리자 정산 관리 API")
 @RestController
 @RequestMapping("/api/admin/settlements")
 @RequiredArgsConstructor

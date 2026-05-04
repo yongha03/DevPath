@@ -22,13 +22,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/me/streaks")
 @RequiredArgsConstructor
-@Tag(name = "Learner - Streak", description = "Learner streak management API")
+@Tag(name = "학습자 - 연속 학습", description = "학습자 연속 학습 관리 API")
 public class LearnerStreakController {
 
     private final LearnerStreakService learnerStreakService;
 
     @GetMapping
-    @Operation(summary = "Get streak", description = "Get streak data for the authenticated user.")
+    @Operation(summary = "연속 학습 조회", description = "로그인한 학습자의 연속 학습 데이터를 조회합니다.")
     public ApiResponse<StreakResponse> getStreak(
             @Parameter(hidden = true) @AuthenticationPrincipal Long learnerId
     ) {
@@ -36,7 +36,7 @@ public class LearnerStreakController {
     }
 
     @PostMapping("/refresh")
-    @Operation(summary = "Refresh streak", description = "Refresh streak data for the authenticated user.")
+    @Operation(summary = "연속 학습 갱신", description = "로그인한 학습자의 연속 학습 데이터를 갱신합니다.")
     public ApiResponse<StreakResponse> refreshStreak(
             @Parameter(hidden = true) @AuthenticationPrincipal Long learnerId
     ) {
@@ -44,7 +44,7 @@ public class LearnerStreakController {
     }
 
     @PostMapping("/recovery-plans")
-    @Operation(summary = "Create recovery plan", description = "Create a recovery plan for the authenticated user.")
+    @Operation(summary = "학습 회복 계획 생성", description = "로그인한 학습자의 학습 회복 계획을 생성합니다.")
     public ApiResponse<RecoveryPlanResponse> createRecoveryPlan(
             @Parameter(hidden = true) @AuthenticationPrincipal Long learnerId,
             @Valid @RequestBody RecoveryPlanRequest request

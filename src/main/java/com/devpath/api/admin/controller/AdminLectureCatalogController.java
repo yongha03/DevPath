@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 // 관리자 강의 메뉴 편집 화면에서 사용하는 메뉴 조회/저장 API를 제공한다.
-@Tag(name = "Admin - Lecture Catalog", description = "관리자 강의 목록 메뉴 관리 API")
+@Tag(name = "관리자 - 강의 카탈로그", description = "관리자 강의 목록 메뉴 관리 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/admin/course-catalog")

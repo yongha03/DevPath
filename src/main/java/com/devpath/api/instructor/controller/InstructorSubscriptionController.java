@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Instructor - Subscription", description = "강사 채널 구독 API")
+@Tag(name = "강사 - 채널 구독", description = "강사 채널 구독 API")
 @RestController
 @RequestMapping("/api/instructor/subscriptions")
 @RequiredArgsConstructor

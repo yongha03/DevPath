@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Mentoring Q&A", description = "멘토링 전용 Q&A API")
+@Tag(name = "멘토링 Q&A", description = "멘토링 전용 Q&A API")
 @RestController
 @RequiredArgsConstructor
 public class MentoringQuestionController {
@@ -53,7 +53,7 @@ public class MentoringQuestionController {
   @Operation(summary = "멘토링 답변 작성", description = "멘토링 질문에 답변을 작성하고 질문 상태를 ANSWERED로 변경합니다.")
   public ResponseEntity<ApiResponse<QnaResponse.AnswerDetail>> createAnswer(
       @PathVariable Long questionId, @Valid @RequestBody QnaRequest.AnswerCreate request) {
-    // 답변 작성 시 질문 작성자에게 알림을 저장한다.
+    // 답변 작성 후 질문 작성자에게 알림을 저장한다.
     return ResponseEntity.ok(
         ApiResponse.ok(mentoringQuestionService.createAnswer(questionId, request)));
   }

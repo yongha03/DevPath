@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Instructor - Review Operations", description = "Instructor review API")
+@Tag(name = "강사 - 리뷰 운영", description = "강사 리뷰 운영 API")
 @RestController
 @RequestMapping("/api/instructor/reviews")
 @RequiredArgsConstructor
@@ -36,7 +36,7 @@ public class InstructorReviewController {
 
     private final InstructorReviewService instructorReviewService;
 
-    @Operation(summary = "List reviews")
+    @Operation(summary = "리뷰 목록 조회")
     @GetMapping
     public ApiResponse<List<InstructorReviewListResponse>> getReviews(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId
@@ -44,7 +44,7 @@ public class InstructorReviewController {
         return ApiResponse.success("Review list loaded.", instructorReviewService.getReviews(userId));
     }
 
-    @Operation(summary = "Create review reply")
+    @Operation(summary = "리뷰 답글 작성")
     @PostMapping("/{reviewId}/replies")
     public ApiResponse<ReviewReplyResponse> createReply(
             @PathVariable Long reviewId,
@@ -54,7 +54,7 @@ public class InstructorReviewController {
         return ApiResponse.success("Reply created.", instructorReviewService.createReply(reviewId, userId, request));
     }
 
-    @Operation(summary = "Update review reply")
+    @Operation(summary = "리뷰 답글 수정")
     @PutMapping("/{reviewId}/replies/{replyId}")
     public ApiResponse<ReviewReplyResponse> updateReply(
             @PathVariable Long reviewId,
@@ -65,7 +65,7 @@ public class InstructorReviewController {
         return ApiResponse.success("Reply updated.", instructorReviewService.updateReply(reviewId, replyId, userId, request));
     }
 
-    @Operation(summary = "Delete review reply")
+    @Operation(summary = "리뷰 답글 삭제")
     @DeleteMapping("/{reviewId}/replies/{replyId}")
     public ApiResponse<Void> deleteReply(
             @PathVariable Long reviewId,
@@ -76,7 +76,7 @@ public class InstructorReviewController {
         return ApiResponse.success("Reply deleted.", null);
     }
 
-    @Operation(summary = "Update review status")
+    @Operation(summary = "리뷰 상태 변경")
     @PatchMapping("/{reviewId}/status")
     public ApiResponse<Void> updateStatus(
             @PathVariable Long reviewId,
@@ -87,7 +87,7 @@ public class InstructorReviewController {
         return ApiResponse.success("Review status updated.", null);
     }
 
-    @Operation(summary = "Add review issue tags")
+    @Operation(summary = "리뷰 이슈 태그 추가")
     @PostMapping("/{reviewId}/issue-tags")
     public ApiResponse<Void> addIssueTags(
             @PathVariable Long reviewId,
@@ -98,7 +98,7 @@ public class InstructorReviewController {
         return ApiResponse.success("Issue tags added.", null);
     }
 
-    @Operation(summary = "Get review summary")
+    @Operation(summary = "리뷰 요약 조회")
     @GetMapping("/summary")
     public ApiResponse<ReviewSummaryResponse> getReviewSummary(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId
@@ -106,7 +106,7 @@ public class InstructorReviewController {
         return ApiResponse.success("Review summary loaded.", instructorReviewService.getReviewSummary(userId));
     }
 
-    @Operation(summary = "Get review helpful stats")
+    @Operation(summary = "리뷰 도움 통계 조회")
     @GetMapping("/helpful")
     public ApiResponse<ReviewHelpfulResponse> getHelpfulStats(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId
@@ -114,7 +114,7 @@ public class InstructorReviewController {
         return ApiResponse.success("Review helpful stats loaded.", instructorReviewService.getHelpfulStats(userId));
     }
 
-    @Operation(summary = "Create review template")
+    @Operation(summary = "리뷰 템플릿 생성")
     @PostMapping("/templates")
     public ApiResponse<ReviewTemplateResponse> createTemplate(
             @RequestBody @Valid ReviewTemplateRequest request,
@@ -123,7 +123,7 @@ public class InstructorReviewController {
         return ApiResponse.success("Template created.", instructorReviewService.createTemplate(userId, request));
     }
 
-    @Operation(summary = "List review templates")
+    @Operation(summary = "리뷰 템플릿 목록 조회")
     @GetMapping("/templates")
     public ApiResponse<List<ReviewTemplateResponse>> getTemplates(
             @Parameter(hidden = true) @AuthenticationPrincipal Long userId
@@ -131,7 +131,7 @@ public class InstructorReviewController {
         return ApiResponse.success("Templates loaded.", instructorReviewService.getTemplates(userId));
     }
 
-    @Operation(summary = "Update review template")
+    @Operation(summary = "리뷰 템플릿 수정")
     @PutMapping("/templates/{templateId}")
     public ApiResponse<ReviewTemplateResponse> updateTemplate(
             @PathVariable Long templateId,
@@ -141,7 +141,7 @@ public class InstructorReviewController {
         return ApiResponse.success("Template updated.", instructorReviewService.updateTemplate(templateId, userId, request));
     }
 
-    @Operation(summary = "Delete review template")
+    @Operation(summary = "리뷰 템플릿 삭제")
     @DeleteMapping("/templates/{templateId}")
     public ApiResponse<Void> deleteTemplate(
             @PathVariable Long templateId,
@@ -151,7 +151,7 @@ public class InstructorReviewController {
         return ApiResponse.success("Template deleted.", null);
     }
 
-    @Operation(summary = "Hide review")
+    @Operation(summary = "리뷰 숨김 처리")
     @PostMapping("/{reviewId}/hide")
     public ApiResponse<Void> hideReview(
             @PathVariable Long reviewId,
@@ -161,7 +161,7 @@ public class InstructorReviewController {
         return ApiResponse.success("Review hidden.", null);
     }
 
-    @Operation(summary = "Resolve review report")
+    @Operation(summary = "리뷰 신고 처리")
     @PostMapping("/{reviewId}/reports/resolve")
     public ApiResponse<Void> resolveReport(
             @PathVariable Long reviewId,

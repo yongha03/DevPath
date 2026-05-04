@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Admin - Dashboard", description = "관리자 대시보드 조회 API")
+@Tag(name = "관리자 - 대시보드", description = "관리자 대시보드 조회 API")
 @RestController
 @RequestMapping("/api/admin/dashboard")
 @RequiredArgsConstructor

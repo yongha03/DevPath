@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Voice Channel", description = "보이스 채널 및 상태 이벤트 API")
+@Tag(name = "보이스 채널", description = "보이스 채널 및 상태 이벤트 API")
 @RestController
 @RequiredArgsConstructor
 public class VoiceChannelController {

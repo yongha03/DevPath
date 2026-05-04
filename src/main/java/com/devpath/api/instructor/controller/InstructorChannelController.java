@@ -12,7 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
-@Tag(name = "Instructor - Channel", description = "강사 채널 관리 API")
+@Tag(name = "강사 - 채널", description = "강사 채널 관리 API")
 @RestController
 @RequestMapping("/api/instructor/channel")
 @RequiredArgsConstructor

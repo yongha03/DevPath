@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Learner - Recommendation Risk Warning", description = "기존 추천 난이도 및 리스크 경고 조회 API")
+@Tag(name = "학습자 - 추천 리스크 경고", description = "기존 추천 난이도 및 리스크 경고 조회 API")
 @RestController
 @RequestMapping("/api/recommendations/risk-warnings")
 @RequiredArgsConstructor
@@ -23,15 +23,15 @@ public class RiskWarningController {
     private final RiskWarningService riskWarningService;
 
     @Operation(
-        summary = "Get existing risk warnings",
-        description = "Returns existing risk warnings with optional unacknowledged and node filters."
+        summary = "기존 추천 리스크 경고 조회",
+        description = "미확인 여부와 노드 조건으로 기존 리스크 경고를 조회합니다."
     )
     @GetMapping
     public ResponseEntity<ApiResponse<RiskWarningResponse.ListResult>> getWarnings(
         @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
-        @Parameter(description = "Only unacknowledged warnings", example = "true")
+        @Parameter(description = "미확인 경고만 조회할지 여부", example = "true")
         @RequestParam(defaultValue = "false") Boolean onlyUnacknowledged,
-        @Parameter(description = "Roadmap node id", example = "100")
+        @Parameter(description = "로드맵 노드 ID", example = "100")
         @RequestParam(required = false) Long nodeId
     ) {
         return ResponseEntity.ok(ApiResponse.ok(

@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Admin - Permission", description = "관리자 권한 관리 API")
+@Tag(name = "관리자 - 권한 관리", description = "관리자 권한 관리 API")
 @RestController
 @RequestMapping("/api/admin/permissions")
 @RequiredArgsConstructor
@@ -34,7 +34,7 @@ public class AdminPermissionController {
         return ApiResponse.success("Role이 등록되었습니다.", adminPermissionService.createRole(request));
     }
 
-    @Operation(summary = "Role 수정", description = "기존 Role 이름, 설명, 권한 코드를 수정합니다.")
+    @Operation(summary = "역할 수정", description = "기존 역할 이름, 설명, 권한 코드를 수정합니다.")
     @PutMapping("/roles/{roleId}")
     public ApiResponse<RoleResponse> updateRole(
             @PathVariable Long roleId,
@@ -43,7 +43,7 @@ public class AdminPermissionController {
         return ApiResponse.success("Role이 수정되었습니다.", adminPermissionService.updateRole(roleId, request));
     }
 
-    @Operation(summary = "Role 목록 조회", description = "삭제되지 않은 Role 목록을 조회합니다.")
+    @Operation(summary = "역할 목록 조회", description = "삭제되지 않은 역할 목록을 조회합니다.")
     @GetMapping("/roles")
     public ApiResponse<List<RoleResponse>> getRoles() {
         return ApiResponse.success("Role 목록을 조회했습니다.", adminPermissionService.getRoles());

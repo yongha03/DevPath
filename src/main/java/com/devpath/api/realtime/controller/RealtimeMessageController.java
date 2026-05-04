@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Realtime Message", description = "라운지 채팅 및 1:1 메시지 REST API")
+@Tag(name = "실시간 메시지", description = "라운지 채팅 및 1:1 메시지 REST API")
 @RestController
 @RequiredArgsConstructor
 public class RealtimeMessageController {

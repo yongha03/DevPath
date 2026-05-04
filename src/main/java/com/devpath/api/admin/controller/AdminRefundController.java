@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Admin - Refund", description = "관리자 환불 관리 API")
+@Tag(name = "관리자 - 환불", description = "관리자 환불 관리 API")
 @RestController
 @RequestMapping("/api/admin/refunds")
 @RequiredArgsConstructor

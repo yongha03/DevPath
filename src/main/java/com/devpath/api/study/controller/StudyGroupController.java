@@ -28,13 +28,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/study-groups")
 @RequiredArgsConstructor
-@Tag(name = "Learner - Study Group", description = "Study group recruitment and management API")
+@Tag(name = "학습자 - 스터디 그룹", description = "스터디 그룹 모집 및 관리 API")
 public class StudyGroupController {
 
     private final StudyGroupService studyGroupService;
 
     @PostMapping
-    @Operation(summary = "Create study group")
+    @Operation(summary = "스터디 그룹 생성")
     public ApiResponse<StudyGroupResponse> createStudyGroup(
             @Parameter(hidden = true) @AuthenticationPrincipal Long learnerId,
             @Valid @RequestBody StudyGroupRequest request
@@ -43,19 +43,19 @@ public class StudyGroupController {
     }
 
     @GetMapping
-    @Operation(summary = "List study groups")
+    @Operation(summary = "스터디 그룹 목록 조회")
     public ApiResponse<List<StudyGroupResponse>> getAllStudyGroups() {
         return ApiResponse.ok(studyGroupService.getAllStudyGroups());
     }
 
     @GetMapping("/{groupId}")
-    @Operation(summary = "Get study group")
+    @Operation(summary = "스터디 그룹 상세 조회")
     public ApiResponse<StudyGroupResponse> getStudyGroup(@PathVariable Long groupId) {
         return ApiResponse.ok(studyGroupService.getStudyGroup(groupId));
     }
 
     @PutMapping("/{groupId}")
-    @Operation(summary = "Update study group")
+    @Operation(summary = "스터디 그룹 수정")
     public ApiResponse<StudyGroupResponse> updateStudyGroup(
             @PathVariable Long groupId,
             @Parameter(hidden = true) @AuthenticationPrincipal Long learnerId,
@@ -65,7 +65,7 @@ public class StudyGroupController {
     }
 
     @DeleteMapping("/{groupId}")
-    @Operation(summary = "Delete study group")
+    @Operation(summary = "스터디 그룹 삭제")
     public ApiResponse<Void> deleteStudyGroup(
             @PathVariable Long groupId,
             @Parameter(hidden = true) @AuthenticationPrincipal Long learnerId
@@ -75,7 +75,7 @@ public class StudyGroupController {
     }
 
     @PatchMapping("/{groupId}/recruitment-status")
-    @Operation(summary = "Change recruitment status")
+    @Operation(summary = "스터디 모집 상태 변경")
     public ApiResponse<StudyGroupResponse> changeRecruitmentStatus(
             @PathVariable Long groupId,
             @Parameter(hidden = true) @AuthenticationPrincipal Long learnerId,
@@ -87,7 +87,7 @@ public class StudyGroupController {
     }
 
     @PostMapping("/{groupId}/applications")
-    @Operation(summary = "Apply for study group")
+    @Operation(summary = "스터디 그룹 신청")
     public ApiResponse<StudyApplicationResponse> applyForStudyGroup(
             @PathVariable Long groupId,
             @Parameter(hidden = true) @AuthenticationPrincipal Long learnerId
@@ -96,7 +96,7 @@ public class StudyGroupController {
     }
 
     @PostMapping("/{groupId}/applications/{applicationId}/approve")
-    @Operation(summary = "Approve study application")
+    @Operation(summary = "스터디 신청 승인")
     public ApiResponse<StudyApplicationResponse> approveApplication(
             @PathVariable Long groupId,
             @PathVariable Long applicationId,
@@ -108,7 +108,7 @@ public class StudyGroupController {
     }
 
     @PostMapping("/{groupId}/applications/{applicationId}/reject")
-    @Operation(summary = "Reject study application")
+    @Operation(summary = "스터디 신청 거절")
     public ApiResponse<StudyApplicationResponse> rejectApplication(
             @PathVariable Long groupId,
             @PathVariable Long applicationId,

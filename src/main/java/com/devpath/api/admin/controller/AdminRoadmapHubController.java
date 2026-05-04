@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 // 관리자 로드맵 허브 편집기에 필요한 조회와 저장 API를 제공한다.
-@Tag(name = "Admin - Roadmap Hub", description = "관리자 로드맵 허브 관리 API")
+@Tag(name = "관리자 - 로드맵 허브", description = "관리자 로드맵 허브 관리 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/admin/roadmap-hub")

@@ -19,8 +19,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-// Admin learning rule API controller.
-@Tag(name = "Admin - Learning Automation Rule", description = "Learning automation rule management API")
+// 관리자 학습 자동화 규칙 API 컨트롤러다.
+@Tag(name = "관리자 - 학습 자동화 규칙", description = "관리자 학습 자동화 규칙 관리 API")
 @RestController
 @RequestMapping("/api/admin/learning-rules")
 @RequiredArgsConstructor
@@ -28,13 +28,13 @@ public class AdminLearningRuleController {
 
     private final AdminLearningRuleService adminLearningRuleService;
 
-    @Operation(summary = "Get learning rules", description = "Returns all learning automation rules.")
+    @Operation(summary = "학습 자동화 규칙 목록 조회", description = "전체 학습 자동화 규칙을 조회합니다.")
     @GetMapping
     public ResponseEntity<ApiResponse<List<AdminLearningRuleResponse.Detail>>> getRules() {
         return ResponseEntity.ok(ApiResponse.ok(adminLearningRuleService.getRules()));
     }
 
-    @Operation(summary = "Create learning rule", description = "Creates a learning automation rule.")
+    @Operation(summary = "학습 자동화 규칙 생성", description = "학습 자동화 규칙을 생성합니다.")
     @PostMapping
     public ResponseEntity<ApiResponse<AdminLearningRuleResponse.Detail>> createRule(
         @Valid @RequestBody AdminLearningRuleRequest.Upsert request
@@ -42,7 +42,7 @@ public class AdminLearningRuleController {
         return ResponseEntity.ok(ApiResponse.ok(adminLearningRuleService.createRule(request)));
     }
 
-    @Operation(summary = "Update learning rule", description = "Updates a learning automation rule.")
+    @Operation(summary = "학습 자동화 규칙 수정", description = "학습 자동화 규칙을 수정합니다.")
     @PutMapping("/{ruleId}")
     public ResponseEntity<ApiResponse<AdminLearningRuleResponse.Detail>> updateRule(
         @PathVariable Long ruleId,
@@ -51,13 +51,13 @@ public class AdminLearningRuleController {
         return ResponseEntity.ok(ApiResponse.ok(adminLearningRuleService.updateRule(ruleId, request)));
     }
 
-    @Operation(summary = "Enable learning rule", description = "Enables a learning automation rule.")
+    @Operation(summary = "학습 자동화 규칙 활성화", description = "학습 자동화 규칙을 활성화합니다.")
     @PatchMapping("/{ruleId}/enable")
     public ResponseEntity<ApiResponse<AdminLearningRuleResponse.Detail>> enableRule(@PathVariable Long ruleId) {
         return ResponseEntity.ok(ApiResponse.ok(adminLearningRuleService.enableRule(ruleId)));
     }
 
-    @Operation(summary = "Disable learning rule", description = "Disables a learning automation rule.")
+    @Operation(summary = "학습 자동화 규칙 비활성화", description = "학습 자동화 규칙을 비활성화합니다.")
     @PatchMapping("/{ruleId}/disable")
     public ResponseEntity<ApiResponse<AdminLearningRuleResponse.Detail>> disableRule(@PathVariable Long ruleId) {
         return ResponseEntity.ok(ApiResponse.ok(adminLearningRuleService.disableRule(ruleId)));

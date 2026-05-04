@@ -21,13 +21,13 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/projects/invitations")
 @RequiredArgsConstructor
-@Tag(name = "Project - Invitation", description = "Project invitation API")
+@Tag(name = "프로젝트 - 초대", description = "프로젝트 멤버 초대 API")
 public class ProjectInvitationController {
 
     private final ProjectInvitationService projectInvitationService;
 
     @PostMapping
-    @Operation(summary = "Invite member", description = "Invite one user to the project.")
+    @Operation(summary = "프로젝트 멤버 초대", description = "프로젝트에 사용자를 초대합니다.")
     public ApiResponse<InvitationResponse> inviteMember(
             @Valid @RequestBody InvitationRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal Long inviterId
@@ -36,7 +36,7 @@ public class ProjectInvitationController {
     }
 
     @PostMapping("/{invitationId}/accept")
-    @Operation(summary = "Accept invitation", description = "Accept an invitation addressed to the authenticated user.")
+    @Operation(summary = "프로젝트 초대 수락", description = "로그인한 사용자에게 온 프로젝트 초대를 수락합니다.")
     public ApiResponse<InvitationResponse> acceptInvitation(
             @PathVariable Long invitationId,
             @Parameter(hidden = true) @AuthenticationPrincipal Long learnerId
@@ -45,7 +45,7 @@ public class ProjectInvitationController {
     }
 
     @PostMapping("/{invitationId}/reject")
-    @Operation(summary = "Reject invitation", description = "Reject an invitation addressed to the authenticated user.")
+    @Operation(summary = "프로젝트 초대 거절", description = "로그인한 사용자에게 온 프로젝트 초대를 거절합니다.")
     public ApiResponse<InvitationResponse> rejectInvitation(
             @PathVariable Long invitationId,
             @Parameter(hidden = true) @AuthenticationPrincipal Long learnerId

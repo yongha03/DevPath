@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Mentoring Workspace", description = "멘토링 워크스페이스 및 대시보드 API")
+@Tag(name = "멘토링 워크스페이스", description = "멘토링 워크스페이스 및 대시보드 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/mentorings")
