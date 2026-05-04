@@ -155,6 +155,8 @@ public enum ErrorCode {
   AIREVIEW_FORBIDDEN(HttpStatus.FORBIDDEN, "AI 코드 리뷰를 요청할 권한이 없습니다."),
   AIREVIEW_COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "AI 리뷰 코멘트를 찾을 수 없습니다."),
   AIREVIEW_COMMENT_FORBIDDEN(HttpStatus.FORBIDDEN, "AI 리뷰 코멘트를 처리할 권한이 없습니다."),
+  AIREVIEW_DESIGN_NOT_FOUND(HttpStatus.NOT_FOUND, "AI 설계 리뷰를 찾을 수 없습니다."),
+  AIREVIEW_DESIGN_FORBIDDEN(HttpStatus.FORBIDDEN, "AI 설계 리뷰를 처리할 권한이 없습니다."),
 
   INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다.");
 
