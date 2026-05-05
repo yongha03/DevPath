@@ -158,6 +158,14 @@ public enum ErrorCode {
   AIREVIEW_DESIGN_NOT_FOUND(HttpStatus.NOT_FOUND, "AI 설계 리뷰를 찾을 수 없습니다."),
   AIREVIEW_DESIGN_FORBIDDEN(HttpStatus.FORBIDDEN, "AI 설계 리뷰를 처리할 권한이 없습니다."),
 
+  JOB_COMPANY_NOT_FOUND(HttpStatus.NOT_FOUND, "기업을 찾을 수 없습니다."),
+  JOB_COMPANY_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 등록된 기업입니다."),
+  JOB_POSTING_NOT_FOUND(HttpStatus.NOT_FOUND, "채용 공고를 찾을 수 없습니다."),
+  JOB_POSTING_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 등록된 외부 채용 공고입니다."),
+  JOB_COLLECT_FAILED(HttpStatus.BAD_REQUEST, "채용 데이터 수집에 실패했습니다."),
+  JOB_SKILL_TAG_NOT_FOUND(HttpStatus.NOT_FOUND, "채용 기술 태그를 찾을 수 없습니다."),
+  JOB_JD_ANALYSIS_FAILED(HttpStatus.BAD_REQUEST, "JD 분석에 실패했습니다."),
+
   INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다.");
 
   private final HttpStatus status;
