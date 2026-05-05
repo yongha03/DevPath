@@ -39,6 +39,7 @@ type SiteHeaderProps = {
   onLogout?: () => Promise<void> | void
   onLoginClick?: () => void
   activeNavHref?: string | null
+  brandSuffix?: string
   offsetTopPx?: number
   userGroupOffsetOverride?: { x: number; y: number }
   startOverlay?: ReactNode
@@ -51,6 +52,7 @@ export default function SiteHeader({
   onLogout,
   onLoginClick,
   activeNavHref = null,
+  brandSuffix,
   offsetTopPx = 0,
   userGroupOffsetOverride,
   startOverlay,
@@ -84,6 +86,14 @@ export default function SiteHeader({
   const headerStyle: CSSProperties = { top: `${offsetTopPx}px` }
   const defaultNavLinkClassName = 'site-header-nav-link'
   const activeNavLinkClassName = 'site-header-nav-link site-header-nav-link--active'
+  const brandLabel = (
+    <span className="inline-flex items-baseline gap-2 whitespace-nowrap">
+      <span className="inline-block">DevPath</span>
+      {brandSuffix ? (
+        <span className="text-sm font-semibold text-gray-400">{brandSuffix}</span>
+      ) : null}
+    </span>
+  )
 
   return (
     <>
@@ -98,7 +108,7 @@ export default function SiteHeader({
               style={getMoveStyle(siteHeaderTuning.brandGroup)}
             >
               <i className="fas fa-code-branch text-brand inline-block transition group-hover:rotate-12" />
-              <span className="inline-block">DevPath</span>
+              {brandLabel}
             </a>
           </div>
 
@@ -109,7 +119,7 @@ export default function SiteHeader({
               style={getMoveStyle(siteHeaderTuning.brandGroup)}
             >
               <i className="fas fa-code-branch text-brand inline-block transition group-hover:rotate-12" />
-              <span className="inline-block">DevPath</span>
+              {brandLabel}
             </a>
           </div>
 

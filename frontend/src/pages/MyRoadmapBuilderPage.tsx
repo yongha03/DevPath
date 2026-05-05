@@ -11,8 +11,14 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from '@dnd-kit/core'
-import { readStoredAuthSession } from '../lib/auth-session'
-import { roadmapApi } from '../lib/api'
+import AuthModal, { type AuthView } from '../components/AuthModal'
+import SiteHeader from '../components/SiteHeader'
+import { authApi, roadmapApi, userApi } from '../lib/api'
+import {
+  AUTH_SESSION_SYNC_EVENT,
+  clearStoredAuthSession,
+  readStoredAuthSession,
+} from '../lib/auth-session'
 import type { RoadmapHubCatalog, RoadmapHubItem } from '../types/roadmap-hub'
 import type { OfficialRoadmapDetail, OfficialRoadmapNode } from '../types/roadmap'
 
@@ -76,6 +82,10 @@ function splitSubTopics(value?: string | null) {
     .split(/[,;|]/)
     .map((topic) => topic.trim())
     .filter(Boolean)
+}
+
+function getTopicSummary(value: string) {
+  return value.split(':')[0]?.trim() || value.trim()
 }
 
 function getNodeVisual(node: OfficialRoadmapNode) {
@@ -168,13 +178,17 @@ function filterRoadmapTemplates(
 // ────────────────────────────────────────────
 
 function MyRoadmapBuilderPage() {
-  const [session] = useState(() => readStoredAuthSession())
+  const [session, setSession] = useState(() => readStoredAuthSession())
+  const [profileImage, setProfileImage] = useState<string | null>(null)
+  const [authView, setAuthView] = useState<AuthView | null>(null)
   const [templates, setTemplates] = useState<RoadmapTemplate[]>([])
   const [selectedRoadmapId, setSelectedRoadmapId] = useState<number | null>(null)
   const [templateSearch, setTemplateSearch] = useState('')
   const [templateSection, setTemplateSection] = useState('ALL')
+  const [templatePickerOpen, setTemplatePickerOpen] = useState(false)
   const [search, setSearch] = useState('')
   const [items, setItems] = useState<SkillModule[]>([])
+  const [previewModuleKey, setPreviewModuleKey] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [nodes, setNodes] = useState<BuilderNode[]>([])
@@ -193,6 +207,54 @@ function MyRoadmapBuilderPage() {
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
     useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 5 } }),
   )
+
+  useEffect(() => {
+    const syncSession = () => setSession(readStoredAuthSession())
+    window.addEventListener('storage', syncSession)
+    window.addEventListener(AUTH_SESSION_SYNC_EVENT, syncSession)
+    syncSession()
+
+    return () => {
+      window.removeEventListener('storage', syncSession)
+      window.removeEventListener(AUTH_SESSION_SYNC_EVENT, syncSession)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!session) {
+      setProfileImage(null)
+      return
+    }
+
+    const controller = new AbortController()
+    userApi
+      .getMyProfile(controller.signal)
+      .then((profile) => setProfileImage(profile.profileImage))
+      .catch(() => setProfileImage(null))
+
+    return () => controller.abort()
+  }, [session])
+
+  async function handleLogout() {
+    const currentSession = readStoredAuthSession()
+
+    try {
+      if (currentSession?.refreshToken) {
+        await authApi.logout(currentSession.refreshToken)
+      }
+    } catch {
+      // 서버 로그아웃이 실패해도 로컬 세션은 정리한다.
+    } finally {
+      clearStoredAuthSession()
+      setSession(null)
+      setProfileImage(null)
+    }
+  }
+
+  function handleAuthenticated() {
+    setSession(readStoredAuthSession())
+    setAuthView(null)
+  }
 
   // ── 로드맵 허브 템플릿 API 호출 ──
   const selectedTemplate = useMemo(
@@ -221,6 +283,7 @@ function MyRoadmapBuilderPage() {
         const detail = await roadmapApi.getOfficialRoadmapDetail(roadmapId, signal)
         const template = templates.find((item) => item.roadmapId === roadmapId) ?? null
         setItems(mapDetailToModules(detail, template))
+        setPreviewModuleKey(null)
         setBranchTarget(null)
       } catch (err) {
         if (err instanceof DOMException && err.name === 'AbortError') return
@@ -274,7 +337,9 @@ function MyRoadmapBuilderPage() {
     if (!Number.isFinite(roadmapId) || roadmapId <= 0) return
     setSelectedRoadmapId(roadmapId)
     setSearch('')
+    setPreviewModuleKey(null)
     setBranchTarget(null)
+    setTemplatePickerOpen(false)
   }, [])
 
   const resetTemplateSelection = useCallback((nextSection: string, nextSearch: string) => {
@@ -282,6 +347,7 @@ function MyRoadmapBuilderPage() {
     const nextRoadmapId = nextTemplates[0]?.roadmapId ?? null
     setSelectedRoadmapId(nextRoadmapId)
     setSearch('')
+    setPreviewModuleKey(null)
     setBranchTarget(null)
 
     if (nextRoadmapId === null) {
@@ -350,6 +416,24 @@ function MyRoadmapBuilderPage() {
         item.topics.some((t) => t.toLowerCase().includes(q)),
     )
   }, [items, search])
+
+  const visibleItemCountLabel =
+    items.length === 0
+      ? '0개'
+      : filteredItems.length === items.length
+        ? `${items.length}개`
+        : `${filteredItems.length}/${items.length}개`
+
+  const previewModule = useMemo(() => {
+    if (filteredItems.length === 0) return null
+
+    if (previewModuleKey) {
+      const selectedModule = filteredItems.find((item) => getModuleUsageKey(item) === previewModuleKey)
+      if (selectedModule) return selectedModule
+    }
+
+    return filteredItems[0]
+  }, [filteredItems, previewModuleKey])
 
   // 모듈 추가 (척추 or 분기)
   const handleAdd = useCallback(
@@ -501,7 +585,7 @@ function MyRoadmapBuilderPage() {
     } finally {
       setSaving(false)
     }
-  }, [session?.accessToken, roadmapTitle, nodes])
+  }, [session?.accessToken, session?.userId, roadmapTitle, nodes])
 
   // ── 드래그 핸들러 ──
   function handleDragStart(event: DragStartEvent) {
@@ -597,19 +681,39 @@ function MyRoadmapBuilderPage() {
 
   if (!session?.userId) {
     return (
-      <div className="flex h-screen items-center justify-center bg-[#F8FAFC]">
-        <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center shadow-lg">
-          <i className="fas fa-lock mb-4 block text-4xl text-gray-300" />
-          <h2 className="mb-2 text-xl font-bold text-gray-800">로그인이 필요합니다</h2>
-          <p className="mb-6 text-sm text-gray-500">나만의 로드맵 빌더를 사용하려면 먼저 로그인해주세요.</p>
-          <a
-            href="/login.html"
-            className="inline-block rounded-lg bg-[#00C471] px-6 py-2.5 text-sm font-bold text-white transition hover:bg-green-600"
-          >
-            로그인하러 가기
-          </a>
+      <>
+        <SiteHeader
+          session={session}
+          profileImage={profileImage}
+          onLogout={handleLogout}
+          onLoginClick={() => setAuthView('login')}
+          activeNavHref="roadmap-hub.html"
+          brandSuffix="마스터 빌더"
+        />
+        <div className="flex h-screen items-center justify-center bg-[#F8FAFC] px-4 pt-16">
+          <div className="rounded-2xl border border-gray-200 bg-white p-10 text-center shadow-lg">
+            <i className="fas fa-lock mb-4 block text-4xl text-gray-300" />
+            <h2 className="mb-2 text-xl font-bold text-gray-800">로그인이 필요합니다</h2>
+            <p className="mb-6 text-sm text-gray-500">나만의 로드맵 빌더를 사용하려면 먼저 로그인해주세요.</p>
+            <button
+              type="button"
+              onClick={() => setAuthView('login')}
+              className="inline-block rounded-lg bg-[#00C471] px-6 py-2.5 text-sm font-bold text-white transition hover:bg-green-600"
+            >
+              로그인하러 가기
+            </button>
+          </div>
         </div>
-      </div>
+
+        {authView ? (
+          <AuthModal
+            view={authView}
+            onClose={() => setAuthView(null)}
+            onViewChange={setAuthView}
+            onAuthenticated={handleAuthenticated}
+          />
+        ) : null}
+      </>
     )
   }
 
@@ -626,12 +730,21 @@ function MyRoadmapBuilderPage() {
   // ────────────────────────────────────────────
 
   return (
-    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-    <div className="flex h-screen flex-col overflow-hidden bg-[#F8FAFC] text-[#0F172A]">
+    <>
+      <SiteHeader
+        session={session}
+        profileImage={profileImage}
+        onLogout={handleLogout}
+        onLoginClick={() => setAuthView('login')}
+        activeNavHref="roadmap-hub.html"
+        brandSuffix="마스터 빌더"
+      />
+      <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+        <div className="flex h-screen flex-col overflow-hidden bg-[#F8FAFC] pt-16 text-[#0F172A]">
 
       {/* 저장 성공 모달 */}
       {showSuccessModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="w-full max-w-sm rounded-2xl bg-white p-8 text-center shadow-2xl">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-green-100">
               <i className="fas fa-check text-2xl text-[#00C471]" />
@@ -662,7 +775,7 @@ function MyRoadmapBuilderPage() {
 
       {/* 저장 모달 */}
       {saveModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+        <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/40 backdrop-blur-sm">
           <div className="w-full max-w-md rounded-2xl bg-white p-8 shadow-2xl">
             <h2 className="mb-1 text-xl font-extrabold text-gray-900">로드맵 저장</h2>
             <p className="mb-6 text-sm text-gray-500">나만의 로드맵 이름을 입력해주세요.</p>
@@ -703,101 +816,95 @@ function MyRoadmapBuilderPage() {
         </div>
       )}
 
-      {/* 헤더 */}
-      <header className="z-50 flex h-16 shrink-0 items-center justify-between border-b border-gray-200 bg-white px-6 shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gray-900 text-white shadow-sm">
-            <i className="fas fa-layer-group text-sm" />
-          </div>
-          <h1 className="text-xl font-bold tracking-tight text-gray-900">
-            DevPath <span className="font-medium text-gray-400">마스터 빌더</span>
-          </h1>
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="rounded-lg border border-gray-200 bg-gray-100 px-3 py-1.5 text-sm font-bold text-gray-500">
-            총 <span className="font-black text-[#00C471]">{rows.length}</span> 챕터
-          </div>
-          <button
-            type="button"
-            onClick={handleClear}
-            disabled={nodes.length === 0}
-            className="rounded-lg border border-transparent px-4 py-2 text-sm font-bold text-gray-600 transition hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <i className="fas fa-rotate-right mr-1" /> 초기화
-          </button>
-          <button
-            type="button"
-            onClick={openSaveModal}
-            disabled={nodes.length === 0}
-            className="flex items-center gap-2 rounded-lg bg-[#00C471] px-5 py-2 text-sm font-bold text-white shadow-md transition hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <i className="fas fa-save" /> 로드맵 저장
-          </button>
-        </div>
-      </header>
-
       <div className="flex flex-1 overflow-hidden">
 
         {/* ── 좌측 사이드바 ── */}
         <aside className="z-10 flex w-80 flex-col border-r border-gray-200 bg-white shadow-lg md:w-96">
 
           {/* 카테고리 선택 */}
-          <div className="shrink-0 border-b border-gray-200 bg-gray-50 p-4">
-            <label className="mb-2 block text-[10px] font-black uppercase tracking-widest text-gray-400">
-              로드맵 템플릿 선택
-            </label>
-            <div className="mb-2 grid grid-cols-1 gap-2">
-              <div className="relative">
-                <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400" />
-                <input
-                  type="text"
-                  value={templateSearch}
-                  onChange={(e) => handleTemplateSearchChange(e.target.value)}
-                  placeholder="템플릿 검색"
-                  className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-8 pr-3 text-xs font-bold text-gray-700 shadow-sm transition focus:border-[#00C471] focus:outline-none focus:ring-2 focus:ring-[#00C471]/20"
-                />
+          <div className="shrink-0 border-b border-gray-200 bg-gray-50 p-3">
+            <div className="rounded-xl border border-gray-200 bg-white p-3 shadow-sm">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-gray-400">
+                    현재 템플릿
+                  </p>
+                  <p className="mt-1 truncate text-sm font-extrabold text-gray-900">
+                    {selectedTemplate?.label ?? '로드맵 템플릿 선택'}
+                  </p>
+                  <div className="mt-2 flex min-w-0 flex-wrap items-center gap-1.5">
+                    <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold text-gray-500">
+                      {selectedTemplate?.sectionTitle ?? '미선택'}
+                    </span>
+                    <span className="rounded bg-green-50 px-1.5 py-0.5 text-[10px] font-bold text-[#00C471]">
+                      표시 중 {visibleItemCountLabel}
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setTemplatePickerOpen((open) => !open)}
+                  className="shrink-0 rounded-lg border border-gray-200 px-2.5 py-1.5 text-[11px] font-black text-gray-500 transition hover:border-[#00C471] hover:text-[#00C471]"
+                >
+                  변경 <i className={`fas ${templatePickerOpen ? 'fa-chevron-up' : 'fa-chevron-down'} ml-1 text-[10px]`} />
+                </button>
               </div>
-              <select
-                value={templateSection}
-                onChange={(e) => handleTemplateSectionChange(e.target.value)}
-                disabled={templates.length === 0}
-                className="w-full min-w-0 cursor-pointer rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-bold text-gray-700 shadow-sm focus:border-[#00C471] focus:outline-none focus:ring-2 focus:ring-[#00C471]/20"
-              >
-                <option value="ALL">전체 분야</option>
-                {templateSections.map((section) => (
-                  <option key={section} value={section}>{section}</option>
-                ))}
-              </select>
+
+              {templatePickerOpen && (
+                <div className="mt-3 space-y-2 border-t border-gray-100 pt-3">
+                  <div className="relative">
+                    <i className="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-400" />
+                    <input
+                      type="text"
+                      value={templateSearch}
+                      onChange={(e) => handleTemplateSearchChange(e.target.value)}
+                      placeholder="템플릿 검색"
+                      className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-8 pr-3 text-xs font-bold text-gray-700 shadow-sm transition focus:border-[#00C471] focus:outline-none focus:ring-2 focus:ring-[#00C471]/20"
+                    />
+                  </div>
+                  <div className="relative">
+                    <select
+                      value={templateSection}
+                      onChange={(e) => handleTemplateSectionChange(e.target.value)}
+                      disabled={templates.length === 0}
+                      className="w-full min-w-0 cursor-pointer appearance-none rounded-lg border border-gray-200 bg-white px-3 py-2 pr-8 text-xs font-bold text-gray-700 shadow-sm focus:border-[#00C471] focus:outline-none focus:ring-2 focus:ring-[#00C471]/20"
+                    >
+                      <option value="ALL">전체 분야</option>
+                      {templateSections.map((section) => (
+                        <option key={section} value={section}>{section}</option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400">
+                      <i className="fas fa-chevron-down text-xs" />
+                    </div>
+                  </div>
+                  <div className="relative">
+                    <select
+                      value={selectedRoadmapId ?? ''}
+                      onChange={(e) => handleTemplateChange(Number(e.target.value))}
+                      disabled={templates.length === 0}
+                      className="w-full min-w-0 cursor-pointer appearance-none rounded-lg border border-gray-200 bg-white px-3 py-2 pr-8 text-xs font-bold text-gray-700 shadow-sm focus:border-[#00C471] focus:outline-none focus:ring-2 focus:ring-[#00C471]/20"
+                    >
+                      {templates.length === 0 && <option value="">로드맵 템플릿 없음</option>}
+                      {templates.length > 0 && templateOptions.length === 0 && <option value="">필터 결과 없음</option>}
+                      {templateOptions.map((template) => (
+                        <option key={template.roadmapId} value={template.roadmapId}>
+                          {template.label} - {template.sectionTitle}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400">
+                      <i className="fas fa-chevron-down text-xs" />
+                    </div>
+                  </div>
+                  {selectedTemplate && (
+                    <p className="line-clamp-2 text-[11px] font-medium leading-relaxed text-gray-500">
+                      {selectedTemplate.item.subtitle ?? selectedTemplate.label}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
-            <div className="relative">
-              <select
-                value={selectedRoadmapId ?? ''}
-                onChange={(e) => handleTemplateChange(Number(e.target.value))}
-                disabled={templates.length === 0}
-                className="w-full cursor-pointer appearance-none rounded-lg border border-gray-300 bg-white px-3 py-2.5 pr-8 text-sm font-bold text-gray-900 shadow-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#00C471]"
-              >
-                {templates.length === 0 && <option value="">로드맵 템플릿 없음</option>}
-                {templates.length > 0 && templateOptions.length === 0 && <option value="">필터 결과 없음</option>}
-                {templateOptions.map((template) => (
-                  <option key={template.roadmapId} value={template.roadmapId}>
-                    {template.label} - {template.sectionTitle}
-                  </option>
-                ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-gray-400">
-                <i className="fas fa-chevron-down text-xs" />
-              </div>
-            </div>
-            {selectedTemplate && (
-              <p className="mt-2 line-clamp-2 text-[11px] font-medium leading-relaxed text-gray-500">
-                {selectedTemplate.item.subtitle ?? selectedTemplate.label}
-              </p>
-            )}
-            {templates.length > 0 && (
-              <p className="mt-2 text-[10px] font-bold text-gray-400">
-                {filteredTemplates.length} / {templates.length}
-              </p>
-            )}
           </div>
 
           {/* 분기 모드 배너 */}
@@ -864,16 +971,19 @@ function MyRoadmapBuilderPage() {
                 <p className="text-sm font-medium">검색 결과가 없습니다.</p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {filteredItems.map((module) => {
-                  const isUsed = usedIds.has(getModuleUsageKey(module))
+                  const moduleKey = getModuleUsageKey(module)
+                  const isUsed = usedIds.has(moduleKey)
                   const isAvailableForBranch = branchTarget !== null && !isUsed
                   return (
                     <DraggableModuleCard
-                      key={getModuleUsageKey(module)}
+                      key={moduleKey}
                       module={module}
                       isUsed={isUsed}
+                      isPreviewed={previewModule !== null && getModuleUsageKey(previewModule) === moduleKey}
                       isAvailableForBranch={isAvailableForBranch}
+                      onPreview={(nextModule) => setPreviewModuleKey(getModuleUsageKey(nextModule))}
                       onAdd={handleAdd}
                     />
                   )
@@ -882,17 +992,37 @@ function MyRoadmapBuilderPage() {
             )}
           </div>
 
-          {/* 하단 드래그 힌트 */}
-          <div className="shrink-0 border-t border-gray-100 bg-gray-50 px-4 py-2.5">
-            <p className="text-center text-[11px] text-gray-400">
-              <i className="fas fa-hand-pointer mr-1 text-[#00C471]" />클릭으로 추가 ·
-              <i className="fas fa-arrows-alt mx-1 text-blue-400" />드래그로 위치 지정 · 순서 변경 · 분기 생성
-            </p>
-          </div>
+          <ModulePreviewPanel
+            module={previewModule}
+            isUsed={previewModule !== null && usedIds.has(getModuleUsageKey(previewModule))}
+            isAvailableForBranch={previewModule !== null && branchTarget !== null && !usedIds.has(getModuleUsageKey(previewModule))}
+            onAdd={handleAdd}
+          />
         </aside>
 
         {/* ── 메인 캔버스 ── */}
         <main ref={mainRef} className="builder-dot-pattern relative flex-1 overflow-y-auto p-8">
+          <div className="mb-6 flex flex-wrap items-center justify-end gap-3">
+            <div className="rounded-lg border border-gray-200 bg-white/95 px-3 py-1.5 text-sm font-bold text-gray-500 shadow-sm">
+              총 <span className="font-black text-[#00C471]">{rows.length}</span> 챕터
+            </div>
+            <button
+              type="button"
+              onClick={handleClear}
+              disabled={nodes.length === 0}
+              className="rounded-lg border border-gray-200 bg-white/95 px-4 py-2 text-sm font-bold text-gray-600 shadow-sm transition hover:border-red-100 hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <i className="fas fa-rotate-right mr-1" /> 초기화
+            </button>
+            <button
+              type="button"
+              onClick={openSaveModal}
+              disabled={nodes.length === 0}
+              className="flex items-center gap-2 rounded-lg bg-[#00C471] px-5 py-2 text-sm font-bold text-white shadow-md transition hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <i className="fas fa-save" /> 로드맵 저장
+            </button>
+          </div>
           <div className="mx-auto max-w-3xl">
             <div className="mb-12 text-center">
               <h2 className="text-2xl font-extrabold text-gray-900">My Learning Roadmap</h2>
@@ -911,11 +1041,13 @@ function MyRoadmapBuilderPage() {
                 <div className="relative ml-8 w-full rounded-2xl border border-gray-200 bg-white p-5 shadow-sm">
                   <div className="absolute -left-2 top-1/2 h-4 w-4 -translate-y-1/2 rotate-45 border-b border-l border-gray-200 bg-white" />
                   <h3 className="text-lg font-bold text-gray-900">로드맵 설계 시작</h3>
-                  <p className="mt-1 text-sm text-gray-500">
-                    왼쪽 목록에서 모듈을{' '}
-                    <strong className="text-[#00C471]">클릭</strong>하거나{' '}
-                    <strong className="text-blue-500">드래그</strong>하여 원하는 위치에 추가하세요.
-                    척추 노드 위에 드래그하면 분기를 만들 수 있습니다.
+                  <p className="mt-1 text-sm leading-relaxed text-gray-500">
+                    <span className="inline-block">
+                      모듈을 <strong className="text-[#00C471]">클릭</strong>하거나 <strong className="text-blue-500">드래그</strong>해 단계로 추가하세요.
+                    </span>{' '}
+                    <span className="inline-block">
+                      이미 추가한 단계 위에 놓으면 <strong className="text-amber-500">분기</strong>가 만들어집니다.
+                    </span>
                   </p>
                 </div>
               </div>
@@ -1046,8 +1178,18 @@ function MyRoadmapBuilderPage() {
         )}
       </DragOverlay>
 
-    </div>
-    </DndContext>
+        </div>
+      </DndContext>
+
+      {authView ? (
+        <AuthModal
+          view={authView}
+          onClose={() => setAuthView(null)}
+          onViewChange={setAuthView}
+          onAuthenticated={handleAuthenticated}
+        />
+      ) : null}
+    </>
   )
 }
 
@@ -1097,11 +1239,11 @@ function TerminalDropZone({
     return (
       <div ref={setNodeRef} className="relative z-10 mt-6 flex items-center">
         <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 border-dashed border-gray-300 bg-white text-gray-300">
-          <i className="fas fa-mouse-pointer" />
+          <i className="fas fa-mouse-pointer translate-x-0.5" />
         </div>
-        <div className="ml-8 flex-1 rounded-2xl border-2 border-dashed border-[#CBD5E1] bg-white p-6 text-center font-bold text-[#94A3B8] shadow-sm">
-          <i className="fas fa-hand-pointer mb-2 block text-2xl text-gray-300" />
-          왼쪽 패널에서 모듈을 클릭하거나 드래그하세요
+        <div className="ml-10 flex flex-1 items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-[#CBD5E1] bg-white px-6 pb-5 pt-6 text-center font-bold text-[#94A3B8] shadow-sm">
+          <i className="fas fa-hand-pointer shrink-0 -translate-y-1 text-2xl text-gray-300" />
+          <span className="whitespace-nowrap">왼쪽 패널에서 모듈을 클릭하거나 드래그하세요</span>
         </div>
       </div>
     )
@@ -1245,7 +1387,7 @@ function ModuleDropPreview({ module }: { module: SkillModule }) {
             <i className={`${module.icon} ${module.color}`} />
           </div>
           <div className="min-w-0 flex-1">
-            <h3 className="mb-2 text-lg font-bold text-gray-700">{module.title}</h3>
+            <ModuleTitleTooltip title={module.title} className="mb-2 text-lg font-bold text-gray-700" />
             <div className="flex flex-wrap gap-1.5">
               {module.topics.map((topic) => (
                 <span key={topic} className="inline-flex items-center rounded-md bg-green-100 px-2 py-1 text-[10px] font-medium text-gray-500">
@@ -1260,6 +1402,97 @@ function ModuleDropPreview({ module }: { module: SkillModule }) {
   )
 }
 
+function ModuleTitleTooltip({
+  title,
+  className,
+}: {
+  title: string
+  className: string
+}) {
+  return (
+    <div className="group/title relative min-w-0 max-w-full">
+      <div className={`truncate ${className}`} aria-label={title}>
+        {title}
+      </div>
+      <div className="pointer-events-none absolute left-0 top-full z-[1200] mt-1 hidden w-max min-w-56 max-w-96 whitespace-normal break-keep rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold leading-relaxed text-gray-700 shadow-xl group-hover/title:block">
+        {title}
+      </div>
+    </div>
+  )
+}
+
+function ModulePreviewPanel({
+  module,
+  isUsed,
+  isAvailableForBranch,
+  onAdd,
+}: {
+  module: SkillModule | null
+  isUsed: boolean
+  isAvailableForBranch: boolean
+  onAdd: (module: SkillModule) => void
+}) {
+  if (!module) {
+    return (
+      <div className="shrink-0 border-t border-gray-100 bg-white p-4">
+        <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50 p-4 text-center text-xs font-semibold text-gray-400">
+          모듈을 선택하면 포함 주제가 여기에 표시됩니다.
+        </div>
+      </div>
+    )
+  }
+
+  const previewTopics = module.topics.slice(0, 4)
+  const actionLabel = isUsed ? '추가됨' : isAvailableForBranch ? '분기로 추가' : '단계로 추가'
+
+  return (
+    <div className="shrink-0 border-t border-gray-100 bg-white p-4 shadow-[0_-4px_12px_rgba(15,23,42,0.04)]">
+      <div className="mb-3 flex items-start gap-3">
+        <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-100 ${module.bgColor}`}>
+          <i className={`${module.icon} ${module.color} text-lg`} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="line-clamp-2 text-sm font-extrabold leading-snug text-gray-900">
+            {module.title}
+          </p>
+          <p className="mt-1 text-[11px] font-bold text-gray-400">{module.category}</p>
+        </div>
+      </div>
+
+      <div className="space-y-1.5">
+        {previewTopics.map((topic) => (
+          <div key={topic} className="flex gap-2 text-[11px] leading-relaxed text-gray-500">
+            <span className="mt-[7px] h-1 w-1 shrink-0 rounded-full bg-[#00C471]" />
+            <span className="line-clamp-2">{topic}</span>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-4 flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => !isUsed && onAdd(module)}
+          disabled={isUsed}
+          className={[
+            'flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-xs font-black text-white transition disabled:cursor-not-allowed',
+            isUsed
+              ? 'bg-gray-300'
+              : isAvailableForBranch
+                ? 'bg-amber-500 hover:bg-amber-600'
+                : 'bg-[#00C471] hover:bg-green-600',
+          ].join(' ')}
+        >
+          <i className={`fas ${isUsed ? 'fa-check' : isAvailableForBranch ? 'fa-code-branch' : 'fa-plus'}`} />
+          {actionLabel}
+        </button>
+        <span className="shrink-0 text-[10px] font-semibold text-gray-400">
+          드래그 가능
+        </span>
+      </div>
+    </div>
+  )
+}
+
 // ────────────────────────────────────────────
 // DraggableModuleCard
 // ────────────────────────────────────────────
@@ -1267,14 +1500,22 @@ function ModuleDropPreview({ module }: { module: SkillModule }) {
 function DraggableModuleCard({
   module,
   isUsed,
+  isPreviewed,
   isAvailableForBranch,
+  onPreview,
   onAdd,
 }: {
   module: SkillModule
   isUsed: boolean
+  isPreviewed: boolean
   isAvailableForBranch: boolean
+  onPreview: (module: SkillModule) => void
   onAdd: (module: SkillModule) => void
 }) {
+  const topicSummaries = module.topics.map(getTopicSummary)
+  const visibleTopics = topicSummaries.slice(0, 2)
+  const hiddenTopicCount = Math.max(topicSummaries.length - visibleTopics.length, 0)
+
   const { attributes, listeners, setNodeRef, isDragging } = useDraggable({
     id: `module-${getModuleUsageKey(module)}`,
     data: { kind: 'MODULE', module } as ActiveDrag,
@@ -1284,48 +1525,69 @@ function DraggableModuleCard({
   return (
     <div
       ref={setNodeRef}
-      onClick={() => !isUsed && onAdd(module)}
+      onClick={() => onPreview(module)}
+      onFocus={() => onPreview(module)}
+      onMouseEnter={() => onPreview(module)}
       className={[
-        'group flex items-start gap-3 rounded-xl border bg-white p-[14px] shadow-[0_1px_2px_rgba(0,0,0,0.02)] transition-all duration-200',
+        'group flex min-h-[68px] items-center gap-3 rounded-xl border bg-white px-3 py-2.5 shadow-[0_1px_2px_rgba(0,0,0,0.02)] transition-all duration-200',
         isUsed
-          ? 'cursor-not-allowed border-dashed border-[#CBD5E1] bg-[#F1F5F9] opacity-60'
+          ? 'cursor-default border-dashed border-[#CBD5E1] bg-[#F1F5F9] opacity-70'
           : isAvailableForBranch
-            ? 'cursor-pointer border-amber-300 hover:-translate-y-0.5 hover:border-amber-400 hover:shadow-[0_4px_12px_rgba(245,158,11,0.15)]'
+            ? 'cursor-grab border-amber-300 hover:-translate-y-0.5 hover:border-amber-400 hover:shadow-[0_4px_12px_rgba(245,158,11,0.15)]'
             : 'cursor-grab border-[#E2E8F0] hover:-translate-y-0.5 hover:border-[#00C471] hover:shadow-[0_4px_12px_rgba(0,196,113,0.1)]',
+        isPreviewed ? 'border-[#00C471] ring-2 ring-[#00C471]/15' : '',
         isDragging ? 'opacity-40 scale-95' : '',
       ].join(' ')}
       {...(!isUsed ? attributes : {})}
       {...(!isUsed ? listeners : {})}
     >
       <div className={[
-        'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-100',
+        'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-gray-100',
         isUsed ? 'bg-gray-100' : `${module.bgColor} transition-transform group-hover:scale-110`,
       ].join(' ')}>
-        <i className={`${module.icon} ${isUsed ? 'text-gray-400' : module.color} text-lg`} />
+        <i className={`${module.icon} ${isUsed ? 'text-gray-400' : module.color} text-base`} />
       </div>
       <div className="min-w-0 flex-1">
-        <div className="mb-1 flex items-center justify-between">
-          <h4 className={`truncate text-sm font-bold ${isUsed ? 'text-gray-500' : 'text-gray-800'}`}>
-            {module.title}
-          </h4>
-          <span className="ml-2 whitespace-nowrap rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold text-gray-500">
+        <div className="flex min-w-0 items-center justify-between gap-2">
+          <ModuleTitleTooltip
+            title={module.title}
+            className={`text-sm font-bold ${isUsed ? 'text-gray-500' : 'text-gray-800'}`}
+          />
+          <span className="shrink-0 whitespace-nowrap rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold text-gray-500">
             {module.category}
           </span>
         </div>
-        <p className="line-clamp-2 text-[11px] leading-tight text-gray-400">
-          <span className={`font-semibold ${isUsed ? 'text-gray-400' : isAvailableForBranch ? 'text-amber-500' : 'text-[#00C471]'}`}>
-            {isAvailableForBranch ? '+ 분기:' : '포함:'}
-          </span>{' '}
-          {module.topics.join(', ')}
-        </p>
-      </div>
-      {isUsed ? (
-        <div className="mt-2 flex h-6 w-6 items-center justify-center rounded-full bg-green-100 text-xs text-[#00C471]">
-          <i className="fas fa-check" />
+        <div className="mt-1 flex min-w-0 items-center gap-1.5">
+          {visibleTopics.map((topic) => (
+            <span key={topic} className="max-w-[102px] truncate rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-semibold text-gray-500">
+              {topic}
+            </span>
+          ))}
+          {hiddenTopicCount > 0 && (
+            <span className="shrink-0 text-[10px] font-bold text-gray-400">+{hiddenTopicCount}</span>
+          )}
         </div>
-      ) : (
-        <i className={`mt-2 fas ${isAvailableForBranch ? 'fa-code-branch text-amber-400' : 'fa-plus-circle text-gray-300 group-hover:text-[#00C471]'} transition-colors`} />
-      )}
+      </div>
+      <button
+        type="button"
+        onPointerDown={(event) => event.stopPropagation()}
+        onClick={(event) => {
+          event.stopPropagation()
+          if (!isUsed) onAdd(module)
+        }}
+        disabled={isUsed}
+        aria-label={isUsed ? `${module.title} 추가됨` : `${module.title} 추가`}
+        className={[
+          'flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs transition',
+          isUsed
+            ? 'cursor-not-allowed bg-green-100 text-[#00C471]'
+            : isAvailableForBranch
+              ? 'bg-amber-100 text-amber-500 hover:bg-amber-500 hover:text-white'
+              : 'bg-gray-100 text-gray-400 hover:bg-[#00C471] hover:text-white',
+        ].join(' ')}
+      >
+        <i className={`fas ${isUsed ? 'fa-check' : isAvailableForBranch ? 'fa-code-branch' : 'fa-plus'}`} />
+      </button>
     </div>
   )
 }
@@ -1430,7 +1692,7 @@ function DraggableSpineCard({
         </div>
         <div className="min-w-0 flex-1 pr-24">
           <div className="mb-2 flex flex-wrap items-center gap-2">
-            <h3 className="text-lg font-bold text-gray-900">{module.title}</h3>
+            <ModuleTitleTooltip title={module.title} className="text-lg font-bold text-gray-900" />
             <span className="rounded-full border border-gray-200 bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-500">
               {module.category}
             </span>
@@ -1533,7 +1795,7 @@ function DraggableBranchCard({
         </div>
         <div className="min-w-0 flex-1">
           <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
-            <h3 className="text-sm font-bold text-gray-900">{module.title}</h3>
+            <ModuleTitleTooltip title={module.title} className="text-sm font-bold text-gray-900" />
             <span className="rounded-full border border-gray-200 bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold text-gray-500">
               {module.category}
             </span>
