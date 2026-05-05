@@ -9,15 +9,12 @@
   liftVideoTimeline();
   lowerVideoPlayButton();
 
-  if (!courseId) {
-    return;
-  }
-
   const AUTH_STORAGE_KEY = 'devpath.auth.session';
   const API_BASE_URL = String(window.DEVPATH_API_BASE_URL || '').replace(/\/$/, '');
   const REQUEST_TIMEOUT_MS = 15000;
   const DEFAULT_THUMBNAIL =
     'https://images.unsplash.com/photo-1550439062-609e1531270e?ixlib=rb-1.2.1&auto=format&fit=crop&w=1600&q=80';
+  const VIDEO_QUALITIES = [1080, 720];
 
   const state = {
     courseId,
@@ -29,6 +26,7 @@
     progressByLessonId: new Map(),
     progress: null,
     playerConfig: null,
+    actualDurationByLessonId: new Map(),
     qnaQuestions: [],
     qnaDetails: new Map(),
     qnaFilter: 'all',
@@ -36,15 +34,27 @@
     currentTime: 0,
     duration: 0,
     playbackRate: 1,
+    videoQuality: 1080,
+    ocrBusy: false,
+    ocrSelecting: false,
+    playerNoticeTimer: null,
     lastProgressSaveAt: 0,
     progressSaveTimer: null,
   };
 
+  bindStaticControls();
+
+  if (!courseId) {
+    bindVideoElement(getMediaElement());
+    updateVideoUi();
+    updatePlaybackRateButtons();
+    updateQualityButtons();
+    return;
+  }
+
   initLearningData();
 
   async function initLearningData() {
-    bindStaticControls();
-
     try {
       state.course = await apiRequest(`/api/courses/${state.courseId}`);
       state.sections = normalizeSections(state.course.sections || []);
@@ -58,6 +68,7 @@
 
       renderCourseShell();
       renderCurriculum();
+      loadActualDurationsForLessons();
       await loadLessonScopedData(state.lesson.lessonId);
       await loadCourseScopedData();
       renderAllDynamicViews();
@@ -125,6 +136,7 @@
     updateVideoUi();
     updateComposerTimestamps();
     updatePlaybackRateButtons();
+    updateQualityButtons();
   }
 
   function renderCourseShell() {
@@ -193,7 +205,11 @@
     }
 
     const currentMedia = playerShell.querySelector('video, img');
-    const videoUrl = state.lesson.videoUrl || state.course?.introVideoUrl || '';
+    const videoSources = resolveVideoQualitySources();
+    const activeQuality = getAvailableVideoQuality(state.videoQuality, videoSources);
+    const videoUrl = activeQuality
+      ? videoSources[activeQuality]
+      : state.lesson.videoUrl || state.course?.introVideoUrl || '';
     const thumbnailUrl = state.lesson.thumbnailUrl || state.course?.thumbnailUrl || DEFAULT_THUMBNAIL;
 
     if (videoUrl) {
@@ -212,6 +228,16 @@
       video.playsInline = true;
       video.controls = false;
       video.playbackRate = state.playbackRate;
+      VIDEO_QUALITIES.forEach((quality) => {
+        if (videoSources[quality]) {
+          video.setAttribute(`data-quality-${quality}`, videoSources[quality]);
+        } else {
+          video.removeAttribute(`data-quality-${quality}`);
+        }
+      });
+      if (activeQuality) {
+        state.videoQuality = activeQuality;
+      }
       state.duration = toFiniteNumber(state.lesson.durationSeconds, 0);
       bindVideoElement(video);
     } else {
@@ -382,7 +408,89 @@
       return '미응시';
     }
 
-    return formatDuration(lesson.durationSeconds);
+    return formatDuration(getLessonDurationSeconds(lesson));
+  }
+
+  function getLessonDurationSeconds(lesson) {
+    if (!lesson) {
+      return 0;
+    }
+
+    const lessonId = Number(lesson.lessonId);
+    return state.actualDurationByLessonId.get(lessonId) ?? lesson.durationSeconds;
+  }
+
+  function setLessonActualDuration(lessonId, durationSeconds) {
+    const roundedDuration = Math.round(toFiniteNumber(durationSeconds, 0));
+    if (!lessonId || roundedDuration <= 0) {
+      return false;
+    }
+
+    const numericLessonId = Number(lessonId);
+    const currentDuration = state.actualDurationByLessonId.get(numericLessonId);
+    if (currentDuration === roundedDuration) {
+      return false;
+    }
+
+    state.actualDurationByLessonId.set(numericLessonId, roundedDuration);
+    updateLessonDurationInCollections(numericLessonId, roundedDuration);
+    return true;
+  }
+
+  function updateLessonDurationInCollections(lessonId, durationSeconds) {
+    const applyDuration = (lesson) => {
+      if (Number(lesson?.lessonId) === Number(lessonId)) {
+        lesson.durationSeconds = durationSeconds;
+      }
+    };
+
+    applyDuration(state.lesson);
+    state.lessons.forEach(applyDuration);
+    state.sections.forEach((section) => {
+      (section.lessons || []).forEach(applyDuration);
+    });
+  }
+
+  function loadActualDurationsForLessons() {
+    state.lessons.forEach((lesson) => {
+      const lessonId = Number(lesson?.lessonId);
+      if (!lessonId || state.actualDurationByLessonId.has(lessonId)) {
+        return;
+      }
+
+      const sources = resolveVideoQualitySources(lesson, state.course, false);
+      const source = sources[state.videoQuality] || sources[1080] || sources[720] || lesson.videoUrl;
+      if (!source) {
+        return;
+      }
+
+      readVideoDuration(source, (durationSeconds) => {
+        if (setLessonActualDuration(lessonId, durationSeconds)) {
+          renderCurriculum();
+        }
+      });
+    });
+  }
+
+  function readVideoDuration(source, onDuration) {
+    const probe = document.createElement('video');
+    const cleanup = () => {
+      window.clearTimeout(timeoutId);
+      probe.removeAttribute('src');
+      probe.load();
+    };
+    const timeoutId = window.setTimeout(cleanup, 8000);
+
+    probe.preload = 'metadata';
+    probe.addEventListener('loadedmetadata', () => {
+      const durationSeconds = toFiniteNumber(probe.duration, 0);
+      cleanup();
+      if (durationSeconds > 0) {
+        onDuration(durationSeconds);
+      }
+    }, { once: true });
+    probe.addEventListener('error', cleanup, { once: true });
+    probe.src = source;
   }
 
   function renderQnaList() {
@@ -579,10 +687,17 @@
     }
 
     bindPlaybackRateControls();
+    bindQualityControls();
+    bindPipControls();
+    bindOcrControls();
     window.addEventListener('beforeunload', () => saveCurrentProgress({ keepalive: true }));
   }
 
   function bindVideoElement(video) {
+    if (!video || video.tagName !== 'VIDEO') {
+      return;
+    }
+
     if (video.dataset.liveLearningBound === 'true') {
       return;
     }
@@ -590,6 +705,9 @@
     video.dataset.liveLearningBound = 'true';
     video.addEventListener('loadedmetadata', () => {
       state.duration = toFiniteNumber(video.duration, state.lesson?.durationSeconds || state.duration);
+      if (setLessonActualDuration(state.lesson?.lessonId, state.duration)) {
+        renderCurriculum();
+      }
       const startSecond = clamp(state.currentTime, 0, Math.max(state.duration - 1, 0));
       if (startSecond > 0) {
         video.currentTime = startSecond;
@@ -605,6 +723,8 @@
     });
     video.addEventListener('play', updatePlayButtons);
     video.addEventListener('pause', updatePlayButtons);
+    video.addEventListener('enterpictureinpicture', updatePipButtons);
+    video.addEventListener('leavepictureinpicture', updatePipButtons);
     video.addEventListener('ended', () => saveCurrentProgress());
   }
 
@@ -616,7 +736,8 @@
 
     const buttons = Array.from(menu.children).filter((element) => element.tagName === 'BUTTON');
     buttons.forEach((button) => {
-      const value = parseFloat(button.textContent || '');
+      const rateAttribute = button.getAttribute('data-playback-rate');
+      const value = rateAttribute === null ? parseFloat(button.textContent || '') : toFiniteNumber(rateAttribute, NaN);
       if (!isPlaybackRateButton(button, value)) {
         return;
       }
@@ -652,7 +773,8 @@
         return;
       }
 
-      const value = parseFloat(element.textContent || '');
+      const rateAttribute = element.getAttribute('data-playback-rate');
+      const value = rateAttribute === null ? parseFloat(element.textContent || '') : toFiniteNumber(rateAttribute, NaN);
       if (!isPlaybackRateButton(element, value)) {
         return;
       }
@@ -672,6 +794,558 @@
       && value >= 0.5
       && value <= 2
       && String(button.textContent || '').includes('x');
+  }
+
+  function bindQualityControls() {
+    const menu = document.getElementById('settings-menu');
+    if (!menu) {
+      return;
+    }
+
+    const buttons = Array.from(menu.children).filter((element) => element.tagName === 'BUTTON');
+    buttons.forEach((button) => {
+      const quality = getQualityButtonValue(button);
+      if (!quality) {
+        return;
+      }
+
+      button.onclick = () => switchVideoQuality(quality);
+    });
+  }
+
+  function switchVideoQuality(quality) {
+    const sources = resolveVideoQualitySources();
+    const source = sources[quality];
+
+    if (!source) {
+      showPlayerNotice(`${quality}p source is not registered for this lesson.`);
+      updateQualityButtons();
+      return;
+    }
+
+    const media = getMediaElement();
+    state.videoQuality = quality;
+    updateQualityButtons();
+
+    if (!media || media.tagName !== 'VIDEO') {
+      renderMedia();
+      showPlayerNotice(`Switched to ${quality}p.`);
+      return;
+    }
+
+    const currentSource = media.currentSrc || media.getAttribute('src') || '';
+    if (urlsEqual(currentSource, source)) {
+      showPlayerNotice(`Already playing ${quality}p.`);
+      return;
+    }
+
+    const restoreSecond = clamp(media.currentTime || state.currentTime, 0, getDuration() || state.duration || 0);
+    const wasPaused = media.paused;
+    const restoreRate = state.playbackRate;
+    const restoreMuted = media.muted;
+    const restoreVolume = media.volume;
+
+    const restorePosition = () => {
+      if (Number.isFinite(restoreSecond) && restoreSecond > 0) {
+        media.currentTime = Math.min(restoreSecond, Math.max(media.duration - 0.25, 0) || restoreSecond);
+      }
+      media.playbackRate = restoreRate;
+      media.muted = restoreMuted;
+      media.volume = restoreVolume;
+      state.currentTime = restoreSecond;
+      updateVideoUi();
+    };
+
+    const resumePlayback = () => {
+      media.removeEventListener('canplay', resumePlayback);
+      if (!wasPaused) {
+        media.play().catch((error) => console.warn('[learning] video resume after quality switch failed', error));
+      }
+    };
+
+    media.addEventListener('loadedmetadata', restorePosition, { once: true });
+    media.addEventListener('canplay', resumePlayback);
+    media.src = source;
+    media.playbackRate = restoreRate;
+    media.muted = restoreMuted;
+    media.volume = restoreVolume;
+    media.load();
+    showPlayerNotice(`Switching to ${quality}p...`);
+  }
+
+  function updateQualityButtons() {
+    const menu = document.getElementById('settings-menu');
+    if (!menu) {
+      return;
+    }
+
+    const sources = resolveVideoQualitySources();
+    const activeQuality = getAvailableVideoQuality(state.videoQuality, sources);
+    if (activeQuality) {
+      state.videoQuality = activeQuality;
+    }
+
+    Array.from(menu.children).forEach((element) => {
+      if (element.tagName !== 'BUTTON') {
+        return;
+      }
+
+      const quality = getQualityButtonValue(element);
+      if (!quality) {
+        return;
+      }
+
+      const available = Boolean(sources[quality]);
+      const active = available && quality === state.videoQuality;
+      element.setAttribute('aria-disabled', available ? 'false' : 'true');
+      element.title = available ? '' : `${quality}p source is not registered.`;
+      element.className = active
+        ? 'text-left px-4 py-2 text-sm text-[#00C471] bg-gray-800 font-bold flex justify-between items-center transition'
+        : available
+          ? 'text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-800 hover:text-white transition'
+          : 'text-left px-4 py-2 text-sm text-gray-500 cursor-not-allowed transition';
+      element.innerHTML = active
+        ? `${quality}p <i class="fas fa-check text-xs"></i>`
+        : available
+          ? `${quality}p`
+          : `${quality}p <span class="text-[10px] text-gray-600">N/A</span>`;
+    });
+  }
+
+  function resolveVideoQualitySources(lessonTarget = state.lesson, courseTarget = state.course, includeMedia = true) {
+    const sources = {};
+    collectQualitySources(courseTarget, sources);
+    collectQualitySources(lessonTarget, sources);
+
+    const media = includeMedia ? getMediaElement() : null;
+    if (media?.tagName === 'VIDEO') {
+      VIDEO_QUALITIES.forEach((quality) => {
+        addQualitySource(sources, quality, media.getAttribute(`data-quality-${quality}`));
+      });
+    }
+
+    const primaryUrl = lessonTarget?.videoUrl
+      || courseTarget?.introVideoUrl
+      || (media?.tagName === 'VIDEO' ? media.getAttribute('src') || media.currentSrc : '');
+    addQualitySource(sources, 1080, primaryUrl);
+    VIDEO_QUALITIES.forEach((quality) => addQualitySource(sources, quality, deriveQualityUrl(primaryUrl, quality)));
+
+    return sources;
+  }
+
+  function collectQualitySources(target, sources) {
+    if (!target || typeof target !== 'object') {
+      return;
+    }
+
+    const directFields = {
+      1080: ['videoUrl1080p', 'videoUrl1080', 'video1080Url', 'fullHdVideoUrl'],
+      720: ['videoUrl720p', 'videoUrl720', 'video720Url', 'hdVideoUrl'],
+    };
+
+    VIDEO_QUALITIES.forEach((quality) => {
+      directFields[quality].forEach((field) => addQualitySource(sources, quality, target[field]));
+    });
+
+    ['videoUrls', 'videoSources', 'qualitySources', 'sources'].forEach((field) => {
+      const value = target[field];
+      if (Array.isArray(value)) {
+        value.forEach((item) => {
+          const quality = normalizeVideoQuality(item?.quality ?? item?.resolution ?? item?.height ?? item?.label ?? item?.name);
+          const url = item?.url ?? item?.src ?? item?.videoUrl ?? item?.href;
+          addQualitySource(sources, quality, url);
+        });
+      } else if (value && typeof value === 'object') {
+        Object.entries(value).forEach(([key, item]) => {
+          const quality = normalizeVideoQuality(key);
+          const url = typeof item === 'string'
+            ? item
+            : item?.url ?? item?.src ?? item?.videoUrl ?? item?.href;
+          addQualitySource(sources, quality, url);
+        });
+      }
+    });
+  }
+
+  function addQualitySource(sources, quality, url) {
+    const normalizedQuality = normalizeVideoQuality(quality);
+    if (!normalizedQuality || !url || sources[normalizedQuality]) {
+      return;
+    }
+    sources[normalizedQuality] = String(url);
+  }
+
+  function normalizeVideoQuality(value) {
+    const match = String(value ?? '').match(/(1080|720)/);
+    if (!match) {
+      return null;
+    }
+    const parsed = Number(match[1]);
+    return VIDEO_QUALITIES.includes(parsed) ? parsed : null;
+  }
+
+  function getQualityButtonValue(button) {
+    return normalizeVideoQuality(button.getAttribute('data-video-quality') || button.textContent || '');
+  }
+
+  function getAvailableVideoQuality(preferredQuality, sources) {
+    if (sources[preferredQuality]) {
+      return preferredQuality;
+    }
+    return VIDEO_QUALITIES.find((quality) => Boolean(sources[quality])) || null;
+  }
+
+  function deriveQualityUrl(url, targetQuality) {
+    if (!url) {
+      return null;
+    }
+
+    const source = String(url);
+    const otherQuality = targetQuality === 1080 ? 720 : 1080;
+    const patterns = [
+      [new RegExp(`${otherQuality}p`, 'i'), `${targetQuality}p`],
+      [new RegExp(`${otherQuality}(?=[._/-])`, 'i'), String(targetQuality)],
+      [new RegExp(`([?&](?:quality|resolution|height)=)${otherQuality}`, 'i'), `$1${targetQuality}`],
+    ];
+    const matched = patterns.find(([pattern]) => pattern.test(source));
+    return matched ? source.replace(matched[0], matched[1]) : null;
+  }
+
+  function urlsEqual(left, right) {
+    return normalizeUrl(left) === normalizeUrl(right);
+  }
+
+  function normalizeUrl(value) {
+    try {
+      return new URL(String(value), window.location.href).href;
+    } catch {
+      return String(value || '');
+    }
+  }
+
+  function showPlayerNotice(message) {
+    const stage = getPlayerStage();
+    if (!stage) {
+      return;
+    }
+
+    let notice = document.getElementById('video-player-notice');
+    if (!notice) {
+      notice = document.createElement('div');
+      notice.id = 'video-player-notice';
+      notice.className = 'absolute bottom-20 left-6 z-30 rounded-lg border border-amber-400/20 bg-amber-400/10 px-4 py-2 text-xs text-amber-100';
+      stage.appendChild(notice);
+    }
+
+    notice.textContent = message;
+    notice.classList.remove('hidden');
+    window.clearTimeout(state.playerNoticeTimer);
+    state.playerNoticeTimer = window.setTimeout(() => notice.classList.add('hidden'), 2600);
+  }
+
+  function bindPipControls() {
+    document.querySelectorAll('[data-pip-toggle]').forEach((button) => {
+      button.onclick = () => togglePipMode();
+    });
+    updatePipButtons();
+  }
+
+  async function togglePipMode() {
+    const media = getMediaElement();
+    if (!media || media.tagName !== 'VIDEO') {
+      showPlayerNotice('PIP mode requires a video.');
+      return;
+    }
+
+    if (!document.pictureInPictureEnabled || !media.requestPictureInPicture) {
+      showPlayerNotice('This browser does not support PIP mode.');
+      return;
+    }
+
+    try {
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture?.();
+      } else {
+        if (media.readyState < HTMLMediaElement.HAVE_METADATA) {
+          showPlayerNotice('Video metadata is still loading. Try again shortly.');
+          return;
+        }
+        await media.requestPictureInPicture();
+      }
+      updatePipButtons();
+    } catch (error) {
+      console.warn('[learning] PIP toggle failed', error);
+      showPlayerNotice('PIP mode could not be changed.');
+    }
+  }
+
+  function updatePipButtons() {
+    const active = Boolean(document.pictureInPictureElement);
+    document.querySelectorAll('[data-pip-toggle]').forEach((button) => {
+      button.className = active
+        ? 'mt-1 border-t border-gray-700 text-left px-4 py-2 text-sm text-[#00C471] bg-gray-800 font-bold flex justify-between items-center transition'
+        : 'mt-1 border-t border-gray-700 text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-800 hover:text-white transition';
+      button.innerHTML = active
+        ? 'PIP 종료 <i class="fas fa-check text-xs"></i>'
+        : 'PIP 모드';
+    });
+  }
+
+  function bindOcrControls() {
+    const button = document.getElementById('ocr-region-btn');
+    if (!button) {
+      return;
+    }
+
+    button.onclick = () => toggleOcrSelection();
+    updateOcrButton();
+  }
+
+  function toggleOcrSelection() {
+    if (state.ocrBusy) {
+      return;
+    }
+
+    if (state.ocrSelecting) {
+      endOcrSelection();
+      return;
+    }
+
+    const media = getMediaElement();
+    if (!media || media.tagName !== 'VIDEO') {
+      showPlayerNotice('OCR requires a video.');
+      return;
+    }
+
+    if (media.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+      showPlayerNotice('Video is still loading. Try again shortly.');
+      return;
+    }
+
+    startOcrSelection();
+  }
+
+  function startOcrSelection() {
+    const playerShell = getPlayerShell();
+    if (!playerShell) {
+      return;
+    }
+
+    endOcrSelection();
+    state.ocrSelecting = true;
+    updateOcrButton();
+
+    const overlay = document.createElement('div');
+    overlay.id = 'ocr-selection-overlay';
+    overlay.className = 'absolute inset-0 z-40 cursor-crosshair select-none';
+      overlay.innerHTML = `
+      <div class="pointer-events-none absolute inset-0 flex items-center justify-center">
+        <span class="rounded-lg bg-black/70 px-4 py-2 text-sm font-bold text-[#00C471] backdrop-blur-sm">
+          <i class="fas fa-crop-simple mr-2"></i>드래그해서 복사할 글자를 선택하세요
+        </span>
+      </div>
+      <div id="ocr-selection-box" class="pointer-events-none absolute hidden border-2 border-[#00C471] bg-[#00C471]/10"></div>`;
+    playerShell.appendChild(overlay);
+
+    const box = overlay.querySelector('#ocr-selection-box');
+    let dragStart = null;
+
+    overlay.addEventListener('mousedown', (event) => {
+      const rect = overlay.getBoundingClientRect();
+      dragStart = {
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top,
+      };
+      updateSelectionBox(box, dragStart.x, dragStart.y, dragStart.x, dragStart.y);
+    });
+
+    overlay.addEventListener('mousemove', (event) => {
+      if (!dragStart) {
+        return;
+      }
+
+      const rect = overlay.getBoundingClientRect();
+      updateSelectionBox(
+        box,
+        dragStart.x,
+        dragStart.y,
+        event.clientX - rect.left,
+        event.clientY - rect.top,
+      );
+    });
+
+    overlay.addEventListener('mouseup', (event) => {
+      if (!dragStart) {
+        return;
+      }
+
+      const rect = overlay.getBoundingClientRect();
+      const region = normalizeSelection(
+        dragStart.x,
+        dragStart.y,
+        event.clientX - rect.left,
+        event.clientY - rect.top,
+      );
+      dragStart = null;
+      endOcrSelection();
+
+      if (region.width < 20 || region.height < 20) {
+        showPlayerNotice('OCR 영역이 너무 작습니다.');
+        return;
+      }
+
+      runRegionOcr(region);
+    });
+  }
+
+  function endOcrSelection() {
+    state.ocrSelecting = false;
+    document.getElementById('ocr-selection-overlay')?.remove();
+    updateOcrButton();
+  }
+
+  function updateSelectionBox(box, startX, startY, endX, endY) {
+    if (!box) {
+      return;
+    }
+
+    const region = normalizeSelection(startX, startY, endX, endY);
+    box.classList.remove('hidden');
+    box.style.left = `${region.x}px`;
+    box.style.top = `${region.y}px`;
+    box.style.width = `${region.width}px`;
+    box.style.height = `${region.height}px`;
+  }
+
+  function normalizeSelection(startX, startY, endX, endY) {
+    return {
+      x: Math.min(startX, endX),
+      y: Math.min(startY, endY),
+      width: Math.abs(endX - startX),
+      height: Math.abs(endY - startY),
+    };
+  }
+
+  async function runRegionOcr(region) {
+    const media = getMediaElement();
+    if (!media || media.tagName !== 'VIDEO' || state.ocrBusy) {
+      return;
+    }
+
+    state.ocrBusy = true;
+    updateOcrButton();
+    showPlayerNotice('선택한 영역의 글자를 읽는 중...');
+
+    try {
+      const canvas = captureVideoFrame(media, region);
+      const imageBase64 = canvas.toDataURL('image/png').replace(/^data:image\/\w+;base64,/, '');
+      const result = await apiRequest('/api/learning/ocr/extract', {
+        method: 'POST',
+        body: JSON.stringify({ imageBase64 }),
+      });
+      const text = String(result?.text || '').trim();
+
+      if (!text) {
+        showPlayerNotice(`${formatOcrEngineLabel(result?.engine)} · 인식한 글자가 없습니다.`);
+        return;
+      }
+
+      await navigator.clipboard.writeText(text);
+      showPlayerNotice(`인식한 글자를 복사했습니다. ${formatOcrEngineLabel(result?.engine)} · 인식률 ${formatConfidencePercent(result?.confidence)}`);
+    } catch (error) {
+      console.warn('[learning] region OCR failed', error);
+      showPlayerNotice('글자를 읽지 못했습니다.');
+    } finally {
+      state.ocrBusy = false;
+      updateOcrButton();
+    }
+  }
+
+  function captureVideoFrame(video, region) {
+    const nativeWidth = video.videoWidth || video.clientWidth;
+    const nativeHeight = video.videoHeight || video.clientHeight;
+    if (!nativeWidth || !nativeHeight) {
+      throw new Error('Video frame is not ready.');
+    }
+
+    const displayWidth = video.clientWidth;
+    const displayHeight = video.clientHeight;
+    const nativeAspect = nativeWidth / nativeHeight;
+    const displayAspect = displayWidth / displayHeight;
+    const objectFit = window.getComputedStyle(video).objectFit || 'cover';
+    let renderWidth = displayWidth;
+    let renderHeight = displayHeight;
+
+    if (objectFit === 'contain') {
+      if (nativeAspect > displayAspect) {
+        renderHeight = displayWidth / nativeAspect;
+      } else {
+        renderWidth = displayHeight * nativeAspect;
+      }
+    } else if (nativeAspect > displayAspect) {
+      renderWidth = displayHeight * nativeAspect;
+    } else {
+      renderHeight = displayWidth / nativeAspect;
+    }
+
+    const offsetX = (displayWidth - renderWidth) / 2;
+    const offsetY = (displayHeight - renderHeight) / 2;
+    const sourceX = clamp((region.x - offsetX) * (nativeWidth / renderWidth), 0, nativeWidth);
+    const sourceY = clamp((region.y - offsetY) * (nativeHeight / renderHeight), 0, nativeHeight);
+    const sourceWidth = clamp(region.width * (nativeWidth / renderWidth), 1, nativeWidth - sourceX);
+    const sourceHeight = clamp(region.height * (nativeHeight / renderHeight), 1, nativeHeight - sourceY);
+    const scale = sourceWidth < 600 ? 3 : sourceWidth < 1000 ? 2 : 1;
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.round(sourceWidth * scale);
+    canvas.height = Math.round(sourceHeight * scale);
+    const context = canvas.getContext('2d');
+    context.imageSmoothingEnabled = false;
+    context.drawImage(video, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, canvas.width, canvas.height);
+    return canvas;
+  }
+
+  function updateOcrButton() {
+    const button = document.getElementById('ocr-region-btn');
+    if (!button) {
+      return;
+    }
+
+    button.disabled = state.ocrBusy;
+    button.className = `flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold shadow-lg backdrop-blur-md transition hover:text-black disabled:cursor-wait disabled:opacity-60 ${
+      state.ocrSelecting
+        ? 'border-[#00C471] bg-[#00C471] text-black'
+        : 'border-white/20 bg-black/60 text-white hover:bg-[#00C471]'
+    }`;
+    button.innerHTML = state.ocrBusy
+      ? '<i class="fas fa-spinner fa-spin text-xs"></i><span>글자 읽는 중...</span>'
+      : state.ocrSelecting
+        ? '<i class="fas fa-times text-xs"></i><span>영역 선택 중</span>'
+        : '<i class="fas fa-crop-simple text-xs"></i><span>화면 글자 복사</span>';
+  }
+
+  function formatOcrEngineLabel(engine) {
+    switch (String(engine || '').toLowerCase()) {
+      case 'claude':
+        return 'Claude Vision';
+      case 'python':
+        return 'Python OCR';
+      case 'tesseract':
+      case 'local':
+        return '로컬 OCR';
+      case 'none':
+        return 'OCR 서버 없음';
+      default:
+        return 'OCR';
+    }
+  }
+
+  function formatConfidencePercent(value) {
+    const confidence = Number(value);
+    if (!Number.isFinite(confidence)) {
+      return '-';
+    }
+
+    return `${Math.round(confidence <= 1 ? confidence * 100 : confidence)}%`;
   }
 
   function togglePlayback() {

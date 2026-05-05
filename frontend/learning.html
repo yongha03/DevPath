@@ -54,10 +54,16 @@
         <main class="flex-1 bg-black flex flex-col min-w-0">
             
             <div class="flex-1 relative flex flex-col justify-center items-center w-full overflow-hidden group">
+                <div class="absolute right-6 top-4 z-30 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                    <button id="ocr-region-btn" type="button" class="flex items-center gap-1.5 rounded-lg border border-white/20 bg-black/60 px-3 py-1.5 text-xs font-bold text-white shadow-lg backdrop-blur-md transition hover:bg-[#00C471] hover:text-black disabled:cursor-wait disabled:opacity-60">
+                        <i class="fas fa-crop-simple text-xs"></i>
+                        <span>화면 글자 복사</span>
+                    </button>
+                </div>
                 
                 <!-- Video Player Placeholder -->
                 <div class="w-full h-full relative flex items-center justify-center bg-gray-900">
-                    <img src="https://images.unsplash.com/photo-1550439062-609e1531270e?ixlib=rb-1.2.1&auto=format&fit=crop&w=1600&q=80" class="w-full h-full object-cover opacity-60">
+                    <video src="/samples/sample-intro.mp4" poster="https://images.unsplash.com/photo-1550439062-609e1531270e?ixlib=rb-1.2.1&auto=format&fit=crop&w=1600&q=80" class="w-full h-full object-cover opacity-60" playsinline preload="metadata" data-quality-1080="/samples/sample-intro.mp4"></video>
                     
                     <!-- 재생 버튼 (가운데) -->
                     <button class="absolute text-white/80 hover:text-[#00C471] transition transform hover:scale-110">
@@ -88,16 +94,18 @@
                              <div class="px-3 py-2 border-b border-gray-700">
                                  <span class="text-xs text-gray-400 font-bold">재생 속도</span>
                              </div>
-                             <button class="text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-800 hover:text-white transition">0.5x</button>
-                             <button class="text-left px-4 py-2 text-sm text-[#00C471] bg-gray-800 font-bold flex justify-between items-center transition">1.0x <i class="fas fa-check text-xs"></i></button>
-                             <button class="text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-800 hover:text-white transition">1.5x</button>
-                             <button class="text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-800 hover:text-white transition">2.0x</button>
+                             <button data-playback-rate="0.5" class="text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-800 hover:text-white transition">0.5x</button>
+                             <button data-playback-rate="1" class="text-left px-4 py-2 text-sm text-[#00C471] bg-gray-800 font-bold flex justify-between items-center transition">1.0x <i class="fas fa-check text-xs"></i></button>
+                             <button data-playback-rate="1.5" class="text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-800 hover:text-white transition">1.5x</button>
+                             <button data-playback-rate="2" class="text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-800 hover:text-white transition">2.0x</button>
                              
                              <div class="px-3 py-2 border-b border-t border-gray-700 mt-1">
                                  <span class="text-xs text-gray-400 font-bold">화질</span>
                              </div>
-                             <button class="text-left px-4 py-2 text-sm text-[#00C471] bg-gray-800 font-bold flex justify-between items-center transition">1080p <i class="fas fa-check text-xs"></i></button>
-                             <button class="text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-800 hover:text-white transition">720p</button>
+                             <button data-video-quality="1080" class="text-left px-4 py-2 text-sm text-[#00C471] bg-gray-800 font-bold flex justify-between items-center transition">1080p <i class="fas fa-check text-xs"></i></button>
+                             <button data-video-quality="720" class="text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-800 hover:text-white transition">720p</button>
+
+                             <button data-pip-toggle class="mt-1 border-t border-gray-700 text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-800 hover:text-white transition">PIP 모드</button>
                          </div>
                      </div>
 

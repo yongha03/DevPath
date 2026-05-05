@@ -34,6 +34,22 @@ export interface LearningMaterial {
   sortOrder: number | null
 }
 
+export type LearningVideoQuality = '1080' | '720'
+
+export type LearningVideoQualityMap = Partial<Record<LearningVideoQuality | `${LearningVideoQuality}p`, string | null>>
+
+export interface LearningVideoSource {
+  quality?: LearningVideoQuality | `${LearningVideoQuality}p` | number | null
+  resolution?: string | number | null
+  height?: string | number | null
+  label?: string | null
+  name?: string | null
+  url?: string | null
+  src?: string | null
+  videoUrl?: string | null
+  href?: string | null
+}
+
 export interface LearningAssignmentRubric {
   rubricId: number
   criteriaName: string
@@ -70,6 +86,18 @@ export interface LearningLesson {
   lessonType: string
   videoUrl: string | null
   videoAssetKey: string | null
+  videoUrl1080p?: string | null
+  videoUrl1080?: string | null
+  video1080Url?: string | null
+  fullHdVideoUrl?: string | null
+  videoUrl720p?: string | null
+  videoUrl720?: string | null
+  video720Url?: string | null
+  hdVideoUrl?: string | null
+  videoUrls?: LearningVideoQualityMap | null
+  videoSources?: LearningVideoSource[] | LearningVideoQualityMap | null
+  qualitySources?: LearningVideoSource[] | LearningVideoQualityMap | null
+  sources?: LearningVideoSource[] | LearningVideoQualityMap | null
   thumbnailUrl: string | null
   durationSeconds: number | null
   isPreview: boolean | null
@@ -108,6 +136,18 @@ export interface LearningCourseDetail {
   thumbnailUrl: string | null
   introVideoUrl: string | null
   videoAssetKey: string | null
+  videoUrl1080p?: string | null
+  videoUrl1080?: string | null
+  video1080Url?: string | null
+  fullHdVideoUrl?: string | null
+  videoUrl720p?: string | null
+  videoUrl720?: string | null
+  video720Url?: string | null
+  hdVideoUrl?: string | null
+  videoUrls?: LearningVideoQualityMap | null
+  videoSources?: LearningVideoSource[] | LearningVideoQualityMap | null
+  qualitySources?: LearningVideoSource[] | LearningVideoQualityMap | null
+  sources?: LearningVideoSource[] | LearningVideoQualityMap | null
   durationSeconds: number | null
   prerequisites: string[]
   jobRelevance: string[]
