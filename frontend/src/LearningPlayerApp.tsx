@@ -27,6 +27,8 @@ import type {
   LearningLessonAssignment,
   LearningLessonProgress,
   LearningPlayerConfig,
+  LearningVideoQuality,
+  LearningVideoSource,
   SubmissionHistoryItem,
   TimestampNote,
 } from './types/learning'
@@ -158,6 +160,136 @@ function getVideoErrorMessage(video: HTMLVideoElement | null, src: string | null
 function isSampleVideoUrl(src: string | null) {
   if (!src) return false
   return src.startsWith('/samples/')
+}
+
+const VIDEO_QUALITY_OPTIONS = ['1080', '720'] as const satisfies readonly LearningVideoQuality[]
+
+type VideoQualitySources = Partial<Record<LearningVideoQuality, string>>
+
+function normalizeVideoQuality(value: unknown): LearningVideoQuality | null {
+  const match = String(value ?? '').match(/(1080|720)/)
+  if (!match) return null
+  return VIDEO_QUALITY_OPTIONS.includes(match[1] as LearningVideoQuality) ? (match[1] as LearningVideoQuality) : null
+}
+
+function readVideoSourceUrl(value: unknown) {
+  if (!value) return null
+  if (typeof value === 'string') return value
+  if (typeof value !== 'object') return null
+
+  const candidate = value as Partial<LearningVideoSource>
+  return candidate.url ?? candidate.src ?? candidate.videoUrl ?? candidate.href ?? null
+}
+
+function addVideoQualitySource(sources: VideoQualitySources, quality: unknown, url: unknown) {
+  const normalizedQuality = normalizeVideoQuality(quality)
+  const sourceUrl = readVideoSourceUrl(url) ?? (typeof url === 'string' ? url : null)
+  if (!normalizedQuality || !sourceUrl || sources[normalizedQuality]) return
+  sources[normalizedQuality] = sourceUrl
+}
+
+function collectVideoQualitySources(target: unknown, sources: VideoQualitySources) {
+  if (!target || typeof target !== 'object') return
+
+  const source = target as Record<string, unknown>
+  const directFields: Record<LearningVideoQuality, string[]> = {
+    '1080': ['videoUrl1080p', 'videoUrl1080', 'video1080Url', 'fullHdVideoUrl'],
+    '720': ['videoUrl720p', 'videoUrl720', 'video720Url', 'hdVideoUrl'],
+  }
+
+  VIDEO_QUALITY_OPTIONS.forEach((quality) => {
+    directFields[quality].forEach((field) => addVideoQualitySource(sources, quality, source[field]))
+  })
+
+  ;['videoUrls', 'videoSources', 'qualitySources', 'sources'].forEach((field) => {
+    const value = source[field]
+
+    if (Array.isArray(value)) {
+      value.forEach((item) => {
+        if (!item || typeof item !== 'object') return
+        const candidate = item as LearningVideoSource
+        addVideoQualitySource(
+          sources,
+          candidate.quality ?? candidate.resolution ?? candidate.height ?? candidate.label ?? candidate.name,
+          candidate,
+        )
+      })
+      return
+    }
+
+    if (value && typeof value === 'object') {
+      Object.entries(value as Record<string, unknown>).forEach(([quality, item]) => {
+        addVideoQualitySource(sources, quality, item)
+      })
+    }
+  })
+}
+
+function deriveVideoQualityUrl(url: string | null | undefined, targetQuality: LearningVideoQuality) {
+  if (!url) return null
+
+  const otherQuality = targetQuality === '1080' ? '720' : '1080'
+  const patterns: Array<[RegExp, string]> = [
+    [new RegExp(`${otherQuality}p`, 'i'), `${targetQuality}p`],
+    [new RegExp(`${otherQuality}(?=[._/-])`, 'i'), targetQuality],
+    [new RegExp(`([?&](?:quality|resolution|height)=)${otherQuality}`, 'i'), `$1${targetQuality}`],
+  ]
+  const match = patterns.find(([pattern]) => pattern.test(url))
+  return match ? url.replace(match[0], match[1]) : null
+}
+
+function resolveVideoQualitySources(lesson: LearningLesson | null, course: LearningCourseDetail | null) {
+  const sources: VideoQualitySources = {}
+  collectVideoQualitySources(course, sources)
+  collectVideoQualitySources(lesson, sources)
+
+  const primaryUrl = lesson?.videoUrl ?? course?.introVideoUrl ?? null
+  addVideoQualitySource(sources, '1080', primaryUrl)
+  VIDEO_QUALITY_OPTIONS.forEach((quality) => {
+    addVideoQualitySource(sources, quality, deriveVideoQualityUrl(primaryUrl, quality))
+  })
+
+  return sources
+}
+
+function getAvailableVideoQuality(preferredQuality: LearningVideoQuality, sources: VideoQualitySources) {
+  if (sources[preferredQuality]) return preferredQuality
+  return VIDEO_QUALITY_OPTIONS.find((quality) => Boolean(sources[quality])) ?? null
+}
+
+function formatOcrSourceLabel(source: string) {
+  if (/python/i.test(source)) return 'Python OCR'
+  if (/tesseract|local|로컬/i.test(source)) return '로컬 OCR'
+  if (/claude/i.test(source)) return 'Claude Vision'
+  return source || 'OCR'
+}
+
+function readVideoDuration(source: string, signal: AbortSignal, onDuration: (durationSeconds: number) => void) {
+  const probe = document.createElement('video')
+  let timeoutId = 0
+
+  const cleanup = () => {
+    window.clearTimeout(timeoutId)
+    probe.removeAttribute('src')
+    probe.load()
+  }
+
+  const handleLoadedMetadata = () => {
+    const durationSeconds = Number.isFinite(probe.duration) ? Math.round(probe.duration) : 0
+    cleanup()
+    if (durationSeconds > 0 && !signal.aborted) {
+      onDuration(durationSeconds)
+    }
+  }
+
+  const handleAbort = () => cleanup()
+
+  probe.preload = 'metadata'
+  probe.addEventListener('loadedmetadata', handleLoadedMetadata, { once: true })
+  probe.addEventListener('error', cleanup, { once: true })
+  signal.addEventListener('abort', handleAbort, { once: true })
+  timeoutId = window.setTimeout(cleanup, 8000)
+  probe.src = source
 }
 
 async function requestWithTimeout<T>(timeoutMs: number, executor: (signal: AbortSignal) => Promise<T>) {
@@ -800,12 +932,14 @@ export default function LearningPlayerApp() {
   const [lessonProgressById, setLessonProgressById] = useState<Record<number, LearningLessonProgress>>({})
   const [playerConfig, setPlayerConfig] = useState<LearningPlayerConfig | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [selectedVideoQuality, setSelectedVideoQuality] = useState<LearningVideoQuality>('1080')
   const [notes, setNotes] = useState<TimestampNote[]>([])
   const [noteContent, setNoteContent] = useState('')
   const [noteComposerOpen, setNoteComposerOpen] = useState(false)
   const [noteMessage, setNoteMessage] = useState<string | null>(null)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
+  const [actualDurationByLessonId, setActualDurationByLessonId] = useState<Record<number, number>>({})
   const [isPlaying, setIsPlaying] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
   const [volume, setVolume] = useState(1)
@@ -851,6 +985,7 @@ export default function LearningPlayerApp() {
   const resumeTimeRef = useRef(0)
   const lastRenderedSecondRef = useRef(-1)
   const pendingVideoLoadRef = useRef(false)
+  const resumePlaybackAfterQualitySwitchRef = useRef(false)
   const previewAutoplayLessonIdRef = useRef<number | null>(null)
   const completedPersistedLessonIdRef = useRef<number | null>(null)
   const courseCompletionShownRef = useRef<number | null>(null)
@@ -924,8 +1059,13 @@ export default function LearningPlayerApp() {
   const nextLesson = selectedLessonIndex >= 0 && selectedLessonIndex < lessons.length - 1 ? lessons[selectedLessonIndex + 1] : null
   const selectedLessonLock = selectedLessonId ? lessonLockMap.get(selectedLessonId) : null
   const selectedLessonLocked = Boolean(selectedLessonLock?.locked)
-  const resolvedVideoUrl = !selectedLessonLocked && lesson?.videoUrl ? resolveVideoUrl(lesson.videoUrl) : null
-  const shouldResumePlayback = lesson ? !isSampleVideoUrl(lesson.videoUrl) : true
+  const videoQualitySources = useMemo(
+    () => (selectedLessonLocked ? {} : resolveVideoQualitySources(lesson, course)),
+    [course, lesson, selectedLessonLocked],
+  )
+  const activeVideoQuality = getAvailableVideoQuality(selectedVideoQuality, videoQualitySources)
+  const resolvedVideoUrl = activeVideoQuality ? resolveVideoUrl(videoQualitySources[activeVideoQuality] ?? null) : null
+  const shouldResumePlayback = lesson ? !isSampleVideoUrl(videoQualitySources[activeVideoQuality ?? '1080'] ?? lesson.videoUrl) : true
   const selectedLessonAssignment = resolveLessonAssignment(lesson)
   const selectedLessonHasAssignment = Boolean(selectedLessonAssignment)
   const selectedLessonIsQuiz = isQuizLesson(lesson)
@@ -1009,6 +1149,30 @@ export default function LearningPlayerApp() {
     : assignmentResultNextLesson
       ? 'fa-arrow-right'
       : 'fa-book-open'
+  useEffect(() => {
+    if (!activeVideoQuality || selectedVideoQuality === activeVideoQuality) return
+    setSelectedVideoQuality(activeVideoQuality)
+  }, [activeVideoQuality, selectedVideoQuality])
+  useEffect(() => {
+    if (!course || !lessons.length) return
+
+    const controller = new AbortController()
+    lessons.forEach((item) => {
+      const sources = resolveVideoQualitySources(item, course)
+      const source = sources[selectedVideoQuality] ?? sources['1080'] ?? sources['720'] ?? item.videoUrl
+      if (!source) return
+
+      readVideoDuration(resolveVideoUrl(source) ?? source, controller.signal, (durationSeconds) => {
+        setActualDurationByLessonId((current) => (
+          current[item.lessonId] === durationSeconds
+            ? current
+            : { ...current, [item.lessonId]: durationSeconds }
+        ))
+      })
+    })
+
+    return () => controller.abort()
+  }, [course, lessons, selectedVideoQuality])
   const completionTheme = completionProofCard ? getProofCardTheme(completionProofCard.type) : null
   const completionParticles = useMemo(() => buildCelebrationParticles(completionBurstKey), [completionBurstKey])
   const sessionUserId = session?.userId ?? null
@@ -1574,7 +1738,14 @@ export default function LearningPlayerApp() {
     const handleLoadedMetadata = () => {
       const total = getPlaybackLimit(video)
       setDuration(total)
-      if ((shouldResumePlayback || isStudentPreview) && resumeTimeRef.current > 0 && video.currentTime < 0.5) {
+      if (total > 0) {
+        setActualDurationByLessonId((current) => (
+          current[lesson.lessonId] === Math.round(total)
+            ? current
+            : { ...current, [lesson.lessonId]: Math.round(total) }
+        ))
+      }
+      if ((pendingVideoLoadRef.current || shouldResumePlayback || isStudentPreview) && resumeTimeRef.current > 0 && video.currentTime < 0.5) {
         video.currentTime = Math.min(resumeTimeRef.current, total || resumeTimeRef.current)
       }
     }
@@ -1587,6 +1758,16 @@ export default function LearningPlayerApp() {
       setVideoFailed(false)
       if (pendingVideoLoadRef.current) setNotice(null)
       pendingVideoLoadRef.current = false
+
+      if (resumePlaybackAfterQualitySwitchRef.current) {
+        resumePlaybackAfterQualitySwitchRef.current = false
+        void video.play().catch((error) => {
+          if (!isPlaybackBlockedError(error) && !isAbortError(error)) {
+            setNotice(getVideoErrorMessage(video, resolvedVideoUrl))
+          }
+        })
+        return
+      }
 
       if (!shouldAutoplayPreview || previewAutoplayLessonIdRef.current === lesson.lessonId) {
         return
@@ -1827,17 +2008,17 @@ export default function LearningPlayerApp() {
     setOcrBusy(true)
     setIsSelectMode(false)
     setSelectDrag(null)
-    setNotice(region ? '선택 구간 분석 중...' : '프레임 분석 중...')
+    setNotice(region ? '선택한 영역의 글자를 읽는 중...' : '화면의 글자를 읽는 중...')
     try {
       const { text, confidence, source } = await captureAndOcr(video, region, (msg) => setNotice(msg))
       if (!text.trim()) {
-        setNotice('인식된 텍스트가 없습니다.')
+        setNotice(`${formatOcrSourceLabel(source)} · 인식한 글자가 없습니다.`)
         return
       }
       await navigator.clipboard.writeText(text)
-      setNotice(`클립보드에 복사됨 ✓ [${source}] 인식률 ${confidence.toFixed(0)}%`)
+      setNotice(`인식한 글자를 복사했습니다. ${formatOcrSourceLabel(source)} · 인식률 ${confidence.toFixed(0)}%`)
     } catch (err) {
-      setNotice(`OCR 실패: ${err instanceof Error ? err.message : '알 수 없는 오류'}`)
+      setNotice(`글자를 읽지 못했습니다: ${err instanceof Error ? err.message : '알 수 없는 오류'}`)
     } finally {
       setOcrBusy(false)
     }
@@ -2194,6 +2375,33 @@ export default function LearningPlayerApp() {
     }
   }
 
+  function handleSetVideoQuality(nextQuality: LearningVideoQuality) {
+    const nextSource = videoQualitySources[nextQuality]
+    if (!nextSource) {
+      setNotice(`${nextQuality}p 영상 소스가 이 강의에 등록되어 있지 않습니다.`)
+      return
+    }
+
+    if (activeVideoQuality === nextQuality) {
+      setSettingsOpen(false)
+      return
+    }
+
+    const video = videoRef.current
+    if (video) {
+      const restoreSecond = Math.max(0, Math.floor(video.currentTime || currentTime))
+      resumeTimeRef.current = restoreSecond
+      lastRenderedSecondRef.current = restoreSecond
+      resumePlaybackAfterQualitySwitchRef.current = !video.paused
+      pendingVideoLoadRef.current = true
+      setVideoFailed(false)
+      setNotice(`${nextQuality}p로 전환 중입니다.`)
+    }
+
+    setSelectedVideoQuality(nextQuality)
+    setSettingsOpen(false)
+  }
+
   async function handleToggleQuestion(questionId: number) {
     setOpenQuestionId((current) => (current === questionId ? null : questionId))
     if (qnaDetails[questionId] || loadingQuestionId === questionId) return
@@ -2383,15 +2591,6 @@ export default function LearningPlayerApp() {
           <div className="absolute right-4 top-4 z-10 flex gap-2 opacity-0 transition-opacity duration-300 group-hover:opacity-100 lg:right-6">
             <button
               type="button"
-              onClick={() => void handleOcr()}
-              disabled={ocrBusy || isSelectMode}
-              className="flex items-center gap-1.5 rounded-lg border border-white/20 bg-black/60 px-3 py-1.5 text-[0px] font-bold text-white shadow-lg backdrop-blur-md transition hover:bg-[#00C471] hover:text-black disabled:cursor-wait disabled:opacity-60"
-            >
-              <i className={`fas ${ocrBusy ? 'fa-spinner fa-spin' : 'fa-wand-magic-sparkles'} text-xs text-yellow-400`} />
-              <span className="text-xs">{ocrBusy ? '분석 중...' : '전체 화면 복사'}</span>
-            </button>
-            <button
-              type="button"
               onClick={() => { setIsSelectMode(prev => !prev); setSelectDrag(null) }}
               disabled={ocrBusy}
               className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[0px] font-bold shadow-lg backdrop-blur-md transition hover:text-black disabled:opacity-60 ${
@@ -2400,8 +2599,8 @@ export default function LearningPlayerApp() {
                   : 'border-white/20 bg-black/60 text-white hover:bg-[#00C471]'
               }`}
             >
-              <i className="fas fa-crop-simple text-xs" />
-              <span className="text-xs">{isSelectMode ? '선택 취소' : '구간 선택'}</span>
+              <i className={`fas ${ocrBusy ? 'fa-spinner fa-spin' : 'fa-crop-simple'} text-xs`} />
+              <span className="text-xs">{ocrBusy ? '글자 읽는 중...' : isSelectMode ? '영역 선택 중' : '화면 글자 복사'}</span>
             </button>
             <button
               type="button"
@@ -2422,7 +2621,7 @@ export default function LearningPlayerApp() {
             {hasVideoSource ? (
               <>
                 <video
-                  key={lesson.lessonId}
+                  key={`${lesson.lessonId}-${activeVideoQuality ?? 'source'}`}
                   ref={videoRef}
                   src={resolvedVideoUrl ?? undefined}
                   poster={lesson.thumbnailUrl ?? course.thumbnailUrl ?? undefined}
@@ -2493,7 +2692,7 @@ export default function LearningPlayerApp() {
                       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                         <span className="rounded-lg bg-black/60 px-4 py-2 text-sm font-bold text-[#00C471] backdrop-blur-sm animate-pulse">
                           <i className="fas fa-crop-simple mr-2" />
-                          드래그해서 OCR 영역을 선택하세요
+                          드래그해서 복사할 글자를 선택하세요
                         </span>
                       </div>
                     )}
@@ -2702,11 +2901,46 @@ export default function LearningPlayerApp() {
                     <div className="px-3 py-2 border-b border-t border-gray-700 mt-1">
                       <span className="text-xs text-gray-400 font-bold">화질</span>
                     </div>
-                    <button type="button" className="text-left px-4 py-2 text-sm text-[#00C471] bg-gray-800 font-bold flex justify-between items-center transition">
-                      1080p <i className="fas fa-check text-xs" />
-                    </button>
-                    <button type="button" className="text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-800 hover:text-white transition">
-                      720p
+                    {VIDEO_QUALITY_OPTIONS.map((quality) => {
+                      const available = Boolean(videoQualitySources[quality])
+                      const active = available && activeVideoQuality === quality
+                      return (
+                        <button
+                          key={quality}
+                          type="button"
+                          onClick={() => handleSetVideoQuality(quality)}
+                          aria-disabled={!available}
+                          title={available ? '' : `${quality}p source is not registered`}
+                          className={`text-left px-4 py-2 text-sm transition ${
+                            active
+                              ? 'text-[#00C471] bg-gray-800 font-bold flex justify-between items-center'
+                              : available
+                                ? 'text-gray-200 hover:bg-gray-800 hover:text-white'
+                                : 'cursor-not-allowed text-gray-500'
+                          }`}
+                        >
+                          {quality}p {active ? <i className="fas fa-check text-xs" /> : !available ? <span className="text-[10px] text-gray-600">N/A</span> : null}
+                        </button>
+                      )
+                    })}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSettingsOpen(false)
+                        void handleTogglePip()
+                      }}
+                      aria-pressed={isPipActive}
+                      className={`mt-1 border-t border-gray-700 text-left px-4 py-2 text-sm transition ${
+                        isPipActive
+                          ? 'text-[#00C471] bg-gray-800 font-bold flex justify-between items-center'
+                          : 'text-gray-200 hover:bg-gray-800 hover:text-white'
+                      }`}
+                    >
+                      {isPipActive ? (
+                        <>
+                          PIP 종료 <i className="fas fa-check text-xs" />
+                        </>
+                      ) : 'PIP 모드'}
                     </button>
                   </div>
                 ) : null}
@@ -2795,7 +3029,7 @@ export default function LearningPlayerApp() {
                       const completed = isLessonProgressCompleted(itemProgress)
                       const lockState = lessonLockMap.get(item.lessonId)
                       const locked = Boolean(lockState?.locked)
-                      const lessonDurationLabel = formatTime(item.durationSeconds ?? 0)
+                      const lessonDurationLabel = formatTime(actualDurationByLessonId[item.lessonId] ?? item.durationSeconds ?? 0)
                       const quizItem = isQuizLesson(item)
                       const assignmentItem = resolveLessonAssignment(item)
                       const assignmentHistory = assignmentItem ? assignmentHistoryByAssignmentId[assignmentItem.assignmentId] ?? null : null
