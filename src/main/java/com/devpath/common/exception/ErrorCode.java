@@ -5,6 +5,7 @@ import org.springframework.http.HttpStatus;
 
 @Getter
 public enum ErrorCode {
+  INVALID_INPUT_VALUE(HttpStatus.BAD_REQUEST, "C001", "잘못된 입력값입니다."),
   INVALID_INPUT(HttpStatus.BAD_REQUEST, "잘못된 요청 입력입니다."),
   INVALID_AUTH_HEADER(HttpStatus.BAD_REQUEST, "인증 헤더 형식이 올바르지 않습니다."),
   ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 존재하는 데이터입니다."),
@@ -90,7 +91,7 @@ public enum ErrorCode {
   SETTLEMENT_NOT_PENDING(HttpStatus.BAD_REQUEST, "PENDING 상태의 정산만 처리할 수 있습니다."),
   ACCOUNT_ALREADY_RESTRICTED(HttpStatus.BAD_REQUEST, "이미 제한된 계정입니다."),
   ACCOUNT_NOT_FOUND(HttpStatus.NOT_FOUND, "계정을 찾을 수 없습니다."),
-  NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "공지사항을 찾을 수 없습니다."),
+  NOTICE_NOT_FOUND(HttpStatus.NOT_FOUND, "N001", "해당 공지사항을 찾을 수 없습니다."),
   QNA_QUESTION_NOT_FOUND(HttpStatus.NOT_FOUND, "QnA 질문을 찾을 수 없습니다."),
   QNA_ANSWER_NOT_FOUND(HttpStatus.NOT_FOUND, "QnA 답변을 찾을 수 없습니다."),
   COUPON_NOT_FOUND(HttpStatus.NOT_FOUND, "쿠폰을 찾을 수 없습니다."),
@@ -158,6 +159,10 @@ public enum ErrorCode {
   AIREVIEW_DESIGN_NOT_FOUND(HttpStatus.NOT_FOUND, "AI 설계 리뷰를 찾을 수 없습니다."),
   AIREVIEW_DESIGN_FORBIDDEN(HttpStatus.FORBIDDEN, "AI 설계 리뷰를 처리할 권한이 없습니다."),
 
+  INTEGRATION_NOT_FOUND(HttpStatus.NOT_FOUND, "I001", "해당 연동 정보를 찾을 수 없습니다."),
+  SETTING_NOT_FOUND(HttpStatus.NOT_FOUND, "A001", "해당 설정값을 찾을 수 없습니다."),
+  EXPERIMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "A002", "해당 실험 결과를 찾을 수 없습니다."),
+  INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "C002", "서버 내부 오류가 발생했습니다.");
   JOB_COMPANY_NOT_FOUND(HttpStatus.NOT_FOUND, "기업을 찾을 수 없습니다."),
   JOB_COMPANY_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 등록된 기업입니다."),
   JOB_POSTING_NOT_FOUND(HttpStatus.NOT_FOUND, "채용 공고를 찾을 수 없습니다."),
@@ -168,11 +173,21 @@ public enum ErrorCode {
 
   INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다.");
 
-  private final HttpStatus status;
+  private final HttpStatus httpStatus;
+  private final String code;
   private final String message;
 
-  ErrorCode(HttpStatus status, String message) {
-    this.status = status;
+  ErrorCode(HttpStatus httpStatus, String message) {
+    this(httpStatus, null, message);
+  }
+
+  ErrorCode(HttpStatus httpStatus, String code, String message) {
+    this.httpStatus = httpStatus;
+    this.code = code == null ? name() : code;
     this.message = message;
+  }
+
+  public HttpStatus getStatus() {
+    return httpStatus;
   }
 }

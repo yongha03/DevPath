@@ -93,6 +93,15 @@ public class QnaService {
     }
 
     @Transactional
+    public QuestionDetailResponse getQuestionDetail(Long questionId) {
+        Question question = getActiveQuestion(questionId);
+        question.incrementViewCount();
+
+        List<AnswerResponse> answers = getAnswerResponses(questionId);
+        return QuestionDetailResponse.from(question, answers);
+    }
+
+    @Transactional
     public QuestionDetailResponse getQuestionDetail(Long userId, Long questionId) {
         Question question = questionRepository.findByIdAndUser_IdAndIsDeletedFalse(questionId, userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.QUESTION_NOT_FOUND));
