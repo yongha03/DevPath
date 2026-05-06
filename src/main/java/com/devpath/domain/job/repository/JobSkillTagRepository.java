@@ -23,6 +23,8 @@ public interface JobSkillTagRepository extends JpaRepository<JobSkillTag, Long> 
       """)
   List<PopularSkillTagProjection> findPopularSkillTags();
 
+  long countByIsDeletedFalse();
+
   interface PopularSkillTagProjection {
 
     String getTagName();

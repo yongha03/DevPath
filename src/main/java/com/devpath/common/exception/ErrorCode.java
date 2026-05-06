@@ -162,7 +162,6 @@ public enum ErrorCode {
   INTEGRATION_NOT_FOUND(HttpStatus.NOT_FOUND, "I001", "해당 연동 정보를 찾을 수 없습니다."),
   SETTING_NOT_FOUND(HttpStatus.NOT_FOUND, "A001", "해당 설정값을 찾을 수 없습니다."),
   EXPERIMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "A002", "해당 실험 결과를 찾을 수 없습니다."),
-  INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "C002", "서버 내부 오류가 발생했습니다.");
   JOB_COMPANY_NOT_FOUND(HttpStatus.NOT_FOUND, "기업을 찾을 수 없습니다."),
   JOB_COMPANY_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 등록된 기업입니다."),
   JOB_POSTING_NOT_FOUND(HttpStatus.NOT_FOUND, "채용 공고를 찾을 수 없습니다."),
@@ -170,8 +169,7 @@ public enum ErrorCode {
   JOB_COLLECT_FAILED(HttpStatus.BAD_REQUEST, "채용 데이터 수집에 실패했습니다."),
   JOB_SKILL_TAG_NOT_FOUND(HttpStatus.NOT_FOUND, "채용 기술 태그를 찾을 수 없습니다."),
   JOB_JD_ANALYSIS_FAILED(HttpStatus.BAD_REQUEST, "JD 분석에 실패했습니다."),
-
-  INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다.");
+  INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "C002", "서버 내부 오류가 발생했습니다.");
 
   private final HttpStatus httpStatus;
   private final String code;
