@@ -49,6 +49,7 @@ public class SwaggerGroupConfig {
                         "/api/recommendations/**",
                         "/api/refunds/**",
                         "/api/reviews/**",
+                        "/api/resume-clinic/**",
                         "/api/roadmaps/**",
                         "/api/study-groups/**",
                         "/api/study-matches/**",
