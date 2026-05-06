@@ -27,6 +27,8 @@ import type {
   LearningLessonAssignment,
   LearningLessonProgress,
   LearningPlayerConfig,
+  LearningVideoQuality,
+  LearningVideoSource,
   SubmissionHistoryItem,
   TimestampNote,
 } from './types/learning'
@@ -39,7 +41,7 @@ import type {
 } from './types/qna'
 
 type TabKey = 'curriculum' | 'qna' | 'notes'
-type QnaStatusFilter = 'ALL' | 'ANSWERED' | 'UNANSWERED'
+type QnaStatusFilter = 'ALL' | 'MINE' | 'UNANSWERED'
 type QuestionFormState = {
   templateType: string
   difficulty: QnaDifficulty
@@ -110,8 +112,8 @@ type PipVideoElement = HTMLVideoElement & {
   requestPictureInPicture?: () => Promise<unknown>
 }
 
-const COURSE_LOAD_TIMEOUT_MS = 4000
-const LESSON_LOAD_TIMEOUT_MS = 2500
+const COURSE_LOAD_TIMEOUT_MS = 20000
+const LESSON_LOAD_TIMEOUT_MS = 6000
 const QNA_LOAD_TIMEOUT_MS = 6000
 const STUDENT_PREVIEW_QUERY_VALUE = 'student'
 const ASSIGNMENT_LOADING_MESSAGES = [
@@ -121,7 +123,7 @@ const ASSIGNMENT_LOADING_MESSAGES = [
 ]
 
 function isAbortError(error: unknown) {
-  return error instanceof DOMException && error.name === 'AbortError'
+  return (error instanceof DOMException || error instanceof Error) && error.name === 'AbortError'
 }
 
 function isPlaybackBlockedError(error: unknown) {
@@ -158,6 +160,136 @@ function getVideoErrorMessage(video: HTMLVideoElement | null, src: string | null
 function isSampleVideoUrl(src: string | null) {
   if (!src) return false
   return src.startsWith('/samples/')
+}
+
+const VIDEO_QUALITY_OPTIONS = ['1080', '720'] as const satisfies readonly LearningVideoQuality[]
+
+type VideoQualitySources = Partial<Record<LearningVideoQuality, string>>
+
+function normalizeVideoQuality(value: unknown): LearningVideoQuality | null {
+  const match = String(value ?? '').match(/(1080|720)/)
+  if (!match) return null
+  return VIDEO_QUALITY_OPTIONS.includes(match[1] as LearningVideoQuality) ? (match[1] as LearningVideoQuality) : null
+}
+
+function readVideoSourceUrl(value: unknown) {
+  if (!value) return null
+  if (typeof value === 'string') return value
+  if (typeof value !== 'object') return null
+
+  const candidate = value as Partial<LearningVideoSource>
+  return candidate.url ?? candidate.src ?? candidate.videoUrl ?? candidate.href ?? null
+}
+
+function addVideoQualitySource(sources: VideoQualitySources, quality: unknown, url: unknown) {
+  const normalizedQuality = normalizeVideoQuality(quality)
+  const sourceUrl = readVideoSourceUrl(url) ?? (typeof url === 'string' ? url : null)
+  if (!normalizedQuality || !sourceUrl || sources[normalizedQuality]) return
+  sources[normalizedQuality] = sourceUrl
+}
+
+function collectVideoQualitySources(target: unknown, sources: VideoQualitySources) {
+  if (!target || typeof target !== 'object') return
+
+  const source = target as Record<string, unknown>
+  const directFields: Record<LearningVideoQuality, string[]> = {
+    '1080': ['videoUrl1080p', 'videoUrl1080', 'video1080Url', 'fullHdVideoUrl'],
+    '720': ['videoUrl720p', 'videoUrl720', 'video720Url', 'hdVideoUrl'],
+  }
+
+  VIDEO_QUALITY_OPTIONS.forEach((quality) => {
+    directFields[quality].forEach((field) => addVideoQualitySource(sources, quality, source[field]))
+  })
+
+  ;['videoUrls', 'videoSources', 'qualitySources', 'sources'].forEach((field) => {
+    const value = source[field]
+
+    if (Array.isArray(value)) {
+      value.forEach((item) => {
+        if (!item || typeof item !== 'object') return
+        const candidate = item as LearningVideoSource
+        addVideoQualitySource(
+          sources,
+          candidate.quality ?? candidate.resolution ?? candidate.height ?? candidate.label ?? candidate.name,
+          candidate,
+        )
+      })
+      return
+    }
+
+    if (value && typeof value === 'object') {
+      Object.entries(value as Record<string, unknown>).forEach(([quality, item]) => {
+        addVideoQualitySource(sources, quality, item)
+      })
+    }
+  })
+}
+
+function deriveVideoQualityUrl(url: string | null | undefined, targetQuality: LearningVideoQuality) {
+  if (!url) return null
+
+  const otherQuality = targetQuality === '1080' ? '720' : '1080'
+  const patterns: Array<[RegExp, string]> = [
+    [new RegExp(`${otherQuality}p`, 'i'), `${targetQuality}p`],
+    [new RegExp(`${otherQuality}(?=[._/-])`, 'i'), targetQuality],
+    [new RegExp(`([?&](?:quality|resolution|height)=)${otherQuality}`, 'i'), `$1${targetQuality}`],
+  ]
+  const match = patterns.find(([pattern]) => pattern.test(url))
+  return match ? url.replace(match[0], match[1]) : null
+}
+
+function resolveVideoQualitySources(lesson: LearningLesson | null, course: LearningCourseDetail | null) {
+  const sources: VideoQualitySources = {}
+  collectVideoQualitySources(course, sources)
+  collectVideoQualitySources(lesson, sources)
+
+  const primaryUrl = lesson?.videoUrl ?? course?.introVideoUrl ?? null
+  addVideoQualitySource(sources, '1080', primaryUrl)
+  VIDEO_QUALITY_OPTIONS.forEach((quality) => {
+    addVideoQualitySource(sources, quality, deriveVideoQualityUrl(primaryUrl, quality))
+  })
+
+  return sources
+}
+
+function getAvailableVideoQuality(preferredQuality: LearningVideoQuality, sources: VideoQualitySources) {
+  if (sources[preferredQuality]) return preferredQuality
+  return VIDEO_QUALITY_OPTIONS.find((quality) => Boolean(sources[quality])) ?? null
+}
+
+function formatOcrSourceLabel(source: string) {
+  if (/python/i.test(source)) return 'Python OCR'
+  if (/tesseract|local|로컬/i.test(source)) return '로컬 OCR'
+  if (/claude/i.test(source)) return 'Claude Vision'
+  return source || 'OCR'
+}
+
+function readVideoDuration(source: string, signal: AbortSignal, onDuration: (durationSeconds: number) => void) {
+  const probe = document.createElement('video')
+  let timeoutId = 0
+
+  const cleanup = () => {
+    window.clearTimeout(timeoutId)
+    probe.removeAttribute('src')
+    probe.load()
+  }
+
+  const handleLoadedMetadata = () => {
+    const durationSeconds = Number.isFinite(probe.duration) ? Math.round(probe.duration) : 0
+    cleanup()
+    if (durationSeconds > 0 && !signal.aborted) {
+      onDuration(durationSeconds)
+    }
+  }
+
+  const handleAbort = () => cleanup()
+
+  probe.preload = 'metadata'
+  probe.addEventListener('loadedmetadata', handleLoadedMetadata, { once: true })
+  probe.addEventListener('error', cleanup, { once: true })
+  signal.addEventListener('abort', handleAbort, { once: true })
+  timeoutId = window.setTimeout(cleanup, 8000)
+  probe.src = source
 }
 
 async function requestWithTimeout<T>(timeoutMs: number, executor: (signal: AbortSignal) => Promise<T>) {
@@ -790,7 +922,8 @@ export default function LearningPlayerApp() {
   const [course, setCourse] = useState<LearningCourseDetail | null>(null)
   const [courseError, setCourseError] = useState<string | null>(null)
   const [selectedLessonId, setSelectedLessonId] = useState<number | null>(initialLessonId)
-  const [activeTab, setActiveTab] = useState<TabKey>('curriculum')
+  const [activeTab, setActiveTab] = useState<TabKey>('qna')
+  const [openSectionIds, setOpenSectionIds] = useState<Set<number>>(() => new Set())
   const [notice, setNotice] = useState<string | null>(null)
   const [loadingCourse, setLoadingCourse] = useState(true)
   const [loadingLesson, setLoadingLesson] = useState(false)
@@ -798,11 +931,15 @@ export default function LearningPlayerApp() {
   const [progress, setProgress] = useState<LearningLessonProgress | null>(null)
   const [lessonProgressById, setLessonProgressById] = useState<Record<number, LearningLessonProgress>>({})
   const [playerConfig, setPlayerConfig] = useState<LearningPlayerConfig | null>(null)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [selectedVideoQuality, setSelectedVideoQuality] = useState<LearningVideoQuality>('1080')
   const [notes, setNotes] = useState<TimestampNote[]>([])
   const [noteContent, setNoteContent] = useState('')
+  const [noteComposerOpen, setNoteComposerOpen] = useState(false)
   const [noteMessage, setNoteMessage] = useState<string | null>(null)
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
+  const [actualDurationByLessonId, setActualDurationByLessonId] = useState<Record<number, number>>({})
   const [isPlaying, setIsPlaying] = useState(false)
   const [isMuted, setIsMuted] = useState(false)
   const [volume, setVolume] = useState(1)
@@ -816,13 +953,14 @@ export default function LearningPlayerApp() {
   const [qnaDetails, setQnaDetails] = useState<Record<number, QnaQuestionDetail>>({})
   const [loadingQna, setLoadingQna] = useState(false)
   const [qnaError, setQnaError] = useState<string | null>(null)
-  const [qnaStatusFilter] = useState<QnaStatusFilter>('ALL')
-  const [qnaSearch] = useState('')
+  const [qnaStatusFilter, setQnaStatusFilter] = useState<QnaStatusFilter>('ALL')
+  const [qnaSearch, setQnaSearch] = useState('')
   const [openQuestionId, setOpenQuestionId] = useState<number | null>(null)
   const [loadingQuestionId, setLoadingQuestionId] = useState<number | null>(null)
   const [questionForm, setQuestionForm] = useState<QuestionFormState>(createQuestionFormState)
   const [questionMessage, setQuestionMessage] = useState<string | null>(null)
   const [questionBusy, setQuestionBusy] = useState(false)
+  const [questionComposerOpen, setQuestionComposerOpen] = useState(false)
   const [openNoteId, setOpenNoteId] = useState<number | null>(null)
   const [editingNoteContent, setEditingNoteContent] = useState('')
   const [quizModalLessonId, setQuizModalLessonId] = useState<number | null>(null)
@@ -847,12 +985,21 @@ export default function LearningPlayerApp() {
   const resumeTimeRef = useRef(0)
   const lastRenderedSecondRef = useRef(-1)
   const pendingVideoLoadRef = useRef(false)
+  const resumePlaybackAfterQualitySwitchRef = useRef(false)
   const previewAutoplayLessonIdRef = useRef<number | null>(null)
   const completedPersistedLessonIdRef = useRef<number | null>(null)
   const courseCompletionShownRef = useRef<number | null>(null)
   const lessonProgressByIdRef = useRef<Record<number, LearningLessonProgress>>({})
 
   const lessons = useMemo(() => (course ? getFlattenedLessons(course) : []), [course])
+  const courseProgressPercent = useMemo(() => {
+    if (!lessons.length) return 0
+    const total = lessons.reduce((sum, item) => {
+      const itemProgress = lessonProgressById[item.lessonId]
+      return sum + clampPercent(itemProgress?.progressPercent ?? 0)
+    }, 0)
+    return Math.round(total / lessons.length)
+  }, [lessons, lessonProgressById])
   const resolveInitialPlaybackSeconds = useCallback((lessonId: number, fallbackSeconds: number) => {
     if (initialTimestampSeconds === null) {
       return fallbackSeconds
@@ -912,8 +1059,13 @@ export default function LearningPlayerApp() {
   const nextLesson = selectedLessonIndex >= 0 && selectedLessonIndex < lessons.length - 1 ? lessons[selectedLessonIndex + 1] : null
   const selectedLessonLock = selectedLessonId ? lessonLockMap.get(selectedLessonId) : null
   const selectedLessonLocked = Boolean(selectedLessonLock?.locked)
-  const resolvedVideoUrl = !selectedLessonLocked && lesson?.videoUrl ? resolveVideoUrl(lesson.videoUrl) : null
-  const shouldResumePlayback = lesson ? !isSampleVideoUrl(lesson.videoUrl) : true
+  const videoQualitySources = useMemo(
+    () => (selectedLessonLocked ? {} : resolveVideoQualitySources(lesson, course)),
+    [course, lesson, selectedLessonLocked],
+  )
+  const activeVideoQuality = getAvailableVideoQuality(selectedVideoQuality, videoQualitySources)
+  const resolvedVideoUrl = activeVideoQuality ? resolveVideoUrl(videoQualitySources[activeVideoQuality] ?? null) : null
+  const shouldResumePlayback = lesson ? !isSampleVideoUrl(videoQualitySources[activeVideoQuality ?? '1080'] ?? lesson.videoUrl) : true
   const selectedLessonAssignment = resolveLessonAssignment(lesson)
   const selectedLessonHasAssignment = Boolean(selectedLessonAssignment)
   const selectedLessonIsQuiz = isQuizLesson(lesson)
@@ -968,6 +1120,22 @@ export default function LearningPlayerApp() {
       },
     }
   }, [assignmentGradingResult, lessonProgressById])
+
+  useEffect(() => {
+    if (!course || !lesson) return
+
+    const activeSection = course.sections.find((section) => (
+      section.lessons.some((item) => item.lessonId === lesson.lessonId)
+    ))
+    if (!activeSection) return
+
+    setOpenSectionIds((current) => {
+      if (current.has(activeSection.sectionId)) return current
+      const next = new Set(current)
+      next.add(activeSection.sectionId)
+      return next
+    })
+  }, [course, lesson])
   const assignmentResultCompletesCourse = assignmentGradingResult
     ? lessons.length > 0 && lessons.every((item) => isLessonProgressCompleted(assignmentResultProgressById[item.lessonId]))
     : false
@@ -981,6 +1149,30 @@ export default function LearningPlayerApp() {
     : assignmentResultNextLesson
       ? 'fa-arrow-right'
       : 'fa-book-open'
+  useEffect(() => {
+    if (!activeVideoQuality || selectedVideoQuality === activeVideoQuality) return
+    setSelectedVideoQuality(activeVideoQuality)
+  }, [activeVideoQuality, selectedVideoQuality])
+  useEffect(() => {
+    if (!course || !lessons.length) return
+
+    const controller = new AbortController()
+    lessons.forEach((item) => {
+      const sources = resolveVideoQualitySources(item, course)
+      const source = sources[selectedVideoQuality] ?? sources['1080'] ?? sources['720'] ?? item.videoUrl
+      if (!source) return
+
+      readVideoDuration(resolveVideoUrl(source) ?? source, controller.signal, (durationSeconds) => {
+        setActualDurationByLessonId((current) => (
+          current[item.lessonId] === durationSeconds
+            ? current
+            : { ...current, [item.lessonId]: durationSeconds }
+        ))
+      })
+    })
+
+    return () => controller.abort()
+  }, [course, lessons, selectedVideoQuality])
   const completionTheme = completionProofCard ? getProofCardTheme(completionProofCard.type) : null
   const completionParticles = useMemo(() => buildCelebrationParticles(completionBurstKey), [completionBurstKey])
   const sessionUserId = session?.userId ?? null
@@ -1005,10 +1197,9 @@ export default function LearningPlayerApp() {
   )
   const visibleQuestions = useMemo(() => (
     qnaQuestions.filter((item) => {
-      if (!isOwnQnaQuestion(item, sessionUserId)) return false
       const answered = isQuestionAnswered(item)
       const statusMatched = qnaStatusFilter === 'ALL'
-        || (qnaStatusFilter === 'ANSWERED' && answered)
+        || (qnaStatusFilter === 'MINE' && isOwnQnaQuestion(item, sessionUserId))
         || (qnaStatusFilter === 'UNANSWERED' && !answered)
       const searchTarget = [item.authorName, item.title, item.lectureTimestamp ?? '', qnaDetails[item.id]?.content ?? '']
         .join(' ')
@@ -1359,14 +1550,14 @@ export default function LearningPlayerApp() {
       setQuestionForm(createQuestionFormState())
 
       const [questionsResult, templatesResult] = await Promise.allSettled([
-        requestWithTimeout(QNA_LOAD_TIMEOUT_MS, (signal) => qnaApi.getMyQuestions(courseId, signal)),
+        requestWithTimeout(QNA_LOAD_TIMEOUT_MS, (signal) => qnaApi.getQuestions(courseId, signal)),
         requestWithTimeout(QNA_LOAD_TIMEOUT_MS, (signal) => qnaApi.getTemplates(signal)),
       ])
 
       if (cancelled) return
 
       if (questionsResult.status === 'fulfilled') {
-        setQnaQuestions(questionsResult.value.filter((question) => isOwnQnaQuestion(question, sessionUserId)))
+        setQnaQuestions(questionsResult.value)
       } else {
         setQnaQuestions([])
         setQnaError('Q&A 데이터를 불러오지 못했습니다.')
@@ -1453,9 +1644,11 @@ export default function LearningPlayerApp() {
       const storedProgress = readJsonStorage(getProgressStorageKey(lesson.lessonId), createDefaultProgress(lesson.lessonId))
       const storedNotes = readJsonStorage(getNotesStorageKey(lesson.lessonId), [] as TimestampNote[])
 
+      const lessonDuration = lesson.durationSeconds ?? 0
+      const storedFullyWatched = lessonDuration > 0 && storedProgress.progressSeconds >= lessonDuration
       const initialProgressSeconds = resolveInitialPlaybackSeconds(
         lesson.lessonId,
-        shouldResumePlayback ? storedProgress.progressSeconds : 0,
+        shouldResumePlayback && !storedFullyWatched ? storedProgress.progressSeconds : 0,
       )
       resumeTimeRef.current = initialProgressSeconds
       lastRenderedSecondRef.current = initialProgressSeconds
@@ -1497,9 +1690,10 @@ export default function LearningPlayerApp() {
           pipEnabled: config?.pipEnabled ?? sessionProgress.pipEnabled ?? false,
         }
 
+        const sessionFullyWatched = lessonDuration > 0 && nextProgress.progressSeconds >= lessonDuration
         const nextResumeSeconds = resolveInitialPlaybackSeconds(
           lesson.lessonId,
-          shouldResumePlayback ? nextProgress.progressSeconds : 0,
+          shouldResumePlayback && !sessionFullyWatched ? nextProgress.progressSeconds : 0,
         )
         resumeTimeRef.current = nextResumeSeconds
         lastRenderedSecondRef.current = nextResumeSeconds
@@ -1544,7 +1738,14 @@ export default function LearningPlayerApp() {
     const handleLoadedMetadata = () => {
       const total = getPlaybackLimit(video)
       setDuration(total)
-      if ((shouldResumePlayback || isStudentPreview) && resumeTimeRef.current > 0 && video.currentTime < 0.5) {
+      if (total > 0) {
+        setActualDurationByLessonId((current) => (
+          current[lesson.lessonId] === Math.round(total)
+            ? current
+            : { ...current, [lesson.lessonId]: Math.round(total) }
+        ))
+      }
+      if ((pendingVideoLoadRef.current || shouldResumePlayback || isStudentPreview) && resumeTimeRef.current > 0 && video.currentTime < 0.5) {
         video.currentTime = Math.min(resumeTimeRef.current, total || resumeTimeRef.current)
       }
     }
@@ -1557,6 +1758,16 @@ export default function LearningPlayerApp() {
       setVideoFailed(false)
       if (pendingVideoLoadRef.current) setNotice(null)
       pendingVideoLoadRef.current = false
+
+      if (resumePlaybackAfterQualitySwitchRef.current) {
+        resumePlaybackAfterQualitySwitchRef.current = false
+        void video.play().catch((error) => {
+          if (!isPlaybackBlockedError(error) && !isAbortError(error)) {
+            setNotice(getVideoErrorMessage(video, resolvedVideoUrl))
+          }
+        })
+        return
+      }
 
       if (!shouldAutoplayPreview || previewAutoplayLessonIdRef.current === lesson.lessonId) {
         return
@@ -1797,17 +2008,17 @@ export default function LearningPlayerApp() {
     setOcrBusy(true)
     setIsSelectMode(false)
     setSelectDrag(null)
-    setNotice(region ? '선택 구간 분석 중...' : '프레임 분석 중...')
+    setNotice(region ? '선택한 영역의 글자를 읽는 중...' : '화면의 글자를 읽는 중...')
     try {
       const { text, confidence, source } = await captureAndOcr(video, region, (msg) => setNotice(msg))
       if (!text.trim()) {
-        setNotice('인식된 텍스트가 없습니다.')
+        setNotice(`${formatOcrSourceLabel(source)} · 인식한 글자가 없습니다.`)
         return
       }
       await navigator.clipboard.writeText(text)
-      setNotice(`클립보드에 복사됨 ✓ [${source}] 인식률 ${confidence.toFixed(0)}%`)
+      setNotice(`인식한 글자를 복사했습니다. ${formatOcrSourceLabel(source)} · 인식률 ${confidence.toFixed(0)}%`)
     } catch (err) {
-      setNotice(`OCR 실패: ${err instanceof Error ? err.message : '알 수 없는 오류'}`)
+      setNotice(`글자를 읽지 못했습니다: ${err instanceof Error ? err.message : '알 수 없는 오류'}`)
     } finally {
       setOcrBusy(false)
     }
@@ -2152,6 +2363,45 @@ export default function LearningPlayerApp() {
     }
   }
 
+  async function handleSetPlaybackRate(nextRate: number) {
+    if (!lesson || !playerConfig) return
+    setPlayerConfig({ ...playerConfig, defaultPlaybackRate: nextRate })
+    setSettingsOpen(false)
+    if (videoRef.current) videoRef.current.playbackRate = nextRate
+    try {
+      await learningPlayerApi.updatePlaybackRate(lesson.lessonId, nextRate)
+    } catch {
+      // Keep the local setting if persistence fails.
+    }
+  }
+
+  function handleSetVideoQuality(nextQuality: LearningVideoQuality) {
+    const nextSource = videoQualitySources[nextQuality]
+    if (!nextSource) {
+      setNotice(`${nextQuality}p 영상 소스가 이 강의에 등록되어 있지 않습니다.`)
+      return
+    }
+
+    if (activeVideoQuality === nextQuality) {
+      setSettingsOpen(false)
+      return
+    }
+
+    const video = videoRef.current
+    if (video) {
+      const restoreSecond = Math.max(0, Math.floor(video.currentTime || currentTime))
+      resumeTimeRef.current = restoreSecond
+      lastRenderedSecondRef.current = restoreSecond
+      resumePlaybackAfterQualitySwitchRef.current = !video.paused
+      pendingVideoLoadRef.current = true
+      setVideoFailed(false)
+      setNotice(`${nextQuality}p로 전환 중입니다.`)
+    }
+
+    setSelectedVideoQuality(nextQuality)
+    setSettingsOpen(false)
+  }
+
   async function handleToggleQuestion(questionId: number) {
     setOpenQuestionId((current) => (current === questionId ? null : questionId))
     if (qnaDetails[questionId] || loadingQuestionId === questionId) return
@@ -2178,6 +2428,7 @@ export default function LearningPlayerApp() {
       setNotes(nextNotes)
       writeJsonStorage(getNotesStorageKey(lesson.lessonId), nextNotes)
       setNoteContent('')
+      setNoteComposerOpen(false)
       setNoteMessage('노트가 저장되었습니다.')
     } catch {
       setNoteMessage('노트 저장에 실패했습니다.')
@@ -2265,6 +2516,7 @@ export default function LearningPlayerApp() {
         setActiveTab('qna')
         setOpenQuestionId(created.id)
       })
+      setQuestionComposerOpen(false)
     } catch (error) {
       setQuestionMessage(error instanceof Error ? error.message : '질문 등록에 실패했습니다.')
     } finally {
@@ -2298,77 +2550,82 @@ export default function LearningPlayerApp() {
   const sortedNotes = [...notes].sort((left, right) => right.timestampSecond - left.timestampSecond)
   const activeNote = openNoteId ? notes.find((item) => item.noteId === openNoteId) ?? null : null
   const playbackMax = Math.max(duration, 1)
+  const playbackProgressPercent = Math.min(100, Math.max(0, (currentTime / playbackMax) * 100))
 
   return (
-    <div className="relative flex h-screen flex-col overflow-hidden bg-black text-white lg:flex-row">
+    <div className="learning-player-surface h-screen flex flex-col overflow-hidden">
 
-      {/* ── 영상 패널 (좌 3/4) ── */}
-      <div className="relative flex min-h-[52vh] flex-1 flex-col lg:w-[calc(100%-380px)]">
-
-        {/* 상단 헤더 */}
-        <div className="absolute left-0 right-0 top-0 z-20 flex items-center justify-between bg-gradient-to-b from-black/80 to-transparent p-4">
+      {/* 상단 헤더 */}
+      <header className="bg-gray-900 text-white h-14 flex items-center justify-between px-6 shrink-0 z-50 border-b border-gray-800">
+        <div className="flex items-center gap-4 min-w-0">
           <button
             type="button"
             onClick={() => window.location.assign(isStudentPreview ? studentPreviewReturnHref : courseDetailHref)}
-            className="flex items-center gap-2 text-sm font-bold text-gray-300 transition hover:text-[#00C471]"
+            className="text-gray-400 hover:text-white transition text-sm shrink-0"
           >
-            <i className="fas fa-chevron-left" />
+            <i className="fas fa-chevron-left mr-2" />
             {isStudentPreview ? '질문 게시판으로 돌아가기' : '로드맵으로 돌아가기'}
           </button>
-          <h1 className="truncate text-sm font-bold opacity-80">{lesson.title}</h1>
+          <div className="h-4 w-[1px] bg-gray-700 shrink-0" />
+          <span className="text-sm font-bold text-gray-100 truncate">{lesson.title}</span>
         </div>
+        <div className="flex items-center gap-4 text-sm">
+          <div className="flex items-center gap-2 text-gray-400">
+            <div className="w-32 h-2 bg-gray-700 rounded-full overflow-hidden">
+              <div className="h-full bg-[#00C471] transition-[width]" style={{ width: `${courseProgressPercent}%` }} />
+            </div>
+            <span className="text-xs">{courseProgressPercent}% 완료</span>
+          </div>
+        </div>
+      </header>
+
+      <div className="flex flex-1 overflow-hidden">
+
+      {/* ── 영상 패널 (좌 3/4) ── */}
+      <main className="flex-1 bg-black flex flex-col min-w-0">
 
         {/* 영상 프레임 */}
-        <div ref={frameRef} className="group relative flex-1 overflow-hidden bg-[#050908]">
+        <div ref={frameRef} className="flex-1 relative flex flex-col justify-center items-center w-full overflow-hidden group">
 
           {/* 우측 상단 오버레이 버튼 */}
-          <div className="absolute right-4 top-16 z-10 flex gap-2 opacity-0 transition-opacity duration-300 group-hover:opacity-100 lg:right-6">
-            <button
-              type="button"
-              onClick={() => void handleOcr()}
-              disabled={ocrBusy || isSelectMode}
-              className="flex items-center gap-1.5 rounded-lg border border-white/20 bg-black/60 px-3 py-1.5 text-xs font-bold text-white shadow-lg backdrop-blur-md transition hover:bg-[#00C471] hover:text-black disabled:cursor-wait disabled:opacity-60"
-            >
-              <i className={`fas ${ocrBusy ? 'fa-spinner fa-spin' : 'fa-wand-magic-sparkles'} text-yellow-400`} />
-              {ocrBusy ? '분석 중...' : '전체 화면 복사'}
-            </button>
+          <div className="absolute right-4 top-4 z-10 flex gap-2 opacity-0 transition-opacity duration-300 group-hover:opacity-100 lg:right-6">
             <button
               type="button"
               onClick={() => { setIsSelectMode(prev => !prev); setSelectDrag(null) }}
               disabled={ocrBusy}
-              className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold shadow-lg backdrop-blur-md transition hover:text-black disabled:opacity-60 ${
+              className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[0px] font-bold shadow-lg backdrop-blur-md transition hover:text-black disabled:opacity-60 ${
                 isSelectMode
                   ? 'border-[#00C471] bg-[#00C471] text-black'
                   : 'border-white/20 bg-black/60 text-white hover:bg-[#00C471]'
               }`}
             >
-              <i className="fas fa-crop-simple" />
-              {isSelectMode ? '선택 취소 (ESC)' : '구간 선택'}
+              <i className={`fas ${ocrBusy ? 'fa-spinner fa-spin' : 'fa-crop-simple'} text-xs`} />
+              <span className="text-xs">{ocrBusy ? '글자 읽는 중...' : isSelectMode ? '영역 선택 중' : '화면 글자 복사'}</span>
             </button>
             <button
               type="button"
               onClick={() => void handleTogglePip()}
-              className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-bold shadow-lg backdrop-blur-md transition hover:text-black ${
+              className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[0px] font-bold shadow-lg backdrop-blur-md transition hover:text-black ${
                 isPipActive
                   ? 'border-[#00C471] bg-[#00C471] text-black'
                   : 'border-white/20 bg-black/60 text-white hover:bg-[#00C471]'
               }`}
             >
-              <i className={`fas ${isPipActive ? 'fa-compress' : 'fa-up-right-from-square'}`} />
-              {isPipActive ? 'PIP 종료' : 'PIP 모드'}
+              <i className={`fas ${isPipActive ? 'fa-compress' : 'fa-up-right-from-square'} text-xs`} />
+              <span className="text-xs">{isPipActive ? 'PIP 종료' : 'PIP 모드'}</span>
             </button>
           </div>
 
-          {/* 영상 또는 빈 화면 — 헤더(top-14=56px) 아래 영역에 absolute로 고정 */}
-          <div className="absolute inset-0 top-14 flex items-center justify-center">
+          {/* 영상 또는 빈 화면 */}
+          <div className="w-full h-full relative flex items-center justify-center bg-gray-900">
             {hasVideoSource ? (
               <>
                 <video
-                  key={lesson.lessonId}
+                  key={`${lesson.lessonId}-${activeVideoQuality ?? 'source'}`}
                   ref={videoRef}
                   src={resolvedVideoUrl ?? undefined}
                   poster={lesson.thumbnailUrl ?? course.thumbnailUrl ?? undefined}
-                  className="h-full w-full bg-black object-contain"
+                  className="w-full h-full object-cover opacity-60"
                   playsInline
                   preload="auto"
                   onLoadedData={() => setVideoFailed(false)}
@@ -2435,7 +2692,7 @@ export default function LearningPlayerApp() {
                       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                         <span className="rounded-lg bg-black/60 px-4 py-2 text-sm font-bold text-[#00C471] backdrop-blur-sm animate-pulse">
                           <i className="fas fa-crop-simple mr-2" />
-                          드래그해서 OCR 영역을 선택하세요
+                          드래그해서 복사할 글자를 선택하세요
                         </span>
                       </div>
                     )}
@@ -2458,15 +2715,16 @@ export default function LearningPlayerApp() {
                 <button
                   type="button"
                   onClick={() => void handleTogglePlaySafe()}
-                  className={`absolute inset-0 flex items-center justify-center transition ${
+                  className={`absolute text-white/80 hover:text-[#00C471] transition transform hover:scale-110 ${
                     isSelectMode ? 'pointer-events-none opacity-0' :
                     isPlaying ? 'opacity-0 lg:group-hover:opacity-100' : 'opacity-100'
                   }`}
                 >
-                  <span className="flex h-20 w-20 items-center justify-center rounded-full bg-black/45 text-white shadow-2xl transition duration-300 group-hover:scale-110">
-                    <i className={`fas ${isPlaying ? 'fa-pause' : 'fa-play'} text-3xl`} />
-                  </span>
+                  <i className={`far ${isPlaying ? 'fa-pause-circle' : 'fa-play-circle'} text-7xl drop-shadow-lg`} />
                 </button>
+                <div className="absolute top-6 left-6 text-white/80 font-bold text-xl drop-shadow-md">
+                  {lesson.title}
+                </div>
               </>
             ) : selectedLessonLocked ? (
               <div className="mx-6 w-full max-w-md rounded-[28px] border border-white/10 bg-white/5 px-8 py-10 text-center backdrop-blur">
@@ -2573,15 +2831,14 @@ export default function LearningPlayerApp() {
             </div>
           ) : null}
 
-          {/* 재생 컨트롤 바 — 호버 시 슬라이드 업, 마우스 아웃 시 슬라이드 다운 */}
+          {/* 재생 컨트롤 바 */}
           {hasVideoSource ? (
-          <div className="absolute bottom-0 left-0 right-0 z-20 translate-y-full opacity-0 transition-all duration-300 ease-in-out group-hover:translate-y-0 group-hover:opacity-100">
-            <div className="flex h-16 items-center justify-between bg-gradient-to-t from-black/95 to-black/60 px-4 backdrop-blur-sm lg:px-6">
-              <div className="mr-4 flex w-full items-center gap-4 lg:mr-12">
-                <button type="button" onClick={() => void handleTogglePlaySafe()}>
-                  <i className={`fas ${isPlaying ? 'fa-pause' : 'fa-play'} text-gray-300 transition hover:text-white`} />
-                </button>
-                <span className="text-xs tabular-nums text-gray-400">{formatTime(currentTime)}</span>
+          <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-black/80 to-transparent flex items-end px-6 pb-4 gap-4 opacity-0 group-hover:opacity-100 transition-opacity duration-300 z-20">
+              <button type="button" onClick={() => void handleTogglePlaySafe()} className="text-white hover:text-[#00C471] transition">
+                <i className={`fas ${isPlaying ? 'fa-pause' : 'fa-play'}`} />
+              </button>
+              <div className="flex-1 h-1.5 bg-gray-600 rounded-full overflow-hidden cursor-pointer relative mb-1">
+                <div className="h-full bg-[#00C471]" style={{ width: `${playbackProgressPercent}%` }} />
                 <input
                   type="range"
                   min={0}
@@ -2589,51 +2846,123 @@ export default function LearningPlayerApp() {
                   step="any"
                   value={Math.min(currentTime, playbackMax)}
                   onChange={(event) => handleSeek(Number(event.target.value))}
-                  className="h-1 flex-1 cursor-pointer appearance-none rounded-full bg-gray-700 accent-[#00C471]"
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                  aria-label="재생 위치"
                 />
-                <span className="text-xs tabular-nums text-gray-400">{formatTime(duration || (lesson.durationSeconds ?? 0))}</span>
               </div>
-              <div className="flex items-center gap-3 text-sm text-gray-400 lg:gap-4">
-                {/* 볼륨 */}
-                <div className="group/vol flex items-center gap-1.5">
-                  <button type="button" onClick={handleToggleMute} className="transition hover:text-white">
-                    <i className={`fas ${isMuted || volume === 0 ? 'fa-volume-xmark' : volume < 0.5 ? 'fa-volume-low' : 'fa-volume-high'}`} />
-                  </button>
-                  <input
-                    type="range"
-                    min={0}
-                    max={1}
-                    step={0.05}
-                    value={isMuted ? 0 : volume}
-                    onChange={(e) => handleVolumeChange(Number(e.target.value))}
-                    className="w-0 cursor-pointer appearance-none rounded-full bg-gray-700 accent-[#00C471] opacity-0 transition-all duration-200 group-hover/vol:w-20 group-hover/vol:opacity-100"
-                    style={{ height: '4px' }}
-                  />
-                </div>
-                <button type="button" onClick={() => handleSeek(currentTime - 10)} className="font-bold transition hover:text-white">-10s</button>
-                <button type="button" onClick={() => handleSeek(currentTime + 10)} className="font-bold transition hover:text-white">+10s</button>
-                <button type="button" onClick={() => void handleCyclePlaybackRate()} className="font-bold transition hover:text-white">
-                  {(playerConfig?.defaultPlaybackRate ?? 1).toFixed(2).replace(/\.00$/, '')}x
-                </button>
+              <span className="text-xs text-white font-mono mb-1">
+                {formatTime(currentTime)} / {formatTime(duration || (lesson.durationSeconds ?? 0))}
+              </span>
+              <button type="button" onClick={handleToggleMute} className="text-white hover:text-[#00C471] transition">
+                <i className={`fas ${isMuted || volume === 0 ? 'fa-volume-xmark' : 'fa-volume-up'}`} />
+              </button>
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.05}
+                value={isMuted ? 0 : volume}
+                onChange={(event) => handleVolumeChange(Number(event.target.value))}
+                className="sr-only"
+                aria-label="볼륨"
+              />
+              <div className="relative">
                 <button
                   type="button"
-                  onClick={() => void frameRef.current?.requestFullscreen().catch(() => setNotice('전체 화면 전환에 실패했습니다.'))}
-                  className="transition hover:text-white/90"
+                  onClick={() => setSettingsOpen((current) => !current)}
+                  onDoubleClick={() => void handleCyclePlaybackRate()}
+                  className="text-white hover:text-[#00C471] transition"
+                  aria-label="재생 설정"
                 >
-                  <i className="fas fa-expand" />
+                  <i className="fas fa-cog" />
                 </button>
+                {settingsOpen ? (
+                  <div className="absolute bottom-full right-0 mb-4 w-40 bg-gray-900 border border-gray-700 rounded-lg shadow-xl flex flex-col overflow-hidden animate-fade-in z-50">
+                    <div className="px-3 py-2 border-b border-gray-700">
+                      <span className="text-xs text-gray-400 font-bold">재생 속도</span>
+                    </div>
+                    {PLAYER_SPEEDS.map((speed) => {
+                      const active = (playerConfig?.defaultPlaybackRate ?? 1) === speed
+                      return (
+                        <button
+                          key={speed}
+                          type="button"
+                          onClick={() => void handleSetPlaybackRate(speed)}
+                          className={`text-left px-4 py-2 text-sm transition ${
+                            active
+                              ? 'text-[#00C471] bg-gray-800 font-bold flex justify-between items-center'
+                              : 'text-gray-200 hover:bg-gray-800 hover:text-white'
+                          }`}
+                        >
+                          {speed.toFixed(1)}x {active ? <i className="fas fa-check text-xs" /> : null}
+                        </button>
+                      )
+                    })}
+                    <div className="px-3 py-2 border-b border-t border-gray-700 mt-1">
+                      <span className="text-xs text-gray-400 font-bold">화질</span>
+                    </div>
+                    {VIDEO_QUALITY_OPTIONS.map((quality) => {
+                      const available = Boolean(videoQualitySources[quality])
+                      const active = available && activeVideoQuality === quality
+                      return (
+                        <button
+                          key={quality}
+                          type="button"
+                          onClick={() => handleSetVideoQuality(quality)}
+                          aria-disabled={!available}
+                          title={available ? '' : `${quality}p source is not registered`}
+                          className={`text-left px-4 py-2 text-sm transition ${
+                            active
+                              ? 'text-[#00C471] bg-gray-800 font-bold flex justify-between items-center'
+                              : available
+                                ? 'text-gray-200 hover:bg-gray-800 hover:text-white'
+                                : 'cursor-not-allowed text-gray-500'
+                          }`}
+                        >
+                          {quality}p {active ? <i className="fas fa-check text-xs" /> : !available ? <span className="text-[10px] text-gray-600">N/A</span> : null}
+                        </button>
+                      )
+                    })}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSettingsOpen(false)
+                        void handleTogglePip()
+                      }}
+                      aria-pressed={isPipActive}
+                      className={`mt-1 border-t border-gray-700 text-left px-4 py-2 text-sm transition ${
+                        isPipActive
+                          ? 'text-[#00C471] bg-gray-800 font-bold flex justify-between items-center'
+                          : 'text-gray-200 hover:bg-gray-800 hover:text-white'
+                      }`}
+                    >
+                      {isPipActive ? (
+                        <>
+                          PIP 종료 <i className="fas fa-check text-xs" />
+                        </>
+                      ) : 'PIP 모드'}
+                    </button>
+                  </div>
+                ) : null}
               </div>
-            </div>
+              <button
+                type="button"
+                onClick={() => void frameRef.current?.requestFullscreen().catch(() => setNotice('전체 화면 전환에 실패했습니다.'))}
+                className="text-white hover:text-[#00C471] transition"
+                aria-label="전체화면"
+              >
+                <i className="fas fa-expand" />
+              </button>
           </div>
           ) : null}
         </div>
 
-        <div className="flex h-20 shrink-0 items-center justify-center gap-4 border-t border-gray-800 bg-gray-900 px-4">
+        <div className="h-20 bg-gray-900 border-t border-gray-800 flex items-center justify-center gap-6 shrink-0 z-30 relative">
           <button
             type="button"
             onClick={handlePreviousLesson}
             disabled={!previousLesson}
-            className="flex min-w-[132px] items-center justify-center gap-2 rounded-lg border border-gray-700 bg-gray-800 px-5 py-3 text-sm font-semibold text-gray-300 transition hover:bg-gray-700 hover:text-white disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex items-center gap-3 px-8 py-3 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 font-bold transition hover:text-white border border-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
           >
             <i className="fas fa-chevron-left" />
             이전 강의
@@ -2642,29 +2971,30 @@ export default function LearningPlayerApp() {
             type="button"
             onClick={handleNextLesson}
             disabled={!nextLesson || selectedLessonLocked}
-            className="flex min-w-[132px] items-center justify-center gap-2 rounded-lg bg-[#00C471] px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-900/30 transition hover:bg-emerald-600 disabled:cursor-not-allowed disabled:bg-gray-700 disabled:text-gray-400 disabled:shadow-none"
+            className="flex items-center gap-3 px-8 py-3 rounded-xl bg-[#00C471] hover:bg-green-600 text-white font-bold transition shadow-lg hover:shadow-green-500/30 transform hover:-translate-y-0.5 disabled:cursor-not-allowed disabled:bg-gray-700 disabled:shadow-none disabled:hover:translate-y-0"
           >
             다음 강의
             <i className="fas fa-chevron-right" />
           </button>
         </div>
-      </div>
+      </main>
 
       {/* ── 사이드바 (우 1/4) ── */}
-      <aside className="flex h-[48vh] w-full flex-col border-t border-gray-200 bg-white text-gray-800 lg:h-screen lg:max-w-[380px] lg:border-l lg:border-t-0">
+      <aside className="w-[400px] bg-white border-l border-gray-200 flex flex-col shrink-0 z-40 relative">
 
         {/* 탭 버튼 */}
-        <div className="flex shrink-0 border-b border-gray-200">
+        <div className="flex border-b border-gray-200 shrink-0" id="tab-buttons">
           {(['curriculum', 'qna', 'notes'] as const).map((key) => (
             <button
               key={key}
               type="button"
-              onClick={() => setActiveTab(key)}
-              className={`flex-1 border-b-2 py-3.5 text-xs font-bold transition ${
-                activeTab === key
-                  ? 'border-[#00C471] bg-green-50/50 text-[#00C471]'
-                  : 'border-transparent text-gray-400 hover:bg-gray-50'
-              }`}
+              onClick={() => {
+                setActiveTab(key)
+                if (key !== 'qna') setOpenQuestionId(null)
+              }}
+              className={activeTab === key
+                ? 'tab-btn flex-1 py-4 text-sm font-bold text-[#00C471] border-b-2 border-[#00C471] bg-green-50/50 transition'
+                : 'tab-btn flex-1 py-4 text-sm font-medium text-gray-500 hover:text-gray-800 border-b-2 border-transparent transition'}
             >
               {key === 'curriculum' ? '커리큘럼' : key === 'qna' ? 'Q&A' : '노트'}
             </button>
@@ -2672,7 +3002,7 @@ export default function LearningPlayerApp() {
         </div>
 
         {/* 탭 콘텐츠 */}
-        <div className="relative flex-1 overflow-hidden bg-[#F8F9FA]">
+        <div className="flex-1 overflow-hidden relative bg-gray-50/30 flex flex-col">
           {loadingLesson ? (
             <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/70">
               <div className="h-10 w-10 animate-spin rounded-full border-4 border-[#00C471] border-t-transparent" />
@@ -2681,13 +3011,13 @@ export default function LearningPlayerApp() {
 
           {/* 커리큘럼 탭 */}
           {activeTab === 'curriculum' ? (
-            <div className="h-full space-y-4 overflow-y-auto p-4">
+            <div className="tab-content h-full overflow-y-auto custom-scrollbar p-4 animate-fade-in">
               {course.sections.map((section, sectionIndex) => {
                 const sectionLockState = section.lessons[0] ? lessonLockMap.get(section.lessons[0].lessonId) : null
                 const sectionLocked = Boolean(sectionLockState?.locked)
 
                 return (
-                <div key={section.sectionId}>
+                <div key={section.sectionId} data-open={openSectionIds.has(section.sectionId)}>
                   <h3 className={`mb-2 flex items-center gap-1.5 px-1 text-xs font-semibold ${sectionLocked ? 'text-gray-400' : 'text-gray-500'}`}>
                     {sectionLocked ? <i className="fas fa-lock" aria-hidden="true" /> : null}
                     <span className="truncate">섹션 {sectionIndex + 1}. {section.title}</span>
@@ -2699,7 +3029,7 @@ export default function LearningPlayerApp() {
                       const completed = isLessonProgressCompleted(itemProgress)
                       const lockState = lessonLockMap.get(item.lessonId)
                       const locked = Boolean(lockState?.locked)
-                      const lessonDurationLabel = formatTime(item.durationSeconds ?? 0)
+                      const lessonDurationLabel = formatTime(actualDurationByLessonId[item.lessonId] ?? item.durationSeconds ?? 0)
                       const quizItem = isQuizLesson(item)
                       const assignmentItem = resolveLessonAssignment(item)
                       const assignmentHistory = assignmentItem ? assignmentHistoryByAssignmentId[assignmentItem.assignmentId] ?? null : null
@@ -2815,8 +3145,43 @@ export default function LearningPlayerApp() {
 
           {/* Q&A 탭 */}
           {activeTab === 'qna' ? (
-            <div className="flex h-full flex-col">
-              <div className="flex-1 space-y-3 overflow-y-auto p-4">
+            <div className="tab-content block h-full relative overflow-hidden">
+              <div className="absolute inset-0 flex flex-col p-6 overflow-y-auto custom-scrollbar bg-gray-50/30 transition-transform duration-300">
+                <div className="mb-4 flex items-center justify-between">
+                  <h3 className="font-bold text-gray-900 text-lg">질문 및 답변</h3>
+                  <span className="text-sm text-gray-500">총 {visibleQuestions.length}개</span>
+                </div>
+                <div className="relative mb-4">
+                  <input
+                    type="text"
+                    value={qnaSearch}
+                    onChange={(event) => setQnaSearch(event.target.value)}
+                    className="w-full border border-gray-200 rounded-lg py-2.5 pl-10 pr-4 text-sm focus:outline-none focus:border-[#00C471] focus:ring-1 focus:ring-[#00C471]"
+                    placeholder="궁금한 내용을 검색해보세요."
+                  />
+                  <i className="fas fa-search absolute left-3.5 top-3.5 text-gray-400" />
+                </div>
+                <div className="flex gap-2 mb-6 overflow-x-auto custom-scrollbar pb-1 shrink-0">
+                  {([
+                    ['ALL', '전체 질문'],
+                    ['MINE', '내 질문'],
+                    ['UNANSWERED', '답변 대기중'],
+                  ] as const).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setQnaStatusFilter(value)}
+                      className={qnaStatusFilter === value
+                        ? 'qna-filter-btn px-3.5 py-1.5 text-xs font-bold rounded-full bg-gray-900 text-white transition shrink-0'
+                        : 'qna-filter-btn px-3.5 py-1.5 text-xs font-medium rounded-full bg-gray-100 text-gray-600 hover:bg-gray-200 transition shrink-0'}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-3 pb-20">
                 {qnaError ? (
                   <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-600">
                     {qnaError}
@@ -2837,52 +3202,40 @@ export default function LearningPlayerApp() {
                         key={question.id}
                         type="button"
                         onClick={() => void handleToggleQuestion(question.id)}
-                        className="group block w-full rounded-xl border border-gray-200 bg-white p-4 text-left shadow-sm transition hover:border-[#00C471] hover:shadow-md"
+                        className="qna-item p-4 bg-white border border-gray-200 rounded-xl hover:border-[#00C471] transition cursor-pointer shadow-sm group w-full text-left"
                       >
-                        <div className="mb-3 flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${
-                              answered
-                                ? 'bg-blue-100 text-blue-600'
-                                : 'bg-orange-100 text-orange-600'
-                            }`}>
-                              {answered ? '답변완료' : '미답변'}
-                            </span>
-                            <span className="text-xs font-bold text-gray-800">{question.authorName}</span>
-                          </div>
-                          <span className="text-[10px] font-medium text-gray-400">{formatRelativeTime(question.createdAt)}</span>
+                        <div className="flex gap-2 items-start mb-2">
+                          <span className={`${answered ? 'bg-[#00C471] text-white' : 'bg-gray-200 text-gray-600'} text-[10px] font-bold px-1.5 py-0.5 rounded`}>
+                            {answered ? '해결됨' : '답변대기'}
+                          </span>
+                          <h4 className="text-sm font-bold text-gray-800 leading-tight group-hover:text-[#00C471] transition">
+                            {question.title}
+                          </h4>
                         </div>
 
-                        {question.lectureTimestamp ? (
-                          <div className="mb-3 inline-flex items-center gap-2 rounded-lg border border-gray-100 bg-gray-50 p-2 shadow-sm">
-                            <span className="flex items-center gap-1 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-bold text-gray-600 shadow-sm">
-                              <i className="fas fa-play-circle text-[#00C471]" />
-                              {question.lectureTimestamp}
-                            </span>
-                            <span className="truncate text-[11px] font-bold text-gray-600">{lesson.title}</span>
-                          </div>
-                        ) : null}
-
-                        <h4 className="mb-1 text-sm font-bold text-gray-900 transition group-hover:text-[#00C471]">
-                          {question.title}
-                        </h4>
-                        <p className="line-clamp-2 text-xs leading-relaxed text-gray-600">
-                          {detail?.content ?? '질문 상세 내용을 보려면 눌러주세요.'}
+                        <p className="text-xs text-gray-500 line-clamp-2 mb-3">
+                          {detail?.content ?? (question.lectureTimestamp ? `${question.lectureTimestamp} 구간 질문입니다.` : '질문 상세 내용을 보려면 눌러주세요.')}
                         </p>
+                        <div className="flex justify-between items-center text-xs text-gray-400">
+                          <span className={isOwnQnaQuestion(question, sessionUserId) ? 'font-bold text-[#00C471]' : ''}>
+                            {question.authorName}{isOwnQnaQuestion(question, sessionUserId) ? ' (나)' : ''} · {formatRelativeTime(question.createdAt)}
+                          </span>
+                          <span><i className="far fa-comment-dots mr-1" />{question.answerCount}</span>
+                        </div>
                       </button>
                     )
                   })
                 ) : (
                   <EmptyState
                     iconClassName="fas fa-comments"
-                    title="내가 등록한 질문이 없습니다"
-                    description="이 강의에서 궁금한 점을 강사에게 남겨 보세요."
+                    title="등록된 질문이 없습니다"
+                    description="이 강의에서 궁금한 점을 커뮤니티에 남겨 보세요."
                   />
                 )}
               </div>
 
               {/* 질문 등록 폼 */}
-              <div className="shrink-0 border-t border-gray-200 bg-white p-4">
+              <div className="hidden shrink-0 border-t border-gray-200 bg-white p-4">
                 <div className="mb-2 flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 p-2.5">
                   <div className="flex min-w-0 items-center gap-2">
                     <span className="flex shrink-0 items-center gap-1 rounded border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] font-bold text-gray-600 shadow-sm">
@@ -2954,44 +3307,201 @@ export default function LearningPlayerApp() {
                   </button>
                 </div>
               </div>
+              <div className="hidden absolute bottom-0 left-0 z-20 w-full border-t border-gray-200 bg-white p-4 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
+                <button
+                  type="button"
+                  onClick={() => setQuestionComposerOpen(true)}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 py-3.5 text-sm font-bold text-white shadow-md transition hover:bg-gray-800 active:scale-95"
+                >
+                  <i className="far fa-comment-dots" />
+                  커뮤니티에 질문하기
+                </button>
+              </div>
+              <div className={`absolute inset-0 z-30 flex flex-col bg-white transition-transform duration-300 ${
+                activeQuestionSummary ? 'translate-x-0' : 'translate-x-full'
+              }`}>
+                <div className="flex shrink-0 items-center gap-3 border-b border-gray-100 bg-white px-4 py-4">
+                  <button
+                    type="button"
+                    onClick={() => setOpenQuestionId(null)}
+                    className="flex h-8 w-8 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-800"
+                    aria-label="질문 목록으로 돌아가기"
+                  >
+                    <i className="fas fa-arrow-left" />
+                  </button>
+                  <h3 className="text-sm font-bold text-gray-900">질문 상세</h3>
+                </div>
+                {activeQuestionSummary ? (
+                  <div className="custom-scrollbar flex-1 overflow-y-auto bg-gray-50/50 p-6">
+                    <div className="mb-8">
+                      <div className="mb-3 flex items-start gap-2">
+                        <span className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                          isQuestionAnswered(activeQuestionSummary)
+                            ? 'bg-[#00C471] text-white'
+                            : 'bg-gray-200 text-gray-600'
+                        }`}>
+                          {isQuestionAnswered(activeQuestionSummary) ? '해결됨' : '답변 대기'}
+                        </span>
+                        <h4 className="text-lg font-bold leading-tight text-gray-800">{activeQuestionSummary.title}</h4>
+                      </div>
+                      <div className="mb-4 flex flex-wrap items-center gap-2 text-xs text-gray-400">
+                        <span className="font-bold text-[#00C471]">{activeQuestionSummary.authorName}</span>
+                        <span>{formatDateLabel(activeQuestionSummary.createdAt)}</span>
+                        {activeQuestionSummary.lectureTimestamp ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const seconds = activeQuestionSummary.lectureTimestamp!
+                                .split(':')
+                                .map(Number)
+                                .reduce((total, value) => (Number.isFinite(value) ? total * 60 + value : total), 0)
+                              handleSeek(seconds)
+                            }}
+                            className="rounded border border-green-200 bg-green-50 px-1.5 py-0.5 text-[#00C471] transition hover:bg-green-100"
+                          >
+                            <i className="fas fa-play mr-1 text-[10px]" />
+                            {activeQuestionSummary.lectureTimestamp} 구간 재생
+                          </button>
+                        ) : null}
+                      </div>
+                      <div className="rounded-xl border border-gray-200 bg-white p-5 text-sm leading-relaxed text-gray-700 shadow-sm">
+                        {loadingQuestionId === activeQuestionSummary.id && !activeQuestionDetail ? (
+                          <div className="flex items-center justify-center py-8">
+                            <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#00C471] border-t-transparent" />
+                          </div>
+                        ) : (
+                          <p className="whitespace-pre-wrap">{activeQuestionDetail?.content ?? '질문 상세 내용을 불러오지 못했습니다.'}</p>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <h5 className="mb-4 flex items-center gap-2 text-sm font-bold text-gray-800">
+                        <i className="far fa-comments text-gray-400" />
+                        답변 <span className="text-[#00C471]">{activeQuestionDetail?.answers.length ?? activeQuestionSummary.answerCount}</span>
+                      </h5>
+                      <div className="space-y-4">
+                        {activeQuestionDetail?.answers.length ? (
+                          activeQuestionDetail.answers.map((answer) => (
+                            <div key={answer.id} className="flex gap-3">
+                              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-green-200 bg-green-100 text-sm text-[#00C471]">
+                                <i className="fas fa-chalkboard-teacher" />
+                              </div>
+                              <div className="relative flex-1 rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
+                                {answer.adopted ? (
+                                  <div className="absolute -top-2.5 right-4 rounded-full bg-gray-800 px-2 py-0.5 text-[10px] font-bold text-white shadow-sm">
+                                    채택 답변
+                                  </div>
+                                ) : null}
+                                <div className="mb-2 flex items-center justify-between">
+                                  <span className="text-sm font-bold text-gray-800">{answer.authorName}</span>
+                                  <span className="text-[10px] text-gray-400">{formatRelativeTime(answer.createdAt)}</span>
+                                </div>
+                                <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-700">{answer.content}</p>
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="rounded-xl border border-dashed border-gray-200 bg-white p-6 text-center text-xs font-bold text-gray-500">
+                            아직 등록된 답변이 없습니다.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
+              </div>
             </div>
           ) : null}
 
           {/* 노트 탭 */}
           {activeTab === 'notes' ? (
-            <div className="flex h-full flex-col gap-3 p-4">
-              <div className="shrink-0 rounded-xl border border-blue-100 bg-blue-50 p-3">
+            <div className="tab-content h-full overflow-y-auto custom-scrollbar p-6 animate-fade-in">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="font-bold text-gray-900 text-lg">내 노트</h3>
+                <button
+                  type="button"
+                  onClick={() => setNoteComposerOpen((current) => !current)}
+                  className="text-[#00C471] hover:text-green-600 text-sm font-bold transition flex items-center"
+                >
+                  <i className="fas fa-plus mr-1" />
+                  새 노트
+                </button>
+              </div>
+              {noteComposerOpen ? (
+                <div className="bg-white border border-[#00C471] rounded-xl p-4 shadow-sm mb-6 animate-fade-in-up">
+                  <div className="flex items-center gap-2 mb-3">
+                    <span className="bg-green-100 text-[#00C471] text-xs font-bold px-2 py-1 rounded">{formatTime(currentTime)}</span>
+                    <span className="text-xs text-gray-500">현재 재생 시간에 추가됩니다.</span>
+                  </div>
+                  <textarea
+                    value={noteContent}
+                    onChange={(event) => setNoteContent(event.target.value)}
+                    className="w-full h-24 p-3 border border-gray-200 rounded-lg text-sm mb-3 focus:outline-none focus:border-[#00C471] focus:ring-1 focus:ring-[#00C471] resize-none"
+                    placeholder="강의를 들으며 중요한 점을 메모해보세요."
+                  />
+                  <div className="flex justify-end gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setNoteComposerOpen(false)}
+                      className="px-4 py-2 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition"
+                    >
+                      취소
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => void handleSaveNote()}
+                      disabled={!noteContent.trim()}
+                      className="px-4 py-2 text-sm font-bold text-white bg-[#00C471] rounded-lg hover:bg-green-600 shadow-sm transition disabled:cursor-not-allowed disabled:bg-emerald-300"
+                    >
+                      저장하기
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+              <div className="hidden shrink-0 rounded-xl border border-blue-100 bg-blue-50 p-3">
                 <p className="flex items-center gap-1.5 text-[11px] font-medium text-blue-700">
                   <i className="fas fa-info-circle" />
                   작성한 노트는 저장 버튼을 눌러야 이 강의에 반영됩니다.
                 </p>
               </div>
 
-              <div className="flex-1 space-y-2.5 overflow-y-auto">
+              <div className="space-y-4 pb-20">
                 {sortedNotes.length ? (
                   sortedNotes.map((note) => (
-                    <button
-                      key={note.noteId}
-                      type="button"
-                      onClick={() => {
-                        setOpenNoteId(note.noteId)
-                        setEditingNoteContent(note.content)
-                      }}
-                      className="group block w-full rounded-xl border border-gray-200 bg-white p-3.5 text-left transition hover:border-[#00C471] hover:shadow-md"
-                    >
-                      <div className="mb-2 flex items-center justify-between">
-                        <span className="flex items-center gap-1 rounded border border-gray-200 bg-gray-50 px-2 py-0.5 text-[10px] font-bold text-gray-600">
-                          <i className="fas fa-play-circle text-[#00C471]" />
+                    <div key={note.noteId} className="p-4 border border-gray-200 bg-white shadow-sm rounded-xl hover:border-gray-300 transition">
+                      <div className="flex justify-between items-center mb-2">
+                        <button
+                          type="button"
+                          onClick={() => handleSeek(note.seekSecond ?? note.timestampSecond)}
+                          className="text-xs text-[#00C471] font-bold bg-green-50 px-2 py-1 rounded cursor-pointer hover:bg-green-100"
+                        >
+                          <i className="fas fa-play mr-1" />
                           {note.timestampLabel || formatTime(note.timestampSecond)}
-                        </span>
-                        <span className="text-[10px] font-medium text-gray-400">
-                          {formatDateLabel(note.updatedAt ?? note.createdAt)}
-                        </span>
+                        </button>
+                        <div className="flex gap-2 text-gray-400">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setOpenNoteId(note.noteId)
+                              setEditingNoteContent(note.content)
+                            }}
+                            className="hover:text-gray-600"
+                            aria-label="노트 수정"
+                          >
+                            <i className="fas fa-pen text-xs" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleDeleteNote(note)}
+                            className="hover:text-red-400"
+                            aria-label="노트 삭제"
+                          >
+                            <i className="fas fa-trash text-xs" />
+                          </button>
+                        </div>
                       </div>
-                      <p className="line-clamp-2 text-xs leading-relaxed text-gray-700 transition group-hover:text-black">
-                        {note.content}
-                      </p>
-                    </button>
+                      <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">{note.content}</p>
+                    </div>
                   ))
                 ) : (
                   <EmptyState
@@ -3003,7 +3513,7 @@ export default function LearningPlayerApp() {
               </div>
 
               {/* 노트 작성 영역 */}
-              <div className="shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all focus-within:border-[#00C471] focus-within:ring-1 focus-within:ring-[#00C471]">
+              <div className="hidden shrink-0 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition-all focus-within:border-[#00C471] focus-within:ring-1 focus-within:ring-[#00C471]">
                 <div className="flex items-center justify-between border-b border-gray-200 bg-gray-50 p-2">
                   <span className="flex items-center gap-1 rounded border border-gray-300 bg-white px-2.5 py-1 text-[10px] font-bold text-gray-600 shadow-sm">
                     <i className="fas fa-clock text-[#00C471]" />
@@ -3033,12 +3543,120 @@ export default function LearningPlayerApp() {
             </div>
           ) : null}
         </div>
+        <div className={`absolute bottom-0 left-0 w-full p-4 border-t border-gray-200 bg-white shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20 transition-transform duration-300 ${
+          activeQuestionSummary ? 'translate-y-full pointer-events-none' : 'translate-y-0'
+        }`}>
+          <button
+            type="button"
+            onClick={() => setQuestionComposerOpen(true)}
+            className="w-full bg-gray-900 hover:bg-gray-800 text-white py-3.5 rounded-xl font-bold text-sm transition shadow-md hover:shadow-lg transform active:scale-95 flex justify-center items-center gap-2"
+          >
+            <i className="far fa-comment-dots" /> 커뮤니티에 질문하기
+          </button>
+        </div>
       </aside>
 
+      </div>
+
       {/* ── Q&A 모달 ── */}
-      {activeQuestionSummary ? (
+      {questionComposerOpen ? (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/60 px-4 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-[500px] overflow-hidden rounded-2xl bg-white text-gray-900 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50 px-6 py-4">
+              <h3 className="text-lg font-bold text-gray-800">새 질문 작성</h3>
+              <button
+                type="button"
+                onClick={() => setQuestionComposerOpen(false)}
+                className="text-gray-400 transition hover:text-gray-600"
+                aria-label="질문 작성 닫기"
+              >
+                <i className="fas fa-times text-lg" />
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="mb-4">
+                <label className="mb-1 block text-sm font-medium text-gray-700">제목</label>
+                <input
+                  type="text"
+                  value={questionForm.title}
+                  onChange={(event) => setQuestionForm((current) => ({ ...current, title: event.target.value }))}
+                  className="w-full rounded-lg border border-gray-300 p-2.5 text-sm outline-none transition focus:border-[#00C471] focus:ring-1 focus:ring-[#00C471]"
+                  placeholder="질문 제목을 입력하세요"
+                />
+              </div>
+              {templateOptions.length > 1 ? (
+                <div className="mb-4 grid grid-cols-2 gap-2">
+                  <select
+                    value={questionForm.templateType}
+                    onChange={(event) => setQuestionForm((current) => ({ ...current, templateType: event.target.value }))}
+                    className="rounded-lg border border-gray-300 bg-white p-2.5 text-sm outline-none transition focus:border-[#00C471] focus:ring-1 focus:ring-[#00C471]"
+                  >
+                    {templateOptions.map((template) => (
+                      <option key={template.templateType} value={template.templateType}>
+                        {template.name}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={questionForm.difficulty}
+                    onChange={(event) => setQuestionForm((current) => ({ ...current, difficulty: event.target.value as QnaDifficulty }))}
+                    className="rounded-lg border border-gray-300 bg-white p-2.5 text-sm outline-none transition focus:border-[#00C471] focus:ring-1 focus:ring-[#00C471]"
+                  >
+                    <option value="EASY">쉬움</option>
+                    <option value="MEDIUM">보통</option>
+                    <option value="HARD">어려움</option>
+                  </select>
+                </div>
+              ) : null}
+              <div className="mb-2">
+                <label className="mb-1 block text-sm font-medium text-gray-700">내용</label>
+                <textarea
+                  value={questionForm.content}
+                  onChange={(event) => setQuestionForm((current) => ({ ...current, content: event.target.value }))}
+                  className="h-32 w-full resize-none rounded-lg border border-gray-300 p-2.5 text-sm outline-none transition focus:border-[#00C471] focus:ring-1 focus:ring-[#00C471]"
+                  placeholder="이해가 안 되는 부분을 구체적으로 적어주세요"
+                />
+              </div>
+              <label className="mb-4 flex cursor-pointer items-center gap-2 rounded bg-gray-50 p-2 text-sm text-gray-500">
+                <input
+                  type="checkbox"
+                  checked={questionForm.attachTimestamp}
+                  onChange={(event) => setQuestionForm((current) => ({ ...current, attachTimestamp: event.target.checked }))}
+                  className="rounded border-gray-300 accent-[#00C471]"
+                />
+                현재 재생 시간({formatTime(currentTime)}) 첨부하기
+              </label>
+              {selectedTemplate?.description ? (
+                <p className="mb-3 text-xs leading-5 text-gray-500">{selectedTemplate.description}</p>
+              ) : null}
+              {questionMessage ? (
+                <p className="mb-3 text-xs font-medium text-gray-500">{questionMessage}</p>
+              ) : null}
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => setQuestionComposerOpen(false)}
+                  className="rounded-lg border border-gray-300 bg-white px-5 py-2.5 text-sm font-medium text-gray-600 transition hover:bg-gray-50"
+                >
+                  취소
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleSubmitQuestion()}
+                  disabled={questionBusy || !templateOptions.length}
+                  className="rounded-lg bg-[#00C471] px-5 py-2.5 text-sm font-bold text-white shadow-md transition hover:bg-green-600 disabled:cursor-not-allowed disabled:bg-emerald-300"
+                >
+                  {questionBusy ? '등록 중...' : '등록하기'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {activeQuestionSummary && activeQuestionDetail ? (
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 px-4 backdrop-blur-[2px]"
+          className="hidden fixed inset-0 z-[100] items-center justify-center bg-black/60 px-4 backdrop-blur-[2px]"
           onClick={() => setOpenQuestionId(null)}
         >
           <div

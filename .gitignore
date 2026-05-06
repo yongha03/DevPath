@@ -43,3 +43,6 @@ out/
 
 # Claude Code
 .claude/
+
+# Agent instructions
+AGENTS.md
