@@ -17,6 +17,7 @@ public class SwaggerGroupConfig {
                         "/api/ai/**",
                         "/api/auth/**",
                         "/api/builder/**",
+                        "/api/career-profiles/**",
                         "/api/certificates/**",
                         "/api/courses/**",
                         "/api/direct-messages/**",
