@@ -176,6 +176,8 @@ public enum ErrorCode {
   RESUME_PROOF_CARD_NOT_FOUND(HttpStatus.NOT_FOUND, "선택된 Proof Card를 찾을 수 없습니다."),
   RESUME_PROOF_CARD_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 선택된 Proof Card입니다."),
 
+  MARKET_LEARNING_FEEDBACK_SKILL_GAP_NOT_FOUND(HttpStatus.NOT_FOUND, "로드맵에 추가할 스킬 갭을 찾을 수 없습니다."),
+
   INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "C002", "서버 내부 오류가 발생했습니다.");
 
   private final HttpStatus httpStatus;

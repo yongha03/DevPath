@@ -69,6 +69,8 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers("/api/career-profiles/**")
                     .permitAll()
+                    .requestMatchers("/api/market/learning-feedback/**")
+                    .permitAll()
                     .requestMatchers("/api/admin/**")
                     .hasRole("ADMIN")
                     .requestMatchers("/api/instructor/**", "/api/evaluation/instructor/**")
