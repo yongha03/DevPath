@@ -3,7 +3,7 @@ package com.devpath.api.analytics;
 import com.devpath.api.analytics.dto.AnalyticsDashboardResponse;
 import com.devpath.api.analytics.dto.ExperimentResultResponse;
 import com.devpath.common.response.ApiResponse;
-import com.devpath.domain.admin.analytics.AdminAnalyticsService;
+import com.devpath.domain.analytics.AdminAnalyticsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;

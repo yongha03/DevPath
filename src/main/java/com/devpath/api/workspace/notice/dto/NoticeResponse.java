@@ -1,6 +1,6 @@
 package com.devpath.api.workspace.notice.dto;
 
-import com.devpath.domain.workspace.notice.WorkspaceNotice;
+import com.devpath.domain.operation.notice.WorkspaceNotice;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;

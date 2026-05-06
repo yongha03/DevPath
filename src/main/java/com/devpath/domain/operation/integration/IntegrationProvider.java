@@ -1,4 +1,4 @@
-package com.devpath.domain.workspace.integration;
+package com.devpath.domain.operation.integration;
 
 public enum IntegrationProvider {
     GITHUB,

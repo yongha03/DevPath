@@ -3,7 +3,7 @@ package com.devpath.api.admin.operation;
 import com.devpath.api.admin.operation.dto.RecommendationSettingResponse;
 import com.devpath.api.admin.operation.dto.RecommendationSettingUpdateRequest;
 import com.devpath.common.response.ApiResponse;
-import com.devpath.domain.admin.recommendation.AdminRecommendationService;
+import com.devpath.domain.operation.recommendation.AdminRecommendationService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;

@@ -1,6 +1,6 @@
 package com.devpath.api.admin.operation.dto;
 
-import com.devpath.domain.admin.recommendation.RecommendationSetting;
+import com.devpath.domain.operation.recommendation.RecommendationSetting;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;

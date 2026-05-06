@@ -1,15 +1,14 @@
-package com.devpath.domain.admin.recommendation;
+package com.devpath.domain.operation.recommendation;
 
 import com.devpath.api.admin.operation.dto.RecommendationSettingResponse;
 import com.devpath.api.admin.operation.dto.RecommendationSettingUpdateRequest;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
+import java.util.List;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor

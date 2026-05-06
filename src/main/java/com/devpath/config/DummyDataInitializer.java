@@ -1,14 +1,14 @@
 package com.devpath.config;
 
-import com.devpath.domain.admin.analytics.ExperimentResult;
-import com.devpath.domain.admin.analytics.ExperimentResultRepository;
-import com.devpath.domain.admin.recommendation.RecommendationSetting;
-import com.devpath.domain.admin.recommendation.RecommendationSettingRepository;
-import com.devpath.domain.workspace.integration.ExternalIntegration;
-import com.devpath.domain.workspace.integration.ExternalIntegrationRepository;
-import com.devpath.domain.workspace.integration.IntegrationProvider;
-import com.devpath.domain.workspace.notice.WorkspaceNotice;
-import com.devpath.domain.workspace.notice.WorkspaceNoticeRepository;
+import com.devpath.domain.analytics.ExperimentResult;
+import com.devpath.domain.analytics.ExperimentResultRepository;
+import com.devpath.domain.operation.integration.ExternalIntegration;
+import com.devpath.domain.operation.integration.ExternalIntegrationRepository;
+import com.devpath.domain.operation.integration.IntegrationProvider;
+import com.devpath.domain.operation.notice.WorkspaceNotice;
+import com.devpath.domain.operation.notice.WorkspaceNoticeRepository;
+import com.devpath.domain.operation.recommendation.RecommendationSetting;
+import com.devpath.domain.operation.recommendation.RecommendationSettingRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;

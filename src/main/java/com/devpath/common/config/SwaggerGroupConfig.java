@@ -53,6 +53,7 @@ public class SwaggerGroupConfig {
                         "/api/users/**",
                         "/api/voice-channels/**",
                         "/api/workspace-questions/**",
+                        "/api/workspace-notices/**",
                         "/api/workspaces/**")
                 .build();
     }

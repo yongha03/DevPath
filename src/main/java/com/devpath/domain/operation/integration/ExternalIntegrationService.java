@@ -1,15 +1,14 @@
-package com.devpath.domain.workspace.integration;
+package com.devpath.domain.operation.integration;
 
 import com.devpath.api.workspace.integration.dto.IntegrationResponse;
 import com.devpath.api.workspace.integration.dto.IntegrationStatusUpdateRequest;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
+import java.util.List;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -26,11 +25,13 @@ public class ExternalIntegrationService {
     }
 
     @Transactional
-    public IntegrationResponse updateIntegrationStatus(Long workspaceId, IntegrationProvider provider, IntegrationStatusUpdateRequest request) {
+    public IntegrationResponse updateIntegrationStatus(
+            Long workspaceId,
+            IntegrationProvider provider,
+            IntegrationStatusUpdateRequest request) {
         ExternalIntegration integration = integrationRepository.findByWorkspaceIdAndProvider(workspaceId, provider)
                 .orElseThrow(() -> new CustomException(ErrorCode.INTEGRATION_NOT_FOUND));
 
-        // 비즈니스 메서드를 통한 상태 변경
         if (request.getIsActive()) {
             integration.activate();
         } else {

@@ -1,6 +1,6 @@
 package com.devpath.api.analytics.dto;
 
-import com.devpath.domain.admin.analytics.ExperimentResult;
+import com.devpath.domain.analytics.ExperimentResult;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
