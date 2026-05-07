@@ -2870,11 +2870,15 @@ WHERE u.email = 'learner2@devpath.com'
 -- ========================================
 -- C SECTION PROJECT
 -- ========================================
-INSERT INTO project (name, description, status, is_deleted, created_at)
+INSERT INTO project (owner_id, name, description, project_type, status, visibility, recruiting_status, is_deleted, created_at)
 SELECT
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
     'DevPath Team Workspace',
     'DevPath 팀 협업 워크스페이스용 프로젝트. 역할 배정, 멘토링, Proof 제출 테스트용 데이터',
+    'SQUAD',
     'IN_PROGRESS',
+    'PUBLIC',
+    'OPEN',
     FALSE,
     '2026-03-23 14:00:00'
 WHERE NOT EXISTS (
@@ -2884,11 +2888,15 @@ WHERE NOT EXISTS (
       AND is_deleted = FALSE
 );
 
-INSERT INTO project (name, description, status, is_deleted, created_at)
+INSERT INTO project (owner_id, name, description, project_type, status, visibility, recruiting_status, is_deleted, created_at)
 SELECT
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
     'Portfolio Builder Squad',
     '포트폴리오 제작 중심의 준비중 프로젝트. 초대 거절/멘토링 승인 시나리오 테스트용 데이터',
+    'SQUAD',
     'PREPARING',
+    'PUBLIC',
+    'CLOSED',
     FALSE,
     '2026-03-22 11:00:00'
 WHERE NOT EXISTS (
@@ -14971,3 +14979,705 @@ WHERE r.is_official = TRUE
       WHERE existing.node_id = rn.node_id
         AND existing.url = seed.url
   );
+
+-- =============================================
+-- TASK-22: Workspace 샘플 데이터
+-- =============================================
+
+INSERT INTO workspace (owner_id, name, description, type, status, is_deleted, created_at, updated_at)
+SELECT
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    'DevPath 팀 워크스페이스',
+    'DevPath 팀 협업을 위한 스쿼드 워크스페이스',
+    'SQUAD',
+    'ACTIVE',
+    FALSE,
+    '2026-03-23 14:00:00',
+    '2026-03-23 14:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM workspace WHERE name = 'DevPath 팀 워크스페이스'
+);
+
+INSERT INTO workspace (owner_id, name, description, type, status, is_deleted, created_at, updated_at)
+SELECT
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    '포트폴리오 빌더 솔로',
+    '개인 포트폴리오 제작을 위한 솔로 워크스페이스',
+    'SOLO',
+    'ACTIVE',
+    FALSE,
+    '2026-03-24 10:00:00',
+    '2026-03-24 10:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM workspace WHERE name = '포트폴리오 빌더 솔로'
+);
+
+INSERT INTO workspace (owner_id, name, description, type, status, is_deleted, created_at, updated_at)
+SELECT
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    '멘토링 세션 워크스페이스',
+    '멘토와 함께하는 학습 워크스페이스',
+    'MENTORING',
+    'ACTIVE',
+    FALSE,
+    '2026-03-25 09:00:00',
+    '2026-03-25 09:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM workspace WHERE name = '멘토링 세션 워크스페이스'
+);
+
+-- workspace_member 샘플 데이터 (learner가 모든 워크스페이스 멤버)
+INSERT INTO workspace_member (workspace_id, learner_id, joined_at)
+SELECT
+    (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스'),
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    '2026-03-23 14:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM workspace_member
+    WHERE workspace_id = (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스')
+      AND learner_id = (SELECT user_id FROM users WHERE email = 'learner@devpath.com')
+);
+
+INSERT INTO workspace_member (workspace_id, learner_id, joined_at)
+SELECT
+    (SELECT id FROM workspace WHERE name = '포트폴리오 빌더 솔로'),
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    '2026-03-24 10:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM workspace_member
+    WHERE workspace_id = (SELECT id FROM workspace WHERE name = '포트폴리오 빌더 솔로')
+      AND learner_id = (SELECT user_id FROM users WHERE email = 'learner@devpath.com')
+);
+
+INSERT INTO workspace_member (workspace_id, learner_id, joined_at)
+SELECT
+    (SELECT id FROM workspace WHERE name = '멘토링 세션 워크스페이스'),
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    '2026-03-25 09:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM workspace_member
+    WHERE workspace_id = (SELECT id FROM workspace WHERE name = '멘토링 세션 워크스페이스')
+      AND learner_id = (SELECT user_id FROM users WHERE email = 'learner@devpath.com')
+);
+
+-- workspace_task 샘플 데이터
+INSERT INTO workspace_task (workspace_id, title, description, status, priority, assignee_id, due_date, created_by_id, is_deleted, created_at, updated_at)
+SELECT
+    (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스'),
+    '로그인 API 구현',
+    'JWT 기반 로그인 및 토큰 발급 API 구현',
+    'TODO',
+    'HIGH',
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    '2026-06-01',
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    FALSE,
+    '2026-03-23 14:00:00',
+    '2026-03-23 14:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM workspace_task
+    WHERE workspace_id = (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스')
+      AND title = '로그인 API 구현'
+);
+
+INSERT INTO workspace_task (workspace_id, title, description, status, priority, assignee_id, due_date, created_by_id, is_deleted, created_at, updated_at)
+SELECT
+    (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스'),
+    '칸반 보드 UI 설계',
+    'React 기반 드래그앤드롭 칸반 보드 UI 설계 및 구현',
+    'IN_PROGRESS',
+    'MEDIUM',
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    '2026-06-10',
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    FALSE,
+    '2026-03-24 09:00:00',
+    '2026-03-24 09:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM workspace_task
+    WHERE workspace_id = (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스')
+      AND title = '칸반 보드 UI 설계'
+);
+
+INSERT INTO workspace_task (workspace_id, title, description, status, priority, assignee_id, due_date, created_by_id, is_deleted, created_at, updated_at)
+SELECT
+    (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스'),
+    'ERD 다이어그램 작성',
+    '전체 도메인 ERD 다이어그램 작성 및 리뷰',
+    'DONE',
+    'LOW',
+    NULL,
+    '2026-05-15',
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    FALSE,
+    '2026-03-22 10:00:00',
+    '2026-03-22 10:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM workspace_task
+    WHERE workspace_id = (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스')
+      AND title = 'ERD 다이어그램 작성'
+);
+
+INSERT INTO workspace_task (workspace_id, title, description, status, priority, assignee_id, due_date, created_by_id, is_deleted, created_at, updated_at)
+SELECT
+    (SELECT id FROM workspace WHERE name = '포트폴리오 빌더 솔로'),
+    '포트폴리오 초안 작성',
+    '개인 포트폴리오 초안 작성 및 프로젝트 정리',
+    'TODO',
+    'MEDIUM',
+    NULL,
+    '2026-06-20',
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    FALSE,
+    '2026-03-24 10:00:00',
+    '2026-03-24 10:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM workspace_task
+    WHERE workspace_id = (SELECT id FROM workspace WHERE name = '포트폴리오 빌더 솔로')
+      AND title = '포트폴리오 초안 작성'
+);
+
+-- milestone 샘플 데이터
+INSERT INTO milestone (workspace_id, title, description, start_date, due_date, status, created_by_id, is_deleted, created_at, updated_at)
+SELECT
+    (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스'),
+    'v1.0 MVP 릴리즈',
+    '핵심 기능 완성 및 스테이징 환경 배포',
+    '2026-05-01',
+    '2026-06-30',
+    'IN_PROGRESS',
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    FALSE,
+    '2026-03-23 14:00:00',
+    '2026-03-23 14:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM milestone
+    WHERE workspace_id = (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스')
+      AND title = 'v1.0 MVP 릴리즈'
+);
+
+INSERT INTO milestone (workspace_id, title, description, start_date, due_date, status, created_by_id, is_deleted, created_at, updated_at)
+SELECT
+    (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스'),
+    '코드 리뷰 프로세스 정립',
+    'PR 템플릿 및 리뷰 가이드라인 작성',
+    '2026-04-01',
+    '2026-04-30',
+    'DONE',
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    FALSE,
+    '2026-03-22 10:00:00',
+    '2026-04-30 18:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM milestone
+    WHERE workspace_id = (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스')
+      AND title = '코드 리뷰 프로세스 정립'
+);
+
+INSERT INTO milestone (workspace_id, title, description, start_date, due_date, status, created_by_id, is_deleted, created_at, updated_at)
+SELECT
+    (SELECT id FROM workspace WHERE name = '포트폴리오 빌더 솔로'),
+    '포트폴리오 v1 완성',
+    '개인 포트폴리오 초안 작성 및 공개 링크 발급',
+    '2026-06-01',
+    '2026-07-31',
+    'OPEN',
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    FALSE,
+    '2026-03-24 10:00:00',
+    '2026-03-24 10:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM milestone
+    WHERE workspace_id = (SELECT id FROM workspace WHERE name = '포트폴리오 빌더 솔로')
+      AND title = '포트폴리오 v1 완성'
+);
+
+-- calendar_event 샘플 데이터
+INSERT INTO calendar_event (workspace_id, title, description, start_at, end_at, created_by_id, is_deleted, created_at, updated_at)
+SELECT
+    (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스'),
+    '스프린트 킥오프 회의',
+    '2주 스프린트 목표 설정 및 태스크 분배',
+    '2026-06-02 10:00:00',
+    '2026-06-02 11:00:00',
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    FALSE,
+    '2026-03-23 14:00:00',
+    '2026-03-23 14:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM calendar_event
+    WHERE workspace_id = (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스')
+      AND title = '스프린트 킥오프 회의'
+);
+
+INSERT INTO calendar_event (workspace_id, title, description, start_at, end_at, created_by_id, is_deleted, created_at, updated_at)
+SELECT
+    (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스'),
+    '중간 데모',
+    'v1.0 중간 진행 상황 공유 데모',
+    '2026-06-16 14:00:00',
+    '2026-06-16 15:00:00',
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    FALSE,
+    '2026-03-24 09:00:00',
+    '2026-03-24 09:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM calendar_event
+    WHERE workspace_id = (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스')
+      AND title = '중간 데모'
+);
+
+INSERT INTO calendar_event (workspace_id, title, description, start_at, end_at, created_by_id, is_deleted, created_at, updated_at)
+SELECT
+    (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스'),
+    '스프린트 회고',
+    '2주 스프린트 KPT 회고 미팅',
+    '2026-06-30 16:00:00',
+    '2026-06-30 17:00:00',
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    FALSE,
+    '2026-03-25 09:00:00',
+    '2026-03-25 09:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM calendar_event
+    WHERE workspace_id = (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스')
+      AND title = '스프린트 회고'
+);
+
+-- activity_log 샘플 데이터
+INSERT INTO activity_log (workspace_id, actor_id, activity_type, description, created_at)
+SELECT
+    (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스'),
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    'MEMBER_JOINED',
+    '학습자가 워크스페이스에 참여했습니다.',
+    '2026-03-20 09:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM activity_log
+    WHERE workspace_id = (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스')
+      AND activity_type = 'MEMBER_JOINED'
+);
+
+INSERT INTO activity_log (workspace_id, actor_id, activity_type, description, created_at)
+SELECT
+    (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스'),
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    'TASK_CREATED',
+    '태스크 "API 설계 완료"가 생성되었습니다.',
+    '2026-03-21 10:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM activity_log
+    WHERE workspace_id = (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스')
+      AND activity_type = 'TASK_CREATED'
+);
+
+INSERT INTO activity_log (workspace_id, actor_id, activity_type, description, created_at)
+SELECT
+    (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스'),
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    'MILESTONE_CREATED',
+    '마일스톤 "MVP 기능 구현 완료"가 생성되었습니다.',
+    '2026-03-22 11:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM activity_log
+    WHERE workspace_id = (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스')
+      AND activity_type = 'MILESTONE_CREATED'
+);
+
+INSERT INTO activity_log (workspace_id, actor_id, activity_type, description, created_at)
+SELECT
+    (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스'),
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    'DOC_UPDATED',
+    'ERD 문서가 업데이트되었습니다.',
+    '2026-03-23 14:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM activity_log
+    WHERE workspace_id = (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스')
+      AND activity_type = 'DOC_UPDATED'
+);
+
+INSERT INTO activity_log (workspace_id, actor_id, activity_type, description, created_at)
+SELECT
+    (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스'),
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    'MEETING_NOTE_CREATED',
+    '회의록 "스프린트 킥오프"가 생성되었습니다.',
+    '2026-03-24 15:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM activity_log
+    WHERE workspace_id = (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스')
+      AND activity_type = 'MEETING_NOTE_CREATED'
+);
+
+-- showcase 샘플 데이터
+INSERT INTO showcase (user_id, title, description, thumbnail_url, category, is_public, view_count, is_deleted, created_at, updated_at)
+SELECT
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    'DevPath 학습 대시보드',
+    'Spring Boot + React로 구현한 개발자 학습 경로 관리 플랫폼입니다.',
+    NULL,
+    'FULLSTACK',
+    true,
+    15,
+    false,
+    '2026-04-01 10:00:00',
+    '2026-04-01 10:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM showcase WHERE title = 'DevPath 학습 대시보드'
+);
+
+INSERT INTO showcase (user_id, title, description, thumbnail_url, category, is_public, view_count, is_deleted, created_at, updated_at)
+SELECT
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    'REST API 설계 모음집',
+    'RESTful API 설계 원칙과 실제 구현 예시를 정리한 백엔드 쇼케이스입니다.',
+    NULL,
+    'BACKEND',
+    true,
+    8,
+    false,
+    '2026-04-05 14:00:00',
+    '2026-04-05 14:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM showcase WHERE title = 'REST API 설계 모음집'
+);
+
+INSERT INTO showcase (user_id, title, description, thumbnail_url, category, is_public, view_count, is_deleted, created_at, updated_at)
+SELECT
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    'React 컴포넌트 라이브러리',
+    '재사용 가능한 React 컴포넌트를 Storybook으로 문서화한 프론트엔드 프로젝트입니다.',
+    NULL,
+    'FRONTEND',
+    true,
+    22,
+    false,
+    '2026-04-10 09:00:00',
+    '2026-04-10 09:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM showcase WHERE title = 'React 컴포넌트 라이브러리'
+);
+
+-- showcase_link 샘플 데이터
+INSERT INTO showcase_link (showcase_id, link_type, url)
+SELECT
+    (SELECT id FROM showcase WHERE title = 'DevPath 학습 대시보드'),
+    'GITHUB',
+    'https://github.com/example/devpath'
+WHERE NOT EXISTS (
+    SELECT 1 FROM showcase_link
+    WHERE showcase_id = (SELECT id FROM showcase WHERE title = 'DevPath 학습 대시보드')
+      AND link_type = 'GITHUB'
+);
+
+INSERT INTO showcase_link (showcase_id, link_type, url)
+SELECT
+    (SELECT id FROM showcase WHERE title = 'DevPath 학습 대시보드'),
+    'DEMO',
+    'https://devpath.example.com'
+WHERE NOT EXISTS (
+    SELECT 1 FROM showcase_link
+    WHERE showcase_id = (SELECT id FROM showcase WHERE title = 'DevPath 학습 대시보드')
+      AND link_type = 'DEMO'
+);
+
+-- showcase_comment 샘플 데이터
+INSERT INTO showcase_comment (showcase_id, user_id, content, is_deleted, created_at, updated_at)
+SELECT
+    (SELECT id FROM showcase WHERE title = 'DevPath 학습 대시보드'),
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    '정말 잘 만든 프로젝트네요! 학습 경로 관리 기능이 인상적입니다.',
+    false,
+    '2026-04-02 11:00:00',
+    '2026-04-02 11:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM showcase_comment
+    WHERE showcase_id = (SELECT id FROM showcase WHERE title = 'DevPath 학습 대시보드')
+      AND content = '정말 잘 만든 프로젝트네요! 학습 경로 관리 기능이 인상적입니다.'
+);
+
+INSERT INTO showcase_comment (showcase_id, user_id, content, is_deleted, created_at, updated_at)
+SELECT
+    (SELECT id FROM showcase WHERE title = 'REST API 설계 모음집'),
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    'API 설계 예시가 실무에서 바로 활용할 수 있을 것 같아요.',
+    false,
+    '2026-04-06 10:00:00',
+    '2026-04-06 10:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM showcase_comment
+    WHERE showcase_id = (SELECT id FROM showcase WHERE title = 'REST API 설계 모음집')
+      AND content = 'API 설계 예시가 실무에서 바로 활용할 수 있을 것 같아요.'
+);
+
+-- showcase_like 샘플 데이터
+INSERT INTO showcase_like (showcase_id, user_id, created_at)
+SELECT
+    (SELECT id FROM showcase WHERE title = 'DevPath 학습 대시보드'),
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    '2026-04-02 12:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM showcase_like
+    WHERE showcase_id = (SELECT id FROM showcase WHERE title = 'DevPath 학습 대시보드')
+      AND user_id = (SELECT user_id FROM users WHERE email = 'learner@devpath.com')
+);
+
+-- portfolio 샘플 데이터
+INSERT INTO portfolio (user_id, title, bio, is_public, public_link_token, is_deleted, created_at, updated_at)
+SELECT
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    '김하늘의 개발 포트폴리오',
+    'Spring Boot와 React를 주로 사용하는 풀스택 개발자입니다.',
+    false,
+    NULL,
+    false,
+    '2026-04-01 09:00:00',
+    '2026-04-01 09:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM portfolio
+    WHERE user_id = (SELECT user_id FROM users WHERE email = 'learner@devpath.com')
+      AND is_deleted = false
+);
+
+-- portfolio_item 샘플 데이터
+INSERT INTO portfolio_item (portfolio_id, item_type, reference_id, sort_order, added_at)
+SELECT
+    (SELECT id FROM portfolio WHERE user_id = (SELECT user_id FROM users WHERE email = 'learner@devpath.com') AND is_deleted = false),
+    'PROJECT',
+    1,
+    0,
+    '2026-04-02 10:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM portfolio_item
+    WHERE portfolio_id = (SELECT id FROM portfolio WHERE user_id = (SELECT user_id FROM users WHERE email = 'learner@devpath.com') AND is_deleted = false)
+      AND item_type = 'PROJECT' AND reference_id = 1
+);
+
+INSERT INTO portfolio_item (portfolio_id, item_type, reference_id, sort_order, added_at)
+SELECT
+    (SELECT id FROM portfolio WHERE user_id = (SELECT user_id FROM users WHERE email = 'learner@devpath.com') AND is_deleted = false),
+    'PROOF_CARD',
+    1,
+    1,
+    '2026-04-02 11:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM portfolio_item
+    WHERE portfolio_id = (SELECT id FROM portfolio WHERE user_id = (SELECT user_id FROM users WHERE email = 'learner@devpath.com') AND is_deleted = false)
+      AND item_type = 'PROOF_CARD' AND reference_id = 1
+);
+
+-- portfolio_github_commit 샘플 데이터
+INSERT INTO portfolio_github_commit (portfolio_id, repo_name, commit_message, commit_url, committed_at)
+SELECT
+    (SELECT id FROM portfolio WHERE user_id = (SELECT user_id FROM users WHERE email = 'learner@devpath.com') AND is_deleted = false),
+    'devpath/backend',
+    'feat: Workspace API 구현',
+    'https://github.com/devpath/backend/commit/abc123',
+    '2026-04-10 14:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM portfolio_github_commit
+    WHERE portfolio_id = (SELECT id FROM portfolio WHERE user_id = (SELECT user_id FROM users WHERE email = 'learner@devpath.com') AND is_deleted = false)
+      AND commit_url = 'https://github.com/devpath/backend/commit/abc123'
+);
+
+-- =============================================
+-- 스쿼드 / 워크스페이스 문서 / 파일 / 회의록 샘플 데이터
+-- =============================================
+
+-- squads 샘플 데이터
+INSERT INTO squads (name, description, is_archived, is_deleted, created_at, updated_at)
+SELECT
+    'DevPath 개발팀',
+    'DevPath 서비스 개발을 위한 스쿼드',
+    false,
+    false,
+    '2026-03-15 09:00:00',
+    '2026-03-15 09:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM squads WHERE name = 'DevPath 개발팀'
+);
+
+INSERT INTO squads (name, description, is_archived, is_deleted, created_at, updated_at)
+SELECT
+    '포트폴리오 스터디',
+    '포트폴리오 제작을 위한 스터디 스쿼드',
+    false,
+    false,
+    '2026-03-20 10:00:00',
+    '2026-03-20 10:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM squads WHERE name = '포트폴리오 스터디'
+);
+
+-- squad_members 샘플 데이터
+INSERT INTO squad_members (squad_id, user_id, role, joined_at)
+SELECT
+    (SELECT squad_id FROM squads WHERE name = 'DevPath 개발팀'),
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    'LEADER',
+    '2026-03-15 09:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM squad_members
+    WHERE squad_id = (SELECT squad_id FROM squads WHERE name = 'DevPath 개발팀')
+      AND user_id = (SELECT user_id FROM users WHERE email = 'learner@devpath.com')
+);
+
+INSERT INTO squad_members (squad_id, user_id, role, joined_at)
+SELECT
+    (SELECT squad_id FROM squads WHERE name = 'DevPath 개발팀'),
+    (SELECT user_id FROM users WHERE email = 'frontend@devpath.com'),
+    'MEMBER',
+    '2026-03-16 10:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM squad_members
+    WHERE squad_id = (SELECT squad_id FROM squads WHERE name = 'DevPath 개발팀')
+      AND user_id = (SELECT user_id FROM users WHERE email = 'frontend@devpath.com')
+);
+
+INSERT INTO squad_members (squad_id, user_id, role, joined_at)
+SELECT
+    (SELECT squad_id FROM squads WHERE name = '포트폴리오 스터디'),
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    'LEADER',
+    '2026-03-20 10:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM squad_members
+    WHERE squad_id = (SELECT squad_id FROM squads WHERE name = '포트폴리오 스터디')
+      AND user_id = (SELECT user_id FROM users WHERE email = 'learner@devpath.com')
+);
+
+-- squad_invitations 샘플 데이터
+INSERT INTO squad_invitations (squad_id, inviter_id, invitee_id, status, created_at)
+SELECT
+    (SELECT squad_id FROM squads WHERE name = 'DevPath 개발팀'),
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    (SELECT user_id FROM users WHERE email = 'data@devpath.com'),
+    'PENDING',
+    '2026-03-17 11:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM squad_invitations
+    WHERE squad_id = (SELECT squad_id FROM squads WHERE name = 'DevPath 개발팀')
+      AND invitee_id = (SELECT user_id FROM users WHERE email = 'data@devpath.com')
+);
+
+-- workspace_file 샘플 데이터
+INSERT INTO workspace_file (workspace_id, original_file_name, stored_file_name, file_path, file_size, content_type, uploaded_by_id, is_deleted, created_at)
+SELECT
+    (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스'),
+    '요구사항_명세서.txt',
+    'sample_requirements.txt',
+    './uploads/workspace/1/sample_requirements.txt',
+    1024,
+    'text/plain',
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    false,
+    '2026-03-24 10:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM workspace_file
+    WHERE workspace_id = (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스')
+      AND original_file_name = '요구사항_명세서.txt'
+);
+
+INSERT INTO workspace_file (workspace_id, original_file_name, stored_file_name, file_path, file_size, content_type, uploaded_by_id, is_deleted, created_at)
+SELECT
+    (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스'),
+    '와이어프레임_v1.png',
+    'sample_wireframe.png',
+    './uploads/workspace/1/sample_wireframe.png',
+    204800,
+    'image/png',
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    false,
+    '2026-03-25 14:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM workspace_file
+    WHERE workspace_id = (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스')
+      AND original_file_name = '와이어프레임_v1.png'
+);
+
+-- workspace_doc 샘플 데이터
+INSERT INTO workspace_doc (workspace_id, doc_type, content, updated_by_id, created_at, updated_at)
+SELECT
+    (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스'),
+    'ERD',
+    'erDiagram
+    USERS {
+        bigint user_id PK
+        varchar email
+        varchar name
+    }
+    WORKSPACE {
+        bigint id PK
+        bigint owner_id FK
+        varchar name
+    }
+    USERS ||--o{ WORKSPACE : owns',
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    '2026-03-26 09:00:00',
+    '2026-03-26 09:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM workspace_doc
+    WHERE workspace_id = (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스')
+      AND doc_type = 'ERD'
+);
+
+INSERT INTO workspace_doc (workspace_id, doc_type, content, updated_by_id, created_at, updated_at)
+SELECT
+    (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스'),
+    'API_SPEC',
+    'openapi: 3.0.0
+info:
+  title: DevPath API
+  version: 1.0.0
+paths:
+  /api/workspaces:
+    get:
+      summary: 워크스페이스 목록 조회',
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    '2026-03-26 10:00:00',
+    '2026-03-26 10:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM workspace_doc
+    WHERE workspace_id = (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스')
+      AND doc_type = 'API_SPEC'
+);
+
+-- meeting_note 샘플 데이터
+INSERT INTO meeting_note (workspace_id, title, content, created_by_id, is_deleted, created_at, updated_at)
+SELECT
+    (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스'),
+    '프로젝트 킥오프 회의',
+    '참석자: 전원
+목표: MVP 기능 범위 확정
+결정사항:
+- 1차 스프린트: 로그인/회원가입, 워크스페이스 기본 기능
+- 2차 스프린트: 칸반, 마일스톤
+다음 회의: 2주 후',
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    false,
+    '2026-03-23 15:00:00',
+    '2026-03-23 15:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM meeting_note
+    WHERE workspace_id = (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스')
+      AND title = '프로젝트 킥오프 회의'
+);
+
+INSERT INTO meeting_note (workspace_id, title, content, created_by_id, is_deleted, created_at, updated_at)
+SELECT
+    (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스'),
+    '스프린트 1 회고',
+    '참석자: 전원
+잘한 점: API 설계 빠른 완료, 팀원 간 소통 원활
+개선점: 테스트 코드 작성 부족
+다음 스프린트 목표: 칸반 보드 완성, 파일 업로드 기능 구현',
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    false,
+    '2026-04-06 17:00:00',
+    '2026-04-06 17:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM meeting_note
+    WHERE workspace_id = (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스')
+      AND title = '스프린트 1 회고'
+);

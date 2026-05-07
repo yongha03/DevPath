@@ -162,7 +162,6 @@ public enum ErrorCode {
   INTEGRATION_NOT_FOUND(HttpStatus.NOT_FOUND, "I001", "해당 연동 정보를 찾을 수 없습니다."),
   SETTING_NOT_FOUND(HttpStatus.NOT_FOUND, "A001", "해당 설정값을 찾을 수 없습니다."),
   EXPERIMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "A002", "해당 실험 결과를 찾을 수 없습니다."),
-  INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "C002", "서버 내부 오류가 발생했습니다.");
   JOB_COMPANY_NOT_FOUND(HttpStatus.NOT_FOUND, "기업을 찾을 수 없습니다."),
   JOB_COMPANY_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 등록된 기업입니다."),
   JOB_POSTING_NOT_FOUND(HttpStatus.NOT_FOUND, "채용 공고를 찾을 수 없습니다."),
@@ -171,7 +170,41 @@ public enum ErrorCode {
   JOB_SKILL_TAG_NOT_FOUND(HttpStatus.NOT_FOUND, "채용 기술 태그를 찾을 수 없습니다."),
   JOB_JD_ANALYSIS_FAILED(HttpStatus.BAD_REQUEST, "JD 분석에 실패했습니다."),
 
-  INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "서버 내부 오류가 발생했습니다.");
+  PROJECT_NOT_FOUND(HttpStatus.NOT_FOUND, "프로젝트를 찾을 수 없습니다."),
+  PROJECT_FORBIDDEN(HttpStatus.FORBIDDEN, "프로젝트를 관리할 권한이 없습니다."),
+  IDEA_POST_NOT_FOUND(HttpStatus.NOT_FOUND, "아이디어 게시글을 찾을 수 없습니다."),
+  IDEA_POST_FORBIDDEN(HttpStatus.FORBIDDEN, "아이디어 게시글을 관리할 권한이 없습니다."),
+
+  SQUAD_NOT_FOUND(HttpStatus.NOT_FOUND, "스쿼드를 찾을 수 없습니다."),
+  SQUAD_ALREADY_ARCHIVED(HttpStatus.BAD_REQUEST, "이미 보관된 스쿼드입니다."),
+  SQUAD_NOT_ARCHIVED(HttpStatus.BAD_REQUEST, "보관 상태가 아닌 스쿼드입니다."),
+  SQUAD_MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "스쿼드 멤버를 찾을 수 없습니다."),
+  SQUAD_ALREADY_MEMBER(HttpStatus.CONFLICT, "이미 스쿼드에 속한 멤버입니다."),
+  SQUAD_INVITATION_ALREADY_PENDING(HttpStatus.CONFLICT, "이미 초대 대기 중인 사용자입니다."),
+  SQUAD_FORBIDDEN(HttpStatus.FORBIDDEN, "스쿼드를 관리할 권한이 없습니다."),
+
+  WORKSPACE_NOT_FOUND(HttpStatus.NOT_FOUND, "워크스페이스를 찾을 수 없습니다."),
+  WORKSPACE_FORBIDDEN(HttpStatus.FORBIDDEN, "워크스페이스에 접근할 권한이 없습니다."),
+  TASK_NOT_FOUND(HttpStatus.NOT_FOUND, "태스크를 찾을 수 없습니다."),
+  TASK_FORBIDDEN(HttpStatus.FORBIDDEN, "해당 워크스페이스의 태스크가 아닙니다."),
+  MILESTONE_NOT_FOUND(HttpStatus.NOT_FOUND, "마일스톤을 찾을 수 없습니다."),
+  MILESTONE_FORBIDDEN(HttpStatus.FORBIDDEN, "마일스톤을 관리할 권한이 없습니다."),
+  CALENDAR_EVENT_NOT_FOUND(HttpStatus.NOT_FOUND, "캘린더 이벤트를 찾을 수 없습니다."),
+  CALENDAR_EVENT_FORBIDDEN(HttpStatus.FORBIDDEN, "캘린더 이벤트를 관리할 권한이 없습니다."),
+  FILE_NOT_FOUND(HttpStatus.NOT_FOUND, "파일을 찾을 수 없습니다."),
+  FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "파일 업로드에 실패했습니다."),
+  DOC_NOT_FOUND(HttpStatus.NOT_FOUND, "문서를 찾을 수 없습니다."),
+  MEETING_NOTE_NOT_FOUND(HttpStatus.NOT_FOUND, "회의록을 찾을 수 없습니다."),
+  SHOWCASE_NOT_FOUND(HttpStatus.NOT_FOUND, "쇼케이스를 찾을 수 없습니다."),
+  SHOWCASE_FORBIDDEN(HttpStatus.FORBIDDEN, "쇼케이스를 관리할 권한이 없습니다."),
+  SHOWCASE_COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "댓글을 찾을 수 없습니다."),
+  SHOWCASE_COMMENT_FORBIDDEN(HttpStatus.FORBIDDEN, "댓글을 관리할 권한이 없습니다."),
+  SHOWCASE_ALREADY_LIKED(HttpStatus.CONFLICT, "이미 좋아요한 쇼케이스입니다."),
+  SHOWCASE_NOT_LIKED(HttpStatus.CONFLICT, "좋아요하지 않은 쇼케이스입니다."),
+  PORTFOLIO_NOT_FOUND(HttpStatus.NOT_FOUND, "포트폴리오를 찾을 수 없습니다."),
+  PORTFOLIO_FORBIDDEN(HttpStatus.FORBIDDEN, "포트폴리오에 접근할 권한이 없습니다."),
+
+  INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "C002", "서버 내부 오류가 발생했습니다.");
 
   private final HttpStatus httpStatus;
   private final String code;
