@@ -14979,3 +14979,83 @@ WHERE r.is_official = TRUE
       WHERE existing.node_id = rn.node_id
         AND existing.url = seed.url
   );
+
+-- =============================================
+-- TASK-22: Workspace 샘플 데이터
+-- =============================================
+
+INSERT INTO workspace (owner_id, name, description, type, status, is_deleted, created_at, updated_at)
+SELECT
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    'DevPath 팀 워크스페이스',
+    'DevPath 팀 협업을 위한 스쿼드 워크스페이스',
+    'SQUAD',
+    'ACTIVE',
+    FALSE,
+    '2026-03-23 14:00:00',
+    '2026-03-23 14:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM workspace WHERE name = 'DevPath 팀 워크스페이스'
+);
+
+INSERT INTO workspace (owner_id, name, description, type, status, is_deleted, created_at, updated_at)
+SELECT
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    '포트폴리오 빌더 솔로',
+    '개인 포트폴리오 제작을 위한 솔로 워크스페이스',
+    'SOLO',
+    'ACTIVE',
+    FALSE,
+    '2026-03-24 10:00:00',
+    '2026-03-24 10:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM workspace WHERE name = '포트폴리오 빌더 솔로'
+);
+
+INSERT INTO workspace (owner_id, name, description, type, status, is_deleted, created_at, updated_at)
+SELECT
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    '멘토링 세션 워크스페이스',
+    '멘토와 함께하는 학습 워크스페이스',
+    'MENTORING',
+    'ACTIVE',
+    FALSE,
+    '2026-03-25 09:00:00',
+    '2026-03-25 09:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM workspace WHERE name = '멘토링 세션 워크스페이스'
+);
+
+-- workspace_member 샘플 데이터 (learner가 모든 워크스페이스 멤버)
+INSERT INTO workspace_member (workspace_id, learner_id, joined_at)
+SELECT
+    (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스'),
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    '2026-03-23 14:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM workspace_member
+    WHERE workspace_id = (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스')
+      AND learner_id = (SELECT user_id FROM users WHERE email = 'learner@devpath.com')
+);
+
+INSERT INTO workspace_member (workspace_id, learner_id, joined_at)
+SELECT
+    (SELECT id FROM workspace WHERE name = '포트폴리오 빌더 솔로'),
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    '2026-03-24 10:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM workspace_member
+    WHERE workspace_id = (SELECT id FROM workspace WHERE name = '포트폴리오 빌더 솔로')
+      AND learner_id = (SELECT user_id FROM users WHERE email = 'learner@devpath.com')
+);
+
+INSERT INTO workspace_member (workspace_id, learner_id, joined_at)
+SELECT
+    (SELECT id FROM workspace WHERE name = '멘토링 세션 워크스페이스'),
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    '2026-03-25 09:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM workspace_member
+    WHERE workspace_id = (SELECT id FROM workspace WHERE name = '멘토링 세션 워크스페이스')
+      AND learner_id = (SELECT user_id FROM users WHERE email = 'learner@devpath.com')
+);
