@@ -13,6 +13,7 @@ import com.devpath.domain.mentoring.repository.MentoringMissionRepository;
 import com.devpath.domain.mentoring.repository.MentoringRepository;
 import com.devpath.domain.review.entity.MissionSubmission;
 import com.devpath.domain.review.entity.PullRequestReview;
+import com.devpath.domain.review.entity.PullRequestReviewStatus;
 import com.devpath.domain.review.entity.PullRequestSubmission;
 import com.devpath.domain.review.repository.MissionSubmissionRepository;
 import com.devpath.domain.review.repository.PullRequestReviewRepository;
@@ -128,6 +129,7 @@ public class PullRequestReviewService {
 
     // 리뷰 작성자 본인만 해당 리뷰를 승인 처리할 수 있다.
     validateReviewerOwner(review, request.reviewerId());
+    validateReviewCommented(review);
 
     review.approve();
 
@@ -141,6 +143,7 @@ public class PullRequestReviewService {
 
     // 리뷰 작성자 본인만 해당 리뷰를 반려 처리할 수 있다.
     validateReviewerOwner(review, request.reviewerId());
+    validateReviewCommented(review);
 
     review.reject();
 
@@ -253,6 +256,12 @@ public class PullRequestReviewService {
   private void validateReviewerOwner(PullRequestReview review, Long reviewerId) {
     if (!review.getReviewer().getId().equals(reviewerId)) {
       throw new CustomException(ErrorCode.REVIEW_DECISION_FORBIDDEN);
+    }
+  }
+
+  private void validateReviewCommented(PullRequestReview review) {
+    if (review.getStatus() != PullRequestReviewStatus.COMMENTED) {
+      throw new CustomException(ErrorCode.REVIEW_ALREADY_DECIDED);
     }
   }
 

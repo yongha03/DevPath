@@ -119,6 +119,7 @@ public enum ErrorCode {
   REVIEW_PULL_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "PR 제출을 찾을 수 없습니다."),
   REVIEW_PULL_REQUEST_FORBIDDEN(HttpStatus.FORBIDDEN, "PR 제출 또는 리뷰를 처리할 권한이 없습니다."),
   REVIEW_DECISION_FORBIDDEN(HttpStatus.FORBIDDEN, "해당 리뷰를 승인 또는 반려할 권한이 없습니다."),
+  REVIEW_ALREADY_DECIDED(HttpStatus.BAD_REQUEST, "이미 승인 또는 반려 처리된 리뷰입니다."),
   REVIEW_MISSION_SUBMISSION_NOT_FOUND(HttpStatus.NOT_FOUND, "미션 제출을 찾을 수 없습니다."),
   REVIEW_MISSION_SUBMISSION_FORBIDDEN(HttpStatus.FORBIDDEN, "미션 제출을 판정할 권한이 없습니다."),
   REVIEW_MISSION_ALREADY_SUBMITTED(HttpStatus.CONFLICT, "이미 해당 미션에 제출했습니다."),
