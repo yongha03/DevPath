@@ -15309,3 +15309,116 @@ WHERE NOT EXISTS (
     WHERE workspace_id = (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스')
       AND activity_type = 'MEETING_NOTE_CREATED'
 );
+
+-- showcase 샘플 데이터
+INSERT INTO showcase (user_id, title, description, thumbnail_url, category, is_public, view_count, is_deleted, created_at, updated_at)
+SELECT
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    'DevPath 학습 대시보드',
+    'Spring Boot + React로 구현한 개발자 학습 경로 관리 플랫폼입니다.',
+    NULL,
+    'FULLSTACK',
+    true,
+    15,
+    false,
+    '2026-04-01 10:00:00',
+    '2026-04-01 10:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM showcase WHERE title = 'DevPath 학습 대시보드'
+);
+
+INSERT INTO showcase (user_id, title, description, thumbnail_url, category, is_public, view_count, is_deleted, created_at, updated_at)
+SELECT
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    'REST API 설계 모음집',
+    'RESTful API 설계 원칙과 실제 구현 예시를 정리한 백엔드 쇼케이스입니다.',
+    NULL,
+    'BACKEND',
+    true,
+    8,
+    false,
+    '2026-04-05 14:00:00',
+    '2026-04-05 14:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM showcase WHERE title = 'REST API 설계 모음집'
+);
+
+INSERT INTO showcase (user_id, title, description, thumbnail_url, category, is_public, view_count, is_deleted, created_at, updated_at)
+SELECT
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    'React 컴포넌트 라이브러리',
+    '재사용 가능한 React 컴포넌트를 Storybook으로 문서화한 프론트엔드 프로젝트입니다.',
+    NULL,
+    'FRONTEND',
+    true,
+    22,
+    false,
+    '2026-04-10 09:00:00',
+    '2026-04-10 09:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM showcase WHERE title = 'React 컴포넌트 라이브러리'
+);
+
+-- showcase_link 샘플 데이터
+INSERT INTO showcase_link (showcase_id, link_type, url)
+SELECT
+    (SELECT id FROM showcase WHERE title = 'DevPath 학습 대시보드'),
+    'GITHUB',
+    'https://github.com/example/devpath'
+WHERE NOT EXISTS (
+    SELECT 1 FROM showcase_link
+    WHERE showcase_id = (SELECT id FROM showcase WHERE title = 'DevPath 학습 대시보드')
+      AND link_type = 'GITHUB'
+);
+
+INSERT INTO showcase_link (showcase_id, link_type, url)
+SELECT
+    (SELECT id FROM showcase WHERE title = 'DevPath 학습 대시보드'),
+    'DEMO',
+    'https://devpath.example.com'
+WHERE NOT EXISTS (
+    SELECT 1 FROM showcase_link
+    WHERE showcase_id = (SELECT id FROM showcase WHERE title = 'DevPath 학습 대시보드')
+      AND link_type = 'DEMO'
+);
+
+-- showcase_comment 샘플 데이터
+INSERT INTO showcase_comment (showcase_id, user_id, content, is_deleted, created_at, updated_at)
+SELECT
+    (SELECT id FROM showcase WHERE title = 'DevPath 학습 대시보드'),
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    '정말 잘 만든 프로젝트네요! 학습 경로 관리 기능이 인상적입니다.',
+    false,
+    '2026-04-02 11:00:00',
+    '2026-04-02 11:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM showcase_comment
+    WHERE showcase_id = (SELECT id FROM showcase WHERE title = 'DevPath 학습 대시보드')
+      AND content = '정말 잘 만든 프로젝트네요! 학습 경로 관리 기능이 인상적입니다.'
+);
+
+INSERT INTO showcase_comment (showcase_id, user_id, content, is_deleted, created_at, updated_at)
+SELECT
+    (SELECT id FROM showcase WHERE title = 'REST API 설계 모음집'),
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    'API 설계 예시가 실무에서 바로 활용할 수 있을 것 같아요.',
+    false,
+    '2026-04-06 10:00:00',
+    '2026-04-06 10:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM showcase_comment
+    WHERE showcase_id = (SELECT id FROM showcase WHERE title = 'REST API 설계 모음집')
+      AND content = 'API 설계 예시가 실무에서 바로 활용할 수 있을 것 같아요.'
+);
+
+-- showcase_like 샘플 데이터
+INSERT INTO showcase_like (showcase_id, user_id, created_at)
+SELECT
+    (SELECT id FROM showcase WHERE title = 'DevPath 학습 대시보드'),
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    '2026-04-02 12:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM showcase_like
+    WHERE showcase_id = (SELECT id FROM showcase WHERE title = 'DevPath 학습 대시보드')
+      AND user_id = (SELECT user_id FROM users WHERE email = 'learner@devpath.com')
+);

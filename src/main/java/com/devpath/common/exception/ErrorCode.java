@@ -195,6 +195,12 @@ public enum ErrorCode {
   FILE_UPLOAD_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "파일 업로드에 실패했습니다."),
   DOC_NOT_FOUND(HttpStatus.NOT_FOUND, "문서를 찾을 수 없습니다."),
   MEETING_NOTE_NOT_FOUND(HttpStatus.NOT_FOUND, "회의록을 찾을 수 없습니다."),
+  SHOWCASE_NOT_FOUND(HttpStatus.NOT_FOUND, "쇼케이스를 찾을 수 없습니다."),
+  SHOWCASE_FORBIDDEN(HttpStatus.FORBIDDEN, "쇼케이스를 관리할 권한이 없습니다."),
+  SHOWCASE_COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "댓글을 찾을 수 없습니다."),
+  SHOWCASE_COMMENT_FORBIDDEN(HttpStatus.FORBIDDEN, "댓글을 관리할 권한이 없습니다."),
+  SHOWCASE_ALREADY_LIKED(HttpStatus.CONFLICT, "이미 좋아요한 쇼케이스입니다."),
+  SHOWCASE_NOT_LIKED(HttpStatus.CONFLICT, "좋아요하지 않은 쇼케이스입니다."),
 
   INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "C002", "서버 내부 오류가 발생했습니다.");
 
