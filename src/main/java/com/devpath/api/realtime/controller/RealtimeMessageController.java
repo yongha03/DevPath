@@ -4,6 +4,7 @@ import com.devpath.api.realtime.dto.RealtimeMessageRequest;
 import com.devpath.api.realtime.dto.RealtimeMessageResponse;
 import com.devpath.api.realtime.service.RealtimeMessageService;
 import com.devpath.common.response.ApiResponse;
+import com.devpath.common.swagger.SwaggerTag;
 import com.devpath.domain.realtime.entity.MessageSortOrder;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -19,7 +20,8 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "실시간 메시지", description = "라운지 채팅 및 1:1 메시지 REST API")
+@Tag(name = SwaggerTag.LOUNGE_CHAT, description = "라운지 채팅 REST API")
+@Tag(name = SwaggerTag.DIRECT_MESSAGE, description = "사용자 간 1:1 메시지 REST API")
 @RestController
 @RequiredArgsConstructor
 public class RealtimeMessageController {
@@ -27,7 +29,11 @@ public class RealtimeMessageController {
     private final RealtimeMessageService realtimeMessageService;
 
     @PostMapping("/api/lounge/chats/messages")
-    @Operation(summary = "라운지 채팅 메시지 저장", description = "라운지 채팅 메시지를 저장합니다.")
+    @Operation(
+            tags = SwaggerTag.LOUNGE_CHAT,
+            summary = "라운지 채팅 메시지 저장",
+            description = "라운지 채팅 메시지를 저장합니다."
+    )
     public ResponseEntity<ApiResponse<RealtimeMessageResponse.LoungeChatDetail>> createLoungeMessage(
             @Valid @RequestBody RealtimeMessageRequest.LoungeChatCreate request
     ) {
@@ -36,7 +42,11 @@ public class RealtimeMessageController {
     }
 
     @GetMapping("/api/lounge/chats/messages")
-    @Operation(summary = "라운지 채팅 메시지 조회", description = "라운지 채팅 메시지를 오래된순 또는 최신순으로 조회합니다.")
+    @Operation(
+            tags = SwaggerTag.LOUNGE_CHAT,
+            summary = "라운지 채팅 메시지 조회",
+            description = "라운지 채팅 메시지를 오래된순 또는 최신순으로 조회합니다."
+    )
     public ResponseEntity<ApiResponse<List<RealtimeMessageResponse.LoungeChatDetail>>> getLoungeMessages(
             @Parameter(description = "라운지 ID", example = "1")
             @RequestParam Long loungeId,
@@ -52,7 +62,11 @@ public class RealtimeMessageController {
     }
 
     @PostMapping("/api/direct-messages")
-    @Operation(summary = "1:1 메시지 전송", description = "사용자 간 1:1 메시지를 저장합니다.")
+    @Operation(
+            tags = SwaggerTag.DIRECT_MESSAGE,
+            summary = "1:1 메시지 전송",
+            description = "사용자 간 1:1 메시지를 저장합니다."
+    )
     public ResponseEntity<ApiResponse<RealtimeMessageResponse.DirectDetail>> createDirectMessage(
             @Valid @RequestBody RealtimeMessageRequest.DirectCreate request
     ) {
@@ -61,7 +75,11 @@ public class RealtimeMessageController {
     }
 
     @GetMapping("/api/direct-messages/{userId}")
-    @Operation(summary = "특정 사용자와의 1:1 메시지 조회", description = "viewerId와 userId 사이의 1:1 메시지를 조회합니다.")
+    @Operation(
+            tags = SwaggerTag.DIRECT_MESSAGE,
+            summary = "특정 사용자와의 1:1 메시지 조회",
+            description = "viewerId와 userId 사이의 1:1 메시지를 조회합니다."
+    )
     public ResponseEntity<ApiResponse<List<RealtimeMessageResponse.DirectDetail>>> getDirectMessages(
             @Parameter(description = "대화 상대 사용자 ID", example = "1")
             @PathVariable Long userId,

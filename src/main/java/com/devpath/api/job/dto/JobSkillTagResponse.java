@@ -41,7 +41,8 @@ public class JobSkillTagResponse {
       @Schema(description = "공고 제목", example = "백엔드 주니어 개발자 채용") String jobTitle,
       @Schema(description = "추출된 태그 개수", example = "5") Integer extractedCount,
       @Schema(description = "분석 메시지", example = "JD 분석이 완료되었습니다.") String message,
-      @Schema(description = "추출된 기술 태그 목록") List<Detail> skillTags) {
+      @Schema(description = "추출된 기술 태그 목록", example = "[{\"skillTagId\":1,\"name\":\"Spring Boot\"}]")
+          List<Detail> skillTags) {
 
     public static AnalysisResult of(Long jobId, String jobTitle, List<JobSkillTag> tags) {
       return new AnalysisResult(

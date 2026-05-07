@@ -77,7 +77,7 @@ public class AiCodeReviewResponse {
             @Schema(description = "리뷰 Provider 이름", example = "RULE_BASED")
             String providerName,
 
-            @Schema(description = "AI 리뷰 코멘트 목록")
+            @Schema(description = "AI 리뷰 코멘트 목록", example = "[{\"commentId\":1,\"status\":\"PENDING\"}]")
             List<CommentDetail> comments,
 
             @Schema(description = "생성일시", example = "2026-05-03T20:00:00")

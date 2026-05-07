@@ -3,6 +3,7 @@ package com.devpath.api.market.controller;
 import com.devpath.api.market.dto.MarketTrendResponse;
 import com.devpath.api.market.service.MarketTrendService;
 import com.devpath.common.response.ApiResponse;
+import com.devpath.common.swagger.SwaggerTag;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
@@ -11,7 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Market Trend", description = "채용 시장 트렌드 및 관리자 리포트 API")
+@Tag(name = SwaggerTag.MARKET_TREND, description = "채용 시장 트렌드 및 관리자 리포트 API")
 @RestController
 @RequiredArgsConstructor
 public class MarketTrendController {
@@ -19,7 +20,7 @@ public class MarketTrendController {
   private final MarketTrendService marketTrendService;
 
   @GetMapping("/api/market/trends/stacks")
-  @Operation(summary = "직무 시장 인기 기술 스택 조회", description = "JD 분석 결과 기반 인기 기술 스택 통계를 조회합니다.")
+  @Operation(summary = "인기 기술 스택 통계 조회", description = "JD 분석 결과 기반 인기 기술 스택 통계를 조회합니다.")
   public ResponseEntity<ApiResponse<List<MarketTrendResponse.SkillStackTrend>>> getStackTrends() {
     return ResponseEntity.ok(ApiResponse.ok(marketTrendService.getStackTrends()));
   }

@@ -4,6 +4,7 @@ import com.devpath.api.job.dto.JobRecommendationRequest;
 import com.devpath.api.job.dto.JobRecommendationResponse;
 import com.devpath.api.job.service.JobRecommendationService;
 import com.devpath.common.response.ApiResponse;
+import com.devpath.common.swagger.SwaggerTag;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -14,7 +15,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Job Recommendation", description = "학습자 참고용 채용 공고 추천 API")
+@Tag(name = SwaggerTag.JOB_RECOMMENDATION, description = "학습자 참고용 채용 공고 추천 API")
 @RestController
 @RequiredArgsConstructor
 public class JobRecommendationController {

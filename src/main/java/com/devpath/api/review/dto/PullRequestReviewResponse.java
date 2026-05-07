@@ -66,7 +66,8 @@ public class PullRequestReviewResponse {
       @Schema(description = "미션 제출 상태", example = "SUBMITTED")
           MissionSubmissionStatus submissionStatus,
       @Schema(description = "최종 피드백", example = "요구사항을 충족했습니다.") String feedback,
-      @Schema(description = "리뷰 목록") List<ReviewDetail> reviews,
+      @Schema(description = "리뷰 목록", example = "[{\"reviewId\":1,\"status\":\"APPROVED\"}]")
+          List<ReviewDetail> reviews,
       @Schema(description = "제출일시", example = "2026-05-03T13:00:00")
           LocalDateTime createdAt) {
 

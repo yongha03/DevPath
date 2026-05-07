@@ -47,7 +47,8 @@ public class QnaResponse {
       @Schema(description = "질문 내용", example = "Service 계층에서 검증 로직을 어느 정도까지 처리해야 하나요?")
           String content,
       @Schema(description = "질문 상태", example = "ANSWERED") QuestionStatus status,
-      @Schema(description = "답변 목록") List<AnswerDetail> answers,
+      @Schema(description = "답변 목록", example = "[{\"answerId\":1,\"writerName\":\"김멘토\"}]")
+          List<AnswerDetail> answers,
       @Schema(description = "작성일시", example = "2026-05-03T17:00:00")
           LocalDateTime createdAt,
       @Schema(description = "수정일시", example = "2026-05-03T17:30:00")
@@ -104,7 +105,8 @@ public class QnaResponse {
       @Schema(description = "질문 내용", example = "팀 ERD에서 중간 테이블을 어느 기준으로 분리해야 하나요?")
           String content,
       @Schema(description = "질문 상태", example = "ANSWERED") QuestionStatus status,
-      @Schema(description = "답변 목록") List<AnswerDetail> answers,
+      @Schema(description = "답변 목록", example = "[{\"answerId\":1,\"writerName\":\"김멘토\"}]")
+          List<AnswerDetail> answers,
       @Schema(description = "작성일시", example = "2026-05-03T17:00:00")
           LocalDateTime createdAt,
       @Schema(description = "수정일시", example = "2026-05-03T17:30:00")

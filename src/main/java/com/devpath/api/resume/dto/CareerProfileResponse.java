@@ -22,10 +22,12 @@ public class CareerProfileResponse {
       @Schema(description = "목표 직무", example = "Backend Developer") String targetRole,
       @Schema(description = "프로필 헤드라인", example = "문제 해결 중심의 백엔드 개발자")
           String headline,
-      @Schema(description = "프로필 요약") String summary,
-      @Schema(description = "스킬 목록") List<SkillDetail> skills,
-      @Schema(description = "선택한 Proof Card 목록") List<ProofCardDetail> proofCards,
-      @Schema(description = "선택한 프로젝트 경험 목록") List<ProjectDetail> projects,
+      @Schema(description = "프로필 요약", example = "Spring Boot 기반 API 설계와 JPA 데이터 모델링에 강점이 있습니다.") String summary,
+      @Schema(description = "스킬 목록", example = "[{\"skillId\":1,\"name\":\"Spring Boot\"}]") List<SkillDetail> skills,
+      @Schema(description = "선택한 Proof Card 목록", example = "[{\"proofCardId\":1,\"title\":\"Spring Boot 미션 통과\"}]")
+          List<ProofCardDetail> proofCards,
+      @Schema(description = "선택한 프로젝트 경험 목록", example = "[{\"projectProfileId\":1,\"title\":\"DevPath\"}]")
+          List<ProjectDetail> projects,
       @Schema(description = "생성일시", example = "2026-05-06T15:00:00")
           LocalDateTime createdAt,
       @Schema(description = "수정일시", example = "2026-05-06T15:10:00")
@@ -69,7 +71,7 @@ public class CareerProfileResponse {
       @Schema(description = "프로필 Proof Card 매핑 ID", example = "1") Long id,
       @Schema(description = "Proof Card ID", example = "1") Long proofCardId,
       @Schema(description = "Proof Card 제목", example = "Spring Boot 미션 통과") String title,
-      @Schema(description = "Proof Card 요약") String summary) {
+      @Schema(description = "Proof Card 요약", example = "JWT 인증 API와 예외 처리 구조를 구현하고 리뷰를 통과했습니다.") String summary) {
 
     public static ProofCardDetail from(CareerProfileProofCard proofCard) {
       return new ProofCardDetail(
@@ -83,7 +85,7 @@ public class CareerProfileResponse {
       @Schema(description = "프로젝트 ID", example = "1") Long projectId,
       @Schema(description = "프로젝트명", example = "DevPath") String title,
       @Schema(description = "역할", example = "Backend Developer") String role,
-      @Schema(description = "프로젝트 설명") String description,
+      @Schema(description = "프로젝트 설명", example = "멘토링, PR 리뷰, 채용 공고 분석 API를 구현했습니다.") String description,
       @Schema(description = "사용 기술", example = "Java, Spring Boot, JPA") String skills) {
 
     public static ProjectDetail from(CareerProfileProject project) {
@@ -101,8 +103,8 @@ public class CareerProfileResponse {
   public record SnapshotDetail(
       @Schema(description = "스냅샷 ID", example = "1") Long snapshotId,
       @Schema(description = "프로필 ID", example = "1") Long profileId,
-      @Schema(description = "스냅샷 내용") String snapshotContent,
-      @Schema(description = "스냅샷 메모") String memo,
+      @Schema(description = "스냅샷 내용", example = "targetRole: Backend Developer") String snapshotContent,
+      @Schema(description = "스냅샷 메모", example = "백엔드 주니어 지원용 프로필 스냅샷") String memo,
       @Schema(description = "생성된 버전 번호", example = "1") Integer versionNumber,
       @Schema(description = "생성일시", example = "2026-05-06T15:30:00")
           LocalDateTime createdAt) {
@@ -124,8 +126,8 @@ public class CareerProfileResponse {
       @Schema(description = "프로필 ID", example = "1") Long profileId,
       @Schema(description = "스냅샷 ID", example = "1") Long snapshotId,
       @Schema(description = "버전 번호", example = "1") Integer versionNumber,
-      @Schema(description = "버전 설명") String description,
-      @Schema(description = "버전 내용") String versionContent,
+      @Schema(description = "버전 설명", example = "백엔드 주니어 지원용 프로필 스냅샷") String description,
+      @Schema(description = "버전 내용", example = "targetRole: Backend Developer") String versionContent,
       @Schema(description = "생성일시", example = "2026-05-06T15:30:00")
           LocalDateTime createdAt) {
 
@@ -141,4 +143,3 @@ public class CareerProfileResponse {
     }
   }
 }
-

@@ -4,6 +4,7 @@ import com.devpath.api.resume.dto.CareerProfileRequest;
 import com.devpath.api.resume.dto.CareerProfileResponse;
 import com.devpath.api.resume.service.CareerProfileService;
 import com.devpath.common.response.ApiResponse;
+import com.devpath.common.swagger.SwaggerTag;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -19,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Career Profile Builder", description = "채용 분석용 프로필 빌더 API")
+@Tag(name = SwaggerTag.CAREER_PROFILE, description = "채용 분석용 프로필 빌더 API")
 @RestController
 @RequiredArgsConstructor
 public class CareerProfileController {
@@ -83,4 +84,3 @@ public class CareerProfileController {
     return ResponseEntity.ok(ApiResponse.ok(careerProfileService.getVersions(profileId)));
   }
 }
-

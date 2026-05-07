@@ -4,6 +4,7 @@ import com.devpath.api.qna.dto.QnaRequest;
 import com.devpath.api.qna.dto.QnaResponse;
 import com.devpath.api.qna.service.MentoringQuestionService;
 import com.devpath.common.response.ApiResponse;
+import com.devpath.common.swagger.SwaggerTag;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -17,7 +18,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "멘토링 Q&A", description = "멘토링 전용 Q&A API")
+@Tag(name = SwaggerTag.MENTORING_QNA, description = "멘토링 전용 Q&A API")
 @RestController
 @RequiredArgsConstructor
 public class MentoringQuestionController {
@@ -34,7 +35,7 @@ public class MentoringQuestionController {
   }
 
   @GetMapping("/api/mentorings/{mentoringId}/questions")
-  @Operation(summary = "멘토링 질문 목록 조회", description = "멘토링 워크스페이스의 질문 목록을 조회합니다.")
+  @Operation(summary = "멘토링 질문 목록 조회", description = "멘토링 ID 기준 질문 목록을 조회합니다.")
   public ResponseEntity<ApiResponse<List<QnaResponse.MentoringQuestionSummary>>> getQuestions(
       @PathVariable Long mentoringId) {
     // 질문 목록은 최신순으로 반환한다.
@@ -59,7 +60,7 @@ public class MentoringQuestionController {
   }
 
   @PatchMapping("/api/mentoring-questions/{questionId}/status")
-  @Operation(summary = "멘토링 질문 상태 변경", description = "멘토링 질문 상태를 WAITING, ANSWERED, CLOSED 중 하나로 변경합니다.")
+  @Operation(summary = "멘토링 질문 상태 변경", description = "질문 상태를 WAITING, ANSWERED, CLOSED 중 하나로 변경합니다.")
   public ResponseEntity<ApiResponse<QnaResponse.Status>> updateStatus(
       @PathVariable Long questionId, @Valid @RequestBody QnaRequest.StatusUpdate request) {
     // 상태 변경 권한과 유효성 검증은 Service에서 처리한다.

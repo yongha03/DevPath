@@ -4,6 +4,7 @@ import com.devpath.api.meeting.dto.MeetingAiSummaryRequest;
 import com.devpath.api.meeting.dto.MeetingAiSummaryResponse;
 import com.devpath.api.meeting.service.MeetingAiSummaryService;
 import com.devpath.common.response.ApiResponse;
+import com.devpath.common.swagger.SwaggerTag;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -15,7 +16,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "AI 회의 요약", description = "AI 회의 요약 API")
+@Tag(name = SwaggerTag.AI_MEETING_SUMMARY, description = "AI 회의 요약 API")
 @RestController
 @RequiredArgsConstructor
 public class MeetingAiSummaryController {

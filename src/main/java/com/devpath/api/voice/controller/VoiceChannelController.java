@@ -4,6 +4,7 @@ import com.devpath.api.voice.dto.VoiceRequest;
 import com.devpath.api.voice.dto.VoiceResponse;
 import com.devpath.api.voice.service.VoiceChannelService;
 import com.devpath.common.response.ApiResponse;
+import com.devpath.common.swagger.SwaggerTag;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -16,7 +17,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "보이스 채널", description = "보이스 채널 및 상태 이벤트 API")
+@Tag(name = SwaggerTag.VOICE_CHANNEL, description = "보이스 채널 및 상태 이벤트 API")
 @RestController
 @RequiredArgsConstructor
 public class VoiceChannelController {

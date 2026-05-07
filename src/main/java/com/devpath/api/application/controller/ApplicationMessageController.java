@@ -4,6 +4,7 @@ import com.devpath.api.application.dto.ApplicationMessageRequest;
 import com.devpath.api.application.dto.ApplicationMessageResponse;
 import com.devpath.api.application.service.ApplicationMessageService;
 import com.devpath.common.response.ApiResponse;
+import com.devpath.common.swagger.SwaggerTag;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -19,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "라운지 신청 메시지", description = "라운지 신청서/제안서 메시지 API")
+@Tag(name = SwaggerTag.APPLICATION_MESSAGE, description = "라운지 신청 기반 메시지 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/lounge/applications/{applicationId}/messages")
@@ -28,7 +29,7 @@ public class ApplicationMessageController {
   private final ApplicationMessageService applicationMessageService;
 
   @PostMapping
-  @Operation(summary = "라운지 신청 메시지 작성", description = "신청서/제안서에 메시지 또는 답장을 작성합니다.")
+  @Operation(summary = "신청 메시지 작성", description = "라운지 신청에 메시지 또는 답장을 작성합니다.")
   public ResponseEntity<ApiResponse<ApplicationMessageResponse.Detail>> create(
       @PathVariable Long applicationId,
       @Valid @RequestBody ApplicationMessageRequest.Create request) {
@@ -37,7 +38,7 @@ public class ApplicationMessageController {
   }
 
   @GetMapping
-  @Operation(summary = "라운지 신청 메시지 목록 조회", description = "신청서/제안서의 메시지 목록을 작성 시간순으로 조회합니다.")
+  @Operation(summary = "신청 메시지 목록 조회", description = "라운지 신청에 연결된 메시지 목록을 생성순으로 조회합니다.")
   public ResponseEntity<ApiResponse<List<ApplicationMessageResponse.Detail>>> getMessages(
       @PathVariable Long applicationId,
       @Parameter(description = "현재 조회자 사용자 ID", example = "2") @RequestParam Long viewerId) {

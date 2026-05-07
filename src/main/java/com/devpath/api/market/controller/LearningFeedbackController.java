@@ -4,6 +4,7 @@ import com.devpath.api.market.dto.LearningFeedbackRequest;
 import com.devpath.api.market.dto.LearningFeedbackResponse;
 import com.devpath.api.market.service.LearningFeedbackService;
 import com.devpath.common.response.ApiResponse;
+import com.devpath.common.swagger.SwaggerTag;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -16,7 +17,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Learning Feedback", description = "시장 분석 기반 학습 환류 API")
+@Tag(name = SwaggerTag.LEARNING_FEEDBACK, description = "시장 분석 기반 학습 환류 API")
 @RestController
 @RequiredArgsConstructor
 public class LearningFeedbackController {
@@ -38,7 +39,7 @@ public class LearningFeedbackController {
   }
 
   @PostMapping("/api/market/learning-feedback/related-roadmaps")
-  @Operation(summary = "관련 로드맵 추가 후보 조회", description = "스킬 갭 기반 관련 로드맵 추천 결과를 반환합니다.")
+  @Operation(summary = "관련 로드맵 추천", description = "스킬 갭 기반 관련 로드맵 추천 결과를 반환합니다.")
   public ResponseEntity<ApiResponse<LearningFeedbackResponse.RelatedRoadmaps>> getRelatedRoadmaps(
       @Valid @RequestBody LearningFeedbackRequest.RelatedRoadmaps request) {
     return ResponseEntity.ok(ApiResponse.ok(learningFeedbackService.getRelatedRoadmaps(request)));
@@ -58,4 +59,3 @@ public class LearningFeedbackController {
     return ResponseEntity.ok(ApiResponse.ok(learningFeedbackService.getRecommendedCourses(request)));
   }
 }
-

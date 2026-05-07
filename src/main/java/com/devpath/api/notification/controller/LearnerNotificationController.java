@@ -4,6 +4,7 @@ import com.devpath.api.notification.dto.NotificationResponse;
 import com.devpath.api.notification.service.LearnerNotificationService;
 import com.devpath.api.notification.service.NotificationSseService;
 import com.devpath.common.response.ApiResponse;
+import com.devpath.common.swagger.SwaggerTag;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -19,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
-@Tag(name = "알림 SSE", description = "알림 목록, 읽음 처리, SSE 구독 API")
+@Tag(name = SwaggerTag.NOTIFICATION, description = "알림 목록, 읽음 처리, SSE 구독 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/notifications")
@@ -39,7 +40,7 @@ public class LearnerNotificationController {
     }
 
     @GetMapping
-    @Operation(summary = "알림 목록 조회", description = "내 알림 목록을 최신순으로 조회합니다.")
+    @Operation(summary = "내 알림 목록 조회", description = "내 알림 목록을 최신순으로 조회합니다.")
     public ResponseEntity<ApiResponse<List<NotificationResponse>>> getMyNotifications(
             @Parameter(description = "알림 수신자 사용자 ID", example = "2")
             @RequestParam Long learnerId

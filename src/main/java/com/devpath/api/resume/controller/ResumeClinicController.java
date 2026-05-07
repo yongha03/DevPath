@@ -4,6 +4,7 @@ import com.devpath.api.resume.dto.ResumeClinicRequest;
 import com.devpath.api.resume.dto.ResumeClinicResponse;
 import com.devpath.api.resume.service.ResumeClinicService;
 import com.devpath.common.response.ApiResponse;
+import com.devpath.common.swagger.SwaggerTag;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -13,7 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "Resume Clinic", description = "학습/프로젝트/Proof Card 기반 이력서 문구 추천 API")
+@Tag(name = SwaggerTag.RESUME_CLINIC, description = "학습/프로젝트/Proof Card 기반 이력서 문구 추천 API")
 @RestController
 @RequiredArgsConstructor
 public class ResumeClinicController {
