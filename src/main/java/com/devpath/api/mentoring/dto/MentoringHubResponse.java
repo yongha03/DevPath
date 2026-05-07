@@ -14,8 +14,9 @@ public class MentoringHubResponse {
 
   @Schema(name = "MentoringHubMainResponse", description = "멘토링 허브 응답")
   public record Hub(
-      @Schema(description = "OPEN 상태 멘토링 공고 목록") List<OpenPost> openPosts,
-      @Schema(description = "허브 요약 정보") Summary summary) {
+      @Schema(description = "OPEN 상태 멘토링 공고 목록", example = "[{\"postId\":1,\"title\":\"Spring Boot 포트폴리오 멘토링\"}]")
+          List<OpenPost> openPosts,
+      @Schema(description = "허브 요약 정보", example = "{\"openPostCount\":5}") Summary summary) {
 
     public static Hub of(List<OpenPost> openPosts) {
       return new Hub(openPosts, Summary.from(openPosts.size()));

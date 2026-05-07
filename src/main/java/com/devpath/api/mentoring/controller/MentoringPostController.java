@@ -4,6 +4,7 @@ import com.devpath.api.mentoring.dto.MentoringPostRequest;
 import com.devpath.api.mentoring.dto.MentoringPostResponse;
 import com.devpath.api.mentoring.service.MentoringPostService;
 import com.devpath.common.response.ApiResponse;
+import com.devpath.common.swagger.SwaggerTag;
 import com.devpath.domain.mentoring.entity.MentoringPostStatus;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -21,7 +22,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "멘토링 공고", description = "멘토링 공고 API")
+@Tag(name = SwaggerTag.MENTORING_POST, description = "멘토링 공고 CRUD API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/mentoring-posts")
@@ -38,7 +39,7 @@ public class MentoringPostController {
   }
 
   @GetMapping
-  @Operation(summary = "멘토링 공고 목록 조회", description = "삭제되지 않은 멘토링 공고 목록을 조회합니다. status가 없으면 전체 조회합니다.")
+  @Operation(summary = "멘토링 공고 목록 조회", description = "삭제되지 않은 멘토링 공고 목록을 조회합니다.")
   public ResponseEntity<ApiResponse<List<MentoringPostResponse.Summary>>> getPosts(
       @RequestParam(required = false) MentoringPostStatus status) {
     // status query parameter로 OPEN/CLOSED 필터링을 지원한다.
@@ -46,14 +47,14 @@ public class MentoringPostController {
   }
 
   @GetMapping("/{postId}")
-  @Operation(summary = "멘토링 공고 단건 조회", description = "멘토링 공고 ID로 상세 정보를 조회합니다.")
+  @Operation(summary = "멘토링 공고 단건 조회", description = "멘토링 공고 상세 정보를 조회합니다.")
   public ResponseEntity<ApiResponse<MentoringPostResponse.Detail>> getPost(@PathVariable Long postId) {
     // PathVariable만 Service로 전달하고 조회 로직은 Service에서 처리한다.
     return ResponseEntity.ok(ApiResponse.ok(mentoringPostService.getPost(postId)));
   }
 
   @PatchMapping("/{postId}")
-  @Operation(summary = "멘토링 공고 수정", description = "멘토링 공고 제목, 내용, 필요 기술 스택, 최대 인원을 수정합니다.")
+  @Operation(summary = "멘토링 공고 수정", description = "멘토링 공고 정보를 수정합니다.")
   public ResponseEntity<ApiResponse<MentoringPostResponse.Detail>> update(
       @PathVariable Long postId, @Valid @RequestBody MentoringPostRequest.Update request) {
     // 수정 검증은 DTO validation과 Service 비즈니스 검증으로 분리한다.

@@ -3,6 +3,7 @@ package com.devpath.api.job.controller;
 import com.devpath.api.job.dto.JobSkillTagResponse;
 import com.devpath.api.job.service.JobSkillTagService;
 import com.devpath.common.response.ApiResponse;
+import com.devpath.common.swagger.SwaggerTag;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
@@ -13,7 +14,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "JD Analysis", description = "JD 분석 및 채용 기술 태그 API")
+@Tag(name = SwaggerTag.JD_ANALYSIS, description = "JD 분석 및 채용 기술 태그 API")
 @RestController
 @RequiredArgsConstructor
 public class JobSkillTagController {

@@ -4,6 +4,7 @@ import com.devpath.api.qna.dto.QnaRequest;
 import com.devpath.api.qna.dto.QnaResponse;
 import com.devpath.api.qna.service.WorkspaceQuestionService;
 import com.devpath.common.response.ApiResponse;
+import com.devpath.common.swagger.SwaggerTag;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -17,7 +18,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "워크스페이스 Q&A", description = "팀 워크스페이스 전용 Q&A API")
+@Tag(name = SwaggerTag.WORKSPACE_QNA, description = "워크스페이스 전용 Q&A API")
 @RestController
 @RequiredArgsConstructor
 public class WorkspaceQuestionController {
@@ -34,7 +35,7 @@ public class WorkspaceQuestionController {
   }
 
   @GetMapping("/api/workspaces/{workspaceId}/questions")
-  @Operation(summary = "워크스페이스 질문 목록 조회", description = "팀 워크스페이스의 질문 목록을 조회합니다.")
+  @Operation(summary = "워크스페이스 질문 목록 조회", description = "워크스페이스 ID 기준 질문 목록을 조회합니다.")
   public ResponseEntity<ApiResponse<List<QnaResponse.WorkspaceQuestionSummary>>> getQuestions(
       @PathVariable Long workspaceId) {
     // 질문 목록은 최신순으로 반환한다.
@@ -59,7 +60,7 @@ public class WorkspaceQuestionController {
   }
 
   @PatchMapping("/api/workspace-questions/{questionId}/status")
-  @Operation(summary = "워크스페이스 질문 상태 변경", description = "워크스페이스 질문 상태를 WAITING, ANSWERED, CLOSED 중 하나로 변경합니다.")
+  @Operation(summary = "워크스페이스 질문 상태 변경", description = "질문 상태를 WAITING, ANSWERED, CLOSED 중 하나로 변경합니다.")
   public ResponseEntity<ApiResponse<QnaResponse.Status>> updateStatus(
       @PathVariable Long questionId, @Valid @RequestBody QnaRequest.StatusUpdate request) {
     // 상태 변경 검증은 Service에서 처리한다.

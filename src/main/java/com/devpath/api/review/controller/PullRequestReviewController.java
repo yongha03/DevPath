@@ -5,6 +5,7 @@ import com.devpath.api.review.dto.PullRequestReviewResponse;
 import com.devpath.api.review.dto.PullRequestSubmissionRequest;
 import com.devpath.api.review.service.PullRequestReviewService;
 import com.devpath.common.response.ApiResponse;
+import com.devpath.common.swagger.SwaggerTag;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -18,7 +19,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "멘토링 PR 리뷰", description = "PR 제출, 코드 리뷰, 미션 Pass/Reject API")
+@Tag(name = SwaggerTag.PR_REVIEW, description = "PR 제출, 코드 리뷰, Pass/Reject API")
 @RestController
 @RequiredArgsConstructor
 public class PullRequestReviewController {
@@ -26,7 +27,7 @@ public class PullRequestReviewController {
   private final PullRequestReviewService pullRequestReviewService;
 
   @PostMapping("/api/mentoring-missions/{missionId}/pull-requests")
-  @Operation(summary = "PR 제출", description = "멘토링 미션에 GitHub Pull Request URL을 제출합니다.")
+  @Operation(summary = "PR 링크 제출", description = "멘토링 미션에 PR 링크를 제출합니다.")
   public ResponseEntity<ApiResponse<PullRequestReviewResponse.PullRequestDetail>>
       submitPullRequest(
           @PathVariable Long missionId,
@@ -37,7 +38,7 @@ public class PullRequestReviewController {
   }
 
   @GetMapping("/api/mentorings/{mentoringId}/pull-requests")
-  @Operation(summary = "멘토링별 PR 목록 조회", description = "특정 멘토링에 제출된 PR 목록을 조회합니다.")
+  @Operation(summary = "멘토링별 PR 목록 조회", description = "멘토링 ID 기준 PR 제출 목록을 조회합니다.")
   public ResponseEntity<ApiResponse<List<PullRequestReviewResponse.PullRequestSummary>>>
       getPullRequests(@PathVariable Long mentoringId) {
     // 멘토링 ID 기준으로 삭제되지 않은 PR 제출 목록을 조회한다.
@@ -45,7 +46,7 @@ public class PullRequestReviewController {
   }
 
   @GetMapping("/api/pull-requests/{pullRequestId}")
-  @Operation(summary = "PR 단건 조회", description = "PR 제출 상세 정보와 리뷰 목록을 조회합니다.")
+  @Operation(summary = "PR 단건 조회", description = "PR 제출 상세 정보를 조회합니다.")
   public ResponseEntity<ApiResponse<PullRequestReviewResponse.PullRequestDetail>> getPullRequest(
       @PathVariable Long pullRequestId) {
     // PR 상세와 연결된 리뷰 목록을 함께 반환한다.
@@ -53,7 +54,7 @@ public class PullRequestReviewController {
   }
 
   @PostMapping("/api/pull-requests/{pullRequestId}/reviews")
-  @Operation(summary = "PR 코드 리뷰 작성", description = "PR 제출물에 코드 리뷰 코멘트를 작성합니다.")
+  @Operation(summary = "PR 코드 리뷰 작성", description = "멘토 또는 강사가 PR 코드 리뷰를 작성합니다.")
   public ResponseEntity<ApiResponse<PullRequestReviewResponse.ReviewDetail>> createReview(
       @PathVariable Long pullRequestId,
       @Valid @RequestBody PullRequestReviewRequest.Create request) {
@@ -83,7 +84,7 @@ public class PullRequestReviewController {
   }
 
   @PatchMapping("/api/mission-submissions/{submissionId}/pass")
-  @Operation(summary = "미션 제출 통과", description = "멘토가 미션 제출물을 통과 처리합니다.")
+  @Operation(summary = "미션 제출 Pass 처리", description = "미션 제출을 PASSED 상태로 변경합니다.")
   public ResponseEntity<ApiResponse<PullRequestReviewResponse.MissionSubmissionDetail>>
       passSubmission(
           @PathVariable Long submissionId,
@@ -94,7 +95,7 @@ public class PullRequestReviewController {
   }
 
   @PatchMapping("/api/mission-submissions/{submissionId}/reject")
-  @Operation(summary = "미션 제출 반려", description = "멘토가 미션 제출물을 반려 처리합니다.")
+  @Operation(summary = "미션 제출 Reject 처리", description = "미션 제출을 REJECTED 상태로 변경합니다.")
   public ResponseEntity<ApiResponse<PullRequestReviewResponse.MissionSubmissionDetail>>
       rejectSubmission(
           @PathVariable Long submissionId,

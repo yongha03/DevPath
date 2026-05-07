@@ -4,6 +4,7 @@ import com.devpath.api.ai.dto.AiDesignReviewRequest;
 import com.devpath.api.ai.dto.AiDesignReviewResponse;
 import com.devpath.api.ai.service.AiDesignReviewService;
 import com.devpath.common.response.ApiResponse;
+import com.devpath.common.swagger.SwaggerTag;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -16,7 +17,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "AI 설계 리뷰", description = "ERD/API 명세 기반 AI 설계 리뷰 API")
+@Tag(name = SwaggerTag.AI_DESIGN_REVIEW, description = "ERD/API 명세 기반 AI 설계 리뷰 API")
 @RestController
 @RequiredArgsConstructor
 public class AiDesignReviewController {

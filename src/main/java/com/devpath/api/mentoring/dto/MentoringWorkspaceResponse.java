@@ -12,11 +12,14 @@ public class MentoringWorkspaceResponse {
 
   @Schema(name = "MentoringWorkspaceResponse", description = "멘토링 워크스페이스 응답")
   public record Workspace(
-      @Schema(description = "멘토링 기본 정보") BasicInfo basicInfo,
-      @Schema(description = "멘토 정보") Participant mentor,
-      @Schema(description = "멘티 정보") Participant mentee,
-      @Schema(description = "워크스페이스 집계 정보") Stats stats,
-      @Schema(description = "최근 활동 요약") List<RecentActivity> recentActivities) {
+      @Schema(description = "멘토링 기본 정보", example = "{\"mentoringId\":1,\"postTitle\":\"Spring Boot 포트폴리오 멘토링\"}")
+          BasicInfo basicInfo,
+      @Schema(description = "멘토 정보", example = "{\"userId\":1,\"name\":\"김멘토\",\"role\":\"MENTOR\"}") Participant mentor,
+      @Schema(description = "멘티 정보", example = "{\"userId\":2,\"name\":\"이학습\",\"role\":\"MENTEE\"}") Participant mentee,
+      @Schema(description = "워크스페이스 집계 정보", example = "{\"missionCount\":1,\"pullRequestCount\":1,\"questionCount\":1,\"meetingCount\":1}")
+          Stats stats,
+      @Schema(description = "최근 활동 요약", example = "[{\"type\":\"MENTORING_STARTED\",\"message\":\"멘토링이 시작되었습니다.\"}]")
+          List<RecentActivity> recentActivities) {
 
     // 워크스페이스 화면에서 필요한 기본 정보, 참여자, 집계, 최근 활동을 한 번에 묶는다.
     public static Workspace from(
@@ -42,7 +45,8 @@ public class MentoringWorkspaceResponse {
       @Schema(description = "PR 제출 개수", example = "0") long pullRequestCount,
       @Schema(description = "질문 개수", example = "0") long questionCount,
       @Schema(description = "회의 개수", example = "0") long meetingCount,
-      @Schema(description = "최근 활동 요약") List<RecentActivity> recentActivities) {
+      @Schema(description = "최근 활동 요약", example = "[{\"type\":\"MENTORING_STARTED\",\"message\":\"멘토링이 시작되었습니다.\"}]")
+          List<RecentActivity> recentActivities) {
 
     // 대시보드 카드와 요약 영역에 바로 사용할 수 있는 납작한 형태의 응답을 만든다.
     public static Dashboard from(

@@ -4,6 +4,7 @@ import com.devpath.api.mentoring.dto.MentoringMaterialRequest;
 import com.devpath.api.mentoring.dto.MentoringMaterialResponse;
 import com.devpath.api.mentoring.service.MentoringMaterialService;
 import com.devpath.common.response.ApiResponse;
+import com.devpath.common.swagger.SwaggerTag;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -21,7 +22,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "멘토링 자료", description = "멘토링 주차별 가이드라인 및 자료 API")
+@Tag(name = SwaggerTag.MENTORING_MATERIAL, description = "멘토링 미션 자료 CRUD API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api")
@@ -30,7 +31,7 @@ public class MentoringMaterialController {
   private final MentoringMaterialService mentoringMaterialService;
 
   @PostMapping("/mentoring-missions/{missionId}/materials")
-  @Operation(summary = "멘토링 미션 자료 등록", description = "미션에 URL 자료 또는 TEXT 가이드라인을 등록합니다.")
+  @Operation(summary = "미션 자료 등록", description = "미션에 URL 자료 또는 TEXT 가이드라인을 등록합니다.")
   public ResponseEntity<ApiResponse<MentoringMaterialResponse.Detail>> create(
       @PathVariable Long missionId,
       @Valid @RequestBody MentoringMaterialRequest.Create request) {
@@ -39,7 +40,7 @@ public class MentoringMaterialController {
   }
 
   @GetMapping("/mentoring-missions/{missionId}/materials")
-  @Operation(summary = "멘토링 미션 자료 목록 조회", description = "특정 미션에 등록된 자료 목록을 조회합니다.")
+  @Operation(summary = "미션 자료 목록 조회", description = "미션에 연결된 자료 목록을 조회합니다.")
   public ResponseEntity<ApiResponse<List<MentoringMaterialResponse.Summary>>> getMaterials(
       @PathVariable Long missionId) {
     // 자료 목록은 sortOrder 오름차순으로 반환한다.
@@ -47,7 +48,7 @@ public class MentoringMaterialController {
   }
 
   @PatchMapping("/mentoring-materials/{materialId}")
-  @Operation(summary = "멘토링 미션 자료 수정", description = "자료 타입, 제목, 본문, URL, 정렬 순서를 수정합니다.")
+  @Operation(summary = "미션 자료 수정", description = "미션 자료 제목, 내용, URL을 수정합니다.")
   public ResponseEntity<ApiResponse<MentoringMaterialResponse.Detail>> update(
       @PathVariable Long materialId,
       @Valid @RequestBody MentoringMaterialRequest.Update request) {
@@ -56,7 +57,7 @@ public class MentoringMaterialController {
   }
 
   @DeleteMapping("/mentoring-materials/{materialId}")
-  @Operation(summary = "멘토링 미션 자료 삭제", description = "멘토링 미션 자료를 Soft Delete 처리합니다.")
+  @Operation(summary = "미션 자료 삭제", description = "미션 자료를 Soft Delete 처리합니다.")
   public ResponseEntity<ApiResponse<Void>> delete(
       @PathVariable Long materialId,
       @Parameter(description = "멘토 사용자 ID", example = "1") @RequestParam Long mentorId) {

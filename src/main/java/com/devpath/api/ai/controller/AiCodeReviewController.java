@@ -4,6 +4,7 @@ import com.devpath.api.ai.dto.AiCodeReviewRequest;
 import com.devpath.api.ai.dto.AiCodeReviewResponse;
 import com.devpath.api.ai.service.AiCodeReviewService;
 import com.devpath.common.response.ApiResponse;
+import com.devpath.common.swagger.SwaggerTag;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -19,7 +20,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "AI 코드 리뷰", description = "AI 코드 리뷰 및 리뷰 코멘트 승인/반려 API")
+@Tag(name = SwaggerTag.AI_CODE_REVIEW, description = "AI 코드 리뷰 및 리뷰 코멘트 승인/반려 API")
 @RestController
 @RequiredArgsConstructor
 public class AiCodeReviewController {

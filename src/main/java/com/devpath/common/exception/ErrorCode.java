@@ -170,6 +170,13 @@ public enum ErrorCode {
   JOB_SKILL_TAG_NOT_FOUND(HttpStatus.NOT_FOUND, "채용 기술 태그를 찾을 수 없습니다."),
   JOB_JD_ANALYSIS_FAILED(HttpStatus.BAD_REQUEST, "JD 분석에 실패했습니다."),
 
+  RESUME_CAREER_PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, "채용 분석용 프로필을 찾을 수 없습니다."),
+  RESUME_CAREER_PROFILE_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 채용 분석용 프로필이 존재합니다."),
+  RESUME_SKILL_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 등록된 프로필 스킬입니다."),
+  RESUME_PROOF_CARD_NOT_FOUND(HttpStatus.NOT_FOUND, "선택된 Proof Card를 찾을 수 없습니다."),
+  RESUME_PROOF_CARD_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 선택된 Proof Card입니다."),
+
+  MARKET_LEARNING_FEEDBACK_SKILL_GAP_NOT_FOUND(HttpStatus.NOT_FOUND, "로드맵에 추가할 스킬 갭을 찾을 수 없습니다."),
   PROJECT_NOT_FOUND(HttpStatus.NOT_FOUND, "프로젝트를 찾을 수 없습니다."),
   PROJECT_FORBIDDEN(HttpStatus.FORBIDDEN, "프로젝트를 관리할 권한이 없습니다."),
   IDEA_POST_NOT_FOUND(HttpStatus.NOT_FOUND, "아이디어 게시글을 찾을 수 없습니다."),
