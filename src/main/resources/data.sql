@@ -15480,3 +15480,204 @@ WHERE NOT EXISTS (
     WHERE portfolio_id = (SELECT id FROM portfolio WHERE user_id = (SELECT user_id FROM users WHERE email = 'learner@devpath.com') AND is_deleted = false)
       AND commit_url = 'https://github.com/devpath/backend/commit/abc123'
 );
+
+-- =============================================
+-- 스쿼드 / 워크스페이스 문서 / 파일 / 회의록 샘플 데이터
+-- =============================================
+
+-- squads 샘플 데이터
+INSERT INTO squads (name, description, is_archived, is_deleted, created_at, updated_at)
+SELECT
+    'DevPath 개발팀',
+    'DevPath 서비스 개발을 위한 스쿼드',
+    false,
+    false,
+    '2026-03-15 09:00:00',
+    '2026-03-15 09:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM squads WHERE name = 'DevPath 개발팀'
+);
+
+INSERT INTO squads (name, description, is_archived, is_deleted, created_at, updated_at)
+SELECT
+    '포트폴리오 스터디',
+    '포트폴리오 제작을 위한 스터디 스쿼드',
+    false,
+    false,
+    '2026-03-20 10:00:00',
+    '2026-03-20 10:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM squads WHERE name = '포트폴리오 스터디'
+);
+
+-- squad_members 샘플 데이터
+INSERT INTO squad_members (squad_id, user_id, role, joined_at)
+SELECT
+    (SELECT squad_id FROM squads WHERE name = 'DevPath 개발팀'),
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    'LEADER',
+    '2026-03-15 09:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM squad_members
+    WHERE squad_id = (SELECT squad_id FROM squads WHERE name = 'DevPath 개발팀')
+      AND user_id = (SELECT user_id FROM users WHERE email = 'learner@devpath.com')
+);
+
+INSERT INTO squad_members (squad_id, user_id, role, joined_at)
+SELECT
+    (SELECT squad_id FROM squads WHERE name = 'DevPath 개발팀'),
+    (SELECT user_id FROM users WHERE email = 'frontend@devpath.com'),
+    'MEMBER',
+    '2026-03-16 10:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM squad_members
+    WHERE squad_id = (SELECT squad_id FROM squads WHERE name = 'DevPath 개발팀')
+      AND user_id = (SELECT user_id FROM users WHERE email = 'frontend@devpath.com')
+);
+
+INSERT INTO squad_members (squad_id, user_id, role, joined_at)
+SELECT
+    (SELECT squad_id FROM squads WHERE name = '포트폴리오 스터디'),
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    'LEADER',
+    '2026-03-20 10:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM squad_members
+    WHERE squad_id = (SELECT squad_id FROM squads WHERE name = '포트폴리오 스터디')
+      AND user_id = (SELECT user_id FROM users WHERE email = 'learner@devpath.com')
+);
+
+-- squad_invitations 샘플 데이터
+INSERT INTO squad_invitations (squad_id, inviter_id, invitee_id, status, created_at)
+SELECT
+    (SELECT squad_id FROM squads WHERE name = 'DevPath 개발팀'),
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    (SELECT user_id FROM users WHERE email = 'data@devpath.com'),
+    'PENDING',
+    '2026-03-17 11:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM squad_invitations
+    WHERE squad_id = (SELECT squad_id FROM squads WHERE name = 'DevPath 개발팀')
+      AND invitee_id = (SELECT user_id FROM users WHERE email = 'data@devpath.com')
+);
+
+-- workspace_file 샘플 데이터
+INSERT INTO workspace_file (workspace_id, original_file_name, stored_file_name, file_path, file_size, content_type, uploaded_by_id, is_deleted, created_at)
+SELECT
+    (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스'),
+    '요구사항_명세서.txt',
+    'sample_requirements.txt',
+    './uploads/workspace/1/sample_requirements.txt',
+    1024,
+    'text/plain',
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    false,
+    '2026-03-24 10:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM workspace_file
+    WHERE workspace_id = (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스')
+      AND original_file_name = '요구사항_명세서.txt'
+);
+
+INSERT INTO workspace_file (workspace_id, original_file_name, stored_file_name, file_path, file_size, content_type, uploaded_by_id, is_deleted, created_at)
+SELECT
+    (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스'),
+    '와이어프레임_v1.png',
+    'sample_wireframe.png',
+    './uploads/workspace/1/sample_wireframe.png',
+    204800,
+    'image/png',
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    false,
+    '2026-03-25 14:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM workspace_file
+    WHERE workspace_id = (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스')
+      AND original_file_name = '와이어프레임_v1.png'
+);
+
+-- workspace_doc 샘플 데이터
+INSERT INTO workspace_doc (workspace_id, doc_type, content, updated_by_id, created_at, updated_at)
+SELECT
+    (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스'),
+    'ERD',
+    'erDiagram
+    USERS {
+        bigint user_id PK
+        varchar email
+        varchar name
+    }
+    WORKSPACE {
+        bigint id PK
+        bigint owner_id FK
+        varchar name
+    }
+    USERS ||--o{ WORKSPACE : owns',
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    '2026-03-26 09:00:00',
+    '2026-03-26 09:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM workspace_doc
+    WHERE workspace_id = (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스')
+      AND doc_type = 'ERD'
+);
+
+INSERT INTO workspace_doc (workspace_id, doc_type, content, updated_by_id, created_at, updated_at)
+SELECT
+    (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스'),
+    'API_SPEC',
+    'openapi: 3.0.0
+info:
+  title: DevPath API
+  version: 1.0.0
+paths:
+  /api/workspaces:
+    get:
+      summary: 워크스페이스 목록 조회',
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    '2026-03-26 10:00:00',
+    '2026-03-26 10:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM workspace_doc
+    WHERE workspace_id = (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스')
+      AND doc_type = 'API_SPEC'
+);
+
+-- meeting_note 샘플 데이터
+INSERT INTO meeting_note (workspace_id, title, content, created_by_id, is_deleted, created_at, updated_at)
+SELECT
+    (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스'),
+    '프로젝트 킥오프 회의',
+    '참석자: 전원
+목표: MVP 기능 범위 확정
+결정사항:
+- 1차 스프린트: 로그인/회원가입, 워크스페이스 기본 기능
+- 2차 스프린트: 칸반, 마일스톤
+다음 회의: 2주 후',
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    false,
+    '2026-03-23 15:00:00',
+    '2026-03-23 15:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM meeting_note
+    WHERE workspace_id = (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스')
+      AND title = '프로젝트 킥오프 회의'
+);
+
+INSERT INTO meeting_note (workspace_id, title, content, created_by_id, is_deleted, created_at, updated_at)
+SELECT
+    (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스'),
+    '스프린트 1 회고',
+    '참석자: 전원
+잘한 점: API 설계 빠른 완료, 팀원 간 소통 원활
+개선점: 테스트 코드 작성 부족
+다음 스프린트 목표: 칸반 보드 완성, 파일 업로드 기능 구현',
+    (SELECT user_id FROM users WHERE email = 'learner@devpath.com'),
+    false,
+    '2026-04-06 17:00:00',
+    '2026-04-06 17:00:00'
+WHERE NOT EXISTS (
+    SELECT 1 FROM meeting_note
+    WHERE workspace_id = (SELECT id FROM workspace WHERE name = 'DevPath 팀 워크스페이스')
+      AND title = '스프린트 1 회고'
+);
