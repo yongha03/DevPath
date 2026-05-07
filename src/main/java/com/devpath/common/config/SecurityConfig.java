@@ -70,6 +70,7 @@ public class SecurityConfig {
                     .requestMatchers("/api/career-profiles/**")
                     .permitAll()
                     .requestMatchers("/api/market/learning-feedback/**")
+                    .requestMatchers(HttpMethod.GET, "/api/showcases/**")
                     .permitAll()
                     .requestMatchers("/api/admin/**")
                     .hasRole("ADMIN")

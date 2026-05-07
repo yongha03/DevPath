@@ -15,10 +15,11 @@ import io
 import logging
 import os
 
+import cv2
 import easyocr
 import numpy as np
 from flask import Flask, jsonify, request
-from PIL import Image, ImageEnhance, ImageFilter, ImageOps
+from PIL import Image, ImageFilter, ImageOps
 
 logging.basicConfig(level=logging.INFO)
 log = logging.getLogger(__name__)
@@ -48,32 +49,46 @@ def preprocess(img: Image.Image) -> np.ndarray:
     """
     코드 스크린샷 OCR 최적화 전처리:
       1. 그레이스케일
-      2. 다크 테마 자동 반전 (평균 밝기 < 128)
-      3. 대비 강화 (×2)
-      4. 샤프닝
-      5. 업스케일 (너비 < 800 px 이면 2×)
+      2. 다크 테마 반전 (히스토그램 기반 — 어두운 픽셀 비율 40% 이상)
+      3. 업스케일 (짧은 변 기준 — 텍스트 높이 확보)
+      4. UnsharpMask 선명화 (획 경계 강조)
+      5. Adaptive Threshold 이진화 (지역 조명 차이 대응)
     """
-    gray = img.convert("L")
+    arr = np.array(img.convert("L"))
 
-    # 다크 테마 반전
-    pixels = list(gray.getdata())
-    if sum(pixels) / len(pixels) < 128:
-        gray = ImageOps.invert(gray)
+    # 다크 테마 반전: 어두운 픽셀(< 50) 비율이 40% 초과면 반전
+    if np.sum(arr < 50) / arr.size > 0.4:
+        arr = 255 - arr
 
-    # 대비 강화
-    gray = ImageEnhance.Contrast(gray).enhance(2.0)
+    # 업스케일: 짧은 변이 작을수록 고배율 확대
+    h, w = arr.shape
+    short_side = min(w, h)
+    if short_side < 300:
+        scale = 3
+    elif short_side < 600:
+        scale = 2
+    else:
+        scale = 1
 
-    # 샤프닝
-    gray = gray.filter(ImageFilter.SHARPEN)
-    gray = gray.filter(ImageFilter.SHARPEN)   # 2회 적용 (코드 선명도↑)
+    if scale > 1:
+        arr = cv2.resize(arr, (w * scale, h * scale), interpolation=cv2.INTER_CUBIC)
 
-    # 소이미지 업스케일
-    w, h = gray.size
-    if w < 800:
-        scale = 3 if w < 400 else 2
-        gray = gray.resize((w * scale, h * scale), Image.LANCZOS)
+    # UnsharpMask 선명화 (이진화 전 경계 강조)
+    pil = Image.fromarray(arr)
+    pil = pil.filter(ImageFilter.UnsharpMask(radius=1, percent=120, threshold=3))
+    arr = np.array(pil)
 
-    return np.array(gray)
+    # Adaptive Threshold 이진화 (지역 조명 차이·그림자 대응)
+    arr = cv2.adaptiveThreshold(
+        arr,
+        255,
+        cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+        cv2.THRESH_BINARY,
+        blockSize=15,
+        C=10,
+    )
+
+    return arr
 
 
 # ── 엔드포인트 ────────────────────────────────────────────────────────────
@@ -99,7 +114,7 @@ def ocr():
             detail=1,
             paragraph=False,
             # 코드 인식에 유리한 옵션
-            width_ths=0.9,       # 같은 줄 텍스트 합치기 임계값
+            width_ths=0.5,       # 같은 줄 텍스트 합치기 임계값
             add_margin=0.05,
         )
 
