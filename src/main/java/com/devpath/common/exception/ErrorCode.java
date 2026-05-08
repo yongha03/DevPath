@@ -194,6 +194,8 @@ public enum ErrorCode {
   SQUAD_MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "스쿼드 멤버를 찾을 수 없습니다."),
   SQUAD_ALREADY_MEMBER(HttpStatus.CONFLICT, "이미 스쿼드에 속한 멤버입니다."),
   SQUAD_INVITATION_ALREADY_PENDING(HttpStatus.CONFLICT, "이미 초대 대기 중인 사용자입니다."),
+  SQUAD_LAST_LEADER_CANNOT_BE_CHANGED(HttpStatus.BAD_REQUEST, "마지막 LEADER는 역할을 변경하거나 제거할 수 없습니다."),
+  SQUAD_LEADER_CANNOT_REMOVE_SELF(HttpStatus.BAD_REQUEST, "LEADER는 자기 자신을 강퇴할 수 없습니다."),
   SQUAD_FORBIDDEN(HttpStatus.FORBIDDEN, "스쿼드를 관리할 권한이 없습니다."),
 
   WORKSPACE_NOT_FOUND(HttpStatus.NOT_FOUND, "워크스페이스를 찾을 수 없습니다."),
