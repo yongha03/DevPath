@@ -177,7 +177,6 @@ public class WorkspaceQuestionService {
       return;
     }
 
-    notificationEventService.notifySystem(
-        receiverId, "워크스페이스 질문에 답변이 등록되었습니다: " + question.getTitle());
+    notificationEventService.notifyWorkspaceAnswerCreated(receiverId, question.getTitle());
   }
 }

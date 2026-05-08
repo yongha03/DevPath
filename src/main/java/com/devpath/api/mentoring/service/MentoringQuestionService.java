@@ -174,7 +174,6 @@ public class MentoringQuestionService {
       return;
     }
 
-    notificationEventService.notifySystem(
-        receiverId, "멘토링 질문에 답변이 등록되었습니다: " + question.getTitle());
+    notificationEventService.notifyMentoringAnswerCreated(receiverId, question.getTitle());
   }
 }
