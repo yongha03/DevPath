@@ -134,6 +134,11 @@ public enum ErrorCode {
   QNA_WORKSPACE_QUESTION_NOT_FOUND(HttpStatus.NOT_FOUND, "워크스페이스 질문을 찾을 수 없습니다."),
   QNA_FORBIDDEN(HttpStatus.FORBIDDEN, "Q&A를 처리할 권한이 없습니다."),
   QNA_QUESTION_CLOSED(HttpStatus.BAD_REQUEST, "닫힌 질문에는 답변을 작성할 수 없습니다."),
+  QNA_ACCESS_DENIED(HttpStatus.FORBIDDEN, "질문에 접근할 권한이 없습니다."),
+  QNA_INVALID_STATUS(HttpStatus.BAD_REQUEST, "유효하지 않은 질문 상태입니다."),
+  QNA_ALREADY_ANSWERED(HttpStatus.BAD_REQUEST, "이미 답변 완료 처리된 질문입니다."),
+  QNA_NOT_MENTORING_MEMBER(HttpStatus.FORBIDDEN, "해당 멘토링 참여자가 아닙니다."),
+  QNA_NOT_WORKSPACE_MEMBER(HttpStatus.FORBIDDEN, "해당 워크스페이스 참여자가 아닙니다."),
 
   REALTIME_CANNOT_MESSAGE_SELF(HttpStatus.BAD_REQUEST, "자기 자신에게 메시지를 보낼 수 없습니다."),
 
