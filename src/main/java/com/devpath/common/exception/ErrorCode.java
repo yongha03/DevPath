@@ -220,6 +220,8 @@ public enum ErrorCode {
   SHOWCASE_NOT_LIKED(HttpStatus.CONFLICT, "좋아요하지 않은 쇼케이스입니다."),
   PORTFOLIO_NOT_FOUND(HttpStatus.NOT_FOUND, "포트폴리오를 찾을 수 없습니다."),
   PORTFOLIO_FORBIDDEN(HttpStatus.FORBIDDEN, "포트폴리오에 접근할 권한이 없습니다."),
+  PORTFOLIO_PDF_VERSION_NOT_FOUND(HttpStatus.NOT_FOUND, "포트폴리오 PDF 버전을 찾을 수 없습니다."),
+  PORTFOLIO_PDF_GENERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "포트폴리오 PDF 생성에 실패했습니다."),
 
   INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "C002", "서버 내부 오류가 발생했습니다.");
 
