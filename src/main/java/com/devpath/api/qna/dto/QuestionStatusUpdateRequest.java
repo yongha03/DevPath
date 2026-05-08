@@ -14,7 +14,10 @@ import lombok.NoArgsConstructor;
 public class QuestionStatusUpdateRequest {
 
   @NotNull(message = "질문 상태는 필수입니다.")
-  @Schema(description = "질문 상태", example = "ANSWERED")
+  @Schema(
+      description = "질문 상태",
+      example = "ANSWERED",
+      allowableValues = {"UNANSWERED", "ANSWERED"})
   private QnaStatus status;
 
   @Builder
