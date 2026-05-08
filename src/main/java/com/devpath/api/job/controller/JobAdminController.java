@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = SwaggerTag.JOB, description = "채용 공고 및 채용 데이터 수집 API")
+@Tag(name = SwaggerTag.JOB_ADMIN, description = "관리자 채용 공고 수집 및 등록 API")
 @Tag(name = SwaggerTag.COMPANY, description = "기업 프로필 및 기업 인증 API")
 @RestController
 @RequiredArgsConstructor
@@ -30,7 +30,7 @@ public class JobAdminController {
 
   @PostMapping("/api/admin/jobs/collect")
   @Operation(
-      tags = SwaggerTag.JOB,
+      tags = SwaggerTag.JOB_ADMIN,
       summary = "외부 채용 데이터 수집",
       description = "외부 채용 데이터 수집 요청을 처리하고 결과를 반환합니다.")
   public ResponseEntity<ApiResponse<JobPostingResponse.CollectResult>> collectJobs(
@@ -40,7 +40,7 @@ public class JobAdminController {
 
   @PostMapping("/api/admin/jobs")
   @Operation(
-      tags = SwaggerTag.JOB,
+      tags = SwaggerTag.JOB_ADMIN,
       summary = "채용 공고 등록",
       description = "관리자가 채용 공고를 등록합니다.")
   public ResponseEntity<ApiResponse<JobPostingResponse.Detail>> createJob(
@@ -68,7 +68,7 @@ public class JobAdminController {
 
   @PatchMapping("/api/admin/jobs/{jobId}")
   @Operation(
-      tags = SwaggerTag.JOB,
+      tags = SwaggerTag.JOB_ADMIN,
       summary = "채용 공고 수정",
       description = "관리자가 채용 공고 정보를 수정합니다.")
   public ResponseEntity<ApiResponse<JobPostingResponse.Detail>> updateJob(

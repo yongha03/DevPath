@@ -33,6 +33,7 @@ public final class SwaggerTag {
     public static final String AI_CODE_REVIEW = "AI Code Review";
     public static final String AI_DESIGN_REVIEW = "AI Design Review";
 
+    public static final String JOB_ADMIN = "Job Admin";
     public static final String JOB = "Job";
     public static final String COMPANY = "Company";
     public static final String JD_ANALYSIS = "JD Analysis";
