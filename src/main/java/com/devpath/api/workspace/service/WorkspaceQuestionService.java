@@ -142,7 +142,8 @@ public class WorkspaceQuestionService {
   }
 
   private List<AnswerResponse> getAnswerResponses(Long questionId) {
-    return answerRepository.findAllByQuestionIdAndIsDeletedFalseOrderByCreatedAtAsc(questionId)
+    return answerRepository
+        .findAllByQuestionIdAndIsDeletedFalseOrderByCreatedAtAsc(questionId)
         .stream()
         .map(AnswerResponse::from)
         .toList();

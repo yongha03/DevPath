@@ -10661,7 +10661,9 @@ WHERE u.email = 'learner@devpath.com'
 -- ============================================================
 -- 강의 목록 메뉴 기본 구성
 -- ============================================================
-WITH lecture_catalog_category_seed(category_key, label, title, icon_class, sort_order, is_active) AS (
+INSERT INTO lecture_catalog_categories (category_key, label, title, icon_class, sort_order, is_active)
+SELECT seed.category_key, seed.label, seed.title, seed.icon_class, seed.sort_order, seed.is_active
+FROM (
     VALUES
         ('all', '전체', '전체 강의', 'fas fa-th-large', 0, TRUE),
         ('dev', '개발', '개발 · 프로그래밍', 'fas fa-laptop-code', 1, TRUE),
@@ -10670,17 +10672,16 @@ WITH lecture_catalog_category_seed(category_key, label, title, icon_class, sort_
         ('infra', '인프라', '인프라 · 보안', 'fas fa-server', 4, TRUE),
         ('mobile', '모바일', '모바일 앱 개발', 'fas fa-mobile-alt', 5, TRUE),
         ('career', '커리어', '커리어 · 자기계발', 'fas fa-briefcase', 6, TRUE)
-)
-INSERT INTO lecture_catalog_categories (category_key, label, title, icon_class, sort_order, is_active)
-SELECT seed.category_key, seed.label, seed.title, seed.icon_class, seed.sort_order, seed.is_active
-FROM lecture_catalog_category_seed seed
+) AS seed(category_key, label, title, icon_class, sort_order, is_active)
 WHERE NOT EXISTS (
     SELECT 1
     FROM lecture_catalog_categories category
     WHERE category.category_key = seed.category_key
 );
 
-WITH lecture_catalog_mega_menu_seed(category_key, label, sort_order) AS (
+INSERT INTO lecture_catalog_mega_menu_items (category_id, label, sort_order)
+SELECT category.id, seed.label, seed.sort_order
+FROM (
     VALUES
         ('dev', '웹 개발 (Web)', 0),
         ('dev', '프론트엔드', 1),
@@ -10717,10 +10718,7 @@ WITH lecture_catalog_mega_menu_seed(category_key, label, sort_order) AS (
         ('career', 'UX / UI 디자인', 3),
         ('career', '비즈니스 스킬', 4),
         ('career', '개발자 글쓰기', 5)
-)
-INSERT INTO lecture_catalog_mega_menu_items (category_id, label, sort_order)
-SELECT category.id, seed.label, seed.sort_order
-FROM lecture_catalog_mega_menu_seed seed
+) AS seed(category_key, label, sort_order)
 JOIN lecture_catalog_categories category
     ON category.category_key = seed.category_key
 WHERE NOT EXISTS (
@@ -10730,7 +10728,9 @@ WHERE NOT EXISTS (
       AND item.label = seed.label
 );
 
-WITH lecture_catalog_group_seed(category_key, name, sort_order) AS (
+INSERT INTO lecture_catalog_groups (category_id, name, sort_order)
+SELECT category.id, seed.name, seed.sort_order
+FROM (
     VALUES
         ('all', '탐색 분야', 0),
         ('dev', '언어 (Language)', 0),
@@ -10756,10 +10756,7 @@ WITH lecture_catalog_group_seed(category_key, name, sort_order) AS (
         ('career', '기획/디자인', 1),
         ('career', '취업', 2),
         ('career', '오피스', 3)
-)
-INSERT INTO lecture_catalog_groups (category_id, name, sort_order)
-SELECT category.id, seed.name, seed.sort_order
-FROM lecture_catalog_group_seed seed
+) AS seed(category_key, name, sort_order)
 JOIN lecture_catalog_categories category
     ON category.category_key = seed.category_key
 WHERE NOT EXISTS (
@@ -10769,7 +10766,9 @@ WHERE NOT EXISTS (
       AND group_item.name = seed.name
 );
 
-WITH lecture_catalog_group_item_seed(category_key, group_name, item_name, linked_category_key, sort_order) AS (
+INSERT INTO lecture_catalog_group_items (group_id, name, linked_category_key, sort_order)
+SELECT group_item.id, seed.item_name, seed.linked_category_key, seed.sort_order
+FROM (
     VALUES
         ('all', '탐색 분야', '웹 개발', 'dev', 0),
         ('all', '탐색 분야', 'AI/머신러닝', 'ai', 1),
@@ -10884,10 +10883,7 @@ WITH lecture_catalog_group_item_seed(category_key, group_name, item_name, linked
         ('career', '오피스', '개발자 글쓰기', NULL, 0),
         ('career', '오피스', '커뮤니케이션', NULL, 1),
         ('career', '오피스', '문서화', NULL, 2)
-)
-INSERT INTO lecture_catalog_group_items (group_id, name, linked_category_key, sort_order)
-SELECT group_item.id, seed.item_name, seed.linked_category_key, seed.sort_order
-FROM lecture_catalog_group_item_seed seed
+) AS seed(category_key, group_name, item_name, linked_category_key, sort_order)
 JOIN lecture_catalog_categories category
     ON category.category_key = seed.category_key
 JOIN lecture_catalog_groups group_item
@@ -12039,11 +12035,14 @@ UPDATE lessons l
 SET video_url = '/samples/ocr-code-demo.mp4',
     video_asset_key = NULL,
     video_provider = NULL
-FROM course_sections cs
-JOIN courses c ON c.course_id = cs.course_id
-WHERE l.section_id = cs.section_id
-  AND c.title = '로드맵 실전: Git & 버전 관리'
-  AND l.lesson_type = 'VIDEO'
+WHERE l.lesson_type = 'VIDEO'
+  AND EXISTS (
+      SELECT 1
+      FROM course_sections cs
+      JOIN courses c ON c.course_id = cs.course_id
+      WHERE cs.section_id = l.section_id
+        AND c.title = '로드맵 실전: Git & 버전 관리'
+  )
   AND (
       COALESCE(l.video_url, '') <> '/samples/ocr-code-demo.mp4'
       OR l.video_asset_key IS NOT NULL
@@ -12133,16 +12132,27 @@ WHERE c.title = '로드맵 실전: Git & 버전 관리'
   );
 
 UPDATE lessons l
-SET quiz_node_id = rn.node_id
-FROM course_sections cs
-JOIN courses c ON c.course_id = cs.course_id
-JOIN roadmap_nodes rn ON rn.title = '[ROADMAP COURSE] 로드맵 실전: Git & 버전 관리 - 1 QUIZ'
-WHERE l.section_id = cs.section_id
-  AND c.title = '로드맵 실전: Git & 버전 관리'
-  AND cs.sort_order = 1
-  AND l.sort_order = 3
+SET quiz_node_id = (
+    SELECT rn.node_id
+    FROM course_sections cs
+    JOIN courses c ON c.course_id = cs.course_id
+    JOIN roadmap_nodes rn ON rn.title = '[ROADMAP COURSE] 로드맵 실전: Git & 버전 관리 - 1 QUIZ'
+    WHERE cs.section_id = l.section_id
+      AND c.title = '로드맵 실전: Git & 버전 관리'
+      AND cs.sort_order = 1
+)
+WHERE l.sort_order = 3
   AND l.title = '섹션 마무리 퀴즈: Git 협업 흐름 점검'
-  AND l.quiz_node_id IS NULL;
+  AND l.quiz_node_id IS NULL
+  AND EXISTS (
+      SELECT 1
+      FROM course_sections cs
+      JOIN courses c ON c.course_id = cs.course_id
+      JOIN roadmap_nodes rn ON rn.title = '[ROADMAP COURSE] 로드맵 실전: Git & 버전 관리 - 1 QUIZ'
+      WHERE cs.section_id = l.section_id
+        AND c.title = '로드맵 실전: Git & 버전 관리'
+        AND cs.sort_order = 1
+  );
 
 INSERT INTO lessons (
     section_id, title, description, lesson_type, video_url, video_asset_key, video_provider,
@@ -12175,16 +12185,27 @@ WHERE c.title = '로드맵 실전: Git & 버전 관리'
   );
 
 UPDATE lessons l
-SET assignment_node_id = rn.node_id
-FROM course_sections cs
-JOIN courses c ON c.course_id = cs.course_id
-JOIN roadmap_nodes rn ON rn.title = '[ROADMAP COURSE] 로드맵 실전: Git & 버전 관리 - 2 ASSIGNMENT'
-WHERE l.section_id = cs.section_id
-  AND c.title = '로드맵 실전: Git & 버전 관리'
-  AND cs.sort_order = 2
-  AND l.sort_order = 3
+SET assignment_node_id = (
+    SELECT rn.node_id
+    FROM course_sections cs
+    JOIN courses c ON c.course_id = cs.course_id
+    JOIN roadmap_nodes rn ON rn.title = '[ROADMAP COURSE] 로드맵 실전: Git & 버전 관리 - 2 ASSIGNMENT'
+    WHERE cs.section_id = l.section_id
+      AND c.title = '로드맵 실전: Git & 버전 관리'
+      AND cs.sort_order = 2
+)
+WHERE l.sort_order = 3
   AND l.title = '실습 과제: Git 브랜치 전략과 PR 회고'
-  AND l.assignment_node_id IS NULL;
+  AND l.assignment_node_id IS NULL
+  AND EXISTS (
+      SELECT 1
+      FROM course_sections cs
+      JOIN courses c ON c.course_id = cs.course_id
+      JOIN roadmap_nodes rn ON rn.title = '[ROADMAP COURSE] 로드맵 실전: Git & 버전 관리 - 2 ASSIGNMENT'
+      WHERE cs.section_id = l.section_id
+        AND c.title = '로드맵 실전: Git & 버전 관리'
+        AND cs.sort_order = 2
+  );
 
 INSERT INTO quizzes (
     node_id, title, description, quiz_type, total_score, pass_score,
@@ -13422,16 +13443,23 @@ WHERE NOT EXISTS (
 UPDATE qna_questions q
 SET lesson_id = first_lesson.lesson_id
 FROM (
-    SELECT DISTINCT ON (c.course_id)
-        c.course_id,
-        l.lesson_id
-    FROM courses c
-    JOIN course_sections cs ON cs.course_id = c.course_id
-    JOIN lessons l ON l.section_id = cs.section_id
-    WHERE COALESCE(cs.is_published, TRUE) = TRUE
-      AND COALESCE(l.is_published, TRUE) = TRUE
-      AND l.lesson_type = 'VIDEO'
-    ORDER BY c.course_id, cs.sort_order, l.sort_order, l.lesson_id
+    SELECT ranked.course_id, ranked.lesson_id
+    FROM (
+        SELECT
+            c.course_id,
+            l.lesson_id,
+            ROW_NUMBER() OVER (
+                PARTITION BY c.course_id
+                ORDER BY cs.sort_order, l.sort_order, l.lesson_id
+            ) AS row_number
+        FROM courses c
+        JOIN course_sections cs ON cs.course_id = c.course_id
+        JOIN lessons l ON l.section_id = cs.section_id
+        WHERE COALESCE(cs.is_published, TRUE) = TRUE
+          AND COALESCE(l.is_published, TRUE) = TRUE
+          AND l.lesson_type = 'VIDEO'
+    ) ranked
+    WHERE ranked.row_number = 1
 ) first_lesson
 WHERE q.course_id = first_lesson.course_id
   AND q.lesson_id IS NULL
@@ -13701,7 +13729,16 @@ WHERE reporter.email = 'learner3@devpath.com'
 -- ============================================================
 -- 로드맵 허브 기본 구성
 -- ============================================================
-WITH roadmap_hub_official_seed(title) AS (
+INSERT INTO roadmaps (creator_id, title, description, is_official, is_public, is_deleted, created_at)
+SELECT
+    admin_user.user_id,
+    seed.title,
+    CONCAT(seed.title, ' 학습 흐름을 담은 DevPath 공식 로드맵입니다.'),
+    TRUE,
+    TRUE,
+    FALSE,
+    CURRENT_TIMESTAMP
+FROM (
     VALUES
         ('Full Stack'),
         ('DevOps'),
@@ -13780,17 +13817,7 @@ WITH roadmap_hub_official_seed(title) AS (
         ('Vibe Coding'),
         ('Scala'),
         ('OpenClaw')
-)
-INSERT INTO roadmaps (creator_id, title, description, is_official, is_public, is_deleted, created_at)
-SELECT
-    admin_user.user_id,
-    seed.title,
-    CONCAT(seed.title, ' 학습 흐름을 담은 DevPath 공식 로드맵입니다.'),
-    TRUE,
-    TRUE,
-    FALSE,
-    CURRENT_TIMESTAMP
-FROM roadmap_hub_official_seed seed
+) AS seed(title)
 JOIN users admin_user ON admin_user.email = 'admin@devpath.com'
 WHERE NOT EXISTS (
     SELECT 1
@@ -13808,14 +13835,13 @@ WHERE section_id IN (
 DELETE FROM roadmap_hub_sections
 WHERE section_key IN ('project-ideas', 'best-practices');
 
-WITH roadmap_hub_section_seed(section_key, title, description, layout_type, sort_order, is_active) AS (
+INSERT INTO roadmap_hub_sections (section_key, title, description, layout_type, sort_order, is_active)
+SELECT seed.section_key, seed.title, seed.description, seed.layout_type, seed.sort_order, seed.is_active
+FROM (
     VALUES
         ('role-based', '직무별 학습 로드맵', '직무별 학습 로드맵 허브 구성입니다.', 'CARD_GRID', 0, TRUE),
         ('skill-based', '기술별 학습 로드맵', '기술별 학습 로드맵 허브 구성입니다.', 'CHIP_GRID', 1, TRUE)
-)
-INSERT INTO roadmap_hub_sections (section_key, title, description, layout_type, sort_order, is_active)
-SELECT seed.section_key, seed.title, seed.description, seed.layout_type, seed.sort_order, seed.is_active
-FROM roadmap_hub_section_seed seed
+) AS seed(section_key, title, description, layout_type, sort_order, is_active)
 WHERE NOT EXISTS (
     SELECT 1
     FROM roadmap_hub_sections section_item
@@ -13836,16 +13862,26 @@ SET
     END
 WHERE section_key IN ('role-based', 'skill-based');
 
-WITH roadmap_hub_item_seed(
-    section_key,
-    item_title,
+INSERT INTO roadmap_hub_items (
+    section_id,
+    title,
     subtitle,
     icon_class,
-    linked_roadmap_title,
-    is_featured,
+    linked_roadmap_id,
     sort_order,
-    is_active
-) AS (
+    is_active,
+    is_featured
+)
+SELECT
+    section_item.id,
+    seed.item_title,
+    seed.subtitle,
+    seed.icon_class,
+    roadmap.roadmap_id,
+    seed.sort_order,
+    seed.is_active,
+    seed.is_featured
+FROM (
     VALUES
         ('role-based', '프론트엔드', 'Frontend', 'fas fa-desktop', 'Frontend Entry Roadmap', FALSE, 0, TRUE),
         ('role-based', '백엔드', 'Backend', 'fas fa-server', 'Backend Master Roadmap', TRUE, 1, TRUE),
@@ -13926,27 +13962,16 @@ WITH roadmap_hub_item_seed(
         ('skill-based', 'Vibe Coding', NULL, 'fas fa-star', 'Vibe Coding', FALSE, 50, TRUE),
         ('skill-based', 'Scala', NULL, 'fas fa-layer-group', 'Scala', FALSE, 51, TRUE),
         ('skill-based', 'OpenClaw', NULL, 'devpath-tech-icon devpath-icon-openclaw', 'OpenClaw', FALSE, 52, TRUE)
-)
-INSERT INTO roadmap_hub_items (
-    section_id,
-    title,
+) AS seed(
+    section_key,
+    item_title,
     subtitle,
     icon_class,
-    linked_roadmap_id,
+    linked_roadmap_title,
+    is_featured,
     sort_order,
-    is_active,
-    is_featured
+    is_active
 )
-SELECT
-    section_item.id,
-    seed.item_title,
-    seed.subtitle,
-    seed.icon_class,
-    roadmap.roadmap_id,
-    seed.sort_order,
-    seed.is_active,
-    seed.is_featured
-FROM roadmap_hub_item_seed seed
 JOIN roadmap_hub_sections section_item
     ON section_item.section_key = seed.section_key
 LEFT JOIN roadmaps roadmap
@@ -13963,8 +13988,15 @@ WHERE NOT EXISTS (
       )
 );
 
-WITH roadmap_hub_skill_icon_seed(item_title, icon_class) AS (
-    VALUES
+DROP TABLE IF EXISTS tmp_roadmap_hub_skill_icon_seed;
+
+CREATE TEMPORARY TABLE tmp_roadmap_hub_skill_icon_seed (
+    item_title VARCHAR(255) NOT NULL,
+    icon_class VARCHAR(255) NOT NULL
+);
+
+INSERT INTO tmp_roadmap_hub_skill_icon_seed (item_title, icon_class)
+VALUES
         ('SQL', 'fas fa-database'),
         ('Computer Science', 'fas fa-microchip'),
         ('React', 'fab fa-react'),
@@ -14017,18 +14049,38 @@ WITH roadmap_hub_skill_icon_seed(item_title, icon_class) AS (
         ('Claude Code', 'devpath-tech-icon devpath-icon-claude'),
         ('Vibe Coding', 'fas fa-star'),
         ('Scala', 'fas fa-layer-group'),
-        ('OpenClaw', 'devpath-tech-icon devpath-icon-openclaw')
-)
-UPDATE roadmap_hub_items item
-SET icon_class = seed.icon_class
-FROM roadmap_hub_skill_icon_seed seed
-JOIN roadmap_hub_sections section_item
-    ON section_item.section_key = 'skill-based'
-WHERE item.section_id = section_item.id
-  AND item.title = seed.item_title;
+        ('OpenClaw', 'devpath-tech-icon devpath-icon-openclaw');
 
-WITH roadmap_hub_item_color_seed(section_key, item_title, subtitle, icon_color) AS (
-    VALUES
+UPDATE roadmap_hub_items item
+SET icon_class = (
+    SELECT seed.icon_class
+    FROM tmp_roadmap_hub_skill_icon_seed seed
+    WHERE seed.item_title = item.title
+)
+WHERE item.section_id IN (
+    SELECT section_item.id
+    FROM roadmap_hub_sections section_item
+    WHERE section_item.section_key = 'skill-based'
+)
+  AND EXISTS (
+      SELECT 1
+      FROM tmp_roadmap_hub_skill_icon_seed seed
+      WHERE seed.item_title = item.title
+  );
+
+DROP TABLE IF EXISTS tmp_roadmap_hub_skill_icon_seed;
+
+DROP TABLE IF EXISTS tmp_roadmap_hub_item_color_seed;
+
+CREATE TEMPORARY TABLE tmp_roadmap_hub_item_color_seed (
+    section_key VARCHAR(100) NOT NULL,
+    item_title VARCHAR(255),
+    subtitle VARCHAR(255),
+    icon_color VARCHAR(20) NOT NULL
+);
+
+INSERT INTO tmp_roadmap_hub_item_color_seed (section_key, item_title, subtitle, icon_color)
+VALUES
         ('role-based', NULL, 'Frontend', '#38BDF8'),
         ('role-based', NULL, 'Backend', '#00C471'),
         ('role-based', NULL, 'Full Stack', '#8B5CF6'),
@@ -14107,18 +14159,33 @@ WITH roadmap_hub_item_color_seed(section_key, item_title, subtitle, icon_color) 
         ('skill-based', 'Claude Code', NULL, '#D97757'),
         ('skill-based', 'Vibe Coding', NULL, '#F59E0B'),
         ('skill-based', 'Scala', NULL, '#DC322F'),
-        ('skill-based', 'OpenClaw', NULL, '#0F172A')
-)
+        ('skill-based', 'OpenClaw', NULL, '#0F172A');
+
 UPDATE roadmap_hub_items item
-SET icon_color = seed.icon_color
-FROM roadmap_hub_item_color_seed seed
-JOIN roadmap_hub_sections section_item
-    ON section_item.section_key = seed.section_key
-WHERE item.section_id = section_item.id
-  AND (
-      (seed.item_title IS NOT NULL AND item.title = seed.item_title)
-      OR (seed.subtitle IS NOT NULL AND item.subtitle = seed.subtitle)
-  );
+SET icon_color = (
+    SELECT seed.icon_color
+    FROM tmp_roadmap_hub_item_color_seed seed
+    JOIN roadmap_hub_sections section_item
+        ON section_item.section_key = seed.section_key
+    WHERE item.section_id = section_item.id
+      AND (
+          (seed.item_title IS NOT NULL AND item.title = seed.item_title)
+          OR (seed.subtitle IS NOT NULL AND item.subtitle = seed.subtitle)
+      )
+)
+WHERE EXISTS (
+    SELECT 1
+    FROM tmp_roadmap_hub_item_color_seed seed
+    JOIN roadmap_hub_sections section_item
+        ON section_item.section_key = seed.section_key
+    WHERE item.section_id = section_item.id
+      AND (
+          (seed.item_title IS NOT NULL AND item.title = seed.item_title)
+          OR (seed.subtitle IS NOT NULL AND item.subtitle = seed.subtitle)
+      )
+);
+
+DROP TABLE IF EXISTS tmp_roadmap_hub_item_color_seed;
 
 UPDATE roadmap_hub_items item
 SET
@@ -15124,7 +15191,7 @@ SELECT
     '1주차 PR 리뷰 미션',
     '멘토링 공고, 신청, PR 제출 흐름을 Swagger로 검증하고 PR 링크를 제출합니다.',
     'OPEN',
-    NOW() + INTERVAL '7 days',
+    NOW() + INTERVAL '7' DAY,
     FALSE,
     NOW(),
     NOW()
@@ -15416,7 +15483,7 @@ SELECT
     'WEEK9 B 멘토링 회의',
     'https://meet.jit.si/devpath-week9-b-mentoring',
     'https://storage.devpath.local/recordings/week9-b-meeting.mp4',
-    NOW() + INTERVAL '1 day',
+    NOW() + INTERVAL '1' DAY,
     NOW(),
     NULL,
     'OPEN',
@@ -16730,7 +16797,7 @@ SELECT
     1,
     'B 1주차 PR 리뷰 미션',
     '멘토링 Q&A, PR 제출, 코드 리뷰, 미션 Pass/Reject 흐름을 검증합니다.',
-    NOW() + INTERVAL '7 days',
+    NOW() + INTERVAL '7' DAY,
     'OPEN',
     FALSE,
     NOW(),
@@ -16895,7 +16962,7 @@ SELECT
     'B Swagger 멘토링 회의방',
     'https://meet.devpath.local/b-swagger-mentoring',
     NULL,
-    NOW() + INTERVAL '1 day',
+    NOW() + INTERVAL '1' DAY,
     NOW(),
     NULL,
     'OPEN',
@@ -17184,6 +17251,32 @@ WHERE learner.email = 'b-learner-one@devpath.com'
       WHERE cpc.career_profile_id = cp.career_profile_id
         AND cpc.proof_card_id = 9001
         AND cpc.is_deleted = FALSE
+  );
+
+-- ------------------------------------------------------------
+-- B-9a. Evaluation Swagger compatibility roadmap node
+-- ------------------------------------------------------------
+
+INSERT INTO roadmap_nodes (
+    roadmap_id,
+    title,
+    content,
+    node_type,
+    sort_order
+)
+SELECT
+    r.roadmap_id,
+    'Security and JWT',
+    'Build authentication and authorization flows with Spring Security and JWT.',
+    'CONCEPT',
+    COALESCE((SELECT MAX(rn.sort_order) FROM roadmap_nodes rn WHERE rn.roadmap_id = r.roadmap_id), 0) + 1
+FROM roadmaps r
+WHERE r.title = 'Backend Master Roadmap'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM roadmap_nodes rn
+      WHERE rn.roadmap_id = r.roadmap_id
+        AND rn.title = 'Security and JWT'
   );
 
 -- ------------------------------------------------------------

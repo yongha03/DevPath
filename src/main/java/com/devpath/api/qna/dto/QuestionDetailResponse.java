@@ -80,7 +80,8 @@ public class QuestionDetailResponse {
         .id(question.getId())
         .authorId(question.getUser().getId())
         .authorName(question.getUser().getName())
-        .questionScope(question.getQuestionScope() == null ? null : question.getQuestionScope().name())
+        .questionScope(
+            question.getQuestionScope() == null ? null : question.getQuestionScope().name())
         .mentoringId(question.getMentoringId())
         .workspaceId(question.getWorkspaceId())
         .courseId(question.getCourseId())

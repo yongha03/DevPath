@@ -93,7 +93,9 @@ public class WorkspaceQuestionController {
   }
 
   @PostMapping("/workspace-questions/{questionId}/answers")
-  @Operation(summary = "워크스페이스 질문 답변 작성", description = "워크스페이스 전용 질문에 답변을 작성하고 질문 작성자에게 알림을 발송합니다.")
+  @Operation(
+      summary = "워크스페이스 질문 답변 작성",
+      description = "워크스페이스 전용 질문에 답변을 작성하고 질문 작성자에게 알림을 발송합니다.")
   public ResponseEntity<ApiResponse<AnswerResponse>> createAnswer(
       @Parameter(hidden = true) @AuthenticationPrincipal Long authenticatedUserId,
       @Parameter(description = SwaggerDocConstants.DUMMY_USER_ID_DESCRIPTION, example = "3")

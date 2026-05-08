@@ -4,7 +4,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "질문 소속 범위")
 public enum QuestionScope {
-
   @Schema(description = "강의 Q&A")
   COURSE,
 
