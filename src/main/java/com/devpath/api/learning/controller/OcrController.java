@@ -8,7 +8,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -43,9 +42,9 @@ public class OcrController {
 
   @Operation(
       summary = "Base64 이미지 즉시 OCR",
-      description = "Claude Vision, Python OCR 서버 순서로 시도하고 DB 저장 없이 결과만 반환합니다.")
+      description = "Python OCR 서버를 사용하고 DB 저장 없이 결과만 반환합니다.")
   @PostMapping("/ocr/extract")
-  public ResponseEntity<ApiResponse<Map<String, Object>>> extractFromBase64(
+  public ResponseEntity<ApiResponse<OcrResponse.ImmediateExtract>> extractFromBase64(
       @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
       @Valid @RequestBody OcrRequest.ExtractBase64 request) {
     return ResponseEntity.ok(ApiResponse.ok(ocrService.extractTextFromBase64(userId, request)));

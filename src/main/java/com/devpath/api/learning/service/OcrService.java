@@ -4,7 +4,6 @@ import com.devpath.api.learning.dto.OcrRequest;
 import com.devpath.api.learning.dto.OcrResponse;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
-import com.devpath.common.provider.ClaudeOcrProvider;
 import com.devpath.common.provider.OcrProvider;
 import com.devpath.domain.course.entity.Lesson;
 import com.devpath.domain.course.repository.LessonRepository;
@@ -14,8 +13,6 @@ import com.devpath.domain.user.entity.User;
 import com.devpath.domain.user.repository.UserRepository;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
-import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -28,7 +25,6 @@ public class OcrService {
   private final OcrResultRepository ocrResultRepository;
   private final LessonRepository lessonRepository;
   private final UserRepository userRepository;
-  private final ClaudeOcrProvider claudeOcrProvider;
   private final OcrProvider ocrProvider;
 
   @Value("${ocr.allow-source-text-fallback:true}")
@@ -73,20 +69,15 @@ public class OcrService {
     return OcrResponse.Detail.from(saved);
   }
 
-  public Map<String, Object> extractTextFromBase64(
+  public OcrResponse.ImmediateExtract extractTextFromBase64(
       Long userId, OcrRequest.ExtractBase64 request) {
     if (userId == null) {
       throw new CustomException(ErrorCode.UNAUTHORIZED);
     }
 
     String base64 = request.getImageBase64();
-    Optional<String> claudeText = claudeOcrProvider.extractText(base64);
-    if (claudeText.isPresent()) {
-      return buildImmediateOcrResponse(claudeText.get(), 1.0D, List.of(), "claude");
-    }
-
     try {
-      OcrProvider.OcrResult result = ocrProvider.extractText(base64);
+      OcrProvider.OcrResult result = ocrProvider.extractTextWithPreprocessing(base64);
       return buildImmediateOcrResponse(
           result.getText() != null ? result.getText() : "",
           result.getConfidence() != null ? result.getConfidence() : 0.0D,
@@ -154,9 +145,14 @@ public class OcrService {
         providerResult.getConfidence() == null ? 0.0D : providerResult.getConfidence());
   }
 
-  private Map<String, Object> buildImmediateOcrResponse(
+  private OcrResponse.ImmediateExtract buildImmediateOcrResponse(
       String text, Double confidence, List<String> lines, String engine) {
-    return Map.of("text", text, "confidence", confidence, "lines", lines, "engine", engine);
+    return OcrResponse.ImmediateExtract.builder()
+        .text(text)
+        .confidence(confidence)
+        .lines(lines)
+        .engine(engine)
+        .build();
   }
 
   private boolean canUseHintFallback(OcrRequest.Extract request) {
