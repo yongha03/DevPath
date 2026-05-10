@@ -282,7 +282,7 @@ export default function LoungeDashboardApp() {
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
         <header className="h-16 bg-white border-b border-gray-200 flex items-center px-8 sticky top-0 z-30 shrink-0 shadow-sm">
           <div className="flex-1"></div>
-          <nav className="flex items-center gap-10 text-sm font-bold text-gray-500">
+          <nav className="-translate-x-[20px] flex items-center gap-10 text-sm font-bold text-gray-500">
             {headerLinks.map((item) => (
               <a
                 key={item.href}
