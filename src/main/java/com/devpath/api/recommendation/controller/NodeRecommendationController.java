@@ -3,11 +3,9 @@ package com.devpath.api.recommendation.controller;
 import com.devpath.api.recommendation.dto.NodeRecommendationDto;
 import com.devpath.api.recommendation.service.NodeRecommendationService;
 import com.devpath.common.response.ApiResponse;
-import com.devpath.domain.roadmap.entity.NodeRecommendation;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -28,25 +26,18 @@ public class NodeRecommendationController {
   private final NodeRecommendationService nodeRecommendationService;
 
   @PostMapping("/roadmaps/{roadmapId}/recommendations/init")
-  @Operation(
-      summary = "기존 추천 후보 생성",
-      description = "로드맵 기준 기존 추천 후보를 생성합니다. Recommendation Change API와 별도 축으로 유지합니다.")
+  @Operation(summary = "기존 추천 후보 생성", description = "로드맵 기준 기존 추천 후보를 생성합니다.")
   public ResponseEntity<ApiResponse<NodeRecommendationDto.GenerateRecommendationsResponse>>
       generateRecommendations(
           @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
           @Parameter(description = "로드맵 ID") @PathVariable Long roadmapId) {
-    List<NodeRecommendation> recommendations =
-        nodeRecommendationService.generateRecommendations(userId, roadmapId);
-    NodeRecommendationDto.GenerateRecommendationsResponse response =
-        NodeRecommendationDto.GenerateRecommendationsResponse.from(roadmapId, recommendations);
-
-    return ResponseEntity.ok(ApiResponse.ok(response));
+    return ResponseEntity.ok(
+        ApiResponse.ok(
+            nodeRecommendationService.generateRecommendationResponse(userId, roadmapId)));
   }
 
   @GetMapping("/roadmaps/{roadmapId}/recommendations")
-  @Operation(
-      summary = "기존 추천 목록 조회",
-      description = "로드맵 기준 기존 추천 목록을 조회합니다. Recommendation Change 목록과 역할을 분리합니다.")
+  @Operation(summary = "기존 추천 목록 조회", description = "로드맵 기준 기존 추천 목록을 조회합니다.")
   public ResponseEntity<ApiResponse<NodeRecommendationDto.RoadmapRecommendationsResponse>>
       getRecommendations(
           @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
@@ -64,13 +55,9 @@ public class NodeRecommendationController {
       acceptRecommendation(
           @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
           @Parameter(description = "추천 ID") @PathVariable Long recommendationId) {
-    NodeRecommendation recommendation =
-        nodeRecommendationService.acceptRecommendation(userId, recommendationId);
-
     return ResponseEntity.ok(
         ApiResponse.ok(
-            NodeRecommendationDto.ProcessRecommendationResponse.from(
-                recommendation, "추천 노드를 내 로드맵에 추가했습니다.")));
+            nodeRecommendationService.acceptRecommendationResponse(userId, recommendationId)));
   }
 
   @PatchMapping("/recommendations/{recommendationId}/reject")
@@ -79,13 +66,9 @@ public class NodeRecommendationController {
       rejectRecommendation(
           @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
           @Parameter(description = "추천 ID") @PathVariable Long recommendationId) {
-    NodeRecommendation recommendation =
-        nodeRecommendationService.rejectRecommendation(userId, recommendationId);
-
     return ResponseEntity.ok(
         ApiResponse.ok(
-            NodeRecommendationDto.ProcessRecommendationResponse.from(
-                recommendation, "추천을 거절했습니다.")));
+            nodeRecommendationService.rejectRecommendationResponse(userId, recommendationId)));
   }
 
   @PatchMapping("/recommendations/{recommendationId}/expire")
@@ -94,12 +77,8 @@ public class NodeRecommendationController {
       expireRecommendation(
           @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
           @Parameter(description = "추천 ID") @PathVariable Long recommendationId) {
-    NodeRecommendation recommendation =
-        nodeRecommendationService.expireRecommendation(userId, recommendationId);
-
     return ResponseEntity.ok(
         ApiResponse.ok(
-            NodeRecommendationDto.ProcessRecommendationResponse.from(
-                recommendation, "추천을 만료 처리했습니다.")));
+            nodeRecommendationService.expireRecommendationResponse(userId, recommendationId)));
   }
 }

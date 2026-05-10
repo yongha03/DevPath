@@ -228,6 +228,13 @@ public class NodeRecommendationService {
     return recommendations;
   }
 
+  @Transactional
+  public NodeRecommendationDto.GenerateRecommendationsResponse generateRecommendationResponse(
+      Long userId, Long roadmapId) {
+    return NodeRecommendationDto.GenerateRecommendationsResponse.from(
+        roadmapId, generateRecommendations(userId, roadmapId));
+  }
+
   public List<NodeRecommendation> getRecommendations(Long userId, Long roadmapId) {
     getUser(userId);
     getRoadmap(roadmapId);
@@ -326,6 +333,13 @@ public class NodeRecommendationService {
   }
 
   @Transactional
+  public NodeRecommendationDto.ProcessRecommendationResponse acceptRecommendationResponse(
+      Long userId, Long recommendationId) {
+    return NodeRecommendationDto.ProcessRecommendationResponse.from(
+        acceptRecommendation(userId, recommendationId), "추천 노드를 내 로드맵에 추가했습니다.");
+  }
+
+  @Transactional
   public NodeRecommendation rejectRecommendation(Long userId, Long recommendationId) {
     getUser(userId);
     NodeRecommendation recommendation = getOwnedRecommendation(userId, recommendationId);
@@ -353,6 +367,13 @@ public class NodeRecommendationService {
   }
 
   @Transactional
+  public NodeRecommendationDto.ProcessRecommendationResponse rejectRecommendationResponse(
+      Long userId, Long recommendationId) {
+    return NodeRecommendationDto.ProcessRecommendationResponse.from(
+        rejectRecommendation(userId, recommendationId), "추천을 거절했습니다.");
+  }
+
+  @Transactional
   public NodeRecommendation expireRecommendation(Long userId, Long recommendationId) {
     getUser(userId);
     NodeRecommendation recommendation = getOwnedRecommendation(userId, recommendationId);
@@ -370,6 +391,13 @@ public class NodeRecommendationService {
         "학습자가 추천을 수동 만료 처리했습니다.");
 
     return recommendation;
+  }
+
+  @Transactional
+  public NodeRecommendationDto.ProcessRecommendationResponse expireRecommendationResponse(
+      Long userId, Long recommendationId) {
+    return NodeRecommendationDto.ProcessRecommendationResponse.from(
+        expireRecommendation(userId, recommendationId), "추천을 만료 처리했습니다.");
   }
 
   @Transactional
