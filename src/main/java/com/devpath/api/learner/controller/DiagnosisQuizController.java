@@ -3,8 +3,6 @@ package com.devpath.api.learner.controller;
 import com.devpath.api.learner.dto.DiagnosisQuizDto;
 import com.devpath.api.learner.service.DiagnosisQuizService;
 import com.devpath.common.response.ApiResponse;
-import com.devpath.domain.roadmap.entity.DiagnosisQuiz;
-import com.devpath.domain.roadmap.entity.DiagnosisResult;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -30,10 +28,8 @@ public class DiagnosisQuizController {
       @RequestBody DiagnosisQuizDto.CreateQuizRequest request,
       @Parameter(hidden = true) @AuthenticationPrincipal Long userId) {
 
-    DiagnosisQuiz quiz =
+    DiagnosisQuizDto.QuizResponse response =
         diagnosisQuizService.createDiagnosisQuiz(userId, roadmapId, request.getDifficulty());
-
-    DiagnosisQuizDto.QuizResponse response = DiagnosisQuizDto.QuizResponse.from(quiz);
 
     return ResponseEntity.ok(ApiResponse.ok(response));
   }
@@ -46,11 +42,9 @@ public class DiagnosisQuizController {
       @RequestBody DiagnosisQuizDto.SubmitAnswerRequest request,
       @Parameter(hidden = true) @AuthenticationPrincipal Long userId) {
 
-    DiagnosisResult result =
+    DiagnosisQuizDto.QuizResultResponse response =
         diagnosisQuizService.submitQuizAnswer(
             userId, quizId, request.getClearedNodeId(), request.getAnswers());
-
-    DiagnosisQuizDto.QuizResultResponse response = DiagnosisQuizDto.QuizResultResponse.from(result);
 
     return ResponseEntity.ok(ApiResponse.ok(response));
   }
@@ -61,9 +55,8 @@ public class DiagnosisQuizController {
   public ResponseEntity<ApiResponse<DiagnosisQuizDto.QuizResultResponse>> getDiagnosisResult(
       @PathVariable Long resultId, @Parameter(hidden = true) @AuthenticationPrincipal Long userId) {
 
-    DiagnosisResult result = diagnosisQuizService.getDiagnosisResult(userId, resultId);
-
-    DiagnosisQuizDto.QuizResultResponse response = DiagnosisQuizDto.QuizResultResponse.from(result);
+    DiagnosisQuizDto.QuizResultResponse response =
+        diagnosisQuizService.getDiagnosisResult(userId, resultId);
 
     return ResponseEntity.ok(ApiResponse.ok(response));
   }
@@ -89,9 +82,8 @@ public class DiagnosisQuizController {
   public ResponseEntity<ApiResponse<DiagnosisQuizDto.QuizResultResponse>> getLatestDiagnosisResult(
       @PathVariable Long roadmapId, @Parameter(hidden = true) @AuthenticationPrincipal Long userId) {
 
-    DiagnosisResult result = diagnosisQuizService.getLatestDiagnosisResult(userId, roadmapId);
-
-    DiagnosisQuizDto.QuizResultResponse response = DiagnosisQuizDto.QuizResultResponse.from(result);
+    DiagnosisQuizDto.QuizResultResponse response =
+        diagnosisQuizService.getLatestDiagnosisResult(userId, roadmapId);
 
     return ResponseEntity.ok(ApiResponse.ok(response));
   }
