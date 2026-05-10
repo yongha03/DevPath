@@ -54,6 +54,7 @@ export default defineConfig({
         settings: resolve(__dirname, 'settings.html'),
         learningLogGallery: resolve(__dirname, 'learning-log-gallery.html'),
         myRoadmap: resolve(__dirname, 'my-roadmap.html'),
+        loungeDashboard: resolve(__dirname, 'lounge-dashboard.html'),
       },
     },
   },
