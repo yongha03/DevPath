@@ -1,6 +1,6 @@
 ﻿server:
-  # 서버 포트 (기본 8082, SERVER_PORT로 덮어씀)
-  port: ${SERVER_PORT:8082}
+  # 서버 포트 (기본 8083, SERVER_PORT로 덮어씀)
+  port: ${SERVER_PORT:8083}
   # 프록시 헤더 사용
   forward-headers-strategy: framework
 

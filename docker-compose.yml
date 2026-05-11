@@ -25,7 +25,7 @@ services:
     command: sh /app/scripts/frontend-dev.sh
     environment:
       CHOKIDAR_USEPOLLING: "true"
-      VITE_BACKEND_TARGET: "http://host.docker.internal:8082"
+      VITE_BACKEND_TARGET: "http://host.docker.internal:8083"
     volumes:
       - ./frontend:/app
       - frontend_node_modules:/app/node_modules
