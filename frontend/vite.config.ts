@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 
 const backendTarget =
-  process.env.VITE_BACKEND_TARGET?.trim() || 'http://localhost:8082'
+  process.env.VITE_BACKEND_TARGET?.trim() || 'http://localhost:8083'
 
 const proxyToBackend = {
   target: backendTarget,
@@ -55,6 +55,7 @@ export default defineConfig({
         learningLogGallery: resolve(__dirname, 'learning-log-gallery.html'),
         myRoadmap: resolve(__dirname, 'my-roadmap.html'),
         loungeDashboard: resolve(__dirname, 'lounge-dashboard.html'),
+        communityLounge: resolve(__dirname, 'community-lounge.html'),
       },
     },
   },
