@@ -147,8 +147,8 @@ const STATIC_LOUNGE_HTML = String.raw`<!DOCTYPE html>
                 <div class="w-px h-6 bg-gray-200 mx-4"></div>
 
                 <div class="flex items-center gap-2 cursor-pointer">
-                    <span class="text-sm font-bold text-gray-700">나(사용자)</span>
-                    <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=MyUser" class="w-9 h-9 rounded-full border border-gray-200 shadow-sm" />
+                    <span id="shellUserName" class="text-sm font-bold text-gray-700">나(사용자)</span>
+                    <img id="shellUserImage" src="https://api.dicebear.com/7.x/avataaars/svg?seed=MyUser" class="w-9 h-9 rounded-full border border-gray-200 shadow-sm" />
                 </div>
             </div>
         </header>
@@ -403,6 +403,7 @@ const LOUNGE_RUNTIME_SCRIPT = String.raw`
         const itemsPerPage = 6;
         let activeStatusTab = 'sent';
         let myMessages = [];
+        let myNotis = [];
         let myApplications = [];
         let receivedRequests = [];
         let squads = [];
@@ -510,6 +511,51 @@ const LOUNGE_RUNTIME_SCRIPT = String.raw`
             return currentUserId !== null && Number(userId) === currentUserId;
         }
 
+        function diceAvatar(seed) {
+            return 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + encodeURIComponent(seed || 'DevPath');
+        }
+
+        function renderShell(shell) {
+            if (!shell) return;
+            const user = shell.user || {};
+            const userName = document.getElementById('shellUserName');
+            const userImage = document.getElementById('shellUserImage');
+            if (userName) userName.innerText = user.name || '게스트';
+            if (userImage) userImage.src = user.profileImage || diceAvatar(user.name || 'Guest');
+
+            const squadList = document.getElementById('mySquadList');
+            if (squadList && Array.isArray(shell.mySquads)) {
+                squadList.innerHTML = shell.mySquads.length
+                    ? shell.mySquads.map(squad =>
+                        '<a href="squad-dashboard.html?squadId=' + encodeURIComponent(squad.id) + '" class="nav-item">' +
+                            '<span class="w-2.5 h-2.5 rounded-full ' + escapeHtml(squad.colorClass || 'bg-blue-500') + ' shrink-0 mx-2"></span>' +
+                            '<span class="sidebar-text truncate">' + escapeHtml(squad.name) + '</span>' +
+                        '</a>'
+                    ).join('')
+                    : '<p class="px-4 py-3 text-xs text-gray-400 sidebar-text">참여 중인 스쿼드가 없습니다.</p>';
+            }
+
+            myMessages = Array.isArray(shell.messages) ? shell.messages.map(message => ({
+                id: message.id,
+                sender: message.sender || '사용자',
+                senderImg: message.senderImage || ('message-' + message.senderId),
+                text: message.text || '',
+                date: message.dateText || '',
+                read: Boolean(message.read)
+            })) : [];
+
+            myNotis = Array.isArray(shell.notifications) ? shell.notifications.map(notification => ({
+                id: notification.id,
+                type: notification.type || 'SYSTEM',
+                text: notification.text || '',
+                date: notification.dateText || '',
+                read: Boolean(notification.read)
+            })) : [];
+
+            renderMessages();
+            renderNotis();
+        }
+
         function mapApplication(item) {
             return {
                 id: item.applicationId,
@@ -557,11 +603,16 @@ const LOUNGE_RUNTIME_SCRIPT = String.raw`
         }
 
         async function loadLoungeData() {
-            const [squadsResult, sentResult, receivedResult] = await Promise.allSettled([
+            const [shellResult, squadsResult, sentResult, receivedResult] = await Promise.allSettled([
+                apiRequest('/api/lounge/shell'),
                 apiRequest('/api/lounge/squads'),
                 apiRequest('/api/lounge/applications/sent', {}, true),
                 apiRequest('/api/lounge/applications/received', {}, true)
             ]);
+
+            if (shellResult.status === 'fulfilled') {
+                renderShell(shellResult.value);
+            }
 
             squads = squadsResult.status === 'fulfilled' && Array.isArray(squadsResult.value)
                 ? squadsResult.value.map(mapSquadPost)
@@ -579,7 +630,7 @@ const LOUNGE_RUNTIME_SCRIPT = String.raw`
         }
 
         function toggleModal(id) { document.getElementById(id).classList.toggle('active'); }
-        function toggleNoti() { document.getElementById('notiPopup').classList.toggle('hidden'); document.getElementById('msgPopup').classList.add('hidden'); }
+        function toggleNoti() { document.getElementById('notiPopup').classList.toggle('hidden'); document.getElementById('msgPopup').classList.add('hidden'); renderNotis(); }
         function toggleMsg() { document.getElementById('msgPopup').classList.toggle('hidden'); document.getElementById('notiPopup').classList.add('hidden'); renderMessages(); }
         function clearNoti() { document.getElementById('notiList').innerHTML = '<p class="p-3 text-xs text-gray-400 text-center">알림이 없습니다.</p>'; const badge = document.getElementById('notiBadge'); if (badge) badge.style.display = 'none'; }
 
@@ -599,6 +650,24 @@ const LOUNGE_RUNTIME_SCRIPT = String.raw`
             }
             const badge = document.getElementById('msgBadge');
             if (badge) badge.style.display = myMessages.some(msg => !msg.read) ? 'block' : 'none';
+        }
+
+        function renderNotis() {
+            const list = document.getElementById('notiList');
+            if (!list) return;
+            if (!myNotis.length) {
+                list.innerHTML = '<p class="p-4 text-xs text-gray-400 text-center">새 알림이 없습니다.</p>';
+            } else {
+                list.innerHTML = myNotis.map(noti =>
+                    '<div class="p-3 hover:bg-gray-50 border-b border-gray-50 cursor-pointer flex gap-3 items-start">' +
+                        '<div class="w-8 h-8 rounded-full bg-brand/10 text-brand flex items-center justify-center text-sm shrink-0"><i class="fas fa-info-circle"></i></div>' +
+                        '<div class="flex-1"><p class="text-xs text-gray-800 line-clamp-2">' + escapeHtml(noti.text) + '</p><span class="text-[10px] text-gray-400">' + escapeHtml(noti.date) + '</span></div>' +
+                        (!noti.read ? '<span class="w-1.5 h-1.5 bg-brand rounded-full mt-1.5"></span>' : '') +
+                    '</div>'
+                ).join('');
+            }
+            const badge = document.getElementById('notiBadge');
+            if (badge) badge.style.display = myNotis.some(noti => !noti.read) ? 'block' : 'none';
         }
 
         function applyFilters(resetPage = true) {

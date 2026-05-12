@@ -56,6 +56,7 @@ export default defineConfig({
         myRoadmap: resolve(__dirname, 'my-roadmap.html'),
         loungeDashboard: resolve(__dirname, 'lounge-dashboard.html'),
         communityLounge: resolve(__dirname, 'community-lounge.html'),
+        mentoringHub: resolve(__dirname, 'mentoring-hub.html'),
       },
     },
   },
