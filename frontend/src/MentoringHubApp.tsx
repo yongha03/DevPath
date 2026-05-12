@@ -335,8 +335,8 @@ function renderShell(shell) {
   const squads = document.getElementById('mySquadList');
   if (squads && Array.isArray(shell.mySquads)) {
     squads.innerHTML = shell.mySquads.length
-      ? shell.mySquads.map(s => '<a href="squad-dashboard.html?squadId=' + encodeURIComponent(s.id) + '" class="nav-item"><span class="w-2.5 h-2.5 rounded-full ' + escapeHtml(s.colorClass || 'bg-blue-500') + ' shrink-0 mx-2"></span><span class="sidebar-text truncate">' + escapeHtml(s.name) + '</span></a>').join('')
-      : '<p class="px-4 py-3 text-xs text-gray-400 sidebar-text">참여 중인 스쿼드가 없습니다.</p>';
+      ? shell.mySquads.map(s => '<a href="' + escapeHtml(s.href || ('squad-dashboard.html?squadId=' + encodeURIComponent(s.id))) + '" class="nav-item"><span class="w-2.5 h-2.5 rounded-full ' + escapeHtml(s.colorClass || 'bg-blue-500') + ' shrink-0 mx-2"></span><span class="sidebar-text truncate">' + escapeHtml(s.name) + '</span></a>').join('')
+      : '<p class="px-4 py-3 text-xs text-gray-400 sidebar-text">참여 중인 프로젝트가 없습니다.</p>';
   }
 
   myMessages = Array.isArray(shell.messages) ? shell.messages.map(m => ({

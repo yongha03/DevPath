@@ -6,6 +6,7 @@ export type ProjectAsideSquad = {
   id: number | string
   name: string
   colorClass?: string | null
+  href?: string | null
 }
 
 type ProjectAsideProps = {
@@ -38,11 +39,11 @@ export default function ProjectAside({ activeKey, mySquads = [] }: ProjectAsideP
           </a>
         ))}
 
-        <p className="px-4 text-xs font-bold text-gray-400 sidebar-section-title">MY SQUADS</p>
+        <p className="px-4 text-xs font-bold text-gray-400 sidebar-section-title">MY PROJECTS</p>
         <div id="mySquadList">
           {mySquads.length > 0 ? (
             mySquads.map((squad) => (
-              <a key={squad.id} href={`squad-dashboard.html?squadId=${encodeURIComponent(squad.id)}`} className="nav-item">
+              <a key={`${squad.href || 'squad'}-${squad.id}`} href={squad.href || `squad-dashboard.html?squadId=${encodeURIComponent(squad.id)}`} className="nav-item">
                 <span className={`w-2.5 h-2.5 rounded-full ${squad.colorClass || 'bg-blue-500'} shrink-0 mx-2`} />
                 <span className="sidebar-text truncate">{squad.name}</span>
               </a>
@@ -50,7 +51,7 @@ export default function ProjectAside({ activeKey, mySquads = [] }: ProjectAsideP
           ) : (
             <div className="nav-item opacity-50 cursor-default hover:bg-transparent">
               <i className="fas fa-ghost w-6 text-center text-sm"></i>
-              <span className="sidebar-text text-[11px]">참여 중인 팀 없음</span>
+              <span className="sidebar-text text-[11px]">참여 중인 프로젝트 없음</span>
             </div>
           )}
         </div>

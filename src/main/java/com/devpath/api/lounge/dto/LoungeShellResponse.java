@@ -3,7 +3,6 @@ package com.devpath.api.lounge.dto;
 import com.devpath.domain.application.entity.LoungeApplication;
 import com.devpath.domain.notification.entity.LearnerNotification;
 import com.devpath.domain.notification.entity.LearnerNotificationType;
-import com.devpath.domain.squad.entity.SquadMember;
 import com.devpath.domain.user.entity.User;
 import com.devpath.domain.user.entity.UserProfile;
 import java.time.LocalDateTime;
@@ -38,14 +37,7 @@ public class LoungeShellResponse {
 
   public record NavItem(String key, String href, String label, String icon, Boolean active) {}
 
-  public record MySquad(Long id, String name, String colorClass) {
-
-    public static MySquad from(SquadMember member, int index) {
-      List<String> colors = List.of("bg-blue-500", "bg-purple-500", "bg-emerald-500", "bg-orange-500");
-      return new MySquad(
-          member.getSquad().getId(), member.getSquad().getName(), colors.get(index % colors.size()));
-    }
-  }
+  public record MySquad(Long id, String name, String colorClass, String href) {}
 
   public record MessageItem(
       Long id,

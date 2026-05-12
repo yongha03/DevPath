@@ -90,7 +90,7 @@ public class LocalMentoringHubSeedInitializer implements CommandLineRunner {
     userProfileRepository.save(profile);
   }
 
-  private void ensurePost(PostSeed seed) {
+  private MentoringPost ensurePost(PostSeed seed) {
     User mentor = ensureMentor(seed.mentor());
     MentoringPost post =
         mentoringPostRepository
@@ -127,6 +127,7 @@ public class LocalMentoringHubSeedInitializer implements CommandLineRunner {
     }
 
     mentoringPostRepository.save(post);
+    return post;
   }
 
   private List<PostSeed> mentoringSeeds() {

@@ -1,10 +1,10 @@
 package com.devpath.api.lounge.service;
 
 import com.devpath.api.lounge.dto.LoungeShellResponse;
+import com.devpath.api.workspace.dto.WorkspaceHubProjectResponse;
+import com.devpath.api.workspace.service.WorkspaceHubProjectService;
 import com.devpath.domain.application.repository.LoungeApplicationRepository;
 import com.devpath.domain.notification.repository.LearnerNotificationRepository;
-import com.devpath.domain.squad.entity.SquadMember;
-import com.devpath.domain.squad.repository.SquadMemberRepository;
 import com.devpath.domain.user.entity.User;
 import com.devpath.domain.user.entity.UserProfile;
 import com.devpath.domain.user.repository.UserProfileRepository;
@@ -21,7 +21,7 @@ public class LoungeShellService {
 
   private final UserRepository userRepository;
   private final UserProfileRepository userProfileRepository;
-  private final SquadMemberRepository squadMemberRepository;
+  private final WorkspaceHubProjectService workspaceHubProjectService;
   private final LoungeApplicationRepository loungeApplicationRepository;
   private final LearnerNotificationRepository learnerNotificationRepository;
 
@@ -38,12 +38,11 @@ public class LoungeShellService {
     }
 
     UserProfile profile = userProfileRepository.findByUserId(userId).orElse(null);
-    List<SquadMember> memberships = squadMemberRepository.findActiveMembershipsByUser(user);
 
     return new LoungeShellResponse.Shell(
         LoungeShellResponse.CurrentUser.from(user, profile),
         menu(),
-        toMySquads(memberships),
+        toMyWorkspaceProjects(userId),
         loungeApplicationRepository.findAllByReceiver_IdAndIsDeletedFalseOrderByCreatedAtDesc(userId)
             .stream()
             .limit(30)
@@ -55,11 +54,26 @@ public class LoungeShellService {
             .toList());
   }
 
-  private List<LoungeShellResponse.MySquad> toMySquads(List<SquadMember> memberships) {
-    return memberships.stream()
-        .limit(6)
-        .map(member -> LoungeShellResponse.MySquad.from(member, memberships.indexOf(member)))
+  private List<LoungeShellResponse.MySquad> toMyWorkspaceProjects(Long userId) {
+    return workspaceHubProjectService.getProjects(userId).stream()
+        .map(
+            project ->
+                new LoungeShellResponse.MySquad(
+                    project.getProjectId(),
+                    project.getTitle(),
+                    workspaceColor(project),
+                    project.getDashboardUrl()))
         .toList();
+  }
+
+  private String workspaceColor(WorkspaceHubProjectResponse project) {
+    if ("mentoring".equals(project.getType())) {
+      return "bg-purple-500";
+    }
+    if ("solo".equals(project.getType())) {
+      return "bg-emerald-500";
+    }
+    return "bg-blue-500";
   }
 
   private List<LoungeShellResponse.NavItem> menu() {

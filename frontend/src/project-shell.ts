@@ -45,11 +45,11 @@ export function createProjectAsideHtml(activeKey: ProjectAsideKey) {
         ${menuHtml}
       </div>
 
-      <p class="px-4 text-xs font-bold text-gray-400 sidebar-section-title">MY SQUADS</p>
+      <p class="px-4 text-xs font-bold text-gray-400 sidebar-section-title">MY PROJECTS</p>
       <div id="mySquadList">
         <div class="nav-item opacity-50 cursor-default hover:bg-transparent">
           <i class="fas fa-ghost w-6 text-center text-sm"></i>
-          <span class="sidebar-text text-[11px]">참여 중인 팀 없음</span>
+          <span class="sidebar-text text-[11px]">참여 중인 프로젝트 없음</span>
         </div>
       </div>
     </nav>

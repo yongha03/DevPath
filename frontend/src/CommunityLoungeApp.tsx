@@ -492,7 +492,7 @@ const LOUNGE_RUNTIME_SCRIPT = String.raw`
             if (squadList && Array.isArray(shell.mySquads)) {
                 squadList.innerHTML = shell.mySquads.length
                     ? shell.mySquads.map(squad =>
-                        '<a href="squad-dashboard.html?squadId=' + encodeURIComponent(squad.id) + '" class="nav-item">' +
+                        '<a href="' + escapeHtml(squad.href || ('squad-dashboard.html?squadId=' + encodeURIComponent(squad.id))) + '" class="nav-item">' +
                             '<span class="w-2.5 h-2.5 rounded-full ' + escapeHtml(squad.colorClass || 'bg-blue-500') + ' shrink-0 mx-2"></span>' +
                             '<span class="sidebar-text truncate">' + escapeHtml(squad.name) + '</span>' +
                         '</a>'
