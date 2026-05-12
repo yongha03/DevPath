@@ -65,6 +65,8 @@ public class SecurityConfig {
                     .permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/showcases/**")
                     .permitAll()
+                    .requestMatchers(HttpMethod.GET, "/api/workspaces/hub/projects")
+                    .permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/lounge/shell", "/api/lounge/squads/**")
                     .permitAll()
                     .requestMatchers(HttpMethod.GET, "/api/mentorings/hub")

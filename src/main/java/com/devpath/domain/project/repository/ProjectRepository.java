@@ -14,4 +14,6 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
   List<Project> findTop3ByIsDeletedFalseOrderByCreatedAtDesc();
 
   Optional<Project> findByIdAndIsDeletedFalse(Long projectId);
+
+  Optional<Project> findByNameAndOwnerIdAndIsDeletedFalse(String name, Long ownerId);
 }

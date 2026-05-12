@@ -15,6 +15,11 @@ import com.devpath.domain.project.entity.ProjectStatus;
 import com.devpath.domain.project.entity.ProjectType;
 import com.devpath.domain.project.repository.ProjectMemberRepository;
 import com.devpath.domain.project.repository.ProjectRepository;
+import com.devpath.domain.workspace.entity.Workspace;
+import com.devpath.domain.workspace.entity.WorkspaceMember;
+import com.devpath.domain.workspace.entity.WorkspaceType;
+import com.devpath.domain.workspace.repository.WorkspaceMemberRepository;
+import com.devpath.domain.workspace.repository.WorkspaceRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -27,6 +32,8 @@ public class ProjectService {
 
   private final ProjectRepository projectRepository;
   private final ProjectMemberRepository projectMemberRepository;
+  private final WorkspaceRepository workspaceRepository;
+  private final WorkspaceMemberRepository workspaceMemberRepository;
 
   // POST /api/projects (스쿼드 프로젝트 생성 - 기존)
   @Transactional
@@ -49,6 +56,7 @@ public class ProjectService {
             .roleType(ProjectRoleType.LEADER)
             .build();
     projectMemberRepository.save(leaderMember);
+    createWorkspaceForProject(savedProject, creatorId, WorkspaceType.SQUAD);
 
     return ProjectResponse.from(savedProject);
   }
@@ -74,6 +82,7 @@ public class ProjectService {
             .roleType(ProjectRoleType.LEADER)
             .build();
     projectMemberRepository.save(leaderMember);
+    createWorkspaceForProject(savedProject, creatorId, WorkspaceType.SOLO);
 
     List<ProjectMember> members = projectMemberRepository.findAllByProjectId(savedProject.getId());
     return ProjectResponse.from(savedProject, members);
@@ -158,5 +167,22 @@ public class ProjectService {
     if (!projectMemberRepository.existsByProjectIdAndLearnerId(projectId, requesterId)) {
       throw new CustomException(ErrorCode.PROJECT_FORBIDDEN);
     }
+  }
+
+  private void createWorkspaceForProject(Project project, Long creatorId, WorkspaceType workspaceType) {
+    Workspace workspace =
+        Workspace.builder()
+            .ownerId(creatorId)
+            .name(project.getName())
+            .description(project.getDescription())
+            .type(workspaceType)
+            .build();
+
+    Workspace savedWorkspace = workspaceRepository.save(workspace);
+    workspaceMemberRepository.save(
+        WorkspaceMember.builder()
+            .workspaceId(savedWorkspace.getId())
+            .learnerId(creatorId)
+            .build());
   }
 }

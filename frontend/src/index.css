@@ -1892,3 +1892,85 @@ body.community-lounge-body { overflow: hidden; }
 @keyframes modalScaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 
 input[type="checkbox"]:checked { background-color: #00C471; border-color: #00C471; }
+
+/* Workspace hub styles from the supplied workspace-hub.html head block */
+.text-mentor { color: #7C3AED; }
+.bg-mentor { background-color: #7C3AED; }
+
+.project-card { transition: all 0.2s; border: 1px solid #E5E7EB; }
+.project-card:hover { transform: translateY(-3px); box-shadow: 0 10px 20px rgba(0,0,0,0.05); border-color: #00C471; }
+
+.dropdown-menu {
+  display: none;
+  position: absolute;
+  top: 2.5rem;
+  right: 1rem;
+  background: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  z-index: 50;
+  min-width: 140px;
+}
+
+.dropdown-menu.show { display: block; animation: workspaceHubFadeIn 0.1s ease-out; }
+
+@keyframes workspaceHubFadeIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.modal-overlay { transition: opacity 0.2s; opacity: 0; visibility: hidden; z-index: 1000; }
+.modal-overlay.active { opacity: 1; visibility: visible; }
+.modal-content { transform: scale(0.95); transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
+.modal-overlay.active .modal-content { transform: scale(1); }
+
+.workspace-hub-filter-row {
+  gap: 12px !important;
+}
+
+.workspace-hub-filter-group {
+  gap: 6px !important;
+  padding: 2px !important;
+}
+
+.workspace-hub-filter-btn {
+  display: inline-flex !important;
+  height: 34px !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 18px !important;
+  font-size: 12px !important;
+  line-height: 1 !important;
+}
+
+.workspace-hub-create-btn {
+  height: 40px !important;
+  padding: 0 18px !important;
+  border-radius: 10px !important;
+  font-size: 13px !important;
+  line-height: 1 !important;
+}
+
+.accent-brand {
+  accent-color: #00C471;
+}
+
+.type-card {
+  transition: all 0.2s;
+  border: 2px solid transparent;
+}
+
+.type-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.05);
+}
+
+.type-card.selected {
+  border-color: #00C471;
+  background-color: #F0FDF4;
+}
+
+.type-card.selected .check-icon {
+  opacity: 1;
+}
