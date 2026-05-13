@@ -1,16 +1,4 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
 import MentoringHubApp from './MentoringHubApp'
-import './index.css'
+import { renderPage } from './render-page'
 
-const rootElement = document.getElementById('root')
-
-if (!rootElement) {
-  throw new Error('Root element not found')
-}
-
-createRoot(rootElement).render(
-  <StrictMode>
-    <MentoringHubApp />
-  </StrictMode>,
-)
+renderPage(<MentoringHubApp />, { missingRootMessage: 'mentoring-hub root element was not found' })

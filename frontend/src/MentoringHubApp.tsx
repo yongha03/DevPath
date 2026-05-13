@@ -1,5 +1,14 @@
-import { useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import AuthModal, { type AuthView } from './components/AuthModal'
+import { getPostLoginRedirect, readStoredAuthSession } from './lib/auth-session'
+import { showAuthToast } from './lib/auth-toast'
 import { createProjectAsideHtml, createProjectHeaderHtml } from './project-shell'
+
+declare global {
+  interface Window {
+    __DEVPATH_OPEN_AUTH_MODAL__?: (message?: string) => void
+  }
+}
 
 const STATIC_MENTORING_HTML = String.raw`<!DOCTYPE html>
 <html lang="ko">
@@ -163,7 +172,7 @@ const STATIC_MENTORING_HTML = String.raw`<!DOCTYPE html>
             <p class="font-extrabold text-gray-900 text-base" id="modal-mentor-name">멘토 이름</p>
             <p class="text-xs text-gray-500 truncate mt-0.5" id="modal-mentor-desc">멘토 소개</p>
           </div>
-          <a id="modal-mentor-link" href="instructor-channel.html" class="shrink-0 bg-white border border-gray-200 text-gray-700 hover:text-brand hover:border-brand text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-sm flex items-center gap-1.5">
+          <a id="modal-mentor-link" href="instructor-channel.html" target="_top" class="shrink-0 bg-white border border-gray-200 text-gray-700 hover:text-brand hover:border-brand text-xs font-bold px-4 py-2.5 rounded-xl transition shadow-sm flex items-center gap-1.5">
             채널 방문 <i class="fas fa-chevron-right text-[10px]"></i>
           </a>
         </div>
@@ -235,6 +244,21 @@ function readSession() {
     try { return JSON.parse(raw); } catch { storage.removeItem(AUTH_STORAGE_KEY); }
   }
   return null;
+}
+
+function hasAuthSession() {
+  return Boolean(readSession()?.accessToken);
+}
+
+function requireLogin(message = '로그인이 필요한 기능입니다.') {
+  if (hasAuthSession()) return true;
+  const openAuthModal = window.parent && window.parent.__DEVPATH_OPEN_AUTH_MODAL__;
+  if (typeof openAuthModal === 'function') {
+    openAuthModal(message);
+  } else {
+    alert(message);
+  }
+  return false;
 }
 
 function buildHeaders(requireAuth) {
@@ -328,14 +352,14 @@ function renderShell(shell) {
   if (menu && Array.isArray(shell.menu)) {
     menu.innerHTML = shell.menu.map(item => {
       const active = item.key === 'mentoring' ? ' active' : '';
-      return '<a href="' + escapeHtml(item.href) + '" class="nav-item' + active + '"><i class="fas ' + escapeHtml(item.icon) + ' w-6 text-center text-lg"></i><span class="sidebar-text">' + escapeHtml(item.label) + '</span></a>';
+      return '<a href="' + escapeHtml(item.href) + '" target="_top" class="nav-item' + active + '"><i class="fas ' + escapeHtml(item.icon) + ' w-6 text-center text-lg"></i><span class="sidebar-text">' + escapeHtml(item.label) + '</span></a>';
     }).join('');
   }
 
   const squads = document.getElementById('mySquadList');
   if (squads && Array.isArray(shell.mySquads)) {
     squads.innerHTML = shell.mySquads.length
-      ? shell.mySquads.map(s => '<a href="' + escapeHtml(s.href || ('squad-dashboard.html?squadId=' + encodeURIComponent(s.id))) + '" class="nav-item"><span class="w-2.5 h-2.5 rounded-full ' + escapeHtml(s.colorClass || 'bg-blue-500') + ' shrink-0 mx-2"></span><span class="sidebar-text truncate">' + escapeHtml(s.name) + '</span></a>').join('')
+      ? shell.mySquads.map(s => '<a href="' + escapeHtml(s.href || ('squad-dashboard.html?squadId=' + encodeURIComponent(s.id))) + '" target="_top" class="nav-item"><span class="w-2.5 h-2.5 rounded-full ' + escapeHtml(s.colorClass || 'bg-blue-500') + ' shrink-0 mx-2"></span><span class="sidebar-text truncate">' + escapeHtml(s.name) + '</span></a>').join('')
       : '<p class="px-4 py-3 text-xs text-gray-400 sidebar-text">참여 중인 프로젝트가 없습니다.</p>';
   }
 
@@ -520,6 +544,7 @@ function closeModal(id) {
 }
 
 function openApplyForm() {
+  if (!requireLogin('멘토링 참가 신청은 로그인 후 이용할 수 있습니다.')) return;
   const p = projects.find(item => item.id === currentProjectId);
   if (!p || p.closed) return;
   const roleSelectHtml = p.mType === 'team'
@@ -595,6 +620,29 @@ const MENTORING_HTML = STATIC_MENTORING_HTML.replace(
 )
 
 export default function MentoringHubApp() {
+  const [authView, setAuthView] = useState<AuthView | null>(null)
+  const [iframeKey, setIframeKey] = useState(0)
+
+  const openAuthModal = useCallback((message?: string) => {
+    if (message) {
+      showAuthToast({
+        message,
+        durationMs: 2200,
+      })
+    }
+    setAuthView('login')
+  }, [])
+
+  useEffect(() => {
+    window.__DEVPATH_OPEN_AUTH_MODAL__ = openAuthModal
+
+    return () => {
+      if (window.__DEVPATH_OPEN_AUTH_MODAL__ === openAuthModal) {
+        delete window.__DEVPATH_OPEN_AUTH_MODAL__
+      }
+    }
+  }, [openAuthModal])
+
   useEffect(() => {
     const previousHtmlOverflow = document.documentElement.style.overflow
     const previousBodyOverflow = document.body.style.overflow
@@ -611,12 +659,40 @@ export default function MentoringHubApp() {
     }
   }, [])
 
+  function closeAuthModal() {
+    setAuthView(null)
+  }
+
+  function handleAuthenticated() {
+    const nextSession = readStoredAuthSession()
+
+    if (nextSession?.role === 'ROLE_ADMIN') {
+      window.location.replace(getPostLoginRedirect(nextSession.role))
+      return
+    }
+
+    setAuthView(null)
+    setIframeKey((current) => current + 1)
+  }
+
   return (
-    <iframe
-      title="DevPath 멘토링 찾기"
-      srcDoc={MENTORING_HTML}
-      className="fixed inset-0 block h-dvh w-dvw border-0"
-      sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation-by-user-activation"
-    />
+    <>
+      <iframe
+        key={iframeKey}
+        title="DevPath 멘토링 찾기"
+        srcDoc={MENTORING_HTML}
+        className="fixed inset-0 block h-dvh w-dvw border-0"
+        sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-top-navigation-by-user-activation"
+      />
+
+      {authView ? (
+        <AuthModal
+          view={authView}
+          onClose={closeAuthModal}
+          onViewChange={setAuthView}
+          onAuthenticated={handleAuthenticated}
+        />
+      ) : null}
+    </>
   )
 }

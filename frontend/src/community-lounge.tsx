@@ -1,16 +1,4 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
 import CommunityLoungeApp from './CommunityLoungeApp'
-import './index.css'
+import { renderPage } from './render-page'
 
-const rootElement = document.getElementById('root')
-
-if (!rootElement) {
-  throw new Error('Root element not found')
-}
-
-createRoot(rootElement).render(
-  <StrictMode>
-    <CommunityLoungeApp />
-  </StrictMode>,
-)
+renderPage(<CommunityLoungeApp />, { missingRootMessage: 'community-lounge root element was not found' })

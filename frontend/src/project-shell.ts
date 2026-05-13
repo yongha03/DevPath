@@ -25,11 +25,11 @@ export function createProjectAsideHtml(activeKey: ProjectAsideKey) {
   const menuHtml = projectAsideItems.map((item) => {
     const active = item.key === activeKey ? ' active' : ''
 
-    return `<a href="${item.href}" class="nav-item${active}"><i class="fas ${item.icon} w-6 text-center text-lg"></i><span class="sidebar-text">${item.label}</span></a>`
+    return `<a href="${item.href}" target="_top" class="nav-item${active}"><i class="fas ${item.icon} w-6 text-center text-lg"></i><span class="sidebar-text">${item.label}</span></a>`
   }).join('')
 
   return `<aside class="w-20 hover:w-64 bg-white border-r border-gray-200 flex flex-col shrink-0 z-50 transition-all duration-300 ease-in-out group shadow-xl">
-    <div class="h-20 flex items-center px-5 cursor-pointer hover:bg-gray-50 transition border-b border-gray-100 shrink-0" onclick="location.href='home.html'">
+    <div class="h-20 flex items-center px-5 cursor-pointer hover:bg-gray-50 transition border-b border-gray-100 shrink-0" onclick="window.top.location.href='home.html'">
       <div class="w-10 h-10 rounded-xl bg-gray-900 flex items-center justify-center text-brand text-xl shrink-0 shadow-md">
         <i class="fas fa-layer-group"></i>
       </div>
@@ -60,7 +60,7 @@ export function createProjectHeaderHtml(activeHref = 'lounge-dashboard.html') {
   const navHtml = projectHeaderLinks.map((item) => {
     const activeClass = item.href === activeHref ? 'text-brand transition border-b-2 border-brand pb-1' : 'hover:text-brand transition'
 
-    return `<a href="${item.href}" class="${activeClass}">${item.label}</a>`
+    return `<a href="${item.href}" target="_top" class="${activeClass}">${item.label}</a>`
   }).join('')
 
   return `<header class="h-16 bg-white border-b border-gray-100 flex items-center px-8 sticky top-0 z-30 shrink-0">

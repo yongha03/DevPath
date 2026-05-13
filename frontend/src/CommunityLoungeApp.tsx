@@ -1,5 +1,14 @@
-import { useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import AuthModal, { type AuthView } from './components/AuthModal'
+import { getPostLoginRedirect, readStoredAuthSession } from './lib/auth-session'
+import { showAuthToast } from './lib/auth-toast'
 import { createProjectAsideHtml, createProjectHeaderHtml } from './project-shell'
+
+declare global {
+  interface Window {
+    __DEVPATH_OPEN_AUTH_MODAL__?: (message?: string) => void
+  }
+}
 
 const STATIC_LOUNGE_HTML = String.raw`<!DOCTYPE html>
 <html lang="ko">
@@ -119,7 +128,7 @@ const STATIC_LOUNGE_HTML = String.raw`<!DOCTYPE html>
                             <button onclick="openCreateModal()" class="bg-brand hover:bg-green-600 text-white px-6 py-3 rounded-xl font-bold text-sm transition shadow-lg flex items-center gap-2 transform hover:-translate-y-1">
                                 <i class="fas fa-plus"></i> 스쿼드 생성
                             </button>
-                            <button onclick="updateStatusList(); toggleModal('statusModal')" class="bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-xl font-bold text-sm transition backdrop-blur-sm relative">
+                            <button onclick="openStatusModal()" class="bg-white/10 hover:bg-white/20 text-white px-6 py-3 rounded-xl font-bold text-sm transition backdrop-blur-sm relative">
                                 내 지원 현황 확인
                             </button>
                         </div>
@@ -388,6 +397,21 @@ const LOUNGE_RUNTIME_SCRIPT = String.raw`
             return null;
         }
 
+        function hasAuthSession() {
+            return Boolean(readSession()?.accessToken);
+        }
+
+        function requireLogin(message = '로그인이 필요한 기능입니다.') {
+            if (hasAuthSession()) return true;
+            const openAuthModal = window.parent && window.parent.__DEVPATH_OPEN_AUTH_MODAL__;
+            if (typeof openAuthModal === 'function') {
+                openAuthModal(message);
+            } else {
+                alert(message);
+            }
+            return false;
+        }
+
         function parseJwtUserId(accessToken) {
             try {
                 const payload = accessToken.split('.')[1];
@@ -481,7 +505,7 @@ const LOUNGE_RUNTIME_SCRIPT = String.raw`
             if (menuList && Array.isArray(shell.menu)) {
                 menuList.innerHTML = shell.menu.map(item => {
                     const active = item.key === 'lounge' ? ' active' : '';
-                    return '<a href="' + escapeHtml(item.href) + '" class="nav-item' + active + '">' +
+                    return '<a href="' + escapeHtml(item.href) + '" target="_top" class="nav-item' + active + '">' +
                         '<i class="fas ' + escapeHtml(item.icon) + ' w-6 text-center text-lg"></i>' +
                         '<span class="sidebar-text">' + escapeHtml(item.label) + '</span>' +
                     '</a>';
@@ -492,7 +516,7 @@ const LOUNGE_RUNTIME_SCRIPT = String.raw`
             if (squadList && Array.isArray(shell.mySquads)) {
                 squadList.innerHTML = shell.mySquads.length
                     ? shell.mySquads.map(squad =>
-                        '<a href="' + escapeHtml(squad.href || ('squad-dashboard.html?squadId=' + encodeURIComponent(squad.id))) + '" class="nav-item">' +
+                        '<a href="' + escapeHtml(squad.href || ('squad-dashboard.html?squadId=' + encodeURIComponent(squad.id))) + '" target="_top" class="nav-item">' +
                             '<span class="w-2.5 h-2.5 rounded-full ' + escapeHtml(squad.colorClass || 'bg-blue-500') + ' shrink-0 mx-2"></span>' +
                             '<span class="sidebar-text truncate">' + escapeHtml(squad.name) + '</span>' +
                         '</a>'
@@ -595,6 +619,11 @@ const LOUNGE_RUNTIME_SCRIPT = String.raw`
         }
 
         function toggleModal(id) { document.getElementById(id).classList.toggle('active'); }
+        function openStatusModal() {
+            if (!requireLogin('지원 현황은 로그인 후 확인할 수 있습니다.')) return;
+            updateStatusList();
+            toggleModal('statusModal');
+        }
         function toggleNoti() { document.getElementById('notiPopup').classList.toggle('hidden'); document.getElementById('msgPopup').classList.add('hidden'); renderNotis(); }
         function toggleMsg() { document.getElementById('msgPopup').classList.toggle('hidden'); document.getElementById('notiPopup').classList.add('hidden'); renderMessages(); }
         function clearNoti() { document.getElementById('notiList').innerHTML = '<p class="p-3 text-xs text-gray-400 text-center">알림이 없습니다.</p>'; const badge = document.getElementById('notiBadge'); if (badge) badge.style.display = 'none'; }
@@ -740,6 +769,7 @@ const LOUNGE_RUNTIME_SCRIPT = String.raw`
         }
 
         function openCreateModal(editId = null) {
+            if (!requireLogin('스쿼드 생성은 로그인 후 이용할 수 있습니다.')) return;
             const data = squads.find(s => Number(s.id) === Number(editId));
             document.getElementById('createModalTitle').innerText = editId ? "스쿼드 수정하기" : "새 스쿼드 만들기";
             document.getElementById('createSubmitBtn').innerText = editId ? "수정 완료" : "생성하기";
@@ -858,11 +888,12 @@ const LOUNGE_RUNTIME_SCRIPT = String.raw`
             if(confirm("모집을 마감하고, 팀원들과 함께할 '워크스페이스'를 바로 생성하시겠습니까?\n(작성하신 스쿼드 제목, 기술 스택, 소개글이 자동으로 넘어갑니다.)")) {
                 await apiRequest('/api/lounge/squads/' + currentSelectedId + '/close', { method: 'PATCH' }, true);
                 const params = new URLSearchParams({ title: data.title, tech: data.tags.join(','), desc: data.desc });
-                location.href = 'project-create.html?' + params.toString();
+                window.top.location.href = 'project-create.html?' + params.toString();
             }
         }
 
         function openApplyForm() {
+            if (!requireLogin('참여 신청은 로그인 후 이용할 수 있습니다.')) return;
             const container = document.getElementById('apply-form-content');
             const data = squads.find(s => Number(s.id) === Number(currentSelectedId));
             if(!data) return;
@@ -996,6 +1027,29 @@ const LOUNGE_HTML = STATIC_LOUNGE_HTML.replace(
 )
 
 export default function CommunityLoungeApp() {
+  const [authView, setAuthView] = useState<AuthView | null>(null)
+  const [iframeKey, setIframeKey] = useState(0)
+
+  const openAuthModal = useCallback((message?: string) => {
+    if (message) {
+      showAuthToast({
+        message,
+        durationMs: 2200,
+      })
+    }
+    setAuthView('login')
+  }, [])
+
+  useEffect(() => {
+    window.__DEVPATH_OPEN_AUTH_MODAL__ = openAuthModal
+
+    return () => {
+      if (window.__DEVPATH_OPEN_AUTH_MODAL__ === openAuthModal) {
+        delete window.__DEVPATH_OPEN_AUTH_MODAL__
+      }
+    }
+  }, [openAuthModal])
+
   useEffect(() => {
     const previousHtmlOverflow = document.documentElement.style.overflow
     const previousBodyOverflow = document.body.style.overflow
@@ -1012,11 +1066,39 @@ export default function CommunityLoungeApp() {
     }
   }, [])
 
+  function closeAuthModal() {
+    setAuthView(null)
+  }
+
+  function handleAuthenticated() {
+    const nextSession = readStoredAuthSession()
+
+    if (nextSession?.role === 'ROLE_ADMIN') {
+      window.location.replace(getPostLoginRedirect(nextSession.role))
+      return
+    }
+
+    setAuthView(null)
+    setIframeKey((current) => current + 1)
+  }
+
   return (
-    <iframe
-      title="DevPath - 스쿼드 라운지"
-      className="fixed inset-0 block h-dvh w-dvw border-0"
-      srcDoc={LOUNGE_HTML}
-    />
+    <>
+      <iframe
+        key={iframeKey}
+        title="DevPath - 스쿼드 라운지"
+        className="fixed inset-0 block h-dvh w-dvw border-0"
+        srcDoc={LOUNGE_HTML}
+      />
+
+      {authView ? (
+        <AuthModal
+          view={authView}
+          onClose={closeAuthModal}
+          onViewChange={setAuthView}
+          onAuthenticated={handleAuthenticated}
+        />
+      ) : null}
+    </>
   )
 }
