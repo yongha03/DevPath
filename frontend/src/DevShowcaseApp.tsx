@@ -1,8 +1,10 @@
 import type { FormEvent, ReactNode } from 'react'
 import { useEffect, useMemo, useState } from 'react'
+import AuthModal, { type AuthView } from './components/AuthModal'
 import ProjectAside, { type ProjectAsideSquad } from './components/ProjectAside'
 import ProjectHeader from './components/ProjectHeader'
-import { clearStoredAuthSession, readStoredAuthSession } from './lib/auth-session'
+import { clearStoredAuthSession, getPostLoginRedirect, readStoredAuthSession } from './lib/auth-session'
+import { showAuthToast } from './lib/auth-toast'
 import { projectApiRequest } from './project-api'
 
 type ShowcaseCategory = 'FRONTEND' | 'BACKEND' | 'FULLSTACK' | 'MOBILE' | 'AI' | 'DATA' | 'DEVOPS' | 'ETC'
@@ -40,6 +42,27 @@ type ShowcaseComment = {
 
 type LoungeShellResponse = {
   mySquads?: ProjectAsideSquad[]
+}
+
+type WorkspaceHubProject = {
+  projectId: number
+  type: 'solo' | 'squad' | 'mentoring'
+  status: 'progress' | 'completed'
+  title: string
+  description: string
+  categoryLabel?: string | null
+  roleLabel?: string | null
+  footerText?: string | null
+}
+
+type CompletedWorkspaceProject = {
+  id: string
+  team: string
+  title: string
+  short: string
+  description: string
+  tech: string
+  category: ShowcaseCategory
 }
 
 const fallbackShowcases: ShowcaseSummary[] = [
@@ -107,26 +130,46 @@ const techByCategory: Record<ShowcaseCategory, string[]> = {
   ETC: ['Unity', 'TypeScript', 'WebSocket'],
 }
 
-const completedWorkspaceProjects = [
-  {
-    id: 'ws-1',
-    team: '배달비 절약팀',
-    title: '배달비 절약 플랫폼 (MVP)',
-    short: '위치 기반 실시간 공동 구매 매칭 서비스',
-    description: '스프링 부트와 웹소켓을 이용해 실시간으로 근처 사용자를 매칭해 배달비를 아끼게 해주는 앱입니다.',
-    tech: 'Spring Boot, WebSocket, MySQL, Docker',
-    category: 'MOBILE' as ShowcaseCategory,
-  },
-  {
-    id: 'ws-2',
-    team: 'ROOT 팀',
-    title: 'ROOT (컴공생 올인원 웹 플랫폼)',
-    short: '수강신청부터 과제 제출까지 관리하는 졸업작품',
-    description: '수강신청부터 과제 제출까지 관리하는 졸업작품 프로젝트. Docker와 Nginx를 활용해 오라클 클라우드에 배포 환경을 구축했습니다.',
-    tech: 'Spring Boot, Docker, Oracle Cloud, Nginx, WebSocket',
-    category: 'FULLSTACK' as ShowcaseCategory,
-  },
-]
+function getWorkspaceProjectCategory(project: WorkspaceHubProject): ShowcaseCategory {
+  if (project.categoryLabel?.toLowerCase().includes('ai')) {
+    return 'AI'
+  }
+  if (project.categoryLabel?.toLowerCase().includes('app')) {
+    return 'MOBILE'
+  }
+  if (project.type === 'solo') {
+    return 'FULLSTACK'
+  }
+  if (project.type === 'mentoring') {
+    return 'FULLSTACK'
+  }
+  return 'FULLSTACK'
+}
+
+function getWorkspaceProjectTypeLabel(type: WorkspaceHubProject['type']) {
+  if (type === 'solo') {
+    return 'Solo'
+  }
+  if (type === 'squad') {
+    return 'Squad'
+  }
+  return 'Mentoring'
+}
+
+function mapCompletedWorkspaceProject(project: WorkspaceHubProject): CompletedWorkspaceProject {
+  const description = project.description?.trim() || project.title
+  const categoryLabel = project.categoryLabel?.trim()
+
+  return {
+    id: String(project.projectId),
+    team: project.footerText?.trim() || project.roleLabel?.trim() || categoryLabel || 'DevPath',
+    title: project.title,
+    short: description,
+    description,
+    tech: categoryLabel || getWorkspaceProjectTypeLabel(project.type),
+    category: getWorkspaceProjectCategory(project),
+  }
+}
 
 function getAuthorName(userId: number) {
   return authorNames[userId % authorNames.length]
@@ -190,8 +233,11 @@ function sortShowcases(showcases: ShowcaseSummary[], sort: SortFilter) {
 
 export default function DevShowcaseApp() {
   const [session, setSession] = useState(() => readStoredAuthSession())
+  const [authView, setAuthView] = useState<AuthView | null>(null)
+  const [dataReloadKey, setDataReloadKey] = useState(0)
   const [showcases, setShowcases] = useState<ShowcaseSummary[]>(fallbackShowcases)
   const [asideSquads, setAsideSquads] = useState<ProjectAsideSquad[]>([])
+  const [completedProjects, setCompletedProjects] = useState<CompletedWorkspaceProject[]>([])
   const [category, setCategory] = useState<CategoryFilter>('all')
   const [sort, setSort] = useState<SortFilter>('popular')
   const [search, setSearch] = useState('')
@@ -228,7 +274,8 @@ export default function DevShowcaseApp() {
 
   useEffect(() => {
     const controller = new AbortController()
-    setSession(readStoredAuthSession())
+    const currentSession = readStoredAuthSession()
+    setSession(currentSession)
 
     async function load() {
       setLoading(true)
@@ -238,15 +285,20 @@ export default function DevShowcaseApp() {
       }
 
       try {
-        const [shell, list] = await Promise.all([
+        const [shell, list, workspaceProjects] = await Promise.all([
           projectApiRequest<LoungeShellResponse>('/api/lounge/shell', { signal: controller.signal }, 'optional').catch(() => null),
           projectApiRequest<ShowcaseSummary[]>(`/api/showcases?${params.toString()}`, { signal: controller.signal }),
+          currentSession?.accessToken
+            ? projectApiRequest<WorkspaceHubProject[]>('/api/workspaces/hub/projects', { signal: controller.signal }, 'required').catch(() => [])
+            : Promise.resolve([]),
         ])
         setAsideSquads(shell?.mySquads ?? [])
         setShowcases(list.length > 0 ? list : fallbackShowcases)
+        setCompletedProjects(workspaceProjects.filter((project) => project.status === 'completed').map(mapCompletedWorkspaceProject))
       } catch (error) {
         console.error(error)
         setShowcases(fallbackShowcases)
+        setCompletedProjects([])
       } finally {
         setLoading(false)
       }
@@ -254,7 +306,7 @@ export default function DevShowcaseApp() {
 
     void load()
     return () => controller.abort()
-  }, [category, sort])
+  }, [category, dataReloadKey, sort])
 
   const visibleShowcases = useMemo(() => {
     const lowered = search.trim().toLowerCase()
@@ -274,6 +326,45 @@ export default function DevShowcaseApp() {
   function handleLogout() {
     clearStoredAuthSession()
     setSession(null)
+    setCompletedProjects([])
+    setAsideSquads([])
+  }
+
+  function openAuthModal(message?: string) {
+    if (message) {
+      showAuthToast({
+        message,
+        durationMs: 2200,
+      })
+    }
+
+    setAuthView('login')
+  }
+
+  function closeAuthModal() {
+    setAuthView(null)
+  }
+
+  function handleAuthenticated() {
+    const nextSession = readStoredAuthSession()
+
+    if (nextSession?.role === 'ROLE_ADMIN') {
+      window.location.replace(getPostLoginRedirect(nextSession.role))
+      return
+    }
+
+    setSession(nextSession)
+    setAuthView(null)
+    setDataReloadKey((current) => current + 1)
+  }
+
+  function openUploadModal() {
+    if (!readStoredAuthSession()?.accessToken) {
+      openAuthModal('프로젝트 등록은 로그인 후 이용할 수 있습니다.')
+      return
+    }
+
+    setUploadOpen(true)
   }
 
   function toggleLike(showcaseId: number) {
@@ -330,7 +421,7 @@ export default function DevShowcaseApp() {
   async function createShowcase(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (!readStoredAuthSession()?.accessToken) {
-      window.location.assign('login.html')
+      openAuthModal('프로젝트 등록은 로그인 후 이용할 수 있습니다.')
       return
     }
 
@@ -370,7 +461,7 @@ export default function DevShowcaseApp() {
   }
 
   function importWorkspaceProject(projectId: string) {
-    const selected = completedWorkspaceProjects.find((project) => project.id === projectId)
+    const selected = completedProjects.find((project) => project.id === projectId)
     if (!selected) {
       return
     }
@@ -391,7 +482,7 @@ export default function DevShowcaseApp() {
       <ProjectAside activeKey="showcase" mySquads={asideSquads} />
 
       <div className="flex min-w-0 flex-1 flex-col h-screen overflow-hidden">
-        <ProjectHeader session={session} activeHref="lounge-dashboard.html" onLoginClick={() => window.location.assign('login.html')} onLogout={handleLogout} />
+        <ProjectHeader session={session} activeHref="lounge-dashboard.html" onLoginClick={() => openAuthModal()} onLogout={handleLogout} />
 
         <main className="relative flex-1 overflow-y-auto bg-[#F8F9FA]">
           <div className="p-8">
@@ -403,7 +494,7 @@ export default function DevShowcaseApp() {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setUploadOpen(true)}
+                  onClick={openUploadModal}
                   className="flex items-center justify-center gap-2 rounded-xl bg-gray-900 px-6 py-3 text-sm font-bold text-white shadow-lg transition hover:bg-black"
                 >
                   <i className="fas fa-upload"></i>
@@ -507,11 +598,12 @@ export default function DevShowcaseApp() {
                 className="w-full cursor-pointer rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm font-bold text-brand transition focus:outline-none focus:ring-1 focus:ring-brand"
               >
                 <option value="">-- 완료된 프로젝트 선택 --</option>
-                {completedWorkspaceProjects.map((project) => (
+                {completedProjects.map((project) => (
                   <option key={project.id} value={project.id}>
                     {project.title} (완료)
                   </option>
                 ))}
+                {completedProjects.length === 0 && <option disabled>등록 가능한 완료 프로젝트가 없습니다</option>}
               </select>
               <p className="mt-2 text-[10px] text-gray-400">
                 <i className="fas fa-info-circle"></i>
@@ -612,6 +704,15 @@ export default function DevShowcaseApp() {
           </form>
         </div>
       )}
+
+      {authView ? (
+        <AuthModal
+          view={authView}
+          onClose={closeAuthModal}
+          onViewChange={setAuthView}
+          onAuthenticated={handleAuthenticated}
+        />
+      ) : null}
     </div>
   )
 }
