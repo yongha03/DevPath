@@ -1,6 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react'
 import type { AuthSession } from '../types/auth'
 import AccountUserMenu from './AccountUserMenu'
+import HeaderAlerts from './HeaderAlerts'
 
 const headerLinks = [
   { href: 'roadmap-hub.html', label: '\uB85C\uB4DC\uB9F5' },
@@ -86,6 +87,7 @@ export default function SiteHeader({
   const headerStyle: CSSProperties = { top: `${offsetTopPx}px` }
   const defaultNavLinkClassName = 'site-header-nav-link'
   const activeNavLinkClassName = 'site-header-nav-link site-header-nav-link--active'
+  const showHeaderAlerts = Boolean(session && activeNavHref !== 'roadmap-hub.html')
   const brandLabel = (
     <span className="inline-flex items-baseline gap-2 whitespace-nowrap">
       <span className="inline-block">DevPath</span>
@@ -155,9 +157,13 @@ export default function SiteHeader({
           </div>
 
           <div className="ml-auto flex min-w-0 items-center justify-end gap-2 md:ml-0 md:w-60 md:flex-none">
-            <div className="hidden md:block" style={userStyle}>
+            <div className="hidden md:flex items-center justify-end gap-2" style={userStyle}>
               {session ? (
-                <AccountUserMenu session={session} profileImage={profileImage} onLogout={onLogout} />
+                <>
+                  {showHeaderAlerts ? <HeaderAlerts session={session} /> : null}
+                  {showHeaderAlerts ? <div className="w-px h-6 bg-gray-200 mx-4"></div> : null}
+                  <AccountUserMenu session={session} profileImage={profileImage} onLogout={onLogout} />
+                </>
               ) : (
                 <button
                   type="button"
@@ -169,9 +175,13 @@ export default function SiteHeader({
               )}
             </div>
 
-            <div className="md:hidden" style={userStyle}>
+            <div className="flex items-center justify-end gap-2 md:hidden" style={userStyle}>
               {session ? (
-                <AccountUserMenu session={session} profileImage={profileImage} onLogout={onLogout} />
+                <>
+                  {showHeaderAlerts ? <HeaderAlerts session={session} /> : null}
+                  {showHeaderAlerts ? <div className="w-px h-6 bg-gray-200 mx-4"></div> : null}
+                  <AccountUserMenu session={session} profileImage={profileImage} onLogout={onLogout} />
+                </>
               ) : (
                 <button
                   type="button"

@@ -4,8 +4,8 @@ export const projectHeaderLinks = [
   { href: 'roadmap-hub.html', label: '로드맵' },
   { href: 'lecture-list.html', label: '강의' },
   { href: 'lounge-dashboard.html', label: '프로젝트' },
-  { href: 'community-list.html', label: '커뮤니티' },
   { href: 'job-matching.html', label: '채용분석' },
+  { href: 'community-list.html', label: '커뮤니티' },
 ]
 
 export const projectAsideItems: Array<{
@@ -41,9 +41,7 @@ export function createProjectAsideHtml(activeKey: ProjectAsideKey) {
 
     <nav class="flex-1 px-3 space-y-2 mt-4 overflow-y-auto overflow-x-hidden">
       <p class="px-4 text-xs font-bold text-gray-400 sidebar-section-title">MENU</p>
-      <div id="shellMenuList">
-        ${menuHtml}
-      </div>
+      ${menuHtml}
 
       <p class="px-4 text-xs font-bold text-gray-400 sidebar-section-title">MY PROJECTS</p>
       <div id="mySquadList">
