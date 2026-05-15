@@ -25,14 +25,18 @@ compute_manifest_hash() {
 }
 
 dependencies_are_healthy() {
-  node --input-type=module -e "await Promise.all([import('vite'), import('@vitejs/plugin-react'), import('@tailwindcss/vite')])" >/dev/null 2>&1
+  node --input-type=module -e "await Promise.all([import('vite'), import('@vitejs/plugin-react'), import('@tailwindcss/vite'), import('react'), import('react-dom/client'), import('react/jsx-runtime'), import('react/jsx-dev-runtime')])" >/dev/null 2>&1
 }
 
 install_dependencies() {
   echo "[frontend-dev] Installing dependencies..."
   mkdir -p "$APP_DIR/node_modules"
   find "$APP_DIR/node_modules" -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true
-  npm install --no-fund --no-audit
+  if [ -f "$LOCKFILE" ]; then
+    npm ci --no-fund --no-audit
+  else
+    npm install --no-fund --no-audit
+  fi
   mkdir -p "$APP_DIR/node_modules"
   compute_manifest_hash > "$STAMP_FILE"
 }
