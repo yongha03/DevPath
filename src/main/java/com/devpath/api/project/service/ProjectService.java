@@ -1,6 +1,7 @@
 package com.devpath.api.project.service;
 
 import com.devpath.api.project.dto.CreateSoloProjectRequest;
+import com.devpath.api.project.dto.ProjectRecommendationResponse;
 import com.devpath.api.project.dto.ProjectRequest;
 import com.devpath.api.project.dto.ProjectResponse;
 import com.devpath.api.project.dto.UpdateProjectIntroRequest;
@@ -10,12 +11,22 @@ import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
 import com.devpath.domain.project.entity.Project;
 import com.devpath.domain.project.entity.ProjectMember;
+import com.devpath.domain.project.entity.ProjectRecruitingStatus;
 import com.devpath.domain.project.entity.ProjectRoleType;
 import com.devpath.domain.project.entity.ProjectStatus;
 import com.devpath.domain.project.entity.ProjectType;
+import com.devpath.domain.project.entity.ProjectVisibility;
 import com.devpath.domain.project.repository.ProjectMemberRepository;
 import com.devpath.domain.project.repository.ProjectRepository;
+import com.devpath.domain.user.repository.UserTechStackRepository;
+import com.devpath.domain.workspace.entity.Workspace;
+import com.devpath.domain.workspace.entity.WorkspaceMember;
+import com.devpath.domain.workspace.entity.WorkspaceType;
+import com.devpath.domain.workspace.repository.WorkspaceMemberRepository;
+import com.devpath.domain.workspace.repository.WorkspaceRepository;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,6 +38,9 @@ public class ProjectService {
 
   private final ProjectRepository projectRepository;
   private final ProjectMemberRepository projectMemberRepository;
+  private final WorkspaceRepository workspaceRepository;
+  private final WorkspaceMemberRepository workspaceMemberRepository;
+  private final UserTechStackRepository userTechStackRepository;
 
   // POST /api/projects (스쿼드 프로젝트 생성 - 기존)
   @Transactional
@@ -49,6 +63,7 @@ public class ProjectService {
             .roleType(ProjectRoleType.LEADER)
             .build();
     projectMemberRepository.save(leaderMember);
+    createWorkspaceForProject(savedProject, creatorId, WorkspaceType.SQUAD);
 
     return ProjectResponse.from(savedProject);
   }
@@ -74,6 +89,7 @@ public class ProjectService {
             .roleType(ProjectRoleType.LEADER)
             .build();
     projectMemberRepository.save(leaderMember);
+    createWorkspaceForProject(savedProject, creatorId, WorkspaceType.SOLO);
 
     List<ProjectMember> members = projectMemberRepository.findAllByProjectId(savedProject.getId());
     return ProjectResponse.from(savedProject, members);
@@ -83,6 +99,25 @@ public class ProjectService {
   public List<ProjectResponse> getAllProjects() {
     return projectRepository.findAllByIsDeletedFalseOrderByCreatedAtDesc().stream()
         .map(ProjectResponse::from)
+        .toList();
+  }
+
+  public List<ProjectRecommendationResponse> getMyRecommendations(Long userId) {
+    List<String> skillTags = userTechStackRepository.findTagNamesByUserId(userId);
+
+    if (skillTags.isEmpty()) {
+      return List.of();
+    }
+
+    return projectRepository.findAllByIsDeletedFalseOrderByCreatedAtDesc().stream()
+        .filter(project -> project.getVisibility() == ProjectVisibility.PUBLIC)
+        .filter(project -> project.getRecruitingStatus() == ProjectRecruitingStatus.OPEN)
+        .map(project -> toRecommendation(project, skillTags))
+        .filter(recommendation -> !recommendation.getMatchedSkillTags().isEmpty())
+        .sorted(
+            Comparator.comparing(ProjectRecommendationResponse::getRecommendationScore)
+                .reversed()
+                .thenComparing(ProjectRecommendationResponse::getProjectId))
         .toList();
   }
 
@@ -158,5 +193,46 @@ public class ProjectService {
     if (!projectMemberRepository.existsByProjectIdAndLearnerId(projectId, requesterId)) {
       throw new CustomException(ErrorCode.PROJECT_FORBIDDEN);
     }
+  }
+
+  private void createWorkspaceForProject(Project project, Long creatorId, WorkspaceType workspaceType) {
+    Workspace workspace =
+        Workspace.builder()
+            .ownerId(creatorId)
+            .name(project.getName())
+            .description(project.getDescription())
+            .type(workspaceType)
+            .build();
+
+    Workspace savedWorkspace = workspaceRepository.save(workspace);
+    workspaceMemberRepository.save(
+        WorkspaceMember.builder()
+            .workspaceId(savedWorkspace.getId())
+            .learnerId(creatorId)
+            .build());
+  }
+
+  private ProjectRecommendationResponse toRecommendation(Project project, List<String> skillTags) {
+    List<String> matchedSkillTags =
+        skillTags.stream().filter(skill -> projectContainsSkill(project, skill)).distinct().toList();
+
+    return ProjectRecommendationResponse.from(
+        project, Math.min(100, matchedSkillTags.size() * 20), matchedSkillTags);
+  }
+
+  private boolean projectContainsSkill(Project project, String skill) {
+    if (skill == null || skill.isBlank()) {
+      return false;
+    }
+
+    String normalizedSkill = skill.trim().toLowerCase(Locale.ROOT);
+
+    return containsIgnoreCase(project.getName(), normalizedSkill)
+        || containsIgnoreCase(project.getDescription(), normalizedSkill)
+        || containsIgnoreCase(project.getIntro(), normalizedSkill);
+  }
+
+  private boolean containsIgnoreCase(String source, String normalizedNeedle) {
+    return source != null && source.toLowerCase(Locale.ROOT).contains(normalizedNeedle);
   }
 }

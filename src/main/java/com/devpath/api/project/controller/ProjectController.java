@@ -3,6 +3,7 @@ package com.devpath.api.project.controller;
 import static com.devpath.common.security.AuthenticationUtils.requireUserId;
 
 import com.devpath.api.project.dto.CreateSoloProjectRequest;
+import com.devpath.api.project.dto.ProjectRecommendationResponse;
 import com.devpath.api.project.dto.ProjectRequest;
 import com.devpath.api.project.dto.ProjectResponse;
 import com.devpath.api.project.dto.UpdateProjectIntroRequest;
@@ -80,6 +81,15 @@ public class ProjectController {
   @Operation(summary = "프로젝트 목록 조회", description = "전체 프로젝트 목록을 최신순으로 조회합니다.")
   public ApiResponse<List<ProjectResponse>> getAllProjects() {
     return ApiResponse.ok(projectService.getAllProjects());
+  }
+
+  @GetMapping("/recommendations/me")
+  @Operation(
+      summary = "내 기술 스택 기반 프로젝트 추천 조회",
+      description = "로그인 사용자의 기술 스택과 공개 모집 중인 프로젝트를 매칭해 추천 프로젝트를 조회합니다.")
+  public ApiResponse<List<ProjectRecommendationResponse>> getMyRecommendations(
+      @Parameter(hidden = true) @AuthenticationPrincipal Long userId) {
+    return ApiResponse.ok(projectService.getMyRecommendations(requireUserId(userId)));
   }
 
   @GetMapping("/{projectId}")

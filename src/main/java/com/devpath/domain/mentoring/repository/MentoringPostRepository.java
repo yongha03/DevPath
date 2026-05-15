@@ -21,4 +21,6 @@ public interface MentoringPostRepository extends JpaRepository<MentoringPost, Lo
   // Soft Delete 된 공고는 단건 조회 대상에서 제외한다.
   @EntityGraph(attributePaths = "mentor")
   Optional<MentoringPost> findByIdAndIsDeletedFalse(Long id);
+
+  Optional<MentoringPost> findByTitleAndIsDeletedFalse(String title);
 }

@@ -110,3 +110,12 @@ blog:
         # DEV.to article create API
         api-url: ${DEVTO_API_URL:https://dev.to/api/articles}
         api-key: ${DEVTO_API_KEY:}
+
+jobkorea:
+  api:
+    # 잡코리아 계약 후 발급받은 XML URL을 주입한다.
+    job-list-url: ${JOBKOREA_JOB_LIST_URL:}
+    starter-list-url: ${JOBKOREA_STARTER_LIST_URL:}
+    api-key: ${JOBKOREA_API_KEY:}
+    api-param-name: ${JOBKOREA_API_PARAM_NAME:api}
+    oem-code: ${JOBKOREA_OEM_CODE:C900}

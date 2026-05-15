@@ -1,7 +1,10 @@
-﻿import { useEffect, useState } from 'react'
-import AccountUserMenu from './components/AccountUserMenu'
+import { useEffect, useState } from 'react'
+import AuthModal, { type AuthView } from './components/AuthModal'
+import ProjectAside from './components/ProjectAside'
+import ProjectHeader from './components/ProjectHeader'
 import { authApi } from './lib/api'
-import { clearStoredAuthSession, readStoredAuthSession } from './lib/auth-session'
+import { clearStoredAuthSession, getPostLoginRedirect, readStoredAuthSession } from './lib/auth-session'
+import { showAuthToast } from './lib/auth-toast'
 
 type ApiEnvelope<T> = {
   success: boolean
@@ -27,16 +30,21 @@ type WorkspaceResponse = {
   memberCount?: number | null
 }
 
-type ProjectResponse = {
+type ProjectRecommendationResponse = {
   projectId: number
   name: string
   description?: string | null
+  projectType?: string | null
   recruitingStatus?: string | null
+  recommendationScore?: number | null
+  matchedSkillTags?: string[] | null
+  reason?: string | null
 }
 
 type ShowcaseSummaryResponse = {
   showcaseId: number
   title: string
+  description?: string | null
   thumbnailUrl?: string | null
   likeCount?: number | null
   viewCount?: number | null
@@ -46,30 +54,17 @@ type JobRecommendationResponse = {
   jobId: number
 }
 
+type LoungeShellSquad = {
+  id: number
+  name: string
+  colorClass?: string | null
+}
+
+type LoungeShellResponse = {
+  mySquads?: LoungeShellSquad[]
+}
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL?.replace(/\/$/, '') ?? ''
-
-const headerLinks = [
-  { href: 'roadmap-hub.html', label: '로드맵' },
-  { href: 'lecture-list.html', label: '강의' },
-  { href: 'lounge-dashboard.html', label: '프로젝트' },
-  { href: 'job-matching.html', label: '채용분석' },
-  { href: 'community-list.html', label: '커뮤니티' },
-]
-
-const fallbackProject: ProjectResponse = {
-  projectId: 1,
-  name: "배달비 쉐어 서비스 'N-Bread'",
-  description: '기획 1, 프론트 2 확보. Spring Boot/AWS로 서버 구축하실 분!',
-  recruitingStatus: 'OPEN',
-}
-
-const fallbackShowcase: ShowcaseSummaryResponse = {
-  showcaseId: 1,
-  title: 'ROOT (컴공생 올인원 웹 플랫폼)',
-  thumbnailUrl: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=200',
-  likeCount: 142,
-  viewCount: 32,
-}
 
 function isFulfilled<T>(result: PromiseSettledResult<T>): result is PromiseFulfilledResult<T> {
   return result.status === 'fulfilled'
@@ -104,14 +99,30 @@ function goTo(path: string) {
 
 export default function LoungeDashboardApp() {
   const [session, setSession] = useState(() => readStoredAuthSession())
+  const [authView, setAuthView] = useState<AuthView | null>(null)
+  const [dataReloadKey, setDataReloadKey] = useState(0)
   const [profile, setProfile] = useState<UserProfileResponse | null>(null)
   const [workspaces, setWorkspaces] = useState<WorkspaceResponse[]>([])
-  const [projects, setProjects] = useState<ProjectResponse[]>([])
+  const [projectRecommendations, setProjectRecommendations] = useState<ProjectRecommendationResponse[]>([])
   const [showcases, setShowcases] = useState<ShowcaseSummaryResponse[]>([])
   const [jobRecommendations, setJobRecommendations] = useState<JobRecommendationResponse[]>([])
+  const [shell, setShell] = useState<LoungeShellResponse | null>(null)
 
   useEffect(() => {
     document.title = 'DevPath - 프로젝트 라운지'
+  }, [])
+
+  useEffect(() => {
+    const previousHtmlOverflow = document.documentElement.style.overflow
+    const previousBodyOverflow = document.body.style.overflow
+
+    document.documentElement.style.overflow = 'hidden'
+    document.body.style.overflow = 'hidden'
+
+    return () => {
+      document.documentElement.style.overflow = previousHtmlOverflow
+      document.body.style.overflow = previousBodyOverflow
+    }
   }, [])
 
   useEffect(() => {
@@ -119,10 +130,14 @@ export default function LoungeDashboardApp() {
     const controller = new AbortController()
 
     async function loadLoungeData() {
+      const hasSession = Boolean(readStoredAuthSession()?.accessToken)
       const results = await Promise.allSettled([
+        apiGet<LoungeShellResponse>('/api/lounge/shell', controller.signal, hasSession),
         apiGet<UserProfileResponse>('/api/users/me/profile', controller.signal, true),
         apiGet<WorkspaceResponse[]>('/api/workspaces/projects/me', controller.signal, true),
-        apiGet<ProjectResponse[]>('/api/projects', controller.signal),
+        hasSession
+          ? apiGet<ProjectRecommendationResponse[]>('/api/projects/recommendations/me', controller.signal, true)
+          : Promise.resolve([]),
         apiGet<ShowcaseSummaryResponse[]>('/api/showcases?sort=POPULAR', controller.signal),
         apiGet<JobRecommendationResponse[]>('/api/jobs/recommendations/me', controller.signal, true),
       ])
@@ -131,7 +146,11 @@ export default function LoungeDashboardApp() {
         return
       }
 
-      const [profileResult, workspaceResult, projectResult, showcaseResult, jobResult] = results
+      const [shellResult, profileResult, workspaceResult, projectRecommendationResult, showcaseResult, jobResult] = results
+
+      if (isFulfilled(shellResult)) {
+        setShell(shellResult.value)
+      }
 
       if (isFulfilled(profileResult)) {
         setProfile(profileResult.value)
@@ -141,8 +160,8 @@ export default function LoungeDashboardApp() {
         setWorkspaces(workspaceResult.value)
       }
 
-      if (isFulfilled(projectResult) && Array.isArray(projectResult.value)) {
-        setProjects(projectResult.value)
+      if (isFulfilled(projectRecommendationResult) && Array.isArray(projectRecommendationResult.value)) {
+        setProjectRecommendations(projectRecommendationResult.value)
       }
 
       if (isFulfilled(showcaseResult) && Array.isArray(showcaseResult.value)) {
@@ -160,7 +179,7 @@ export default function LoungeDashboardApp() {
       cancelled = true
       controller.abort()
     }
-  }, [])
+  }, [dataReloadKey])
 
   async function handleLogout() {
     const currentSession = readStoredAuthSession()
@@ -175,18 +194,57 @@ export default function LoungeDashboardApp() {
       clearStoredAuthSession()
       setSession(null)
       setProfile(null)
+      setShell(null)
+      setWorkspaces([])
+      setProjectRecommendations([])
+      setJobRecommendations([])
     }
   }
 
-  const userName = profile?.name?.trim() || profile?.nickname?.trim() || session?.name || '이태형'
+  function openAuthModal(message?: string) {
+    if (message) {
+      showAuthToast({
+        message,
+        durationMs: 2200,
+      })
+    }
+
+    setAuthView('login')
+  }
+
+  function closeAuthModal() {
+    setAuthView(null)
+  }
+
+  function handleAuthenticated() {
+    const nextSession = readStoredAuthSession()
+
+    if (nextSession?.role === 'ROLE_ADMIN') {
+      window.location.replace(getPostLoginRedirect(nextSession.role))
+      return
+    }
+
+    setSession(nextSession)
+    setAuthView(null)
+    setDataReloadKey((current) => current + 1)
+  }
+
+  const isAuthenticated = Boolean(session?.accessToken)
+  const userName = isAuthenticated ? profile?.name?.trim() || profile?.nickname?.trim() || session?.name || '사용자' : null
   const profileImage = profile?.profileImage ?? null
-  const hasActiveWorkspaces = workspaces.length > 0
+  const hasActiveWorkspaces = isAuthenticated && workspaces.length > 0
   const primaryWorkspace = workspaces.find((workspace) => workspace.type !== 'MENTORING') ?? workspaces[0]
-  const visibleWorkspaces = workspaces.slice(0, 2)
-  const recommendedProject = projects.find((project) => project.recruitingStatus === 'OPEN') ?? projects[0] ?? fallbackProject
-  const hotShowcase = showcases[0] ?? fallbackShowcase
+  const visibleWorkspaces = isAuthenticated ? workspaces.slice(0, 2) : []
+  const fallbackAsideSquads = visibleWorkspaces.map((workspace, index) => ({
+    id: workspace.workspaceId,
+    name: workspace.name,
+    colorClass: workspace.type === 'MENTORING' || index === 1 ? 'bg-purple-500' : 'bg-blue-500',
+  }))
+  const projectAsideSquads = isAuthenticated ? shell?.mySquads ?? fallbackAsideSquads : []
+  const recommendedProject = isAuthenticated ? projectRecommendations[0] ?? null : null
+  const hotShowcase = showcases[0] ?? null
   const activeWorkspaceCount = workspaces.length
-  const jobRecommendationCount = jobRecommendations.length > 0 ? jobRecommendations.length : 12
+  const jobRecommendationCount = isAuthenticated ? jobRecommendations.length : 0
   const liveFeedItems = [
     {
       id: 'join',
@@ -226,105 +284,10 @@ export default function LoungeDashboardApp() {
 
   return (
     <div className="flex h-screen overflow-hidden text-gray-800">
-      <aside className="w-20 hover:w-64 bg-white border-r border-gray-200 flex flex-col shrink-0 z-50 transition-all duration-300 ease-in-out group shadow-xl">
-        <div className="h-20 flex items-center px-5 cursor-pointer hover:bg-gray-50 transition border-b border-gray-100 shrink-0" onClick={() => goTo('home.html')}>
-          <div className="w-10 h-10 rounded-xl bg-gray-900 flex items-center justify-center text-brand text-xl shrink-0 shadow-md">
-            <i className="fas fa-layer-group"></i>
-          </div>
-          <div className="sidebar-text flex flex-col">
-            <p className="font-bold text-gray-900 text-lg tracking-tight">DevSquad</p>
-            <p className="text-[10px] text-gray-400">Team Building</p>
-          </div>
-        </div>
-
-        <nav className="flex-1 px-3 space-y-2 mt-4 overflow-y-auto overflow-x-hidden">
-          <p className="px-4 text-xs font-bold text-gray-400 sidebar-section-title">MENU</p>
-          <a href="lounge-dashboard.html" className="nav-item active">
-          <i className="fas fa-home w-6 text-center text-lg"></i>
-          <span className="sidebar-text">대시보드</span>
-          </a>
-          <a href="community-lounge.html" className="nav-item">
-            <i className="fas fa-rocket w-6 text-center text-lg"></i>
-            <span className="sidebar-text">라운지 (팀 찾기)</span>
-          </a>
-          <a href="mentoring-hub.html" className="nav-item">
-            <i className="fas fa-chalkboard-teacher w-6 text-center text-lg"></i>
-            <span className="sidebar-text">멘토링 찾기</span>
-          </a>
-          <a href="workspace-hub.html" className="nav-item">
-            <i className="fas fa-laptop-code w-6 text-center text-lg"></i>
-            <span className="sidebar-text">워크스페이스</span>
-          </a>
-          <a href="dev-showcase.html" className="nav-item">
-            <i className="fas fa-trophy w-6 text-center text-lg"></i>
-            <span className="sidebar-text">런칭 쇼케이스</span>
-          </a>
-
-          <p className="px-4 text-xs font-bold text-gray-400 sidebar-section-title">MY SQUADS</p>
-          <div id="mySquadList">
-            {hasActiveWorkspaces ? (
-              visibleWorkspaces.map((workspace, index) => (
-                <a key={workspace.workspaceId} href="squad-dashboard.html" className="nav-item">
-                  <span className={`w-2.5 h-2.5 rounded-full shrink-0 mx-2 ${workspace.type === 'MENTORING' || index === 1 ? 'bg-purple-500' : 'bg-blue-500'}`}></span>
-                  <span className="sidebar-text truncate">{workspace.name}</span>
-                </a>
-              ))
-            ) : (
-              <div className="nav-item opacity-50 cursor-default hover:bg-transparent">
-                <i className="fas fa-ghost w-6 text-center text-sm"></i>
-                <span className="sidebar-text text-[11px]">참여 중인 팀 없음</span>
-              </div>
-            )}
-          </div>
-        </nav>
-      </aside>
+      <ProjectAside activeKey="dashboard" mySquads={projectAsideSquads} />
 
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center px-8 sticky top-0 z-30 shrink-0 shadow-sm">
-          <div className="flex-1"></div>
-          <nav className="-translate-x-[20px] flex items-center gap-10 text-sm font-bold text-gray-500">
-            {headerLinks.map((item) => (
-              <a
-                key={item.href}
-                href={item.href}
-                className={item.href === 'lounge-dashboard.html' ? 'site-header-nav-link site-header-nav-link--active' : 'site-header-nav-link'}
-              >
-                {item.label}
-              </a>
-            ))}
-          </nav>
-          <div className="flex flex-1 items-center justify-end gap-3">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                aria-label="받은 메시지"
-                className="relative cursor-pointer rounded-full p-2.5 text-gray-500 transition hover:bg-gray-100 hover:text-brand"
-              >
-                <i className="far fa-envelope text-lg"></i>
-                <span className="pointer-events-none absolute right-2 top-[5px] h-2 w-2 rounded-full border border-white bg-red-500"></span>
-              </button>
-              <button
-                type="button"
-                aria-label="알림"
-                className="relative cursor-pointer rounded-full p-2.5 text-gray-500 transition hover:bg-gray-100 hover:text-brand"
-              >
-                <i className="far fa-bell text-lg"></i>
-                <span className="pointer-events-none absolute right-2 top-[5px] h-2 w-2 rounded-full border border-white bg-red-500"></span>
-              </button>
-            </div>
-            {session ? (
-              <AccountUserMenu session={session} profileImage={profileImage} onLogout={handleLogout} />
-            ) : (
-              <button
-                type="button"
-                onClick={() => goTo('login.html')}
-                className="rounded-full bg-gray-900 px-5 py-2 text-sm font-bold text-white shadow-lg transition hover:bg-black"
-              >
-                로그인
-              </button>
-            )}
-          </div>
-        </header>
+        <ProjectHeader session={session} profileImage={profileImage} onLoginClick={() => openAuthModal()} onLogout={handleLogout} />
 
         <main className="flex-1 overflow-y-auto bg-[#F8F9FA] p-4 md:p-8 custom-scrollbar">
           <div className="max-w-7xl mx-auto space-y-8">
@@ -336,19 +299,22 @@ export default function LoungeDashboardApp() {
                 <div className="w-full md:w-3/5 text-white">
                   <div className="flex items-center gap-2 mb-3">
                     <span className="bg-white/10 border border-white/20 backdrop-blur-md text-white text-[11px] font-bold px-3 py-1 rounded-full flex items-center gap-1.5">
-                      <i className="fas fa-sun text-yellow-400"></i> 반가워요, {userName}님!
+                      <i className={isAuthenticated ? 'fas fa-sun text-yellow-400' : 'fas fa-lock text-yellow-400'}></i>
+                      {isAuthenticated ? `반가워요, ${userName}님!` : '로그인 후 이용할 수 있어요'}
                     </span>
                   </div>
 
                   <h1 className="text-2xl lg:text-3xl font-black mb-3 leading-tight text-white tracking-tight">
-                    {hasActiveWorkspaces ? (
+                    {!isAuthenticated ? (
+                      <>로그인하고 <span className="text-brand">프로젝트 라운지</span>를 시작해 보세요!</>
+                    ) : hasActiveWorkspaces ? (
                       <>오늘 <span className="text-brand">{primaryWorkspace?.name}</span>의 화상 회의가 있습니다.</>
                     ) : (
                       <>DevPath에서 <span className="text-brand">새로운 프로젝트</span>를 시작해 보세요!</>
                     )}
                   </h1>
 
-                  {hasActiveWorkspaces ? (
+                  {isAuthenticated && hasActiveWorkspaces ? (
                     <div className="bg-gray-800/80 border border-gray-700 rounded-lg px-4 py-2.5 mb-5 inline-flex items-center gap-3 shadow-inner">
                       <span className="bg-brand text-white text-[10px] font-black px-2 py-1 rounded tracking-wider">오후 8:00</span>
                       <span className="text-xs font-bold text-gray-200">주간 스프린트 및 결제 API 리뷰</span>
@@ -356,7 +322,12 @@ export default function LoungeDashboardApp() {
                   ) : null}
 
                   <p className="text-gray-400 text-xs mb-5 leading-relaxed max-w-xl">
-                    {hasActiveWorkspaces ? (
+                    {!isAuthenticated ? (
+                      <>
+                        로그인하면 참여 중인 스쿼드, 프로젝트, 학습 기술 기반 AI 추천을<br />
+                        한 곳에서 확인할 수 있습니다.
+                      </>
+                    ) : hasActiveWorkspaces ? (
                       <>현재 {activeWorkspaceCount}개의 스쿼드에 참여 중이며, 1건의 새로운 멘토링 코멘트가 도착했습니다.</>
                     ) : (
                       <>
@@ -367,7 +338,16 @@ export default function LoungeDashboardApp() {
                   </p>
 
                   <div className="flex flex-wrap gap-2">
-                    {hasActiveWorkspaces ? (
+                    {!isAuthenticated ? (
+                      <>
+                        <button onClick={() => openAuthModal('로그인 후 프로젝트 라운지를 이용할 수 있습니다.')} className="bg-brand hover:bg-green-600 text-white px-5 py-2.5 rounded-xl font-bold text-xs transition shadow-[0_4px_15px_rgba(0,196,113,0.3)] flex items-center gap-2">
+                          <i className="fas fa-sign-in-alt"></i> 로그인하기
+                        </button>
+                        <button onClick={() => goTo('community-lounge.html')} className="bg-white/10 hover:bg-white/20 border border-white/20 text-white px-5 py-2.5 rounded-xl font-bold text-xs transition flex items-center gap-2 backdrop-blur-md">
+                          <i className="fas fa-rocket"></i> 라운지 둘러보기
+                        </button>
+                      </>
+                    ) : hasActiveWorkspaces ? (
                       <>
                         <button onClick={() => goTo('squad-meeting.html')} className="bg-brand hover:bg-green-600 text-white px-5 py-2.5 rounded-xl font-bold text-xs transition shadow-[0_4px_15px_rgba(0,196,113,0.3)] flex items-center gap-2">
                           <i className="fas fa-video"></i> 회의실 바로 입장
@@ -381,7 +361,7 @@ export default function LoungeDashboardApp() {
                         <button onClick={() => goTo('community-lounge.html')} className="bg-brand hover:bg-green-600 text-white px-5 py-2.5 rounded-xl font-bold text-xs transition shadow-[0_4px_15px_rgba(0,196,113,0.3)] flex items-center gap-2">
                           <i className="fas fa-rocket"></i> 라운지 둘러보기
                         </button>
-                        <button onClick={() => window.alert('스쿼드 개설 모달을 띄웁니다.')} className="bg-white/10 hover:bg-white/20 border border-white/20 text-white px-5 py-2.5 rounded-xl font-bold text-xs transition flex items-center gap-2 backdrop-blur-md">
+                        <button onClick={() => goTo('community-lounge.html')} className="bg-white/10 hover:bg-white/20 border border-white/20 text-white px-5 py-2.5 rounded-xl font-bold text-xs transition flex items-center gap-2 backdrop-blur-md">
                           <i className="fas fa-plus"></i> 새 스쿼드 만들기
                         </button>
                       </>
@@ -392,11 +372,16 @@ export default function LoungeDashboardApp() {
                 <div className="w-full md:w-auto flex justify-end">
                   <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-2xl p-5 w-full md:w-56 text-center shadow-lg">
                     <p className="text-[10px] text-gray-300 font-bold mb-1 uppercase tracking-widest">Dev Focus Score</p>
-                    <div className="text-3xl font-black text-white mb-2">{hasActiveWorkspaces ? 92 : 0}<span className="text-sm text-gray-400 font-medium">/100</span></div>
-                    <div className="w-full bg-gray-800 rounded-full h-1.5 mb-2 overflow-hidden">
-                      <div className={hasActiveWorkspaces ? 'bg-brand h-1.5 rounded-full w-[92%]' : 'bg-gray-600 h-1.5 rounded-full w-[0%]'}></div>
+                    <div className="text-3xl font-black text-white mb-2">
+                      {isAuthenticated ? (hasActiveWorkspaces ? 92 : 0) : '--'}
+                      {isAuthenticated ? <span className="text-sm text-gray-400 font-medium">/100</span> : null}
                     </div>
-                    <p className="text-[9px] text-gray-300">{hasActiveWorkspaces ? '상위 5%의 꾸준한 활동량입니다! 🔥' : '첫 활동을 시작하고 점수를 올려보세요! 🚀'}</p>
+                    <div className="w-full bg-gray-800 rounded-full h-1.5 mb-2 overflow-hidden">
+                      <div className={isAuthenticated && hasActiveWorkspaces ? 'bg-brand h-1.5 rounded-full w-[92%]' : 'bg-gray-600 h-1.5 rounded-full w-[0%]'}></div>
+                    </div>
+                    <p className="text-[9px] text-gray-300">
+                      {!isAuthenticated ? '로그인 후 활동 점수를 확인할 수 있습니다.' : hasActiveWorkspaces ? '상위 5%의 꾸준한 활동량입니다! 🔥' : '첫 활동을 시작하고 점수를 올려보세요! 🚀'}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -479,44 +464,83 @@ export default function LoungeDashboardApp() {
                   </div>
 
                   <div className="space-y-4">
-                    <div className="ai-border cursor-pointer group p-5 flex flex-col md:flex-row gap-5 items-start md:items-center justify-between" onClick={() => goTo('community-lounge.html')}>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2">
-                          <span className="bg-brand text-white text-[10px] font-extrabold px-2 py-0.5 rounded shadow-sm">AI 맞춤 95%</span>
-                          <span className="text-[10px] text-gray-400 font-bold">사이드 프로젝트 백엔드 구인</span>
-                        </div>
-                        <h3 className="font-bold text-gray-900 text-base mb-1 truncate group-hover:text-brand transition">{recommendedProject.name}</h3>
-                        <p className="text-[11px] text-gray-500 mb-3 truncate">{recommendedProject.description ?? fallbackProject.description}</p>
-                        <div className="flex gap-1.5">
-                          <span className="text-[10px] font-bold bg-gray-100 text-gray-600 px-2 py-1 rounded">Spring Boot</span>
-                          <span className="text-[10px] font-bold bg-gray-100 text-gray-600 px-2 py-1 rounded">MySQL</span>
-                        </div>
-                      </div>
-                      <div className="w-full md:w-32 shrink-0 text-right md:border-l md:border-gray-100 md:pl-4">
-                        <p className="text-[10px] text-gray-400 font-bold mb-1">모집 마감까지</p>
-                        <p className="text-sm font-black text-red-500 mb-2">D-3</p>
-                        <span className="text-xs font-bold text-gray-900 group-hover:text-brand transition">자세히 보기 &rarr;</span>
-                      </div>
-                    </div>
-
-                    <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm hover-card cursor-pointer flex flex-col md:flex-row gap-5 items-start md:items-center justify-between group" onClick={() => goTo('dev-showcase.html')}>
-                      <div className="flex-1 min-w-0 flex items-center gap-4">
-                        <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden shrink-0 border border-gray-100">
-                          <img src={hotShowcase.thumbnailUrl ?? fallbackShowcase.thumbnailUrl ?? undefined} className="w-full h-full object-cover group-hover:scale-110 transition duration-500" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="bg-yellow-50 text-yellow-600 border border-yellow-200 text-[9px] font-black px-1.5 py-0.5 rounded uppercase">🔥 Hot 런칭</span>
+                    {!isAuthenticated ? (
+                      <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm flex flex-col md:flex-row gap-5 items-start md:items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="bg-gray-900 text-white text-[10px] font-extrabold px-2 py-0.5 rounded shadow-sm">LOGIN REQUIRED</span>
+                            <span className="text-[10px] text-gray-400 font-bold">AI 프로젝트 탐색</span>
                           </div>
-                          <h3 className="font-bold text-gray-900 text-sm mb-1 truncate group-hover:text-blue-600 transition">{hotShowcase.title}</h3>
-                          <p className="text-[11px] text-gray-500 line-clamp-1">수강신청부터 과제 제출까지 관리하는 졸업작품입니다. 피드백 환영해요!</p>
+                          <h3 className="font-bold text-gray-900 text-base mb-1 truncate">로그인 후 AI 맞춤 프로젝트를 확인하세요</h3>
+                          <p className="text-[11px] text-gray-500 mb-3 truncate">학습 기록과 기술 스택을 기준으로 참여하기 좋은 스쿼드를 추천합니다.</p>
+                        </div>
+                        <button onClick={() => openAuthModal('AI 맞춤 프로젝트는 로그인 후 이용할 수 있습니다.')} className="w-full md:w-auto shrink-0 bg-gray-900 hover:bg-black text-white px-5 py-2.5 rounded-xl text-xs font-bold transition shadow-sm">
+                          로그인하기
+                        </button>
+                      </div>
+                    ) : recommendedProject ? (
+                      <div className="ai-border cursor-pointer group p-5 flex flex-col md:flex-row gap-5 items-start md:items-center justify-between" onClick={() => goTo('community-lounge.html')}>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="bg-brand text-white text-[10px] font-extrabold px-2 py-0.5 rounded shadow-sm">AI 맞춤 {recommendedProject.recommendationScore ?? 0}%</span>
+                            <span className="text-[10px] text-gray-400 font-bold">{recommendedProject.projectType === 'SQUAD' ? '스쿼드 프로젝트 추천' : '개인 프로젝트 추천'}</span>
+                          </div>
+                          <h3 className="font-bold text-gray-900 text-base mb-1 truncate group-hover:text-brand transition">{recommendedProject.name}</h3>
+                          <p className="text-[11px] text-gray-500 mb-3 truncate">{recommendedProject.description ?? recommendedProject.reason ?? '추천 프로젝트 설명이 없습니다.'}</p>
+                          <div className="flex gap-1.5 flex-wrap">
+                            {(recommendedProject.matchedSkillTags ?? []).slice(0, 3).map((skill) => (
+                              <span key={skill} className="text-[10px] font-bold bg-gray-100 text-gray-600 px-2 py-1 rounded">{skill}</span>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="w-full md:w-32 shrink-0 text-right md:border-l md:border-gray-100 md:pl-4">
+                          <p className="text-[10px] text-gray-400 font-bold mb-1">매칭 기술</p>
+                          <p className="text-sm font-black text-brand mb-2">{recommendedProject.matchedSkillTags?.length ?? 0}개</p>
+                          <span className="text-xs font-bold text-gray-900 group-hover:text-brand transition">자세히 보기 &rarr;</span>
                         </div>
                       </div>
-                      <div className="shrink-0 flex items-center gap-3 text-xs font-bold text-gray-500 md:border-l md:border-gray-100 md:pl-4">
-                        <span className="flex items-center gap-1 text-red-500"><i className="fas fa-heart"></i> {hotShowcase.likeCount ?? 142}</span>
-                        <span className="flex items-center gap-1"><i className="fas fa-comment"></i> 32</span>
+                    ) : (
+                      <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm flex flex-col md:flex-row gap-5 items-start md:items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="bg-gray-100 text-gray-600 text-[10px] font-extrabold px-2 py-0.5 rounded shadow-sm">AI 탐색</span>
+                            <span className="text-[10px] text-gray-400 font-bold">추천 대기</span>
+                          </div>
+                          <h3 className="font-bold text-gray-900 text-base mb-1 truncate">추천할 프로젝트가 아직 없습니다</h3>
+                          <p className="text-[11px] text-gray-500 mb-3 truncate">기술 스택을 등록하거나 공개 모집 중인 프로젝트가 생기면 추천이 표시됩니다.</p>
+                        </div>
+                        <button onClick={() => goTo('community-lounge.html')} className="w-full md:w-auto shrink-0 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-5 py-2.5 rounded-xl text-xs font-bold transition shadow-sm">
+                          라운지 보기
+                        </button>
                       </div>
-                    </div>
+                    )}
+
+                    {hotShowcase ? (
+                      <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm hover-card cursor-pointer flex flex-col md:flex-row gap-5 items-start md:items-center justify-between group" onClick={() => goTo('dev-showcase.html')}>
+                        <div className="flex-1 min-w-0 flex items-center gap-4">
+                          <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden shrink-0 border border-gray-100">
+                            {hotShowcase.thumbnailUrl ? (
+                              <img src={hotShowcase.thumbnailUrl} className="w-full h-full object-cover group-hover:scale-110 transition duration-500" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-gray-300">
+                                <i className="fas fa-image"></i>
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="bg-yellow-50 text-yellow-600 border border-yellow-200 text-[9px] font-black px-1.5 py-0.5 rounded uppercase">🔥 Hot 런칭</span>
+                            </div>
+                            <h3 className="font-bold text-gray-900 text-sm mb-1 truncate group-hover:text-blue-600 transition">{hotShowcase.title}</h3>
+                            <p className="text-[11px] text-gray-500 line-clamp-1">{hotShowcase.description ?? '등록된 쇼케이스 설명이 없습니다.'}</p>
+                          </div>
+                        </div>
+                        <div className="shrink-0 flex items-center gap-3 text-xs font-bold text-gray-500 md:border-l md:border-gray-100 md:pl-4">
+                          <span className="flex items-center gap-1 text-red-500"><i className="fas fa-heart"></i> {hotShowcase.likeCount ?? 0}</span>
+                          <span className="flex items-center gap-1"><i className="fas fa-eye"></i> {hotShowcase.viewCount ?? 0}</span>
+                        </div>
+                      </div>
+                    ) : null}
                   </div>
                 </section>
               </div>
@@ -527,12 +551,18 @@ export default function LoungeDashboardApp() {
                     <h2 className="text-lg font-extrabold text-transparent select-none leading-none">Spacer</h2>
                   </div>
 
-                  <div className="bg-gray-900 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden group cursor-pointer hover:bg-gray-800 transition flex flex-col" onClick={() => goTo('job-matching.html')}>
+                  <div className="bg-gray-900 rounded-2xl p-6 text-white shadow-lg relative overflow-hidden group cursor-pointer hover:bg-gray-800 transition flex flex-col" onClick={() => isAuthenticated ? goTo('/job-matching') : openAuthModal('커리어 추천은 로그인 후 이용할 수 있습니다.')}>
                     <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500 opacity-20 rounded-full blur-2xl group-hover:opacity-30 transition"></div>
 
                     <div>
                       <h3 className="font-bold text-sm mb-2 flex items-center gap-2"><i className="fas fa-briefcase text-blue-400"></i> 커리어 추천 현황</h3>
-                      <p className="text-xs text-gray-400 mb-1 leading-relaxed">{userName}님의 스택과 일치하는 채용공고가 <span className="text-white font-bold">{jobRecommendationCount}건</span> 업데이트 되었습니다.</p>
+                      <p className="text-xs text-gray-400 mb-1 leading-relaxed">
+                        {isAuthenticated ? (
+                          <>{userName}님의 스택과 일치하는 채용공고가 <span className="text-white font-bold">{jobRecommendationCount}건</span> 업데이트 되었습니다.</>
+                        ) : (
+                          <>로그인하면 학습 기술 스택과 일치하는 채용공고를 확인할 수 있습니다.</>
+                        )}
+                      </p>
                     </div>
 
                     <div className="flex items-center justify-between border-t border-gray-800 pt-4 mt-4 relative z-10">
@@ -582,6 +612,15 @@ export default function LoungeDashboardApp() {
           </div>
         </main>
       </div>
+
+      {authView ? (
+        <AuthModal
+          view={authView}
+          onClose={closeAuthModal}
+          onViewChange={setAuthView}
+          onAuthenticated={handleAuthenticated}
+        />
+      ) : null}
     </div>
   )
 }

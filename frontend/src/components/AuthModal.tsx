@@ -32,8 +32,12 @@ function AuthModal({ view, onClose, onViewChange, onAuthenticated }: AuthModalPr
   const [signupStatus, setSignupStatus] = useState<StatusMessage | null>(null)
 
   useEffect(() => {
-    const previousOverflow = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
+    const previousOverflowX = document.body.style.overflowX
+    const previousOverflowY = document.body.style.overflowY
+    const previousOverscrollBehavior = document.body.style.overscrollBehavior
+    document.body.style.overflowX = 'hidden'
+    document.body.style.overflowY = 'scroll'
+    document.body.style.overscrollBehavior = 'contain'
 
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
@@ -44,7 +48,9 @@ function AuthModal({ view, onClose, onViewChange, onAuthenticated }: AuthModalPr
     window.addEventListener('keydown', handleKeyDown)
 
     return () => {
-      document.body.style.overflow = previousOverflow
+      document.body.style.overflowX = previousOverflowX
+      document.body.style.overflowY = previousOverflowY
+      document.body.style.overscrollBehavior = previousOverscrollBehavior
       window.removeEventListener('keydown', handleKeyDown)
     }
   }, [onClose])

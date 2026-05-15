@@ -12,6 +12,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -48,9 +49,30 @@ public class MentoringPost {
   @Column(name = "required_stacks", length = 500)
   private String requiredStacks;
 
+  @Column(length = 60)
+  private String category;
+
+  @Column(name = "mentoring_type", length = 30)
+  private String mentoringType;
+
+  @Column(name = "duration_weeks")
+  private Integer durationWeeks;
+
+  @Column(columnDefinition = "TEXT")
+  private String curriculum;
+
+  @Column(name = "deadline_at")
+  private LocalDate deadlineAt;
+
+  @Column(name = "current_participants")
+  private Integer currentParticipants;
+
   // 신청 가능한 최대 인원이다.
   @Column(name = "max_participants", nullable = false)
   private Integer maxParticipants;
+
+  @Column(name = "view_count")
+  private Long viewCount;
 
   // 공고 상태를 enum으로 고정해 문자열 오입력을 방지한다.
   @Enumerated(EnumType.STRING)
@@ -73,12 +95,29 @@ public class MentoringPost {
 
   @Builder
   private MentoringPost(
-      User mentor, String title, String content, String requiredStacks, Integer maxParticipants) {
+      User mentor,
+      String title,
+      String content,
+      String requiredStacks,
+      String category,
+      String mentoringType,
+      Integer durationWeeks,
+      String curriculum,
+      LocalDate deadlineAt,
+      Integer currentParticipants,
+      Integer maxParticipants) {
     this.mentor = mentor;
     this.title = title;
     this.content = content;
     this.requiredStacks = requiredStacks;
+    this.category = normalize(category, "Backend");
+    this.mentoringType = normalize(mentoringType, "study");
+    this.durationWeeks = durationWeeks == null ? 4 : Math.max(1, durationWeeks);
+    this.curriculum = curriculum;
+    this.deadlineAt = deadlineAt;
+    this.currentParticipants = currentParticipants == null ? 0 : Math.max(0, currentParticipants);
     this.maxParticipants = maxParticipants;
+    this.viewCount = 0L;
     this.status = MentoringPostStatus.OPEN;
     this.isDeleted = false;
   }
@@ -89,6 +128,26 @@ public class MentoringPost {
     this.content = content;
     this.requiredStacks = requiredStacks;
     this.maxParticipants = maxParticipants;
+  }
+
+  public void updateHubFields(
+      String category,
+      String mentoringType,
+      Integer durationWeeks,
+      String curriculum,
+      LocalDate deadlineAt,
+      Integer currentParticipants) {
+    this.category = normalize(category, this.category == null ? "Backend" : this.category);
+    this.mentoringType = normalize(mentoringType, this.mentoringType == null ? "study" : this.mentoringType);
+    this.durationWeeks = durationWeeks == null ? this.durationWeeks : Math.max(1, durationWeeks);
+    this.curriculum = curriculum;
+    this.deadlineAt = deadlineAt;
+    this.currentParticipants =
+        currentParticipants == null ? this.currentParticipants : Math.max(0, currentParticipants);
+  }
+
+  public void increaseViewCount() {
+    this.viewCount = this.viewCount == null ? 1L : this.viewCount + 1L;
   }
 
   // 공고를 마감 상태로 변경한다.
@@ -105,5 +164,12 @@ public class MentoringPost {
   public void delete() {
     this.isDeleted = true;
     this.status = MentoringPostStatus.CLOSED;
+  }
+
+  private static String normalize(String value, String fallback) {
+    if (value == null || value.isBlank()) {
+      return fallback;
+    }
+    return value.trim();
   }
 }
