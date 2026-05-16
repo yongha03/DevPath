@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { createPortal } from 'react-dom'
 import AuthModal, { type AuthView } from './components/AuthModal'
 import UserAvatar from './components/UserAvatar'
 import { clearStoredAuthSession, getPostLoginRedirect, readStoredAuthSession } from './lib/auth-session'
@@ -11,6 +12,24 @@ type WorkspaceType = 'SOLO' | 'SQUAD' | 'MENTORING'
 type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'DONE'
 type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH'
 type ChatTab = 'team' | 'dm'
+
+type DocumentPictureInPictureOptions = {
+  width?: number
+  height?: number
+  disallowReturnToOpener?: boolean
+  preferInitialWindowPlacement?: boolean
+}
+
+type DocumentPictureInPictureController = {
+  window: Window | null
+  requestWindow: (options?: DocumentPictureInPictureOptions) => Promise<Window>
+}
+
+declare global {
+  interface Window {
+    documentPictureInPicture?: DocumentPictureInPictureController
+  }
+}
 
 type WorkspaceMember = {
   memberId: number
@@ -93,6 +112,43 @@ type DirectMessage = {
   isMine: boolean
   content: string
   createdAt: string
+}
+
+function copyDocumentPictureInPictureStyles(pipWindow: Window) {
+  const baseStyle = pipWindow.document.createElement('style')
+  baseStyle.textContent = `
+    html, body, #squad-dashboard-pip-root {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+    }
+
+    body {
+      background: #F8F9FA;
+      font-family: 'Pretendard', sans-serif;
+    }
+  `
+  pipWindow.document.head.appendChild(baseStyle)
+
+  Array.from(document.styleSheets).forEach((styleSheet) => {
+    try {
+      const rules = Array.from(styleSheet.cssRules).map((rule) => rule.cssText).join('\n')
+      const style = pipWindow.document.createElement('style')
+      style.textContent = rules
+      pipWindow.document.head.appendChild(style)
+    } catch {
+      if (!styleSheet.href) {
+        return
+      }
+
+      const link = pipWindow.document.createElement('link')
+      link.rel = 'stylesheet'
+      link.href = styleSheet.href
+      link.media = styleSheet.media.mediaText
+      pipWindow.document.head.appendChild(link)
+    }
+  })
 }
 
 function getWorkspaceIdFromUrl() {
@@ -264,6 +320,8 @@ export default function SquadDashboardApp() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [chatOpen, setChatOpen] = useState(false)
+  const [chatInPip, setChatInPip] = useState(false)
+  const [chatPipContainer, setChatPipContainer] = useState<HTMLElement | null>(null)
   const [chatTab, setChatTab] = useState<ChatTab>('team')
   const [plusMenuOpen, setPlusMenuOpen] = useState(false)
   const [messageInput, setMessageInput] = useState('')
@@ -273,6 +331,9 @@ export default function SquadDashboardApp() {
   const [noticeContent, setNoticeContent] = useState('')
   const chatScrollRef = useRef<HTMLDivElement | null>(null)
   const directScrollRef = useRef<HTMLDivElement | null>(null)
+  const pipChatScrollRef = useRef<HTMLDivElement | null>(null)
+  const pipDirectScrollRef = useRef<HTMLDivElement | null>(null)
+  const chatPipWindowRef = useRef<Window | null>(null)
 
   useEffect(() => {
     document.title = 'DevPath - 스쿼드 대시보드'
@@ -296,6 +357,14 @@ export default function SquadDashboardApp() {
     window.addEventListener(PROFILE_UPDATED_EVENT, syncProfile)
 
     return () => window.removeEventListener(PROFILE_UPDATED_EVENT, syncProfile)
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (chatPipWindowRef.current && !chatPipWindowRef.current.closed) {
+        chatPipWindowRef.current.close()
+      }
+    }
   }, [])
 
   useEffect(() => {
@@ -399,6 +468,10 @@ export default function SquadDashboardApp() {
     if (chatOpen && chatScrollRef.current) {
       chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight
     }
+
+    if (chatOpen && pipChatScrollRef.current) {
+      pipChatScrollRef.current.scrollTop = pipChatScrollRef.current.scrollHeight
+    }
   }, [chatOpen, messages])
 
   useEffect(() => {
@@ -416,6 +489,10 @@ export default function SquadDashboardApp() {
   useEffect(() => {
     if (directScrollRef.current) {
       directScrollRef.current.scrollTop = directScrollRef.current.scrollHeight
+    }
+
+    if (pipDirectScrollRef.current) {
+      pipDirectScrollRef.current.scrollTop = pipDirectScrollRef.current.scrollHeight
     }
   }, [selectedDmMember, directMessages])
 
@@ -457,6 +534,63 @@ export default function SquadDashboardApp() {
     setSession(nextSession)
     setAuthView(null)
     window.location.reload()
+  }
+
+  function closeChatSurface() {
+    if (chatPipWindowRef.current && !chatPipWindowRef.current.closed) {
+      chatPipWindowRef.current.close()
+    }
+
+    chatPipWindowRef.current = null
+    setChatPipContainer(null)
+    setChatInPip(false)
+    setChatOpen(false)
+  }
+
+  async function openChatSurface() {
+    const documentPictureInPicture = window.documentPictureInPicture
+
+    if (!documentPictureInPicture) {
+      setChatInPip(false)
+      setChatOpen(true)
+      return
+    }
+
+    if (chatPipWindowRef.current && !chatPipWindowRef.current.closed) {
+      chatPipWindowRef.current.focus()
+      return
+    }
+
+    try {
+      const pipWindow = await documentPictureInPicture.requestWindow({
+        width: 400,
+        height: 640,
+      })
+      const root = pipWindow.document.createElement('div')
+
+      root.id = 'squad-dashboard-pip-root'
+      copyDocumentPictureInPictureStyles(pipWindow)
+      pipWindow.document.body.append(root)
+      pipWindow.addEventListener(
+        'pagehide',
+        () => {
+          chatPipWindowRef.current = null
+          setChatPipContainer(null)
+          setChatInPip(false)
+          setChatOpen(false)
+        },
+        { once: true },
+      )
+
+      chatPipWindowRef.current = pipWindow
+      setChatPipContainer(root)
+      setChatInPip(true)
+      setChatOpen(true)
+    } catch {
+      setChatInPip(false)
+      setChatOpen(true)
+      showAuthToast({ message: 'PiP 창을 열 수 없어 일반 채팅창으로 열었습니다.', durationMs: 1800 })
+    }
   }
 
   async function refreshTeamMessages() {
@@ -722,6 +856,165 @@ export default function SquadDashboardApp() {
     )
   }
 
+  function renderPipChat() {
+    return (
+      <div className="squad-dashboard-page flex h-full min-h-0 w-full flex-col overflow-hidden bg-white text-gray-800">
+        <div className="h-12 border-b border-gray-100 flex items-center justify-between px-4 bg-white shrink-0">
+          <h2 className="font-extrabold text-sm text-gray-900 flex items-center gap-2 truncate">
+            <i className="fas fa-comments text-brand"></i>
+            <span className="truncate">{dashboard?.name ?? '스쿼드 소통방'}</span>
+          </h2>
+          <button
+            onClick={closeChatSurface}
+            className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 transition"
+            title="닫기"
+          >
+            <i className="fas fa-times"></i>
+          </button>
+        </div>
+
+        <div className="flex border-b border-gray-100 bg-gray-50/50 shrink-0 px-2">
+          <button onClick={() => setChatTab('team')} className={chatTab === 'team' ? 'flex-1 py-2.5 text-xs font-bold text-brand border-b-2 border-brand transition' : 'flex-1 py-2.5 text-xs font-bold text-gray-500 border-b-2 border-transparent hover:text-gray-700 transition'}>
+            팀 채팅
+          </button>
+          <button onClick={() => setChatTab('dm')} className={chatTab === 'dm' ? 'flex-1 py-2.5 text-xs font-bold text-gray-900 border-b-2 border-gray-900 transition' : 'flex-1 py-2.5 text-xs font-bold text-gray-500 border-b-2 border-transparent hover:text-gray-700 transition'}>
+            1:1 메시지
+          </button>
+        </div>
+
+        {chatTab === 'team' ? (
+          <div className="flex-1 flex min-h-0 flex-col overflow-hidden bg-[#F8F9FA]">
+            <div ref={pipChatScrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
+              {messages.length > 0 ? (
+                <>
+                  <div className="flex justify-center"><span className="bg-gray-200/70 text-gray-500 text-[10px] font-bold px-3 py-1 rounded-full">오늘</span></div>
+                  {messages.map(renderTeamMessage)}
+                </>
+              ) : (
+                <div className="min-h-full flex flex-col items-center justify-center text-center opacity-70">
+                  <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                    <i className="fas fa-hand-sparkles text-xl text-gray-400"></i>
+                  </div>
+                  <p className="text-gray-700 font-bold text-sm">스쿼드 소통방이 열렸습니다.</p>
+                  <p className="text-xs text-gray-500 mt-1 font-medium">팀원들에게 첫 메시지를 보내보세요.</p>
+                </div>
+              )}
+            </div>
+
+            <div className="p-3 bg-white border-t border-gray-100 shrink-0">
+              <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-2xl p-1.5 pr-2 focus-within:border-gray-400 transition shadow-sm">
+                <input
+                  type="text"
+                  className="flex-1 bg-transparent text-sm outline-none px-3 font-medium"
+                  placeholder="메시지 보내기..."
+                  value={messageInput}
+                  onChange={(event) => setMessageInput(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      void sendTeamMessage()
+                    }
+                  }}
+                />
+                <button onClick={() => void sendTeamMessage()} className="w-8 h-8 rounded-xl bg-brand text-white flex items-center justify-center hover:bg-green-600 transition shrink-0 shadow-sm">
+                  <i className="fas fa-paper-plane text-xs"></i>
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="flex-1 flex min-h-0 flex-col overflow-hidden bg-white">
+            {selectedDmMember ? (
+              <>
+                <div className="h-12 border-b border-gray-100 px-3 flex items-center gap-2 shrink-0 bg-white">
+                  <button
+                    onClick={() => {
+                      setSelectedDmMember(null)
+                      setDirectMessages([])
+                      setDirectInput('')
+                    }}
+                    className="w-8 h-8 rounded-full hover:bg-gray-100 text-gray-500 flex items-center justify-center transition"
+                    title="대화 목록"
+                  >
+                    <i className="fas fa-chevron-left text-xs"></i>
+                  </button>
+                  {renderMemberAvatar(selectedDmMember, 'w-8 h-8 border border-gray-200 bg-gray-50', 'text-xs')}
+                  <p className="text-sm font-extrabold text-gray-900 truncate">{selectedDmMember.learnerName ?? '팀원'}</p>
+                </div>
+
+                <div ref={pipDirectScrollRef} className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar bg-[#F8F9FA]">
+                  {directLoading ? (
+                    <div className="min-h-full flex items-center justify-center text-xs font-bold text-gray-400">
+                      메시지를 불러오는 중입니다.
+                    </div>
+                  ) : directMessages.length > 0 ? (
+                    <>
+                      <div className="flex justify-center"><span className="bg-gray-200/70 text-gray-500 text-[10px] font-bold px-3 py-1 rounded-full">오늘</span></div>
+                      {directMessages.map(renderDirectMessage)}
+                    </>
+                  ) : (
+                    <div className="min-h-full flex flex-col items-center justify-center text-center opacity-70">
+                      <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mb-3">
+                        <i className="fas fa-paper-plane text-xl text-gray-400"></i>
+                      </div>
+                      <p className="text-gray-700 font-bold text-sm">아직 메시지가 없습니다.</p>
+                      <p className="text-xs text-gray-500 mt-1 font-medium">첫 1:1 메시지를 보내보세요.</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="p-3 bg-white border-t border-gray-100 shrink-0">
+                  <div className="flex items-center gap-2 bg-gray-50 border border-gray-200 rounded-2xl p-1.5 pr-2 focus-within:border-gray-400 transition shadow-sm">
+                    <input
+                      type="text"
+                      className="flex-1 bg-transparent text-sm outline-none px-3 font-medium"
+                      placeholder="1:1 메시지 보내기..."
+                      value={directInput}
+                      onChange={(event) => setDirectInput(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                          void sendDirectMessage()
+                        }
+                      }}
+                    />
+                    <button onClick={() => void sendDirectMessage()} className="w-8 h-8 rounded-xl bg-brand text-white flex items-center justify-center hover:bg-green-600 transition shrink-0 shadow-sm">
+                      <i className="fas fa-paper-plane text-xs"></i>
+                    </button>
+                  </div>
+                </div>
+              </>
+            ) : dmMembers.length > 0 ? (
+              <div className="p-2 overflow-y-auto custom-scrollbar">
+                {dmMembers.map((member) => (
+                  <button
+                    type="button"
+                    key={member.memberId}
+                    onClick={() => void openDirectRoom(member)}
+                    className="w-full text-left p-3 flex items-center gap-3 hover:bg-gray-50 rounded-xl cursor-pointer transition border-b border-gray-50"
+                  >
+                    <div className="relative">
+                      {renderMemberAvatar(member, 'w-10 h-10 border border-gray-200 bg-gray-50', 'text-sm')}
+                      <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-sm font-bold text-gray-900">{member.learnerName ?? '팀원'}</h4>
+                      <p className="text-xs text-gray-500 truncate mt-0.5 font-medium">1:1 메시지를 시작해보세요.</p>
+                    </div>
+                    <i className="fas fa-chevron-right text-[10px] text-gray-300"></i>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="p-4 flex-1 flex flex-col items-center justify-center text-center">
+                <i className="fas fa-user-friends text-3xl text-gray-200 mb-3"></i>
+                <p className="text-gray-500 font-bold text-sm">대화 가능한 팀원이 없습니다.</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    )
+  }
+
   if (loading) {
     return (
       <div className="squad-dashboard-page flex h-screen overflow-hidden text-gray-800 items-center justify-center bg-[#F9FAFB]">
@@ -754,6 +1047,8 @@ export default function SquadDashboardApp() {
       </div>
     )
   }
+
+  const showChatPanel = chatOpen && !chatInPip
 
   return (
     <div className="squad-dashboard-page flex h-screen overflow-hidden text-gray-800">
@@ -1040,19 +1335,23 @@ export default function SquadDashboardApp() {
         </main>
       </div>
 
-      <button onClick={() => setChatOpen(true)} className="fixed bottom-8 right-8 w-14 h-14 bg-gray-900 text-white rounded-full shadow-[0_10px_25px_rgba(0,0,0,0.3)] flex items-center justify-center hover:bg-black transition-transform hover:scale-105 z-40 group">
+      <button
+        onClick={() => void openChatSurface()}
+        className="fixed bottom-8 right-8 w-14 h-14 bg-gray-900 text-white rounded-full shadow-[0_10px_25px_rgba(0,0,0,0.3)] flex items-center justify-center hover:bg-black transition-transform hover:scale-105 z-40 group"
+        title={window.documentPictureInPicture ? 'PiP 채팅 열기' : '채팅 열기'}
+      >
         <i className="fas fa-comment-dots text-2xl group-hover:animate-bounce"></i>
         {messages.length > 0 ? <span className="absolute top-0 right-0 w-3.5 h-3.5 bg-red-500 border-2 border-white rounded-full"></span> : null}
       </button>
 
-      <div className={`${chatOpen ? '' : 'hidden'} fixed inset-0 bg-gray-900/20 backdrop-blur-sm z-[900] transition-opacity`} onClick={() => setChatOpen(false)}></div>
+      <div className={`${showChatPanel ? '' : 'hidden'} fixed inset-0 bg-gray-900/20 backdrop-blur-sm z-[900] transition-opacity`} onClick={closeChatSurface}></div>
 
-      <div className={`${chatOpen ? 'translate-x-0' : 'translate-x-full'} fixed top-0 right-0 w-full sm:w-[400px] h-full bg-white shadow-[-10px_0_30px_rgba(0,0,0,0.1)] z-[1000] transform transition-transform duration-300 flex flex-col`}>
+      <div className={`${showChatPanel ? 'translate-x-0' : 'translate-x-full'} fixed top-0 right-0 w-full sm:w-[400px] h-full bg-white shadow-[-10px_0_30px_rgba(0,0,0,0.1)] z-[1000] transform transition-transform duration-300 flex flex-col`}>
         <div className="h-16 border-b border-gray-100 flex items-center justify-between px-5 bg-white shrink-0">
           <h2 className="font-extrabold text-lg text-gray-900 flex items-center gap-2">
             <i className="fas fa-comments text-brand"></i> 스쿼드 소통방
           </h2>
-          <button onClick={() => setChatOpen(false)} className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 transition"><i className="fas fa-times"></i></button>
+          <button onClick={closeChatSurface} className="w-8 h-8 rounded-full hover:bg-gray-100 flex items-center justify-center text-gray-500 transition"><i className="fas fa-times"></i></button>
         </div>
 
         <div className="flex border-b border-gray-100 bg-gray-50/50 shrink-0 px-2">
@@ -1220,6 +1519,8 @@ export default function SquadDashboardApp() {
           </div>
         )}
       </div>
+
+      {chatInPip && chatPipContainer ? createPortal(renderPipChat(), chatPipContainer) : null}
 
       {noticeModalOpen ? (
         <div className="fixed inset-0 bg-gray-900/80 backdrop-blur-sm flex items-center justify-center p-4 z-[1050]">
