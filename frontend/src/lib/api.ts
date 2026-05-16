@@ -358,6 +358,17 @@ export const roadmapApi = {
   },
   // [/TEMP]
 
+  renameMyRoadmap(customRoadmapId: number, title: string) {
+    return request<MyRoadmapSummary>(
+      `/api/my-roadmaps/${customRoadmapId}`,
+      { method: 'PATCH', body: JSON.stringify({ title }) },
+      { auth: true },
+    )
+  },
+  deleteMyRoadmap(customRoadmapId: number) {
+    return request<void>(`/api/my-roadmaps/${customRoadmapId}`, { method: 'DELETE' }, { auth: true })
+  },
+
   // [TEST] 노드 완료 즉시 분기 추천 테스트용 — 실 서비스 전 삭제 대상
   testRunDiagnosis(originalRoadmapId: number, originalNodeId: number) {
     return request<{ score: number; maxScore: number; branchType: string; recommendedNodes: string }>(

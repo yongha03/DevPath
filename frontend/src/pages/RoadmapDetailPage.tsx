@@ -1487,11 +1487,11 @@ function RoadmapSwitcherDropdown({
 
           <div className="border-t border-gray-100 px-3 py-2">
             <a
-              href="roadmap-hub.html"
+              href="my-roadmap-list.html"
               className="text-xs font-bold text-gray-500 hover:text-gray-700 flex items-center gap-1.5 transition"
             >
-              <i className="fas fa-arrow-left text-[10px]" />
-              목록으로 돌아가기
+              <i className="fas fa-list text-[10px]" />
+              로드맵 관리
             </a>
           </div>
         </div>

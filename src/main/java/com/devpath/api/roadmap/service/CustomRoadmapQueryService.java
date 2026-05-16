@@ -179,6 +179,14 @@ public class CustomRoadmapQueryService {
   // [/TEMP]
 
   @Transactional
+  public MyRoadmapDto.Item renameMyRoadmap(Long userId, Long customRoadmapId, String newTitle) {
+    CustomRoadmap roadmap = getOwnedRoadmap(userId, customRoadmapId);
+    roadmap.changeTitle(newTitle);
+    LocalDateTime lastStudiedAt = resolveLastStudiedAt(userId, roadmap);
+    return MyRoadmapDto.Item.from(roadmap, lastStudiedAt);
+  }
+
+  @Transactional
   public void deleteMyRoadmap(Long userId, Long customRoadmapId) {
     CustomRoadmap roadmap = getOwnedRoadmap(userId, customRoadmapId);
     customNodePrerequisiteRepository.deleteAllByCustomRoadmap(roadmap);
