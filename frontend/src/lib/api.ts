@@ -296,7 +296,9 @@ async function request<T>(
   }
 
   if (!response.ok || !payload?.success) {
-    throw new Error(payload?.message ?? `Request failed with status ${response.status}`)
+    const err = new Error(payload?.message ?? `Request failed with status ${response.status}`) as Error & { status: number }
+    err.status = response.status
+    throw err
   }
 
   return payload.data

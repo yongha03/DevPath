@@ -1579,6 +1579,7 @@ export default function RoadmapDetailPage() {
   const [processing, setProcessing] = useState(false)
   const [drawerNode, setDrawerNode] = useState<RoadmapNodeItem | null>(null)
   const [myRoadmaps, setMyRoadmaps] = useState<MyRoadmapSummary[]>([])
+  const [existingRoadmapUrl, setExistingRoadmapUrl] = useState<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
 
   const resetRoadmapPageState = useCallback((options?: { keepRoadmap?: boolean }) => {
@@ -1659,12 +1660,18 @@ export default function RoadmapDetailPage() {
               const data = await roadmapApi.copyRoadmap(originalRoadmapId)
               window.location.replace(`roadmap.html?id=${data.customRoadmapId}`)
             } catch (copyError) {
-              // 이미 복사된 경우 기존 로드맵으로 이동; 다른 오류면 에러 표시
-              const list = await roadmapApi.getMyRoadmaps(ctrl.signal)
-              const existingRoadmap = findRoadmapByOriginalId(list.roadmaps, originalRoadmapId)
-
-              if (existingRoadmap) {
-                window.location.replace(`roadmap.html?id=${existingRoadmap.customRoadmapId}`)
+              const isAlreadyExists = (copyError as any)?.status === 409
+              if (isAlreadyExists) {
+                // 이미 복사된 로드맵 → 확인 다이얼로그 표시
+                const list = await roadmapApi.getMyRoadmaps(ctrl.signal)
+                const existingRoadmap = findRoadmapByOriginalId(list.roadmaps, originalRoadmapId)
+                if (existingRoadmap) {
+                  setExistingRoadmapUrl(`roadmap.html?id=${existingRoadmap.customRoadmapId}`)
+                  setLoading(false)
+                } else {
+                  setError('이미 복사된 로드맵을 찾을 수 없습니다.')
+                  setLoading(false)
+                }
               } else {
                 setError(copyError instanceof Error ? copyError.message : '로드맵을 생성할 수 없습니다.')
                 setLoading(false)
@@ -1883,6 +1890,38 @@ export default function RoadmapDetailPage() {
         <div className="text-center">
           <i className="fas fa-spinner fa-spin text-3xl text-[#00c471] mb-3" />
           <p className="text-sm text-gray-500">로드맵을 불러오는 중...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (existingRoadmapUrl) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="w-full max-w-sm rounded-3xl border border-gray-200 bg-white p-8 shadow-lg text-center">
+          <div className="mb-4 flex items-center justify-center w-14 h-14 rounded-2xl bg-emerald-50 mx-auto">
+            <i className="fas fa-route text-2xl text-[#00c471]" />
+          </div>
+          <h2 className="text-lg font-black text-gray-900">이미 진행 중인 로드맵입니다</h2>
+          <p className="mt-2 text-sm text-gray-500 leading-6">
+            이 로드맵의 복사본을 이미 보유하고 있습니다.<br />기존 로드맵으로 이동하시겠습니까?
+          </p>
+          <div className="mt-6 flex flex-col gap-3">
+            <button
+              type="button"
+              onClick={() => window.location.replace(existingRoadmapUrl)}
+              className="rounded-2xl bg-[#00c471] px-4 py-3 text-sm font-bold text-white transition hover:bg-emerald-500"
+            >
+              기존 로드맵으로 이동
+            </button>
+            <button
+              type="button"
+              onClick={() => window.location.replace('roadmap-hub.html')}
+              className="rounded-2xl border border-gray-200 px-4 py-3 text-sm font-bold text-gray-600 transition hover:bg-gray-50"
+            >
+              로드맵 허브로 돌아가기
+            </button>
+          </div>
         </div>
       </div>
     )
