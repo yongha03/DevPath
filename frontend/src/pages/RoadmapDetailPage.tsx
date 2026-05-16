@@ -1,5 +1,6 @@
 import { type CSSProperties, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import AuthModal, { type AuthView } from '../components/AuthModal'
+import LoginRequiredView from '../components/LoginRequiredView'
 import RoadmapInfoContent from '../components/RoadmapInfoContent'
 import SiteHeader from '../components/SiteHeader'
 import { authApi, roadmapApi, userApi } from '../lib/api'
@@ -1804,6 +1805,8 @@ export default function RoadmapDetailPage() {
       </div>
     )
   }
+
+  if (!session) return <LoginRequiredView />
 
   return (
     <div className="overflow-x-hidden text-gray-800">

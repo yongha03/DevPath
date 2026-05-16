@@ -12,6 +12,7 @@ import {
   type DragStartEvent,
 } from '@dnd-kit/core'
 import AuthModal, { type AuthView } from '../components/AuthModal'
+import LoginRequiredView from '../components/LoginRequiredView'
 import SiteHeader from '../components/SiteHeader'
 import { authApi, roadmapApi, userApi } from '../lib/api'
 import {
@@ -818,6 +819,8 @@ function MyRoadmapBuilderPage() {
   // ────────────────────────────────────────────
   // 렌더
   // ────────────────────────────────────────────
+
+  if (!session) return <LoginRequiredView />
 
   return (
     <>
