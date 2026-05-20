@@ -58,6 +58,38 @@ public class RealtimeMessageController {
         ApiResponse.ok(realtimeMessageService.getLoungeMessages(loungeId, viewerId, sort)));
   }
 
+  @PostMapping("/api/workspaces/{workspaceId}/direct-messages")
+  @Operation(
+      tags = SwaggerTag.DIRECT_MESSAGE,
+      summary = "워크스페이스 1:1 메시지 전송",
+      description = "같은 워크스페이스 멤버에게 1:1 메시지를 저장합니다.")
+  public ResponseEntity<ApiResponse<RealtimeMessageResponse.DirectDetail>>
+      createWorkspaceDirectMessage(
+          @Parameter(description = "워크스페이스 ID", example = "1") @PathVariable Long workspaceId,
+          @Parameter(hidden = true) @AuthenticationPrincipal Long senderId,
+          @Valid @RequestBody RealtimeMessageRequest.DirectCreate request) {
+    return ResponseEntity.ok(
+        ApiResponse.ok(
+            realtimeMessageService.createWorkspaceDirectMessage(workspaceId, senderId, request)));
+  }
+
+  @GetMapping("/api/workspaces/{workspaceId}/direct-messages/{userId}")
+  @Operation(
+      tags = SwaggerTag.DIRECT_MESSAGE,
+      summary = "워크스페이스 1:1 메시지 조회",
+      description = "같은 워크스페이스 멤버 사이의 1:1 메시지를 조회합니다.")
+  public ResponseEntity<ApiResponse<List<RealtimeMessageResponse.DirectDetail>>>
+      getWorkspaceDirectMessages(
+          @Parameter(description = "워크스페이스 ID", example = "1") @PathVariable Long workspaceId,
+          @Parameter(description = "대화 상대 사용자 ID", example = "1") @PathVariable Long userId,
+          @Parameter(hidden = true) @AuthenticationPrincipal Long viewerId,
+          @Parameter(description = "정렬 기준", example = "OLDEST") @RequestParam(required = false)
+              MessageSortOrder sort) {
+    return ResponseEntity.ok(
+        ApiResponse.ok(
+            realtimeMessageService.getWorkspaceDirectMessages(workspaceId, userId, viewerId, sort)));
+  }
+
   @PostMapping("/api/direct-messages")
   @Operation(
       tags = SwaggerTag.DIRECT_MESSAGE,

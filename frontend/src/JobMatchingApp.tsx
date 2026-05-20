@@ -5,6 +5,7 @@ import { authApi, userApi } from './lib/api'
 import { AUTH_SESSION_SYNC_EVENT, clearStoredAuthSession, getPostLoginRedirect, readStoredAuthSession } from './lib/auth-session'
 import LoginRequiredView from './components/LoginRequiredView'
 import { showAuthToast } from './lib/auth-toast'
+import { useInternalPageScroll } from './lib/useInternalPageScroll'
 import { projectApiRequest } from './project-api'
 
 type ApiJob = {
@@ -496,6 +497,8 @@ function sortJobs(jobs: MatchingJob[]) {
 }
 
 export default function JobMatchingApp() {
+  useInternalPageScroll()
+
   const [session, setSession] = useState(() => readStoredAuthSession())
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [authView, setAuthView] = useState<AuthView | null>(null)

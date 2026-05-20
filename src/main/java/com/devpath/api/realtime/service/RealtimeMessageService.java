@@ -11,6 +11,7 @@ import com.devpath.domain.realtime.repository.DirectMessageRepository;
 import com.devpath.domain.realtime.repository.LoungeChatMessageRepository;
 import com.devpath.domain.user.entity.User;
 import com.devpath.domain.user.repository.UserRepository;
+import com.devpath.domain.workspace.repository.WorkspaceMemberRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,10 +25,12 @@ public class RealtimeMessageService {
   private final LoungeChatMessageRepository loungeChatMessageRepository;
   private final DirectMessageRepository directMessageRepository;
   private final UserRepository userRepository;
+  private final WorkspaceMemberRepository workspaceMemberRepository;
 
   @Transactional
   public RealtimeMessageResponse.LoungeChatDetail createLoungeMessage(
       Long senderId, RealtimeMessageRequest.LoungeChatCreate request) {
+    validateWorkspaceMember(request.loungeId(), senderId);
     User sender = getUser(senderId);
 
     LoungeChatMessage message =
@@ -45,6 +48,7 @@ public class RealtimeMessageService {
       Long loungeId, Long viewerId, MessageSortOrder sort) {
     // viewerId가 실제 사용자 ID인지 검증한다.
     validateUserExists(viewerId);
+    validateWorkspaceMember(loungeId, viewerId);
 
     MessageSortOrder sortOrder = resolveSortOrder(sort);
 
@@ -105,6 +109,21 @@ public class RealtimeMessageService {
         .toList();
   }
 
+  @Transactional
+  public RealtimeMessageResponse.DirectDetail createWorkspaceDirectMessage(
+      Long workspaceId, Long senderId, RealtimeMessageRequest.DirectCreate request) {
+    validateWorkspaceMember(workspaceId, senderId);
+    validateWorkspaceMember(workspaceId, request.receiverId());
+    return createDirectMessage(senderId, request);
+  }
+
+  public List<RealtimeMessageResponse.DirectDetail> getWorkspaceDirectMessages(
+      Long workspaceId, Long userId, Long viewerId, MessageSortOrder sort) {
+    validateWorkspaceMember(workspaceId, viewerId);
+    validateWorkspaceMember(workspaceId, userId);
+    return getDirectMessages(userId, viewerId, sort);
+  }
+
   private User getUser(Long userId) {
     // 잘못된 사용자 ID를 받은 경우 명확한 비즈니스 예외를 발생시킨다.
     return userRepository
@@ -121,6 +140,12 @@ public class RealtimeMessageService {
   private void validateNotSelf(Long senderId, Long receiverId) {
     if (senderId.equals(receiverId)) {
       throw new CustomException(ErrorCode.REALTIME_CANNOT_MESSAGE_SELF);
+    }
+  }
+
+  private void validateWorkspaceMember(Long workspaceId, Long userId) {
+    if (!workspaceMemberRepository.existsByWorkspaceIdAndLearnerId(workspaceId, userId)) {
+      throw new CustomException(ErrorCode.WORKSPACE_FORBIDDEN);
     }
   }
 

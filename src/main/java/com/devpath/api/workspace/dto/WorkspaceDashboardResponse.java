@@ -47,13 +47,25 @@ public class WorkspaceDashboardResponse {
       List<WorkspaceMember> members,
       long unresolvedTaskCount,
       long activeMilestoneCount) {
+    return fromMemberResponses(
+        workspace,
+        members.stream().map(WorkspaceMemberResponse::from).toList(),
+        unresolvedTaskCount,
+        activeMilestoneCount);
+  }
+
+  public static WorkspaceDashboardResponse fromMemberResponses(
+      Workspace workspace,
+      List<WorkspaceMemberResponse> members,
+      long unresolvedTaskCount,
+      long activeMilestoneCount) {
     return builder()
         .workspaceId(workspace.getId())
         .name(workspace.getName())
         .type(workspace.getType())
         .status(workspace.getStatus())
         .ownerId(workspace.getOwnerId())
-        .members(members.stream().map(WorkspaceMemberResponse::from).toList())
+        .members(members)
         .unresolvedTaskCount(unresolvedTaskCount)
         .activeMilestoneCount(activeMilestoneCount)
         .createdAt(workspace.getCreatedAt())
