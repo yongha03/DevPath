@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent, type MouseEvent } from 'react'
 import { createPortal } from 'react-dom'
 import AuthModal, { type AuthView } from './components/AuthModal'
 import UserAvatar from './components/UserAvatar'
@@ -90,6 +90,26 @@ type ActivityLog = {
   actorId?: number | null
   activityType?: string | null
   description?: string | null
+  createdAt?: string | null
+}
+
+type WorkspaceErdChange = {
+  versionId: number
+  workspaceId: number
+  version: number
+  summary?: string | null
+  updatedById?: number | null
+  updatedByName?: string | null
+  createdAt?: string | null
+}
+
+type VoiceChannel = {
+  channelId: number
+  workspaceId: number
+  name: string
+  description?: string | null
+  activeParticipantCount?: number | null
+  currentSessionStartedAt?: string | null
   createdAt?: string | null
 }
 
@@ -307,6 +327,18 @@ function statusLabel(status?: WorkspaceStatus | null) {
   return status === 'ARCHIVED' ? '완료' : '진행 중'
 }
 
+function readSidebarPinned() {
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  return window.localStorage.getItem('sidebarPinned') === 'true'
+}
+
+function storeSidebarPinned(value: boolean) {
+  window.localStorage.setItem('sidebarPinned', value ? 'true' : 'false')
+}
+
 export default function SquadDashboardApp() {
   const workspaceId = useMemo(getWorkspaceIdFromUrl, [])
   const [session, setSession] = useState(() => readStoredAuthSession())
@@ -316,6 +348,8 @@ export default function SquadDashboardApp() {
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [notices, setNotices] = useState<Notice[]>([])
   const [activities, setActivities] = useState<ActivityLog[]>([])
+  const [erdChanges, setErdChanges] = useState<WorkspaceErdChange[]>([])
+  const [voiceChannels, setVoiceChannels] = useState<VoiceChannel[]>([])
   const [messages, setMessages] = useState<TeamMessage[]>([])
   const [selectedDmMember, setSelectedDmMember] = useState<WorkspaceMember | null>(null)
   const [directMessages, setDirectMessages] = useState<DirectMessage[]>([])
@@ -334,6 +368,7 @@ export default function SquadDashboardApp() {
   const [noticeType, setNoticeType] = useState<'important' | 'normal'>('important')
   const [noticeTitle, setNoticeTitle] = useState('')
   const [noticeContent, setNoticeContent] = useState('')
+  const [sidebarPinned, setSidebarPinned] = useState(readSidebarPinned)
   const chatScrollRef = useRef<HTMLDivElement | null>(null)
   const directScrollRef = useRef<HTMLDivElement | null>(null)
   const pipChatScrollRef = useRef<HTMLDivElement | null>(null)
@@ -396,7 +431,7 @@ export default function SquadDashboardApp() {
       setError(null)
 
       try {
-        const [dashboardData, taskData, eventData, noticeData, activityData, messageData] =
+        const [dashboardData, taskData, eventData, noticeData, activityData, erdChangeData, voiceChannelData, messageData] =
           await Promise.all([
             projectApiRequest<WorkspaceDashboard>(
               `/api/workspaces/${workspaceId}/dashboard`,
@@ -423,6 +458,16 @@ export default function SquadDashboardApp() {
               { signal: controller.signal },
               'required',
             ).catch(() => []),
+            projectApiRequest<WorkspaceErdChange[]>(
+              `/api/workspaces/${workspaceId}/erd/recent-changes`,
+              { signal: controller.signal },
+              'required',
+            ).catch(() => []),
+            projectApiRequest<VoiceChannel[]>(
+              `/api/workspaces/${workspaceId}/voice-channels`,
+              { signal: controller.signal },
+              'required',
+            ).catch(() => []),
             projectApiRequest<TeamMessage[]>(
               `/api/lounge/chats/messages?loungeId=${workspaceId}`,
               { signal: controller.signal },
@@ -439,6 +484,8 @@ export default function SquadDashboardApp() {
         setEvents((eventData ?? []).sort((left, right) => new Date(left.startAt).getTime() - new Date(right.startAt).getTime()))
         setNotices(noticeData ?? [])
         setActivities(activityData ?? [])
+        setErdChanges(erdChangeData ?? [])
+        setVoiceChannels(voiceChannelData ?? [])
         setMessages(messageData ?? [])
       } catch (loadError) {
         if (!controller.signal.aborted) {
@@ -516,8 +563,12 @@ export default function SquadDashboardApp() {
   const todoCount = myTasks.filter((task) => task.status === 'TODO').length
   const doingCount = myTasks.filter((task) => task.status === 'IN_PROGRESS').length
   const doneCount = myTasks.filter((task) => task.status === 'DONE').length
+  const liveVoiceChannel = voiceChannels.find((channel) => (channel.activeParticipantCount ?? 0) > 0)
+  const goalRemainingPercent = taskTotal > 0 ? Math.max(0, 100 - percent(doneCount, taskTotal)) : 35
   const hasAnyDashboardData =
     taskTotal > 0 || events.length > 0 || notices.length > 0 || activities.length > 0 || messages.length > 0
+  const hasDashboardBodyData =
+    taskTotal > 0 || events.length > 0 || notices.length > 0 || activities.length > 0 || erdChanges.length > 0 || Boolean(liveVoiceChannel)
   const upcomingEvents = events.slice(0, 3)
   const sideProjectName = dashboard?.name ?? '새로운 스쿼드'
   const dmMembers = activeMembers.filter((member) => member.learnerId !== session?.userId)
@@ -749,6 +800,17 @@ export default function SquadDashboardApp() {
     }
   }
 
+  function toggleSidebarPin(event: MouseEvent<HTMLButtonElement>) {
+    event.preventDefault()
+    event.stopPropagation()
+
+    setSidebarPinned((current) => {
+      const next = !current
+      storeSidebarPinned(next)
+      return next
+    })
+  }
+
   function renderMemberAvatar(member: WorkspaceMember, className: string, iconClassName = 'text-sm') {
     const imageUrl = member.learnerId === session?.userId ? currentProfileImage : member.profileImage
 
@@ -785,6 +847,28 @@ export default function SquadDashboardApp() {
             </span>
           </div>
           <p className="text-xs text-gray-500 font-medium leading-relaxed">{activity.activityType ?? 'TEAM_ACTIVITY'}</p>
+        </div>
+      </div>
+    )
+  }
+
+  function renderErdChange(change: WorkspaceErdChange) {
+    const title = change.summary?.trim() || `ERD v${change.version} 저장`
+    const authorName = change.updatedByName?.trim() || '팀원'
+
+    return (
+      <div key={change.versionId} className="hover-card p-4 bg-gray-50 border border-gray-100 rounded-xl flex items-start gap-3.5">
+        <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center shrink-0 border border-indigo-100">
+          <i className="fas fa-table text-sm"></i>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex justify-between items-center mb-1">
+            <p className="text-sm font-bold text-gray-900 truncate">{title}</p>
+            <span className="text-[10px] text-gray-400 font-bold shrink-0 ml-2">{formatShortDate(change.createdAt)}</span>
+          </div>
+          <p className="text-xs text-gray-500 font-medium leading-relaxed">
+            {authorName}님이 <code className="px-1.5 py-0.5 bg-gray-200 text-red-500 rounded font-mono text-[11px]">v{change.version}</code> 설계를 저장했습니다.
+          </p>
         </div>
       </div>
     )
@@ -1062,19 +1146,31 @@ export default function SquadDashboardApp() {
 
   return (
     <div className="squad-dashboard-page flex h-screen overflow-hidden text-gray-800">
-      <aside className="w-20 hover:w-64 bg-white border-r border-gray-200 flex flex-col shrink-0 z-50 transition-all duration-300 ease-in-out group shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
-        <a
-          href="workspace-hub.html"
+      <aside className={`${sidebarPinned ? 'pinned ' : ''}w-20 hover:w-64 bg-white border-r border-gray-200 flex flex-col shrink-0 z-50 transition-all duration-300 ease-in-out group shadow-[4px_0_24px_rgba(0,0,0,0.02)]`}>
+        <div
+          onClick={() => {
+            window.location.href = 'workspace-hub.html'
+          }}
           className="h-20 flex items-center px-5 cursor-pointer hover:bg-gray-50 transition border-b border-gray-100 shrink-0"
         >
           <div className={`${hasAnyDashboardData ? 'bg-blue-600 text-white shadow-md' : 'bg-gray-200 text-gray-500 shadow-sm transition group-hover:bg-blue-600 group-hover:text-white'} w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg shrink-0`}>
             <i className="fas fa-arrow-left"></i>
           </div>
-          <div className="sidebar-text flex flex-col justify-center">
-            <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-0.5">목록으로 돌아가기</p>
-            <p className="font-extrabold text-gray-900 truncate w-36 leading-tight">{sideProjectName}</p>
+          <div className="sidebar-text flex items-center justify-between flex-1 min-w-0">
+            <div className="flex flex-col justify-center min-w-0">
+              <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-0.5">목록으로 돌아가기</p>
+              <p className="font-extrabold text-gray-900 truncate w-28 leading-tight">{sideProjectName}</p>
+            </div>
+            <button
+              type="button"
+              onClick={toggleSidebarPin}
+              className="squad-dashboard-pin-button w-7 h-7 rounded-md hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-brand transition-colors focus:outline-none ml-2"
+              title={sidebarPinned ? '사이드바 고정 해제' : '사이드바 고정'}
+            >
+              <i className={`fas fa-thumbtack transform ${sidebarPinned ? 'text-brand' : '-rotate-45 text-gray-400'} text-sm transition-transform`}></i>
+            </button>
           </div>
-        </a>
+        </div>
 
         <nav className="flex-1 px-3 py-6 overflow-y-auto custom-scrollbar">
           <a href={navHref('/squad-dashboard', workspaceId)} className="nav-item active">
@@ -1087,8 +1183,10 @@ export default function SquadDashboardApp() {
           </a>
           <a href={navHref('/squad-review', workspaceId)} className="nav-item">
             <i className="fas fa-code-branch w-6 text-center text-lg"></i>
-            <span className="sidebar-text flex-1">코드 피드백</span>
-            {hasAnyDashboardData ? <span className="sidebar-text bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full ml-auto">1</span> : null}
+            <span className="sidebar-text squad-dashboard-review-link flex-1">
+              <span className="truncate">코드 피드백</span>
+              {hasAnyDashboardData ? <span className="squad-dashboard-review-badge bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">1</span> : null}
+            </span>
           </a>
           <a href={navHref('/squad-erd', workspaceId)} className="nav-item">
             <i className="fas fa-project-diagram w-6 text-center text-lg"></i>
@@ -1159,35 +1257,35 @@ export default function SquadDashboardApp() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto custom-scrollbar p-8 relative">
+        <main className="squad-dashboard-main flex-1 overflow-y-auto custom-scrollbar p-8 relative">
           <div className="max-w-6xl mx-auto space-y-6">
             <div className="bg-white rounded-2xl p-8 border border-gray-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden">
               <div className="absolute right-0 top-0 w-64 h-64 bg-brand opacity-[0.03] rounded-full blur-3xl translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
 
               <div>
-                {hasAnyDashboardData ? (
+                {hasDashboardBodyData ? (
                   <>
-                    <p className="text-sm font-bold text-gray-500 mb-1">스프린트 진행 중</p>
+                    <p className="text-sm font-bold text-gray-500 mb-1">스프린트 2주차 진행 중</p>
                     <h2 className="text-2xl font-extrabold text-gray-900 tracking-tight">반갑습니다, {currentUserName}님! 👋</h2>
                     <p className="text-sm text-gray-600 mt-2 font-medium">
-                      이번 주 팀 목표 달성까지 <span className="text-brand font-bold">{Math.max(0, 100 - percent(doneCount, taskTotal))}%</span> 남았습니다. 화이팅!
+                      이번 주 팀 목표 달성까지 <span className="text-brand font-bold">{goalRemainingPercent}%</span> 남았습니다. 화이팅!
                     </p>
                   </>
                 ) : (
                   <>
-                    <p className="text-sm font-bold text-brand mb-1"><i className="fas fa-rocket mr-1"></i> 스쿼드 생성 완료!</p>
+                    <p className="text-sm font-bold text-brand mb-1"><i className="fas fa-rocket mr-1"></i> 스쿼드 준비 완료!</p>
                     <h2 className="text-2xl font-extrabold text-gray-900 tracking-tight">반갑습니다, {currentUserName}님! 👋</h2>
-                    <p className="text-sm text-gray-600 mt-2 font-medium">새로운 스쿼드가 준비되었습니다. 팀원들을 초대하고 첫 작업을 시작해보세요.</p>
+                    <p className="text-sm text-gray-600 mt-2 font-medium">새로운 스쿼드 워크스페이스가 생성되었습니다. 첫 목표를 세우고 작업을 시작해보세요.</p>
                   </>
                 )}
               </div>
 
               <div className="flex gap-3 w-full md:w-auto shrink-0 z-10">
-                <a href={navHref(hasAnyDashboardData ? '/squad-workspace' : '/squad-settings', workspaceId)} className="flex-1 md:flex-none px-6 py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl text-sm hover:border-brand hover:text-brand transition shadow-sm flex items-center justify-center gap-2">
-                  <i className={hasAnyDashboardData ? 'fas fa-columns' : 'fas fa-user-plus'}></i> {hasAnyDashboardData ? '내 작업 현황판' : '팀원 초대하기'}
+                <a href={navHref('/squad-workspace', workspaceId)} className="squad-dashboard-action-button flex-1 md:flex-none px-6 py-3 bg-white border border-gray-200 text-gray-700 font-bold rounded-xl text-sm hover:border-brand hover:text-brand transition shadow-sm flex items-center justify-center gap-2">
+                  <i className="fas fa-columns"></i> {hasDashboardBodyData ? '내 칸반 보기' : '칸반보드 가기'}
                 </a>
-                <a href={navHref(hasAnyDashboardData ? '/squad-meeting' : '/squad-workspace', workspaceId)} className="flex-1 md:flex-none px-6 py-3 bg-gray-900 text-white font-bold rounded-xl text-sm hover:bg-black transition shadow-lg shadow-gray-900/20 flex items-center justify-center gap-2">
-                  <i className={hasAnyDashboardData ? 'fas fa-headset' : 'fas fa-flag'}></i> {hasAnyDashboardData ? '음성 회의 입장' : '첫 목표 설정'}
+                <a href={navHref('/squad-meeting', workspaceId)} className="squad-dashboard-action-button flex-1 md:flex-none px-6 py-3 bg-gray-900 text-white font-bold rounded-xl text-sm hover:bg-black transition shadow-lg shadow-gray-900/20 flex items-center justify-center gap-2">
+                  <i className="fas fa-headset"></i> {hasDashboardBodyData ? '회의실 입장' : '첫 회의 열기'}
                 </a>
               </div>
             </div>
@@ -1262,54 +1360,113 @@ export default function SquadDashboardApp() {
                   ) : (
                     <div className="flex flex-col items-center justify-center py-10 text-center">
                       <i className="fas fa-shoe-prints text-3xl text-gray-200 mb-3 rotate-[-45deg]"></i>
-                      <p className="text-gray-500 font-bold text-sm">아직 기록된 팀 활동 내역이 없습니다</p>
-                      <p className="text-xs text-gray-400 mt-1 font-medium">코드 리뷰, 작업 완료 등 팀원들의 활동이 시작되면 이곳에 기록됩니다.</p>
+                      <p className="text-gray-500 font-bold text-sm mb-1">기록된 팀 활동이 없습니다</p>
+                      <p className="text-[11px] text-gray-400 font-medium">작업 완료, 코드 리뷰 등의 활동이 시작되면 기록됩니다.</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-7">
+                  <div className="flex justify-between items-center mb-6">
+                    <h3 className="font-extrabold text-gray-900 flex items-center gap-2 text-lg">
+                      <i className="fas fa-project-diagram text-indigo-500"></i> 최근 설계 변경 알림 (ERD 연동)
+                    </h3>
+                    {erdChanges.length > 0 ? (
+                      <a className="text-xs font-bold text-gray-400 hover:text-brand transition" href={navHref('/squad-erd', workspaceId)}>
+                        ERD 열기 <i className="fas fa-chevron-right ml-1"></i>
+                      </a>
+                    ) : null}
+                  </div>
+
+                  {erdChanges.length > 0 ? (
+                    <div className="space-y-3">
+                      {erdChanges.slice(0, 3).map(renderErdChange)}
+                    </div>
+                  ) : (
+                    <div className="fade-in flex flex-col items-center justify-center py-6 text-center border-2 border-dashed border-gray-100 rounded-xl bg-gray-50/50">
+                      <i className="fas fa-project-diagram text-xl text-gray-200 mb-2"></i>
+                      <p className="text-gray-500 font-bold text-sm">설계 변경 내역이 없습니다</p>
                     </div>
                   )}
                 </div>
               </div>
 
               <div className="lg:col-span-4 space-y-6">
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-7">
-                  <h3 className="font-extrabold text-gray-900 flex items-center gap-2 text-lg mb-5 pb-3 border-b border-gray-100">
+                <div className="squad-dashboard-side-card squad-dashboard-compact-side-card squad-dashboard-schedule-card bg-white rounded-2xl border border-gray-100 shadow-sm p-7">
+                  <h3 className="squad-dashboard-side-title font-extrabold text-gray-900 flex items-center gap-2 text-lg mb-5 pb-3 border-b border-gray-100">
                     <i className={`fas fa-clock ${upcomingEvents.length > 0 ? 'text-orange-500' : 'text-gray-400'}`}></i> 마감 임박 일정
                   </h3>
 
                   {upcomingEvents.length > 0 ? (
                     <ul className="space-y-3">
                       {upcomingEvents.map((event, index) => (
-                        <li key={event.eventId} className="hover-card bg-white p-4 border border-gray-100 rounded-xl flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className={`${index === 0 ? 'bg-red-50 text-red-500 border-red-100' : 'bg-gray-50 text-gray-600 border-gray-200'} w-10 h-10 rounded-xl flex flex-col items-center justify-center shrink-0 border`}>
+                        <li key={event.eventId} className="squad-dashboard-schedule-item hover-card bg-white p-4 border border-gray-100 rounded-xl flex items-center justify-between">
+                          <div className="squad-dashboard-schedule-content flex items-center gap-3 min-w-0">
+                            <div className={`${index === 0 ? 'bg-red-50 text-red-500 border-red-100' : 'bg-gray-50 text-gray-600 border-gray-200'} squad-dashboard-schedule-date w-10 h-10 rounded-xl flex flex-col items-center justify-center shrink-0 border`}>
                               <span className="text-[9px] font-bold uppercase">{formatEventMonth(event.startAt)}</span>
                               <span className="text-sm font-black leading-none">{formatEventDay(event.startAt)}</span>
                             </div>
-                            <div>
-                              <p className="text-sm font-bold text-gray-900 mb-0.5">{event.title}</p>
-                              <p className="text-[10px] text-gray-500 font-medium">{stripScheduleCategoryDescription(event.description) || formatChatTime(event.startAt)}</p>
+                            <div className="squad-dashboard-schedule-text min-w-0">
+                              <p className="squad-dashboard-schedule-title text-sm font-bold text-gray-900 mb-0.5 truncate" title={event.title}>{event.title}</p>
+                              <p className="squad-dashboard-schedule-meta text-[10px] text-gray-500 font-medium truncate" title={stripScheduleCategoryDescription(event.description) || formatChatTime(event.startAt)}>
+                                {stripScheduleCategoryDescription(event.description) || formatChatTime(event.startAt)}
+                              </p>
                             </div>
                           </div>
-                          <span className={`${index === 0 ? 'bg-red-500 text-white' : 'bg-orange-100 text-orange-600 border border-orange-200'} text-[10px] font-extrabold px-2 py-1 rounded shadow-sm`}>
+                          <span className={`${index === 0 ? 'bg-red-500 text-white' : 'bg-orange-100 text-orange-600 border border-orange-200'} squad-dashboard-dday-badge text-[10px] font-extrabold px-2 py-1 rounded shadow-sm`}>
                             {getDday(event.startAt)}
                           </span>
                         </li>
                       ))}
                     </ul>
                   ) : (
-                    <div className="flex flex-col items-center justify-center py-8 text-center bg-gray-50/50 rounded-xl border border-gray-50">
+                    <div className="squad-dashboard-empty-panel squad-dashboard-schedule-empty-panel flex flex-col items-center justify-center py-6 text-center border-2 border-dashed border-gray-100 rounded-xl bg-gray-50/50">
                       <i className="far fa-calendar-times text-2xl text-gray-300 mb-2"></i>
                       <p className="text-gray-500 font-bold text-sm">등록된 일정이 없습니다</p>
-                      <p className="text-[11px] text-gray-400 mt-1">스쿼드 일정 관리에서 새 일정을 등록하세요.</p>
                     </div>
                   )}
                 </div>
 
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-7">
-                  <div className="flex justify-between items-center mb-5 pb-3 border-b border-gray-100">
+                <div className="squad-dashboard-side-card bg-white rounded-2xl border border-gray-100 shadow-sm p-7">
+                  <h3 className="squad-dashboard-side-title font-extrabold text-gray-900 flex items-center gap-2 text-lg mb-5 pb-3 border-b border-gray-100">
+                    <i className={`fas fa-headset ${liveVoiceChannel ? 'text-red-500' : 'text-gray-400'}`}></i> 라이브 음성 회의
+                  </h3>
+
+                  {liveVoiceChannel ? (
+                    <div className="squad-dashboard-meeting-card hover-card bg-white p-4 border border-gray-100 rounded-xl flex items-center justify-between">
+                      <div className="squad-dashboard-meeting-copy flex items-center gap-3 min-w-0">
+                        <span className="relative flex h-3 w-3 shrink-0">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
+                        </span>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-gray-900 truncate">{liveVoiceChannel.name} 진행 중</p>
+                          <div className="flex items-center gap-1 mt-1">
+                            <span className="text-[10px] text-gray-500 font-semibold">{liveVoiceChannel.activeParticipantCount ?? 0}명 참여 중</span>
+                          </div>
+                        </div>
+                      </div>
+                      <a href={navHref('/squad-meeting', workspaceId)} className="squad-dashboard-compact-button px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white font-bold rounded-lg text-xs transition shadow-sm shrink-0">
+                        참여하기
+                      </a>
+                    </div>
+                  ) : (
+                    <div className="squad-dashboard-empty-panel squad-dashboard-compact-empty-panel fade-in flex flex-col items-center justify-center py-6 text-center border-2 border-dashed border-gray-100 rounded-xl bg-gray-50/50">
+                      <i className="fas fa-headset text-xl text-gray-200 mb-2"></i>
+                      <p className="text-gray-500 font-bold text-sm">진행 중인 회의가 없습니다</p>
+                      <a href={navHref('/squad-meeting', workspaceId)} className="squad-dashboard-compact-button mt-3 px-3 py-1.5 bg-white border border-gray-200 hover:bg-gray-50 text-gray-600 font-bold rounded-lg text-xs transition shadow-sm">
+                        새 회의 시작
+                      </a>
+                    </div>
+                  )}
+                </div>
+
+                <div className="squad-dashboard-side-card squad-dashboard-compact-side-card bg-white rounded-2xl border border-gray-100 shadow-sm p-7">
+                  <div className="squad-dashboard-side-title flex justify-between items-center mb-5 pb-3 border-b border-gray-100">
                     <h3 className="font-extrabold text-gray-900 flex items-center gap-2 text-lg">
                       <i className={`fas fa-bullhorn ${notices.length > 0 ? 'text-brand' : 'text-gray-400'}`}></i> 팀 공지사항
                     </h3>
-                    <button onClick={() => setNoticeModalOpen(true)} className="w-7 h-7 rounded-md bg-gray-50 hover:bg-gray-200 text-gray-500 hover:text-brand flex items-center justify-center transition" title="새 공지 추가">
+                    <button onClick={() => setNoticeModalOpen(true)} className="squad-dashboard-icon-button w-7 h-7 rounded-md bg-gray-50 hover:bg-gray-200 text-gray-500 hover:text-brand flex items-center justify-center transition" title="새 공지 추가">
                       <i className="fas fa-plus text-xs"></i>
                     </button>
                   </div>
@@ -1319,7 +1476,7 @@ export default function SquadDashboardApp() {
                       const important = isImportantNotice(notice, index)
 
                       return (
-                        <div key={notice.id} className={important ? 'hover-card p-4 bg-brand/5 border border-brand/20 rounded-xl relative overflow-hidden' : 'hover-card p-4 bg-gray-50 border border-gray-100 rounded-xl'}>
+                        <div key={notice.id} className={important ? 'squad-dashboard-notice-item hover-card p-4 bg-brand/5 border border-brand/20 rounded-xl relative overflow-hidden' : 'squad-dashboard-notice-item hover-card p-4 bg-gray-50 border border-gray-100 rounded-xl'}>
                           {important ? <div className="absolute top-0 right-0 w-10 h-10 bg-brand/10 rounded-bl-full"></div> : null}
                           <div className="flex justify-between items-start mb-1.5 relative z-10">
                             <span className={important ? 'bg-red-500 text-white text-[9px] px-1.5 py-0.5 rounded font-extrabold shadow-sm' : 'bg-gray-200 text-gray-600 text-[9px] px-1.5 py-0.5 rounded font-extrabold'}>
@@ -1332,10 +1489,10 @@ export default function SquadDashboardApp() {
                         </div>
                       )
                     }) : (
-                      <div className="text-center py-6 border-2 border-dashed border-gray-100 rounded-xl">
-                        <p className="text-gray-500 font-bold text-sm mb-1">작성된 공지가 없습니다</p>
-                        <button onClick={() => setNoticeModalOpen(true)} className="text-xs font-bold text-brand hover:underline">첫 공지 작성하기</button>
-                      </div>
+                    <div className="squad-dashboard-empty-panel squad-dashboard-compact-empty-panel flex flex-col items-center justify-center text-center py-8 border-2 border-dashed border-gray-100 rounded-xl bg-gray-50/50">
+                      <p className="text-gray-500 font-bold text-sm mb-1">작성된 공지가 없습니다</p>
+                      <button onClick={() => setNoticeModalOpen(true)} className="squad-dashboard-empty-notice-action text-xs font-bold text-brand hover:underline">첫 공지 작성하기</button>
+                    </div>
                     )}
                   </div>
                 </div>

@@ -24,6 +24,8 @@ import com.devpath.domain.workspace.repository.WorkspaceMemberRepository;
 import com.devpath.domain.workspace.repository.WorkspaceRepository;
 import com.devpath.domain.workspace.repository.WorkspaceTaskRepository;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -36,6 +38,8 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class WorkspaceService {
+
+  private static final long ONLINE_WINDOW_SECONDS = 75;
 
   private final WorkspaceRepository workspaceRepository;
   private final WorkspaceMemberRepository workspaceMemberRepository;
@@ -146,6 +150,17 @@ public class WorkspaceService {
     workspace.delete();
   }
 
+  @Transactional
+  public void touchWorkspacePresence(Long workspaceId, Long userId) {
+    getWorkspaceEntity(workspaceId);
+    WorkspaceMember member =
+        workspaceMemberRepository
+            .findByWorkspaceIdAndLearnerId(workspaceId, userId)
+            .orElseThrow(() -> new CustomException(ErrorCode.WORKSPACE_FORBIDDEN));
+
+    member.markActive(LocalDateTime.now().truncatedTo(ChronoUnit.SECONDS));
+  }
+
   public WorkspaceHubSummaryResponse getHubSummary(Long userId) {
     List<Long> workspaceIds = getWorkspaceIdsByMember(userId);
     long total = workspaceIds.size();
@@ -191,7 +206,8 @@ public class WorkspaceService {
                 WorkspaceMemberResponse.from(
                     member,
                     usersById.get(member.getLearnerId()),
-                    profilesByUserId.get(member.getLearnerId())))
+                    profilesByUserId.get(member.getLearnerId()),
+                    isOnline(member)))
         .toList();
   }
 
@@ -234,6 +250,15 @@ public class WorkspaceService {
     return workspaceMemberRepository.findAllByLearnerId(userId).stream()
         .map(WorkspaceMember::getWorkspaceId)
         .toList();
+  }
+
+  private boolean isOnline(WorkspaceMember member) {
+    LocalDateTime lastActiveAt = member.getLastActiveAt();
+    if (lastActiveAt == null) {
+      return false;
+    }
+
+    return lastActiveAt.isAfter(LocalDateTime.now().minusSeconds(ONLINE_WINDOW_SECONDS));
   }
 
   // N+1 방지: workspaceIds 일괄 조회 후 메모리 집계

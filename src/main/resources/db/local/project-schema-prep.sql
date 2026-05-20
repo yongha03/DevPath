@@ -293,6 +293,7 @@ BEGIN
     ALTER TABLE public.workspace ADD COLUMN IF NOT EXISTS created_at timestamp(6);
     ALTER TABLE public.workspace ADD COLUMN IF NOT EXISTS updated_at timestamp(6);
     ALTER TABLE public.workspace_member ADD COLUMN IF NOT EXISTS joined_at timestamp(6);
+    ALTER TABLE public.workspace_member ADD COLUMN IF NOT EXISTS last_active_at timestamp(6);
 
     DELETE FROM public.workspace_member wm
      USING public.workspace w

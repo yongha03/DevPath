@@ -2754,12 +2754,19 @@ body.squad-dashboard-body .app-viewport {
 .squad-dashboard-page .nav-item {
   display: flex;
   align-items: center;
+  min-height: 48px;
   padding: 0.875rem 1rem;
   border-radius: 0.75rem;
   transition: all 0.2s ease-in-out;
   color: #6B7280;
   font-weight: 600;
   margin-bottom: 0.25rem;
+  box-sizing: border-box;
+}
+
+.squad-dashboard-page .nav-item > i {
+  flex: 0 0 1.5rem;
+  line-height: 1.75rem;
 }
 
 .squad-dashboard-page .nav-item:hover {
@@ -2788,6 +2795,46 @@ body.squad-dashboard-body .app-viewport {
   margin-left: 0.75rem;
 }
 
+.squad-dashboard-page aside.pinned {
+  width: 16rem !important;
+}
+
+.squad-dashboard-page aside.pinned .sidebar-text {
+  opacity: 1 !important;
+  width: auto !important;
+  margin-left: 0.75rem !important;
+}
+
+.squad-dashboard-page aside:hover .squad-dashboard-review-link,
+.squad-dashboard-page aside.pinned .squad-dashboard-review-link {
+  display: flex;
+  flex: 1 1 auto;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.squad-dashboard-page .squad-dashboard-review-badge {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 !important;
+  line-height: 16px !important;
+}
+
+.squad-dashboard-page .squad-dashboard-pin-button {
+  width: 28px !important;
+  height: 28px !important;
+  flex: 0 0 28px;
+  border-radius: 6px !important;
+  font-size: 14px !important;
+  line-height: 20px !important;
+}
+
 .squad-dashboard-page .custom-scrollbar::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -2806,6 +2853,374 @@ body.squad-dashboard-body .app-viewport {
   background: #D1D5DB;
 }
 
+.squad-dashboard-page .squad-dashboard-main,
+.squad-dashboard-page .squad-dashboard-main button,
+.squad-dashboard-page .squad-dashboard-main a {
+  font-family: 'Pretendard', sans-serif;
+}
+
+.squad-dashboard-page .squad-dashboard-action-button {
+  height: 44px !important;
+  min-height: 44px !important;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 24px !important;
+  border-radius: 12px !important;
+  font-size: 14px !important;
+  font-weight: 700;
+  line-height: 20px !important;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.squad-dashboard-page .squad-dashboard-action-button i {
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.squad-dashboard-page .squad-dashboard-compact-button {
+  min-height: 30px !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px !important;
+  border-radius: 8px !important;
+  font-size: 12px !important;
+  line-height: 16px !important;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.squad-dashboard-page .squad-dashboard-icon-button {
+  width: 28px !important;
+  height: 28px !important;
+  flex: 0 0 28px;
+  border-radius: 6px !important;
+  font-size: 12px !important;
+  line-height: 16px !important;
+  box-sizing: border-box;
+}
+
+.squad-dashboard-page .squad-dashboard-side-card {
+  border-radius: 16px !important;
+  box-sizing: border-box;
+}
+
+.squad-dashboard-page .squad-dashboard-side-title {
+  box-sizing: border-box;
+}
+
+.squad-dashboard-page .squad-dashboard-side-title h3 {
+  min-width: 0;
+}
+
+.squad-dashboard-page .squad-dashboard-schedule-item,
+.squad-dashboard-page .squad-dashboard-meeting-card {
+  min-height: 74px;
+  padding: 16px !important;
+  gap: 12px;
+  box-sizing: border-box;
+}
+
+.squad-dashboard-page .squad-dashboard-schedule-content,
+.squad-dashboard-page .squad-dashboard-meeting-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: calc(100% - 56px);
+}
+
+.squad-dashboard-page .squad-dashboard-meeting-copy {
+  max-width: calc(100% - 76px);
+}
+
+.squad-dashboard-page .squad-dashboard-schedule-date {
+  width: 40px !important;
+  height: 40px !important;
+  flex: 0 0 40px;
+  border-radius: 12px !important;
+}
+
+.squad-dashboard-page .squad-dashboard-schedule-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.squad-dashboard-page .squad-dashboard-schedule-title {
+  display: block;
+  max-width: 100%;
+  font-size: 14px !important;
+  line-height: 20px !important;
+}
+
+.squad-dashboard-page .squad-dashboard-schedule-meta {
+  display: block;
+  max-width: 100%;
+  font-size: 10px !important;
+  line-height: 14px !important;
+}
+
+.squad-dashboard-page .squad-dashboard-dday-badge {
+  width: 44px;
+  height: 22px;
+  flex: 0 0 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 12px;
+  padding: 0 8px !important;
+  font-size: 10px !important;
+  line-height: 12px !important;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.squad-dashboard-page .squad-dashboard-meeting-card .squad-dashboard-compact-button {
+  width: 64px;
+  flex: 0 0 64px;
+}
+
+.squad-dashboard-page .squad-dashboard-empty-panel {
+  box-sizing: border-box;
+}
+
+.squad-dashboard-page .squad-dashboard-compact-side-card {
+  padding: 22px !important;
+}
+
+.squad-dashboard-page .squad-dashboard-compact-side-card .squad-dashboard-side-title {
+  margin-bottom: 14px !important;
+  padding-bottom: 10px !important;
+}
+
+.squad-dashboard-page .squad-dashboard-schedule-card {
+  padding: 20px !important;
+}
+
+.squad-dashboard-page .squad-dashboard-schedule-card .squad-dashboard-side-title {
+  margin-bottom: 12px !important;
+  padding-bottom: 9px !important;
+}
+
+.squad-dashboard-page .squad-dashboard-schedule-card .squad-dashboard-schedule-item {
+  min-height: 64px;
+  padding: 12px !important;
+}
+
+.squad-dashboard-page .squad-dashboard-schedule-card .squad-dashboard-schedule-content {
+  max-width: calc(100% - 50px);
+}
+
+.squad-dashboard-page .squad-dashboard-schedule-card .squad-dashboard-schedule-date {
+  width: 36px !important;
+  height: 36px !important;
+  flex-basis: 36px;
+}
+
+.squad-dashboard-page .squad-dashboard-schedule-card .squad-dashboard-schedule-title {
+  font-size: 13px !important;
+  line-height: 18px !important;
+}
+
+.squad-dashboard-page .squad-dashboard-schedule-card .squad-dashboard-schedule-meta {
+  font-size: 10px !important;
+  line-height: 13px !important;
+}
+
+.squad-dashboard-page .squad-dashboard-schedule-card .squad-dashboard-dday-badge {
+  width: 40px;
+  height: 20px;
+  flex-basis: 40px;
+  margin-left: 10px;
+  padding: 0 7px !important;
+}
+
+.squad-dashboard-page .squad-dashboard-schedule-empty-panel {
+  padding-top: 18px !important;
+  padding-bottom: 18px !important;
+}
+
+.squad-dashboard-page .squad-dashboard-schedule-empty-panel i {
+  margin-bottom: 6px !important;
+  font-size: 16px !important;
+  line-height: 20px !important;
+}
+
+.squad-dashboard-page .squad-dashboard-schedule-empty-panel p {
+  font-size: 12px !important;
+  line-height: 16px !important;
+}
+
+.squad-dashboard-page .squad-dashboard-compact-empty-panel {
+  padding-top: 16px !important;
+  padding-bottom: 16px !important;
+}
+
+.squad-dashboard-page .squad-dashboard-compact-empty-panel i {
+  margin-bottom: 6px !important;
+  font-size: 16px !important;
+  line-height: 20px !important;
+}
+
+.squad-dashboard-page .squad-dashboard-compact-empty-panel p {
+  margin-bottom: 4px !important;
+  font-size: 12px !important;
+  line-height: 16px !important;
+}
+
+.squad-dashboard-page .squad-dashboard-compact-empty-panel .squad-dashboard-compact-button {
+  min-height: 26px !important;
+  margin-top: 8px !important;
+  padding: 0 10px !important;
+  border-radius: 8px !important;
+  font-size: 11px !important;
+  line-height: 14px !important;
+}
+
+.squad-dashboard-page .squad-dashboard-empty-notice-action {
+  font-size: 11px !important;
+  line-height: 14px !important;
+}
+
+.squad-dashboard-page .squad-dashboard-notice-item {
+  padding: 16px !important;
+  border-radius: 12px !important;
+  box-sizing: border-box;
+}
+
+.squad-settings-page .squad-settings-main {
+  font-family: 'Pretendard', sans-serif;
+}
+
+.squad-settings-page .squad-settings-main button,
+.squad-settings-page .squad-settings-main input,
+.squad-settings-page .squad-settings-main textarea,
+.squad-settings-page .squad-settings-main select {
+  font-family: inherit;
+}
+
+.squad-settings-page .squad-settings-content {
+  background-color: #F9FAFB;
+}
+
+.squad-settings-page .squad-settings-tab-button {
+  display: flex;
+  width: 100%;
+  min-height: 44px;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0 1rem;
+  border: 0;
+  border-radius: 0.75rem;
+  background: transparent;
+  color: #4B5563;
+  cursor: pointer;
+  font-size: 0.875rem;
+  font-weight: 700;
+  line-height: 1.25rem;
+  text-align: left;
+  white-space: nowrap;
+  box-sizing: border-box;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.squad-settings-page .squad-settings-tab-button:hover {
+  background-color: #F9FAFB;
+}
+
+.squad-settings-page .squad-settings-tab-button.is-active {
+  background-color: #F3F4F6;
+  color: #00C471;
+}
+
+.squad-settings-page .squad-settings-tab-button.is-danger {
+  color: #EF4444;
+}
+
+.squad-settings-page .squad-settings-tab-button.is-danger:hover,
+.squad-settings-page .squad-settings-tab-button.is-danger.is-active {
+  background-color: #FEF2F2;
+  color: #DC2626;
+}
+
+.squad-settings-page .squad-settings-tab-button i {
+  width: 1rem;
+  flex: 0 0 1rem;
+  text-align: center;
+  line-height: 1.25rem;
+}
+
+.squad-settings-page .squad-settings-card {
+  border-color: #F3F4F6;
+  border-radius: 1rem;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+}
+
+.squad-settings-page .squad-settings-input {
+  height: 46px !important;
+  padding: 0 16px !important;
+  border-radius: 12px !important;
+  font-size: 14px !important;
+  line-height: 20px !important;
+  box-sizing: border-box;
+}
+
+.squad-settings-page .squad-settings-textarea {
+  height: 96px !important;
+  min-height: 96px !important;
+  padding: 12px 16px !important;
+  border-radius: 12px !important;
+  font-size: 14px !important;
+  line-height: 20px !important;
+  box-sizing: border-box;
+}
+
+.squad-settings-page .squad-settings-info-tile {
+  min-height: 68px;
+  box-sizing: border-box;
+}
+
+.squad-settings-page .squad-settings-primary-action {
+  height: 44px !important;
+  min-width: 138px;
+  justify-content: center;
+  padding: 0 32px !important;
+  border-radius: 12px !important;
+  font-size: 14px !important;
+  line-height: 20px !important;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.squad-settings-page .squad-settings-primary-action i {
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.squad-settings-page .squad-settings-integration-action {
+  height: 32px !important;
+  justify-content: center;
+  padding: 0 12px !important;
+  border-radius: 8px !important;
+  font-size: 12px !important;
+  line-height: 16px !important;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
+.squad-settings-page .squad-settings-danger-action {
+  height: 40px !important;
+  min-width: 132px;
+  justify-content: center;
+  padding: 0 20px !important;
+  border-radius: 12px !important;
+  font-size: 14px !important;
+  line-height: 20px !important;
+  white-space: nowrap;
+  box-sizing: border-box;
+}
+
 .squad-dashboard-page .hover-card {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   border: 1px solid #F3F4F6;
@@ -2813,7 +3228,7 @@ body.squad-dashboard-body .app-viewport {
 
 .squad-dashboard-page .hover-card:hover {
   transform: translateY(-3px);
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
   border-color: #E5E7EB;
 }
 
@@ -2833,18 +3248,16 @@ body.squad-dashboard-body .app-viewport {
 }
 
 .squad-dashboard-page .fade-in {
-  animation: squadDashboardFadeIn 0.3s ease-out forwards;
+  animation: squadDashboardFadeIn 0.4s ease-in-out forwards;
 }
 
 @keyframes squadDashboardFadeIn {
   from {
     opacity: 0;
-    transform: translateY(5px);
   }
 
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 

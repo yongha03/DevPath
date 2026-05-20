@@ -56,6 +56,10 @@ ALTER TABLE ocr_results
 CREATE INDEX IF NOT EXISTS idx_ocr_results_user_lesson_frame
     ON ocr_results (user_id, lesson_id, frame_timestamp_second);
 
+-- Workspace member presence for squad settings status.
+ALTER TABLE workspace_member
+    ADD COLUMN IF NOT EXISTS last_active_at TIMESTAMP;
+
 -- QnA lesson link for opening the exact lecture screen from instructor inbox.
 ALTER TABLE qna_questions
     ADD COLUMN IF NOT EXISTS lesson_id BIGINT;

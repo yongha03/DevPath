@@ -28,22 +28,41 @@ public class WorkspaceMemberResponse {
   @Schema(description = "참여 일시")
   private LocalDateTime joinedAt;
 
+  @Schema(description = "마지막 워크스페이스 접속 일시")
+  private LocalDateTime lastActiveAt;
+
+  @Schema(description = "현재 온라인 여부")
+  private boolean online;
+
   public static WorkspaceMemberResponse from(WorkspaceMember member) {
+    return from(member, false);
+  }
+
+  public static WorkspaceMemberResponse from(WorkspaceMember member, boolean online) {
     return builder()
         .memberId(member.getId())
         .learnerId(member.getLearnerId())
         .joinedAt(member.getJoinedAt())
+        .lastActiveAt(member.getLastActiveAt())
+        .online(online)
         .build();
   }
 
   public static WorkspaceMemberResponse from(
       WorkspaceMember member, User user, UserProfile profile) {
+    return from(member, user, profile, false);
+  }
+
+  public static WorkspaceMemberResponse from(
+      WorkspaceMember member, User user, UserProfile profile, boolean online) {
     return builder()
         .memberId(member.getId())
         .learnerId(member.getLearnerId())
         .learnerName(user == null ? null : user.getName())
         .profileImage(profile == null ? null : profile.getDisplayProfileImage())
         .joinedAt(member.getJoinedAt())
+        .lastActiveAt(member.getLastActiveAt())
+        .online(online)
         .build();
   }
 }
