@@ -101,6 +101,36 @@ public class WorkspaceErdService {
         workspaceId);
   }
 
+  public List<WorkspaceErdResponse.Version> getRecentChanges(Long workspaceId, Long userId) {
+    workspaceService.getWorkspaceDashboard(workspaceId, userId);
+
+    return jdbcTemplate.query(
+        """
+        SELECT v.version_id, v.workspace_id, v.version, v.mermaid_code, v.schema_json,
+               v.summary, v.updated_by_id, COALESCE(u.name, 'Unknown') AS updated_by_name,
+               v.discussion_message_id, v.created_at
+          FROM workspace_erd_versions v
+          LEFT JOIN users u ON u.user_id = v.updated_by_id
+         WHERE v.workspace_id = ?
+           AND v.version > 1
+         ORDER BY v.created_at DESC
+         LIMIT 3
+        """,
+        (rs, rowNum) ->
+            new WorkspaceErdResponse.Version(
+                rs.getLong("version_id"),
+                rs.getLong("workspace_id"),
+                rs.getInt("version"),
+                rs.getString("mermaid_code"),
+                rs.getString("schema_json"),
+                rs.getString("summary"),
+                rs.getLong("updated_by_id"),
+                rs.getString("updated_by_name"),
+                nullableLong(rs.getObject("discussion_message_id")),
+                toLocalDateTime(rs.getTimestamp("created_at"))),
+        workspaceId);
+  }
+
   @Transactional
   public WorkspaceErdResponse.Version getVersion(Long workspaceId, Integer version, Long userId) {
     return getVersions(workspaceId, userId).stream()

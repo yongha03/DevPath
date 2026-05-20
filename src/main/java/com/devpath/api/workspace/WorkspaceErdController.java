@@ -57,6 +57,14 @@ public class WorkspaceErdController {
     return ApiResponse.ok(workspaceErdService.getVersions(workspaceId, requireUserId(userId)));
   }
 
+  @GetMapping("/recent-changes")
+  @Operation(summary = "Get recent ERD changes", description = "Returns recent ERD changes for the workspace dashboard.")
+  public ApiResponse<List<WorkspaceErdResponse.Version>> getRecentChanges(
+      @Parameter(description = "Workspace ID", example = "1") @PathVariable Long workspaceId,
+      @Parameter(hidden = true) @AuthenticationPrincipal Long userId) {
+    return ApiResponse.ok(workspaceErdService.getRecentChanges(workspaceId, requireUserId(userId)));
+  }
+
   @GetMapping("/versions/{version}")
   @Operation(summary = "Get ERD version", description = "Returns one saved ERD version.")
   public ApiResponse<WorkspaceErdResponse.Version> getVersion(

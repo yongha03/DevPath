@@ -21,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -56,6 +57,17 @@ public class WorkspaceDashboardController {
       @Parameter(hidden = true) @AuthenticationPrincipal Long userId) {
     return ApiResponse.ok(
         workspaceService.getWorkspaceDashboard(workspaceId, requireUserId(userId)));
+  }
+
+  @PostMapping("/workspaces/{workspaceId}/presence")
+  @Operation(
+      summary = "워크스페이스 접속 상태 갱신",
+      description = "프로젝트 화면에 접속 중인 멤버의 마지막 활동 시각을 갱신합니다.")
+  public ApiResponse<Void> touchWorkspacePresence(
+      @Parameter(description = "워크스페이스 ID", example = "1") @PathVariable Long workspaceId,
+      @Parameter(hidden = true) @AuthenticationPrincipal Long userId) {
+    workspaceService.touchWorkspacePresence(workspaceId, requireUserId(userId));
+    return ApiResponse.ok();
   }
 
   @GetMapping("/workspaces/hub/summary")

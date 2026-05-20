@@ -9,8 +9,11 @@ import SquadReviewApp from './SquadReviewApp'
 import SquadScheduleApp from './SquadScheduleApp'
 import SquadSettingsApp from './SquadSettingsApp'
 import SquadWorkspaceApp from './SquadWorkspaceApp'
+import { installWorkspacePresenceHeartbeat } from './lib/workspace-presence'
 
 const pathname = window.location.pathname.replace(/\/+$/, '')
+
+installWorkspacePresenceHeartbeat(pathname)
 
 const page =
   pathname === '/job-matching'

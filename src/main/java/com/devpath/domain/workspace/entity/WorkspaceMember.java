@@ -36,9 +36,16 @@ public class WorkspaceMember {
   @Column(name = "joined_at", updatable = false)
   private LocalDateTime joinedAt;
 
+  @Column(name = "last_active_at")
+  private LocalDateTime lastActiveAt;
+
   @Builder
   public WorkspaceMember(Long workspaceId, Long learnerId) {
     this.workspaceId = workspaceId;
     this.learnerId = learnerId;
+  }
+
+  public void markActive(LocalDateTime activeAt) {
+    this.lastActiveAt = activeAt;
   }
 }

@@ -16,6 +16,8 @@ type WorkspaceMember = {
   learnerName?: string | null
   profileImage?: string | null
   joinedAt?: string | null
+  lastActiveAt?: string | null
+  online?: boolean
 }
 
 type WorkspaceSettings = {
@@ -50,8 +52,8 @@ type SettingsForm = {
 const settingsTabs: Array<{ id: SettingsTab; label: string; icon: string }> = [
   { id: 'general', label: '일반 설정', icon: 'fas fa-sliders-h' },
   { id: 'members', label: '팀원 관리', icon: 'fas fa-users' },
-  { id: 'integrations', label: '외부 연동', icon: 'fas fa-plug' },
-  { id: 'danger', label: '보관 및 삭제', icon: 'fas fa-exclamation-triangle' },
+  { id: 'integrations', label: '외부 연동 (API)', icon: 'fas fa-plug' },
+  { id: 'danger', label: '위험 구역', icon: 'fas fa-exclamation-triangle' },
 ]
 
 const integrationMeta: Record<
@@ -168,6 +170,19 @@ export default function SquadSettingsApp() {
   const [deleteConfirm, setDeleteConfirm] = useState('')
 
   useEffect(() => {
+    document.title = 'DevPath - 스쿼드 설정'
+    const html = document.documentElement
+    const body = document.body
+    html.classList.add('squad-dashboard-document')
+    body.classList.add('squad-dashboard-body')
+
+    return () => {
+      html.classList.remove('squad-dashboard-document')
+      body.classList.remove('squad-dashboard-body')
+    }
+  }, [])
+
+  useEffect(() => {
     if (!workspaceId) {
       setError('스쿼드 설정을 열 프로젝트 정보가 없습니다.')
       setLoading(false)
@@ -188,6 +203,12 @@ export default function SquadSettingsApp() {
       setError(null)
 
       try {
+        await projectApiRequest<void>(
+          `/api/workspaces/${workspaceId}/presence`,
+          { method: 'POST' },
+          'required',
+        )
+
         const [nextSettings, nextIntegrations] = await Promise.all([
           projectApiRequest<WorkspaceSettings>(`/api/workspaces/${workspaceId}/settings`, {}, 'required'),
           projectApiRequest<ExternalIntegration[]>(
@@ -225,6 +246,36 @@ export default function SquadSettingsApp() {
       ignore = true
     }
   }, [session?.accessToken, workspaceId])
+
+  useEffect(() => {
+    if (activeTab !== 'members' || !workspaceId || !session?.accessToken) {
+      return
+    }
+
+    let ignore = false
+    const refreshMembers = async () => {
+      try {
+        const nextSettings = await projectApiRequest<WorkspaceSettings>(
+          `/api/workspaces/${workspaceId}/settings`,
+          {},
+          'required',
+        )
+        if (!ignore) {
+          setSettings(nextSettings)
+        }
+      } catch {
+        // Presence refresh is a convenience update; keep the current table if it misses a beat.
+      }
+    }
+
+    void refreshMembers()
+    const intervalId = window.setInterval(refreshMembers, 30_000)
+
+    return () => {
+      ignore = true
+      window.clearInterval(intervalId)
+    }
+  }, [activeTab, session?.accessToken, workspaceId])
 
   function handleLogout() {
     clearStoredAuthSession()
@@ -464,8 +515,8 @@ export default function SquadSettingsApp() {
           </div>
         </header>
 
-        <main className="flex-1 flex overflow-hidden relative">
-          <div className="w-64 bg-white border-r border-gray-100 flex flex-col shrink-0 z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
+        <main className="squad-settings-main flex-1 flex overflow-hidden relative">
+          <div className="squad-settings-menu w-64 bg-white border-r border-gray-100 flex flex-col shrink-0 z-10 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
             <div className="p-6 pb-4 border-b border-gray-50">
               <h2 className="text-lg font-extrabold text-gray-900 flex items-center gap-2">
                 <i className="fas fa-cog text-brand" />
@@ -476,9 +527,11 @@ export default function SquadSettingsApp() {
               {settingsTabs.map((tab) => {
                 const danger = tab.id === 'danger'
                 const active = activeTab === tab.id
-                const className = active
-                  ? `w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition ${danger ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-brand'}`
-                  : `w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition ${danger ? 'text-red-500 hover:bg-red-50' : 'text-gray-600 hover:bg-gray-50'}`
+                const className = [
+                  'squad-settings-tab-button',
+                  active ? 'is-active' : '',
+                  danger ? 'is-danger' : '',
+                ].filter(Boolean).join(' ')
 
                 return (
                   <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} className={className}>
@@ -490,7 +543,7 @@ export default function SquadSettingsApp() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-8 lg:p-12 bg-[#F9FAFB]">
+          <div className="squad-settings-content flex-1 overflow-y-auto custom-scrollbar p-8 lg:p-12 bg-[#F9FAFB]">
             <div className="max-w-4xl mx-auto pb-20">
               {loading ? (
                 <StateCard icon="fas fa-spinner fa-spin" message="스쿼드 설정을 불러오는 중입니다." />
@@ -508,7 +561,9 @@ export default function SquadSettingsApp() {
                       onSave={saveGeneral}
                     />
                   ) : null}
-                  {activeTab === 'members' ? <MembersPanel settings={settings} /> : null}
+                  {activeTab === 'members' ? (
+                    <MembersPanel settings={settings} currentUserId={session?.userId ?? null} />
+                  ) : null}
                   {activeTab === 'integrations' ? (
                     <IntegrationsPanel
                       integrations={integrations}
@@ -561,7 +616,7 @@ export default function SquadSettingsApp() {
 
 function StateCard({ icon, message }: { icon: string; message: string }) {
   return (
-    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
+    <div className="squad-settings-card bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
       <i className={`${icon} text-2xl mb-4`} />
       <p className="text-sm font-bold text-gray-600">{message}</p>
     </div>
@@ -587,7 +642,7 @@ function GeneralPanel({
     <section className="space-y-8 fade-in">
       <div>
         <h3 className="text-xl font-black text-gray-900 mb-1">일반 설정</h3>
-        <p className="text-sm text-gray-500 font-medium">스쿼드 이름과 설명을 실제 프로젝트 정보에 맞게 관리합니다.</p>
+        <p className="text-sm text-gray-500 font-medium">스쿼드의 기본 정보와 공개 범위를 설정합니다.</p>
       </div>
 
       {!canManage ? (
@@ -597,14 +652,14 @@ function GeneralPanel({
       ) : null}
 
       <form onSubmit={onSave} className="space-y-6">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 space-y-6">
+        <div className="squad-settings-card bg-white rounded-2xl shadow-sm border border-gray-100 p-8 space-y-6">
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">
               스쿼드 이름 <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-brand transition shadow-sm disabled:bg-gray-50 disabled:text-gray-400"
+              className="squad-settings-input w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-bold outline-none focus:border-brand transition shadow-sm disabled:bg-gray-50 disabled:text-gray-400"
               value={form.name}
               disabled={!canManage || saving}
               onChange={(event) => onFormChange({ ...form, name: event.target.value })}
@@ -614,7 +669,7 @@ function GeneralPanel({
           <div>
             <label className="block text-sm font-bold text-gray-700 mb-2">상세 설명</label>
             <textarea
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-brand transition shadow-sm h-28 custom-scrollbar resize-none disabled:bg-gray-50 disabled:text-gray-400"
+              className="squad-settings-textarea w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:border-brand transition shadow-sm h-24 custom-scrollbar resize-none disabled:bg-gray-50 disabled:text-gray-400"
               value={form.description}
               disabled={!canManage || saving}
               onChange={(event) => onFormChange({ ...form, description: event.target.value })}
@@ -632,7 +687,7 @@ function GeneralPanel({
           <button
             type="submit"
             disabled={!canManage || saving}
-            className="px-8 py-3 bg-gray-900 text-white font-bold rounded-xl text-sm hover:bg-black transition shadow-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="squad-settings-primary-action px-8 py-3 bg-gray-900 text-white font-bold rounded-xl text-sm hover:bg-black transition shadow-lg flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <i className={saving ? 'fas fa-spinner fa-spin' : 'fas fa-save'} />
             변경사항 저장
@@ -645,26 +700,35 @@ function GeneralPanel({
 
 function InfoTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-gray-50 rounded-xl px-4 py-3">
+    <div className="squad-settings-info-tile bg-gray-50 rounded-xl px-4 py-3">
       <p className="text-[10px] font-black text-gray-400 uppercase tracking-wider mb-1">{label}</p>
       <p className="text-sm font-extrabold text-gray-900">{value}</p>
     </div>
   )
 }
 
-function MembersPanel({ settings }: { settings: WorkspaceSettings }) {
+function MembersPanel({
+  settings,
+  currentUserId,
+}: {
+  settings: WorkspaceSettings
+  currentUserId: number | null
+}) {
   return (
     <section className="space-y-8 fade-in">
-      <div>
-        <h3 className="text-xl font-black text-gray-900 mb-1">팀원 관리</h3>
-        <p className="text-sm text-gray-500 font-medium">현재 스쿼드에 참여 중인 팀원을 확인합니다.</p>
+      <div className="flex justify-between items-end">
+        <div>
+          <h3 className="text-xl font-black text-gray-900 mb-1">팀원 관리</h3>
+          <p className="text-sm text-gray-500 font-medium">참여 중인 팀원을 관리하고 권한을 부여합니다.</p>
+        </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="squad-settings-card bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
         <div className="grid grid-cols-12 gap-4 p-4 border-b border-gray-100 bg-gray-50/50 text-xs font-extrabold text-gray-500 uppercase tracking-wider items-center">
-          <div className="col-span-6 pl-4">이름</div>
+          <div className="col-span-5 pl-4">이름</div>
           <div className="col-span-3">역할</div>
-          <div className="col-span-3 text-right pr-4">참여일</div>
+          <div className="col-span-2 text-center">상태</div>
+          <div className="col-span-2 text-right pr-4">관리</div>
         </div>
 
         {settings.members.length ? (
@@ -673,12 +737,13 @@ function MembersPanel({ settings }: { settings: WorkspaceSettings }) {
 
             return (
               <div key={member.memberId} className="grid grid-cols-12 gap-4 p-4 border-b border-gray-50 items-center hover:bg-gray-50 transition last:border-b-0">
-                <div className="col-span-6 flex items-center gap-4 pl-4">
+                <div className="col-span-5 flex items-center gap-4 pl-4">
                   <UserAvatar name={memberName(member)} imageUrl={member.profileImage} className="w-10 h-10 bg-white" />
                   <div>
                     <p className="font-bold text-gray-900 text-sm flex items-center gap-1.5">
                       {memberName(member)}
-                      {owner ? <span className="bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded text-[9px] uppercase">Owner</span> : null}
+                      {member.learnerId === currentUserId ? <span className="bg-green-50 text-brand px-1.5 py-0.5 rounded text-[9px] uppercase">나</span> : null}
+                      {owner ? <span className="bg-gray-200 text-gray-600 px-1.5 py-0.5 rounded text-[9px] uppercase">방장</span> : null}
                     </p>
                     <p className="text-xs text-gray-500">멤버 ID {member.memberId}</p>
                   </div>
@@ -687,11 +752,18 @@ function MembersPanel({ settings }: { settings: WorkspaceSettings }) {
                 <div className="col-span-3">
                   <span className={`px-3 py-1 rounded-lg text-xs font-bold flex w-fit items-center gap-1.5 ${owner ? 'bg-yellow-50 text-yellow-600 border border-yellow-200' : 'bg-gray-50 text-gray-600 border border-gray-200'}`}>
                     <i className={owner ? 'fas fa-crown' : 'fas fa-user'} />
-                    {owner ? '소유자' : '팀원'}
+                    {owner ? '방장' : '팀원'}
                   </span>
                 </div>
 
-                <div className="col-span-3 text-right pr-4 text-xs font-bold text-gray-500">{formatDate(member.joinedAt)}</div>
+                <div className="col-span-2 text-center">
+                  <span className={`text-xs font-bold inline-flex items-center justify-center gap-1 ${member.online ? 'text-green-500' : 'text-gray-400'}`}>
+                    <span className={`w-1.5 h-1.5 rounded-full ${member.online ? 'bg-green-500' : 'bg-gray-300'}`} />
+                    {member.online ? '온라인' : '오프라인'}
+                  </span>
+                </div>
+
+                <div className="col-span-2 text-right pr-4 text-xs font-medium text-gray-400">-</div>
               </div>
             )
           })
@@ -729,7 +801,7 @@ function IntegrationsPanel({
           const busy = busyIntegration === provider
 
           return (
-            <div key={provider} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 relative overflow-hidden group hover:border-gray-300 transition">
+            <div key={provider} className="squad-settings-card bg-white rounded-2xl shadow-sm border border-gray-100 p-6 relative overflow-hidden group hover:border-gray-300 transition">
               <div className={`absolute top-0 left-0 w-1 h-full ${meta.accent}`} />
               <div className="flex justify-between items-start mb-4 pl-2">
                 <div className="flex items-center gap-3">
@@ -752,7 +824,7 @@ function IntegrationsPanel({
                 type="button"
                 disabled={!canManage || busy}
                 onClick={() => onToggle(provider)}
-                className={`w-full py-2 text-xs font-bold rounded-lg transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed ${active ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : meta.button}`}
+                className={`squad-settings-integration-action w-full py-2 text-xs font-bold rounded-lg transition shadow-sm disabled:opacity-50 disabled:cursor-not-allowed ${active ? 'bg-gray-100 text-gray-600 hover:bg-gray-200' : meta.button}`}
               >
                 {busy ? '변경 중' : active ? '연동 끄기' : '연동 켜기'}
               </button>
@@ -780,28 +852,34 @@ function DangerPanel({
   return (
     <section className="space-y-8 fade-in">
       <div>
-        <h3 className="text-xl font-black text-red-600 mb-1">보관 및 삭제</h3>
-        <p className="text-sm text-gray-500 font-medium">스쿼드 상태를 보관으로 바꾸거나 더 이상 쓰지 않는 스쿼드를 삭제합니다.</p>
+        <h3 className="text-xl font-black text-red-600 mb-1">위험 구역 (Danger Zone)</h3>
+        <p className="text-sm text-gray-500 font-medium">스쿼드의 삭제 및 보관 처리는 되돌릴 수 없으니 주의하세요.</p>
       </div>
 
       <div className="border-2 border-red-200 bg-red-50/30 rounded-2xl p-6 flex flex-col gap-6">
         <div className="flex justify-between items-center pb-6 border-b border-red-100 gap-6">
           <div>
-            <h4 className="font-bold text-gray-900 mb-1">스쿼드 보관</h4>
-            <p className="text-xs text-gray-500 leading-relaxed">완료된 프로젝트를 보관 상태로 바꿔 진행 중 목록과 구분합니다.</p>
+            <h4 className="font-bold text-gray-900 mb-1">스쿼드 보관 (Archive)</h4>
+            <p className="text-xs text-gray-500 leading-relaxed">
+              프로젝트가 완료되었나요? 읽기 전용 상태로 전환하여 데이터를 안전하게 보관합니다.
+              <br />
+              팀원들은 더 이상 칸반이나 코드를 수정할 수 없습니다.
+            </p>
           </div>
-          <button type="button" disabled={!canManage || saving} onClick={onArchiveToggle} className="px-5 py-2.5 bg-white border border-gray-300 text-gray-700 text-sm font-bold rounded-xl hover:bg-gray-50 transition shadow-sm shrink-0 disabled:opacity-50 disabled:cursor-not-allowed">
-            {settings.status === 'ARCHIVED' ? '보관 해제' : '보관하기'}
+          <button type="button" disabled={!canManage || saving} onClick={onArchiveToggle} className="squad-settings-danger-action px-5 py-2.5 bg-white border border-gray-300 text-gray-700 text-sm font-bold rounded-xl hover:bg-gray-50 transition shadow-sm shrink-0 disabled:opacity-50 disabled:cursor-not-allowed">
+            {settings.status === 'ARCHIVED' ? '스쿼드 보관 해제' : '스쿼드 보관하기'}
           </button>
         </div>
 
         <div className="flex justify-between items-center gap-6">
           <div>
-            <h4 className="font-bold text-gray-900 mb-1">스쿼드 삭제</h4>
-            <p className="text-xs text-gray-500 leading-relaxed">삭제한 스쿼드는 목록에서 사라집니다. 필요한 자료가 있다면 먼저 확인해 주세요.</p>
+            <h4 className="font-bold text-gray-900 mb-1">스쿼드 영구 삭제 (Delete)</h4>
+            <p className="text-xs text-gray-500 leading-relaxed">
+              모든 데이터, 파일, 디스코드 기록, 칸반 보드 내역이 즉시 삭제되며 절대 복구할 수 없습니다.
+            </p>
           </div>
-          <button type="button" disabled={!canManage || saving} onClick={onDeleteOpen} className="px-5 py-2.5 bg-red-600 text-white text-sm font-bold rounded-xl hover:bg-red-700 transition shadow-sm shrink-0 disabled:opacity-50 disabled:cursor-not-allowed">
-            스쿼드 삭제
+          <button type="button" disabled={!canManage || saving} onClick={onDeleteOpen} className="squad-settings-danger-action px-5 py-2.5 bg-red-600 text-white text-sm font-bold rounded-xl hover:bg-red-700 transition shadow-sm shrink-0 disabled:opacity-50 disabled:cursor-not-allowed">
+            스쿼드 삭제하기
           </button>
         </div>
       </div>
@@ -829,13 +907,15 @@ function DeleteModal({
       <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl relative overflow-hidden flex flex-col p-8 fade-in border-t-8 border-red-500">
         <h3 className="text-xl font-black text-red-600 mb-2 flex items-center gap-2">
           <i className="fas fa-exclamation-triangle" />
-          정말 삭제할까요?
+          정말 삭제하시겠습니까?
         </h3>
-        <p className="text-sm text-gray-600 mb-6 leading-relaxed">이 작업은 되돌릴 수 없습니다. 계속하려면 아래에 스쿼드 이름을 그대로 입력해 주세요.</p>
+        <p className="text-sm text-gray-600 mb-6 leading-relaxed">
+          이 작업은 되돌릴 수 없습니다. 파일, 디스코드 기록, 칸반 보드 등 모든 내역이 영구적으로 사라집니다.
+        </p>
 
         <div className="mb-6 bg-gray-50 p-4 rounded-xl border border-gray-200">
           <label className="block text-xs font-bold text-gray-500 mb-2">
-            삭제하려면 <span className="text-red-500 font-black">{settings.name}</span> 입력
+            삭제하려면 스쿼드 이름 <span className="text-red-500 font-black">{settings.name}</span>을 정확히 입력하세요
           </label>
           <input
             type="text"
@@ -856,7 +936,7 @@ function DeleteModal({
             onClick={onDelete}
             className="px-6 py-2.5 text-sm font-bold text-white bg-red-600 rounded-xl transition disabled:bg-red-300 disabled:cursor-not-allowed"
           >
-            삭제합니다
+            영구 삭제합니다
           </button>
         </div>
       </div>
