@@ -29,6 +29,7 @@ public class RoadmapHubCatalogUpdateRequest {
 
     private String title;
     private String subtitle;
+    private String category;
     private String iconClass;
     private String iconColor;
     private Integer sortOrder;

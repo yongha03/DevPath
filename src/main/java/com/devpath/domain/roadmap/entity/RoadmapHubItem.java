@@ -38,6 +38,9 @@ public class RoadmapHubItem {
   @Column(length = 160)
   private String subtitle;
 
+  @Column(name = "item_category", length = 80)
+  private String category;
+
   @Column(name = "icon_class", length = 120)
   private String iconClass;
 

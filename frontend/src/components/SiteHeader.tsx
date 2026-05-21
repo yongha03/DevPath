@@ -4,7 +4,7 @@ import AccountUserMenu from './AccountUserMenu'
 import HeaderAlerts from './HeaderAlerts'
 
 const headerLinks = [
-  { href: 'roadmap-hub.html', label: '\uB85C\uB4DC\uB9F5' },
+  { href: '/roadmap-hub', label: '\uB85C\uB4DC\uB9F5' },
   { href: 'lecture-list.html', label: '\uAC15\uC758' },
   { href: 'lounge-dashboard.html', label: '\uD504\uB85C\uC81D\uD2B8' },
   { href: '/job-matching', label: '\uCC44\uC6A9\uBD84\uC11D' },
@@ -87,7 +87,7 @@ export default function SiteHeader({
   const headerStyle: CSSProperties = { top: `${offsetTopPx}px` }
   const defaultNavLinkClassName = 'site-header-nav-link'
   const activeNavLinkClassName = 'site-header-nav-link site-header-nav-link--active'
-  const showHeaderAlerts = Boolean(session && activeNavHref !== 'roadmap-hub.html')
+  const showHeaderAlerts = Boolean(session && activeNavHref !== '/roadmap-hub')
   const brandLabel = (
     <span className="inline-flex items-baseline gap-2 whitespace-nowrap">
       <span className="inline-block">DevPath</span>

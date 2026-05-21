@@ -876,7 +876,7 @@ function MyRoadmapBuilderPage() {
           profileImage={profileImage}
           onLogout={handleLogout}
           onLoginClick={() => setAuthView('login')}
-          activeNavHref="roadmap-hub.html"
+          activeNavHref="/roadmap-hub"
           brandSuffix="마스터 빌더"
         />
         <div className="flex h-screen items-center justify-center bg-[#F8FAFC] px-4 pt-16">
@@ -927,7 +927,7 @@ function MyRoadmapBuilderPage() {
         profileImage={profileImage}
         onLogout={handleLogout}
         onLoginClick={() => setAuthView('login')}
-        activeNavHref="roadmap-hub.html"
+        activeNavHref="/roadmap-hub"
         brandSuffix="마스터 빌더"
       />
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>

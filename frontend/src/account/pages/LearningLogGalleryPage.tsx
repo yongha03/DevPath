@@ -303,7 +303,7 @@ export default function LearningLogGalleryPage() {
                         <button
                           onClick={(event) => {
                             event.stopPropagation()
-                            window.location.href = 'roadmap-hub.html'
+                            window.location.href = '/roadmap-hub'
                           }}
                           className="rounded-lg border border-gray-600 bg-gray-800 py-2 text-xs font-bold text-white transition hover:bg-gray-700"
                         >

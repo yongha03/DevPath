@@ -687,6 +687,154 @@ pre {
   outline: none;
 }
 
+.roadmap-hub-page {
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+}
+
+.roadmap-hub-page button,
+.roadmap-hub-page a {
+  font-family: inherit;
+}
+
+.roadmap-hub-page .roadmap-hub-body-zoom {
+  --roadmap-hub-body-zoom: 0.9;
+  width: calc(100% / var(--roadmap-hub-body-zoom));
+  margin-left: calc((100% - (100% / var(--roadmap-hub-body-zoom))) / 2);
+  zoom: var(--roadmap-hub-body-zoom);
+  transform-origin: top left;
+}
+
+.roadmap-hub-page .roadmap-hub-hero-title {
+  font-size: 36px;
+  line-height: 40px;
+  letter-spacing: 0;
+}
+
+.roadmap-hub-page .roadmap-hub-hero-copy {
+  font-size: 18px;
+  line-height: 29px;
+}
+
+.roadmap-hub-page .roadmap-hub-hero-button {
+  min-height: 60px;
+  padding: 16px 32px;
+  font-size: 18px;
+  line-height: 28px;
+  border-radius: 9999px;
+}
+
+.roadmap-hub-page .roadmap-hub-hero-button .text-lg {
+  font-size: 18px;
+  line-height: 28px;
+}
+
+.roadmap-hub-page .roadmap-hub-card {
+  min-height: 60px;
+  padding: 16px 20px;
+}
+
+.roadmap-hub-page .roadmap-hub-card h3 {
+  font-size: 16px;
+  line-height: 24px;
+}
+
+.roadmap-hub-page .roadmap-hub-card p {
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.roadmap-hub-page .roadmap-hub-section-tabs {
+  min-height: 64px;
+}
+
+.roadmap-hub-page .roadmap-hub-section-tab {
+  min-height: 64px;
+  border-bottom: 4px solid transparent;
+  padding: 16px 32px;
+  color: #9ca3af;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 28px;
+  letter-spacing: 0;
+  transition:
+    border-color 0.18s ease,
+    color 0.18s ease;
+}
+
+.roadmap-hub-page .roadmap-hub-section-tab:hover {
+  color: #374151;
+}
+
+.roadmap-hub-page .roadmap-hub-section-tab--active {
+  border-color: #00c471;
+  color: #00c471;
+}
+
+.roadmap-hub-page .roadmap-hub-category-group {
+  min-width: 0;
+}
+
+.roadmap-hub-page .roadmap-hub-tab-panel .roadmap-hub-category-group:first-child .roadmap-hub-category-title {
+  margin-top: 0;
+}
+
+.roadmap-hub-page .roadmap-hub-category-title {
+  color: #374151;
+  letter-spacing: 0;
+}
+
+.roadmap-hub-page .roadmap-hub-category-title--card {
+  margin-top: 32px;
+  margin-bottom: 16px;
+  border-bottom: 1px solid #e5e7eb;
+  padding-bottom: 8px;
+  font-size: 18px;
+  line-height: 28px;
+}
+
+.roadmap-hub-page .roadmap-hub-category-title--chip {
+  margin-top: 32px;
+  margin-bottom: 12px;
+  font-size: 16px;
+  line-height: 24px;
+}
+
+.roadmap-hub-page .skill-btn {
+  min-height: 56px;
+  padding: 8px 16px;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.roadmap-hub-page .skill-btn i {
+  width: 20px;
+  font-size: 16px;
+  line-height: 20px;
+}
+
+.roadmap-hub-page .roadmap-hub-link-row {
+  min-height: 48px;
+  padding: 12px;
+  font-size: 16px;
+  line-height: 24px;
+}
+
+.roadmap-hub-page .roadmap-hub-retry-button {
+  min-height: 40px;
+  padding: 8px 20px;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+@media (min-width: 768px) {
+  .roadmap-hub-page .roadmap-hub-hero-title {
+    font-size: 60px;
+    line-height: 1;
+  }
+}
+
 @media (max-width: 1023px) {
   :root {
     --left-rail: 0px;

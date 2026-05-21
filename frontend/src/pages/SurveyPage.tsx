@@ -256,7 +256,7 @@ function SurveyPage() {
         profileImage={profileImage}
         onLogout={handleLogout}
         onLoginClick={handleLoginClick}
-        activeNavHref="roadmap-hub.html"
+        activeNavHref="/roadmap-hub"
         startOverlay={
           <a
             href="home.html"

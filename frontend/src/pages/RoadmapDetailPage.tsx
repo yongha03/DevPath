@@ -1687,11 +1687,11 @@ export default function RoadmapDetailPage() {
             if (list.roadmaps.length > 0) {
               window.location.replace(`roadmap.html?id=${list.roadmaps[0].customRoadmapId}`)
             } else {
-              window.location.replace('roadmap-hub.html')
+              window.location.replace('/roadmap-hub')
             }
           }
         } catch {
-          window.location.replace('roadmap-hub.html')
+          window.location.replace('/roadmap-hub')
         }
       })()
       return () => ctrl.abort()
@@ -1926,7 +1926,7 @@ export default function RoadmapDetailPage() {
             </button>
             <button
               type="button"
-              onClick={() => window.location.replace('roadmap-hub.html')}
+              onClick={() => window.location.replace('/roadmap-hub')}
               className="rounded-2xl border border-gray-200 px-4 py-3 text-sm font-bold text-gray-600 transition hover:bg-gray-50"
             >
               로드맵 허브로 돌아가기
@@ -1967,7 +1967,7 @@ export default function RoadmapDetailPage() {
         profileImage={profileImage}
         onLogout={handleLogout}
         onLoginClick={() => openAuthModal('login')}
-        activeNavHref="roadmap-hub.html"
+        activeNavHref="/roadmap-hub"
         endOverlay={(
           <div className="roadmap-header-metrics-shell">
             <div className="roadmap-header-metrics-shell__inner">
@@ -1999,7 +1999,7 @@ export default function RoadmapDetailPage() {
           {/* 왼쪽: 뒤로 + 로고 */}
           <div className="flex items-center gap-4 shrink-0">
             <a
-              href="roadmap-hub.html"
+              href="/roadmap-hub"
               className="text-gray-500 hover:text-gray-800 font-bold text-sm flex items-center gap-1"
             >
               <i className="fas fa-arrow-left" /> 목록
@@ -2013,7 +2013,7 @@ export default function RoadmapDetailPage() {
           {/* 가운데: 네비게이션 */}
           <nav className="flex justify-center overflow-x-auto">
             <div className="header-nav-links text-sm font-bold text-gray-500">
-              <a href="roadmap-hub.html" className="text-[#00c471] border-b-2 border-[#00c471] pb-1 transition">로드맵</a>
+              <a href="/roadmap-hub" className="text-[#00c471] border-b-2 border-[#00c471] pb-1 transition">로드맵</a>
               <a href="lecture-list.html" className="hover:text-[#00c471] transition">강의</a>
               <a href="project-list.html" className="hover:text-[#00c471] transition">프로젝트</a>
               <a href="community-list.html" className="hover:text-[#00c471] transition">커뮤니티</a>
@@ -2168,7 +2168,7 @@ export default function RoadmapDetailPage() {
                     <i className="fas fa-rocket" /> 프로젝트 시작하기
                   </button>
                   <button
-                    onClick={() => { window.location.href = 'roadmap-hub.html' }}
+                    onClick={() => { window.location.href = '/roadmap-hub' }}
                     className="px-6 py-3 bg-white hover:bg-gray-50 text-gray-700 rounded-xl font-bold text-sm border-2 border-gray-200 transition flex items-center gap-2"
                   >
                     <i className="fas fa-map" /> 다른 로드맵 보러가기

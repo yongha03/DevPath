@@ -4072,7 +4072,7 @@ export default function LearningPlayerApp() {
             <div className="completion-fade-enter-delay mt-12 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <button
                 type="button"
-                onClick={() => { window.location.href = 'roadmap-hub.html' }}
+                onClick={() => { window.location.href = '/roadmap-hub' }}
                 className="flex w-full items-center justify-center gap-2 rounded-xl border border-gray-700 bg-gray-800 px-8 py-3.5 font-bold text-white transition hover:bg-gray-700 sm:w-auto"
               >
                 <i className="fas fa-map-marked-alt" /> 로드맵으로 돌아가기

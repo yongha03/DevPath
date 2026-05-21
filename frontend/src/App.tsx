@@ -11,7 +11,7 @@ import {
 } from './lib/auth-session'
 
 const headerLinks = [
-  { key: 'roadmap', href: 'roadmap-hub.html', label: '로드맵' },
+  { key: 'roadmap', href: '/roadmap-hub', label: '로드맵' },
   { key: 'lecture', href: 'lecture-list.html', label: '강의' },
   { key: 'project', href: 'lounge-dashboard.html', label: '프로젝트' },
   { key: 'jobMatching', href: '/job-matching', label: '채용분석' },
@@ -29,7 +29,7 @@ const headerMoveOffsets: Record<HeaderMoveKey, { x: number; y: number }> = {
 }
 
 const serviceLinks = [
-  { href: 'roadmap-hub.html', label: '로드맵' },
+  { href: '/roadmap-hub', label: '로드맵' },
   { href: 'lecture-list.html', label: '강의' },
   { href: 'workspace-hub.html', label: '워크스페이스' },
   { href: '/job-matching', label: '채용 분석' },
@@ -354,7 +354,7 @@ function App() {
             </button>
             <button
               type="button"
-              onClick={() => go('roadmap-hub.html')}
+              onClick={() => go('/roadmap-hub')}
               className="hero-secondary-button flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-8 py-4 text-lg font-bold text-gray-700 transition hover:border-gray-400"
             >
               <i className="fas fa-map" /> 로드맵 둘러보기
@@ -457,7 +457,7 @@ function App() {
             </ul>
             <button
               type="button"
-              onClick={() => go('roadmap-hub.html')}
+              onClick={() => go('/roadmap-hub')}
               className="text-brand text-lg font-bold hover:underline"
             >
               로드맵 보러가기 →

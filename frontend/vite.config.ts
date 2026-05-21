@@ -26,7 +26,6 @@ export default defineConfig({
         adminDashboard: resolve(__dirname, 'admin-dashboard.html'),
         roadmap: resolve(__dirname, 'roadmap.html'),
         survey: resolve(__dirname, 'survey.html'),
-        roadmapHub: resolve(__dirname, 'roadmap-hub.html'),
         dashboard: resolve(__dirname, 'dashboard.html'),
         instructorDashboard: resolve(__dirname, 'instructor-dashboard.html'),
         instructorQna: resolve(__dirname, 'instructor-qna.html'),

@@ -1,7 +1,7 @@
 export type ProjectAsideKey = 'dashboard' | 'lounge' | 'mentoring' | 'workspace' | 'showcase'
 
 export const projectHeaderLinks = [
-  { href: 'roadmap-hub.html', label: '로드맵' },
+  { href: '/roadmap-hub', label: '로드맵' },
   { href: 'lecture-list.html', label: '강의' },
   { href: 'lounge-dashboard.html', label: '프로젝트' },
   { href: '/job-matching', label: '채용분석' },
