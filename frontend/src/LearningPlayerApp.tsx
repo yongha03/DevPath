@@ -4092,7 +4092,7 @@ export default function LearningPlayerApp() {
               </button>
               <button
                 type="button"
-                onClick={() => { window.location.href = 'learning-log-gallery.html' }}
+                onClick={() => { window.location.href = '/learning-log-gallery' }}
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#00C471] px-8 py-3.5 font-bold text-white shadow-[0_0_20px_rgba(0,196,113,0.3)] transition hover:-translate-y-1 hover:bg-green-600 sm:w-auto"
               >
                 <i className="fas fa-file-signature" /> 내 증명 카드 보기

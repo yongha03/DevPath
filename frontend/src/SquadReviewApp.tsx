@@ -726,7 +726,7 @@ export default function SquadReviewApp() {
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 text-center">
           <i className="fas fa-circle-exclamation text-3xl text-red-400 mb-3"></i>
           <p className="font-extrabold text-gray-900">{error}</p>
-          <a href="workspace-hub.html" className="inline-flex mt-5 px-5 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-bold">
+          <a href="/workspace-hub" className="inline-flex mt-5 px-5 py-2.5 bg-gray-900 text-white rounded-xl text-sm font-bold">
             워크스페이스로 돌아가기
           </a>
         </div>
@@ -740,7 +740,7 @@ export default function SquadReviewApp() {
   return (
     <div className="squad-dashboard-page squad-review-page flex h-screen overflow-hidden text-gray-800">
       <aside className="w-20 hover:w-64 bg-white border-r border-gray-200 flex flex-col shrink-0 z-50 transition-all duration-300 ease-in-out group shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
-        <a href="workspace-hub.html" className="h-20 flex items-center px-5 cursor-pointer hover:bg-gray-50 transition border-b border-gray-100 shrink-0">
+        <a href="/workspace-hub" className="h-20 flex items-center px-5 cursor-pointer hover:bg-gray-50 transition border-b border-gray-100 shrink-0">
           <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold text-lg shrink-0 shadow-md">
             <i className="fas fa-arrow-left"></i>
           </div>

@@ -10,12 +10,12 @@ const myMenuItems: Array<{
   label: string
   icon: string
 }> = [
-  { key: 'dashboard', href: 'dashboard.html', label: '대시보드', icon: 'fas fa-columns' },
-  { key: 'profile', href: 'profile.html', label: '프로필 관리', icon: 'fas fa-user-circle' },
-  { key: 'my-learning', href: 'my-learning.html', label: '내 학습 (강의)', icon: 'fas fa-book-reader' },
-  { key: 'learning-log-gallery', href: 'learning-log-gallery.html', label: '학습일지', icon: 'fas fa-clipboard-list' },
-  { key: 'purchase', href: 'purchase.html', label: '구매 / 보관함', icon: 'fas fa-folder-open' },
-  { key: 'my-posts', href: 'my-posts.html', label: '작성한 게시글', icon: 'fas fa-pen-nib' },
+  { key: 'dashboard', href: '/dashboard', label: '대시보드', icon: 'fas fa-columns' },
+  { key: 'profile', href: '/profile', label: '프로필 관리', icon: 'fas fa-user-circle' },
+  { key: 'my-learning', href: '/my-learning', label: '내 학습 (강의)', icon: 'fas fa-book-reader' },
+  { key: 'learning-log-gallery', href: '/learning-log-gallery', label: '학습일지', icon: 'fas fa-clipboard-list' },
+  { key: 'purchase', href: '/purchase', label: '구매 / 보관함', icon: 'fas fa-folder-open' },
+  { key: 'my-posts', href: '/my-posts', label: '작성한 게시글', icon: 'fas fa-pen-nib' },
 ]
 
 export function LearnerPageShell({ children }: { children: ReactNode }) {
@@ -62,7 +62,7 @@ export function MyMenuSidebar({
 
         <div className="my-4 border-t border-gray-100" />
 
-        <a href="settings.html" className={`nav-item ${currentPageKey === 'settings' ? 'active' : ''}`}>
+        <a href="/settings" className={`nav-item ${currentPageKey === 'settings' ? 'active' : ''}`}>
           <i className="fas fa-cog w-6 text-center text-lg" />
           <span className="sidebar-text !opacity-100 !w-auto !ml-3">계정 설정</span>
         </a>

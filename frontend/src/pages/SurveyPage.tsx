@@ -363,7 +363,7 @@ function SurveyPage() {
               <p className="relative mb-6 leading-relaxed text-gray-600">{topResult.desc}</p>
               <div className="relative flex flex-col gap-3">
                 <a
-                  href={`roadmap.html?original=${SURVEY_KEY_TO_ROADMAP_ID[results[0]?.[0]] ?? 1}`}
+                    href={`/roadmap?original=${SURVEY_KEY_TO_ROADMAP_ID[results[0]?.[0]] ?? 1}`}
                   className="bg-brand block w-full rounded-lg py-3 font-bold text-white shadow-md transition hover:bg-green-600"
                 >
                   로드맵 보러 가기

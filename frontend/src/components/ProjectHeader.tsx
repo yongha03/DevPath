@@ -26,7 +26,7 @@ function getMoveStyle(offset: { x: number; y: number }): CSSProperties {
 export default function ProjectHeader({
   session,
   profileImage,
-  activeHref = 'lounge-dashboard.html',
+  activeHref = '/lounge-dashboard',
   onLoginClick,
   onLogout,
 }: ProjectHeaderProps) {

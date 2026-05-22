@@ -13,12 +13,12 @@ import {
 const headerLinks = [
   { key: 'roadmap', href: '/roadmap-hub', label: '로드맵' },
   { key: 'lecture', href: '/lecture-list', label: '강의' },
-  { key: 'project', href: 'lounge-dashboard.html', label: '프로젝트' },
+  { key: 'project', href: '/lounge-dashboard', label: '프로젝트' },
   { key: 'jobMatching', href: '/job-matching', label: '채용분석' },
-  { key: 'community', href: 'community-list.html', label: '커뮤니티' },
+  { key: 'community', href: '/community-list', label: '커뮤니티' },
 ]
 
-const instructorHeaderLink = { key: 'instructorDashboard', href: 'instructor-dashboard.html', label: '강사 대시보드' }
+const instructorHeaderLink = { key: 'instructorDashboard', href: '/instructor-dashboard', label: '강사 대시보드' }
 
 type HeaderMoveKey = 'brandGroup' | 'navGroup'
 
@@ -31,15 +31,15 @@ const headerMoveOffsets: Record<HeaderMoveKey, { x: number; y: number }> = {
 const serviceLinks = [
   { href: '/roadmap-hub', label: '로드맵' },
   { href: '/lecture-list', label: '강의' },
-  { href: 'workspace-hub.html', label: '워크스페이스' },
+  { href: '/workspace-hub', label: '워크스페이스' },
   { href: '/job-matching', label: '채용 분석' },
 ]
 
 const communityLinks = [
-  { href: 'community-lounge.html', label: '라운지' },
-  { href: 'mentoring-hub.html', label: '멘토링 찾기' },
-  { href: 'dev-showcase.html', label: '쇼케이스' },
-  { href: 'project-list.html', label: '프로젝트' },
+  { href: '/community-lounge', label: '라운지' },
+  { href: '/mentoring-hub', label: '멘토링 찾기' },
+  { href: '/dev-showcase', label: '쇼케이스' },
+  { href: '/project-list', label: '프로젝트' },
 ]
 
 const supportLinks = [
@@ -345,7 +345,7 @@ function App() {
           <div className="mb-8 flex flex-col justify-center gap-4 sm:flex-row">
             <button
               type="button"
-              onClick={() => go('survey.html')}
+                onClick={() => go('/survey')}
               className="hero-primary-button px-8 py-4 bg-brand hover:bg-green-600 text-white font-bold rounded-xl transition shadow-xl shadow-green-500/30 flex items-center justify-center gap-2 text-lg"
             >
               <i className="fas fa-magic" /> 로드맵 추천받기
@@ -540,7 +540,7 @@ function App() {
             </div>
             <button
               type="button"
-              onClick={() => go('workspace-hub.html')}
+              onClick={() => go('/workspace-hub')}
               className="text-lg font-bold text-blue-600 hover:underline"
             >
               워크스페이스 체험하기 →
@@ -665,7 +665,7 @@ function App() {
           </p>
           <button
             type="button"
-            onClick={() => go('survey.html')}
+              onClick={() => go('/survey')}
             className="px-10 py-4 bg-white text-brand font-bold rounded-xl text-lg shadow-xl hover:bg-gray-100 transition transform hover:scale-105"
           >
             로드맵 추천받기

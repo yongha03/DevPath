@@ -1463,7 +1463,7 @@ function RoadmapSwitcherDropdown({
                   onClick={() => {
                     setOpen(false)
                     if (rm.customRoadmapId !== currentCustomRoadmapId) {
-                      window.location.assign(`roadmap.html?id=${rm.customRoadmapId}`)
+    window.location.assign(`/roadmap?id=${rm.customRoadmapId}`)
                     }
                   }}
                   className={`w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-gray-50 transition ${rm.customRoadmapId === currentCustomRoadmapId ? 'bg-green-50' : ''}`}
@@ -1659,7 +1659,7 @@ export default function RoadmapDetailPage() {
           if (originalRoadmapId) {
             try {
               const data = await roadmapApi.copyRoadmap(originalRoadmapId)
-              window.location.replace(`roadmap.html?id=${data.customRoadmapId}`)
+      window.location.replace(`/roadmap?id=${data.customRoadmapId}`)
             } catch (copyError) {
               const isAlreadyExists =
                 typeof copyError === 'object'
@@ -1671,7 +1671,7 @@ export default function RoadmapDetailPage() {
                 const list = await roadmapApi.getMyRoadmaps(ctrl.signal)
                 const existingRoadmap = findRoadmapByOriginalId(list.roadmaps, originalRoadmapId)
                 if (existingRoadmap) {
-                  setExistingRoadmapUrl(`roadmap.html?id=${existingRoadmap.customRoadmapId}`)
+        setExistingRoadmapUrl(`/roadmap?id=${existingRoadmap.customRoadmapId}`)
                   setLoading(false)
                 } else {
                   setError('이미 복사된 로드맵을 찾을 수 없습니다.')
@@ -1685,7 +1685,7 @@ export default function RoadmapDetailPage() {
           } else {
             const list = await roadmapApi.getMyRoadmaps(ctrl.signal)
             if (list.roadmaps.length > 0) {
-              window.location.replace(`roadmap.html?id=${list.roadmaps[0].customRoadmapId}`)
+        window.location.replace(`/roadmap?id=${list.roadmaps[0].customRoadmapId}`)
             } else {
               window.location.replace('/roadmap-hub')
             }
@@ -2015,8 +2015,8 @@ export default function RoadmapDetailPage() {
             <div className="header-nav-links text-sm font-bold text-gray-500">
               <a href="/roadmap-hub" className="text-[#00c471] border-b-2 border-[#00c471] pb-1 transition">로드맵</a>
               <a href="/lecture-list" className="hover:text-[#00c471] transition">강의</a>
-              <a href="project-list.html" className="hover:text-[#00c471] transition">프로젝트</a>
-              <a href="community-list.html" className="hover:text-[#00c471] transition">커뮤니티</a>
+              <a href="/project-list" className="hover:text-[#00c471] transition">프로젝트</a>
+              <a href="/community-list" className="hover:text-[#00c471] transition">커뮤니티</a>
               <a href="/job-matching" className="hover:text-[#00c471] transition">채용분석</a>
             </div>
           </nav>
@@ -2061,7 +2061,7 @@ export default function RoadmapDetailPage() {
             {/* 프로필 */}
             <div
               className="flex items-center gap-2 cursor-pointer ml-1"
-              onClick={() => { window.location.href = 'profile.html' }}
+                onClick={() => { window.location.href = '/profile' }}
             >
               <img
                 src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"
@@ -2162,7 +2162,7 @@ export default function RoadmapDetailPage() {
                 </p>
                 <div className="mt-8 flex gap-3 justify-center">
                   <button
-                    onClick={() => { window.location.href = 'project-list.html' }}
+                    onClick={() => { window.location.href = '/project-list' }}
                     className="px-6 py-3 bg-[#00c471] hover:bg-green-600 text-white rounded-xl font-bold text-sm shadow-lg transition flex items-center gap-2"
                   >
                     <i className="fas fa-rocket" /> 프로젝트 시작하기

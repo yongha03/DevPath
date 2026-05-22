@@ -934,6 +934,36 @@ pre {
   transform: scaleY(1);
 }
 
+.hash-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  background-color: #f3f4f6;
+  color: #4b5563;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.hash-tag:hover {
+  background-color: #e5e7eb;
+  color: #111827;
+}
+
+.hash-tag-brand {
+  border-color: #d1fae5;
+  background-color: #f0fdf4;
+  color: #059669;
+}
+
+.hash-tag-brand:hover {
+  background-color: #dcfce7;
+}
+
 .sidebar-text {
   opacity: 0;
   width: 0;
@@ -3310,7 +3340,7 @@ input[type="checkbox"]:checked { background-color: #00C471; border-color: #00C47
   padding-right: 44px;
 }
 
-/* Dev showcase styles from the supplied dev-showcase.html head block */
+/* Dev showcase styles from the supplied head block */
 .dev-showcase-page .dev-showcase-upload-trigger {
   gap: 8px;
   padding: 12px 24px;
@@ -3462,7 +3492,7 @@ input[type="checkbox"]:checked { background-color: #00C471; border-color: #00C47
   transform: none;
 }
 
-/* Workspace hub styles from the supplied workspace-hub.html head block */
+/* Workspace hub styles from the supplied head block */
 .text-mentor { color: #7C3AED; }
 .bg-mentor { background-color: #7C3AED; }
 
@@ -3720,7 +3750,7 @@ input[type="checkbox"]:checked { background-color: #00C471; border-color: #00C47
   opacity: 1;
 }
 
-/* Mentoring hub styles from the supplied mentoring-hub.html head block */
+/* Mentoring hub styles from the supplied head block */
 .mentoring-hub-page .chip {
   display: inline-flex;
   align-items: center;

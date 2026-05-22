@@ -6,9 +6,9 @@ import HeaderAlerts from './HeaderAlerts'
 const headerLinks = [
   { href: '/roadmap-hub', label: '\uB85C\uB4DC\uB9F5' },
   { href: '/lecture-list', label: '\uAC15\uC758' },
-  { href: 'lounge-dashboard.html', label: '\uD504\uB85C\uC81D\uD2B8' },
+  { href: '/lounge-dashboard', label: '\uD504\uB85C\uC81D\uD2B8' },
   { href: '/job-matching', label: '\uCC44\uC6A9\uBD84\uC11D' },
-  { href: 'community-list.html', label: '\uCEE4\uBBA4\uB2C8\uD2F0' },
+  { href: '/community-list', label: '\uCEE4\uBBA4\uB2C8\uD2F0' },
 ]
 
 // Edit only this object when you want pixel-level header tuning.
@@ -61,7 +61,7 @@ export default function SiteHeader({
 }: SiteHeaderProps) {
   const showInstructorDashboard = session?.role === 'ROLE_INSTRUCTOR'
   const instructorHeaderLinks = showInstructorDashboard
-    ? [{ href: 'instructor-dashboard.html', label: '\uAC15\uC0AC \uB300\uC2DC\uBCF4\uB4DC' }]
+    ? [{ href: '/instructor-dashboard', label: '\uAC15\uC0AC \uB300\uC2DC\uBCF4\uB4DC' }]
     : []
   const containerStyle: CSSProperties = {
     maxWidth: siteHeaderTuning.maxWidthPx == null ? 'none' : `${siteHeaderTuning.maxWidthPx}px`,

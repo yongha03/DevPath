@@ -237,7 +237,7 @@ export default function WorkspaceHubApp() {
   }
 
   function handleProjectCreated() {
-    window.location.assign('workspace-hub.html')
+    window.location.assign('/workspace-hub')
   }
 
   if (!session) return <LoginRequiredView />
@@ -250,7 +250,7 @@ export default function WorkspaceHubApp() {
         <ProjectHeader
           session={session}
           profileImage={profileImage}
-          activeHref="lounge-dashboard.html"
+          activeHref="/lounge-dashboard"
           onLoginClick={() => openAuthModal()}
           onLogout={handleLogout}
         />

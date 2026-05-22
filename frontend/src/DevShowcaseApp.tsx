@@ -369,7 +369,7 @@ export default function DevShowcaseApp() {
       return
     }
     if (!readStoredAuthSession()?.accessToken) {
-      window.location.assign('login.html')
+      window.location.assign('/home?auth=login')
       return
     }
 
@@ -454,7 +454,7 @@ export default function DevShowcaseApp() {
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col h-screen overflow-hidden">
-        <ProjectHeader session={session} activeHref="lounge-dashboard.html" onLoginClick={() => openAuthModal()} onLogout={handleLogout} />
+        <ProjectHeader session={session} activeHref="/lounge-dashboard" onLoginClick={() => openAuthModal()} onLogout={handleLogout} />
 
         <main className="relative flex-1 overflow-y-auto bg-[#F8F9FA]">
           <div className="p-8">

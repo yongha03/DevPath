@@ -14,7 +14,7 @@ import type { RoadmapHubCatalog, RoadmapHubItem } from '../types/roadmap-hub'
 type RoadmapHubSection = RoadmapHubCatalog['sections'][number]
 
 function buildRoadmapHref(linkedRoadmapId: number | null) {
-  return linkedRoadmapId ? `roadmap.html?original=${linkedRoadmapId}` : null
+  return linkedRoadmapId ? `/roadmap?original=${linkedRoadmapId}` : null
 }
 
 function getIconStyle(iconColor: string | null): CSSProperties | undefined {
@@ -526,7 +526,7 @@ function RoadmapHubPage() {
             <button
               type="button"
               onClick={() => {
-                window.location.href = 'my-roadmap.html'
+                window.location.href = '/my-roadmap'
               }}
               className="roadmap-hub-hero-button group relative flex items-center justify-center gap-3 rounded-full bg-brand px-8 py-4 font-bold text-white shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-green-600 hover:shadow-xl"
             >
@@ -537,7 +537,7 @@ function RoadmapHubPage() {
             <button
               type="button"
               onClick={() => {
-                window.location.href = 'roadmap.html'
+    window.location.href = '/roadmap'
               }}
               className="roadmap-hub-hero-button group relative flex items-center justify-center gap-3 rounded-full bg-gray-800 px-8 py-4 font-bold text-white shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-gray-900 hover:shadow-xl"
             >

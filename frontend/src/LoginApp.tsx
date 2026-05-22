@@ -8,12 +8,12 @@ function LoginApp() {
 
     if (existingSession) {
       window.location.replace(
-        existingSession.role === 'ROLE_ADMIN' ? getPostLoginRedirect(existingSession.role) : '/',
+        existingSession.role === 'ROLE_ADMIN' ? getPostLoginRedirect(existingSession.role) : '/home',
       )
       return
     }
 
-    window.location.replace('/?auth=login')
+    window.location.replace('/home?auth=login')
   }, [])
 
   return (

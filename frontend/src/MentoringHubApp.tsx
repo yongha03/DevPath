@@ -213,6 +213,7 @@ export default function MentoringHubApp() {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
+    document.title = 'DevPath - 멘토링 찾기'
     document.body.classList.add('mentoring-hub-body')
 
     return () => {
@@ -441,7 +442,7 @@ export default function MentoringHubApp() {
         <ProjectHeader
           session={session}
           profileImage={profileImage}
-          activeHref="lounge-dashboard.html"
+          activeHref="/lounge-dashboard"
           onLoginClick={() => openAuthModal()}
           onLogout={handleLogout}
         />
