@@ -27,32 +27,40 @@ if (pathname === '/roadmap-hub.html') {
   pathname = '/roadmap-hub'
 }
 
+if (pathname === '/home.html') {
+  const nextUrl = `/home${window.location.search}${window.location.hash}`
+  window.history.replaceState({}, '', nextUrl)
+  pathname = '/home'
+}
+
 installWorkspacePresenceHeartbeat(pathname)
 
 const page =
-  pathname === '/roadmap-hub'
-    ? <RoadmapHubApp />
-    : pathname === '/job-matching'
-      ? <JobMatchingApp />
-      : pathname === '/my-roadmap-list'
-        ? <MyRoadmapListPage />
-        : pathname === '/squad-dashboard'
-          ? <SquadDashboardApp />
-          : pathname === '/squad-workspace'
-            ? <SquadWorkspaceApp />
-            : pathname === '/squad-review'
-              ? <SquadReviewApp />
-              : pathname === '/squad-erd'
-                ? <SquadErdApp />
-                : pathname === '/squad-schedule'
-                  ? <SquadScheduleApp />
-                  : pathname === '/squad-files'
-                    ? <SquadFilesApp />
-                    : pathname === '/squad-meeting'
-                      ? <SquadMeetingApp />
-                      : pathname === '/squad-settings'
-                        ? <SquadSettingsApp />
-                        : <App />
+  pathname === '/home'
+    ? <App />
+    : pathname === '/roadmap-hub'
+      ? <RoadmapHubApp />
+      : pathname === '/job-matching'
+        ? <JobMatchingApp />
+        : pathname === '/my-roadmap-list'
+          ? <MyRoadmapListPage />
+          : pathname === '/squad-dashboard'
+            ? <SquadDashboardApp />
+            : pathname === '/squad-workspace'
+              ? <SquadWorkspaceApp />
+              : pathname === '/squad-review'
+                ? <SquadReviewApp />
+                : pathname === '/squad-erd'
+                  ? <SquadErdApp />
+                  : pathname === '/squad-schedule'
+                    ? <SquadScheduleApp />
+                    : pathname === '/squad-files'
+                      ? <SquadFilesApp />
+                      : pathname === '/squad-meeting'
+                        ? <SquadMeetingApp />
+                        : pathname === '/squad-settings'
+                          ? <SquadSettingsApp />
+                          : <App />
 
 renderPage(page, {
   missingRootMessage: 'home root element was not found',

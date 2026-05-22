@@ -194,7 +194,7 @@ export function downloadBase64File(fileName: string, mimeType: string, base64Con
 
 export function BrandLink() {
   return (
-    <a href="home.html" className="group flex items-center gap-2 text-xl font-extrabold text-gray-900">
+    <a href="/home" className="group flex items-center gap-2 text-xl font-extrabold text-gray-900">
       <i className="fas fa-code-branch text-emerald-500 transition group-hover:rotate-12" />
       DevPath
     </a>

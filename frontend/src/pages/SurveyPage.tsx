@@ -240,7 +240,7 @@ function SurveyPage() {
   }
 
   function handleLoginClick() {
-    window.location.href = 'home.html?auth=login'
+    window.location.href = '/home?auth=login'
   }
 
   const progress = Math.round((currentStep / QUESTIONS.length) * 100)
@@ -259,7 +259,7 @@ function SurveyPage() {
         activeNavHref="/roadmap-hub"
         startOverlay={
           <a
-            href="home.html"
+            href="/home"
             className="pointer-events-auto absolute top-1/2 flex items-center gap-1 text-sm font-bold text-gray-500 transition hover:text-gray-800"
             style={{
               left: 'calc((var(--left-rail) * -1) + clamp(8px, 2vw, 16px))',

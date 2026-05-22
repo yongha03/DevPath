@@ -3905,7 +3905,7 @@ function installGlobalActions() {
         }
       } finally {
         clearStoredAuthSession()
-        window.location.replace('/home.html')
+        window.location.replace('/home')
       }
     })
   }
@@ -4500,12 +4500,12 @@ function installGlobalActions() {
 async function bootstrap() {
   const session = readStoredAuthSession()
   if (!session) {
-    window.location.replace('/home.html?auth=login')
+    window.location.replace('/home?auth=login')
     return
   }
 
   if (session.role !== 'ROLE_ADMIN') {
-    window.location.replace('/home.html')
+    window.location.replace('/home')
     return
   }
 

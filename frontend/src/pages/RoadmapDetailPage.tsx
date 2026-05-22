@@ -2004,7 +2004,7 @@ export default function RoadmapDetailPage() {
             >
               <i className="fas fa-arrow-left" /> 목록
             </a>
-            <a href="home.html" className="flex items-center gap-2 font-bold text-gray-900">
+            <a href="/home" className="flex items-center gap-2 font-bold text-gray-900">
               <i className="fas fa-code-branch text-[#00c471]" />
               <span>DevPath</span>
             </a>

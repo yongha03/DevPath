@@ -105,7 +105,7 @@ export default function SiteHeader({
         <div className="mx-auto flex h-full w-full items-center" style={containerStyle}>
           <div className="hidden items-center px-4 lg:flex" style={brandSlotStyle}>
             <a
-              href="home.html"
+              href="/home"
               className="group flex items-center gap-2 text-xl font-bold text-gray-900"
               style={getMoveStyle(siteHeaderTuning.brandGroup)}
             >
@@ -116,7 +116,7 @@ export default function SiteHeader({
 
           <div className="flex items-center lg:hidden">
             <a
-              href="home.html"
+              href="/home"
               className="group flex items-center gap-2 text-xl font-bold text-gray-900"
               style={getMoveStyle(siteHeaderTuning.brandGroup)}
             >

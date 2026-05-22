@@ -262,7 +262,7 @@ export default function InstructorEditProfileApp() {
       clearStoredAuthSession({ persistToast: true })
       setSession(null)
       setProfileImage(null)
-      window.location.href = 'home.html'
+      window.location.href = '/home'
     }
   }
 
@@ -468,12 +468,12 @@ export default function InstructorEditProfileApp() {
   if (!session || session.role !== 'ROLE_INSTRUCTOR') {
     return (
       <div className="min-h-screen bg-[#f9fafb] text-gray-800">
-        <SiteHeader session={session} profileImage={profileImage} onLogout={handleLogout} onLoginClick={() => { window.location.href = 'home.html?auth=login' }} />
+        <SiteHeader session={session} profileImage={profileImage} onLogout={handleLogout} onLoginClick={() => { window.location.href = '/home?auth=login' }} />
         <main className="mx-auto flex min-h-screen max-w-3xl items-center justify-center px-6 pt-24">
           <div className="w-full rounded-3xl border border-gray-200 bg-white p-10 text-center shadow-sm">
             <h1 className="text-2xl font-extrabold text-gray-900">강사 계정이 필요합니다.</h1>
             <p className="mt-3 text-sm text-gray-500">이 페이지는 강사 전용 채널 편집 화면입니다.</p>
-            <a href="home.html" className="mt-6 inline-flex rounded-full bg-gray-900 px-6 py-3 text-sm font-bold text-white transition hover:bg-black">홈으로 돌아가기</a>
+            <a href="/home" className="mt-6 inline-flex rounded-full bg-gray-900 px-6 py-3 text-sm font-bold text-white transition hover:bg-black">홈으로 돌아가기</a>
           </div>
         </main>
       </div>
@@ -482,7 +482,7 @@ export default function InstructorEditProfileApp() {
 
   return (
     <div className="min-h-screen bg-[#f9fafb] text-gray-800">
-      <SiteHeader session={session} profileImage={profileImage} onLogout={handleLogout} onLoginClick={() => { window.location.href = 'home.html?auth=login' }} />
+      <SiteHeader session={session} profileImage={profileImage} onLogout={handleLogout} onLoginClick={() => { window.location.href = '/home?auth=login' }} />
       <main className="px-6 pb-20 pt-24">
         <div className="mx-auto max-w-5xl">
           <div className="mb-8 flex items-start justify-between gap-4">

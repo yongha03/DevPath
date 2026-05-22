@@ -29,7 +29,7 @@ export function createProjectAsideHtml(activeKey: ProjectAsideKey) {
   }).join('')
 
   return `<aside class="w-20 hover:w-64 bg-white border-r border-gray-200 flex flex-col shrink-0 z-50 transition-all duration-300 ease-in-out group shadow-xl">
-    <div class="h-20 flex items-center px-5 cursor-pointer hover:bg-gray-50 transition border-b border-gray-100 shrink-0" onclick="window.top.location.href='home.html'">
+    <div class="h-20 flex items-center px-5 cursor-pointer hover:bg-gray-50 transition border-b border-gray-100 shrink-0" onclick="window.top.location.href='/home'">
       <div class="w-10 h-10 rounded-xl bg-gray-900 flex items-center justify-center text-brand text-xl shrink-0 shadow-md">
         <i class="fas fa-layer-group"></i>
       </div>

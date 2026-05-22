@@ -180,7 +180,7 @@
 
   function buildBrandMarkup() {
     return [
-      '<a href="home.html" class="group flex items-center gap-2 text-xl font-bold text-gray-900" style="transform: translate(15px, 0px)">',
+      '<a href="/home" class="group flex items-center gap-2 text-xl font-bold text-gray-900" style="transform: translate(15px, 0px)">',
       '  <i class="fas fa-code-branch text-brand inline-block transition group-hover:rotate-12"></i>',
       '  <span class="inline-block">DevPath</span>',
       '</a>',
@@ -189,7 +189,7 @@
 
   function buildAuthMarkup(session) {
     if (!session) {
-      return '<a href="home.html?auth=login" class="rounded-full bg-gray-900 px-5 py-2 text-sm font-bold text-white shadow-lg transition hover:bg-black">로그인</a>';
+      return '<a href="/home?auth=login" class="rounded-full bg-gray-900 px-5 py-2 text-sm font-bold text-white shadow-lg transition hover:bg-black">로그인</a>';
     }
 
     const name = escapeHtml(session.name || '내 계정');

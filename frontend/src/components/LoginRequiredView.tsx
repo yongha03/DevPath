@@ -12,13 +12,13 @@ export default function LoginRequiredView({ message }: { message?: string }) {
           </p>
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
             <a
-              href="home.html?auth=login"
+              href="/home?auth=login"
               className="rounded-full bg-gray-900 px-6 py-3 text-sm font-bold text-white transition hover:bg-black"
             >
               로그인으로 이동
             </a>
             <a
-              href="home.html"
+              href="/home"
               className="rounded-full border border-gray-200 px-6 py-3 text-sm font-bold text-gray-700 transition hover:border-gray-300 hover:bg-gray-50"
             >
               홈으로 돌아가기

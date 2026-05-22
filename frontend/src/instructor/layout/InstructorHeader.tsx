@@ -53,7 +53,7 @@ export default function InstructorHeader({
       <nav className="app-header">
         <div className="mx-auto flex h-full w-full items-center" style={containerStyle}>
           <div className="hidden items-center px-4 lg:flex" style={brandSlotStyle}>
-            <a href="home.html" className="group flex items-center gap-2 text-xl font-bold text-gray-900" style={getMoveStyle(siteHeaderTuning.brandGroup)}>
+            <a href="/home" className="group flex items-center gap-2 text-xl font-bold text-gray-900" style={getMoveStyle(siteHeaderTuning.brandGroup)}>
               <i className="fas fa-code-branch text-brand inline-block transition group-hover:rotate-12" />
               <span className="flex -translate-y-1 flex-col leading-tight">
                 <span>DevPath</span>
@@ -63,7 +63,7 @@ export default function InstructorHeader({
           </div>
 
           <div className="flex items-center lg:hidden">
-            <a href="home.html" className="group flex items-center gap-2 text-xl font-bold text-gray-900" style={getMoveStyle(siteHeaderTuning.brandGroup)}>
+            <a href="/home" className="group flex items-center gap-2 text-xl font-bold text-gray-900" style={getMoveStyle(siteHeaderTuning.brandGroup)}>
               <i className="fas fa-code-branch text-brand inline-block transition group-hover:rotate-12" />
               <span className="flex -translate-y-1 flex-col leading-tight">
                 <span>DevPath</span>

@@ -880,7 +880,7 @@ function LoginRequiredView() {
         <h1 className="mt-6 text-3xl font-semibold">로그인이 필요합니다</h1>
         <p className="mt-3 text-sm leading-7 text-white/70">학습 플레이어는 로그인한 사용자만 이용할 수 있습니다.</p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:justify-center">
-          <a href="home.html?auth=login" className="rounded-full bg-[#00c471] px-6 py-3 text-sm font-bold text-white">
+          <a href="/home?auth=login" className="rounded-full bg-[#00c471] px-6 py-3 text-sm font-bold text-white">
             로그인 하기
           </a>
           <a href="lecture-list.html" className="rounded-full border border-white/15 px-6 py-3 text-sm font-bold text-white/80">

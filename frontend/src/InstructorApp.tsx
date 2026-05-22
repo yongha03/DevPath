@@ -28,13 +28,13 @@ function LoginRequiredView() {
           </p>
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
             <a
-              href="home.html?auth=login"
+              href="/home?auth=login"
               className="rounded-full bg-gray-900 px-6 py-3 text-sm font-bold text-white transition hover:bg-black"
             >
               로그인하러 가기
             </a>
             <a
-              href="home.html"
+              href="/home"
               className="rounded-full border border-gray-200 px-6 py-3 text-sm font-bold text-gray-700 transition hover:border-gray-300 hover:bg-gray-50"
             >
               홈으로 돌아가기
@@ -60,7 +60,7 @@ function InstructorOnlyView() {
           </p>
           <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
             <a
-              href="home.html"
+              href="/home"
               className="rounded-full bg-gray-900 px-6 py-3 text-sm font-bold text-white transition hover:bg-black"
             >
               홈으로 이동
@@ -176,7 +176,7 @@ export default function InstructorApp() {
     } finally {
       clearStoredAuthSession({ persistToast: true })
       setSession(null)
-      window.location.href = 'home.html'
+      window.location.href = '/home'
     }
   }
 
