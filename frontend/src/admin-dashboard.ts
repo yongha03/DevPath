@@ -2,6 +2,7 @@ import { Chart, registerables } from 'chart.js'
 import { adminApi } from './lib/admin-api'
 import { authApi } from './lib/api'
 import { clearStoredAuthSession, readStoredAuthSession } from './lib/auth-session'
+import { prepareAdminDashboardDocument } from './admin-dashboard-markup'
 import type {
   AdminAccount,
   AdminDashboardCategoryDistribution,
@@ -4516,8 +4517,10 @@ async function bootstrap() {
   await refreshActiveTab()
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+export function mountAdminDashboardPage() {
+  prepareAdminDashboardDocument()
+
   void runAdminAction(async () => {
     await bootstrap()
   })
-})
+}
