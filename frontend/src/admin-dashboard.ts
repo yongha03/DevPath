@@ -2,6 +2,7 @@ import { Chart, registerables } from 'chart.js'
 import { adminApi } from './lib/admin-api'
 import { authApi } from './lib/api'
 import { clearStoredAuthSession, readStoredAuthSession } from './lib/auth-session'
+import { prepareAdminDashboardDocument } from './admin-dashboard-markup'
 import type {
   AdminAccount,
   AdminDashboardCategoryDistribution,
@@ -2948,6 +2949,7 @@ function reindexRoadmapHubSections(sections: RoadmapHubSection[]): RoadmapHubSec
       ...item,
       title: item.title ?? '',
       subtitle: item.subtitle ?? null,
+      category: item.category ?? null,
       iconClass: item.iconClass ?? null,
       iconColor: item.iconColor ?? null,
       sortOrder: itemIndex,
@@ -2963,6 +2965,7 @@ function createEmptyRoadmapHubItem(layoutType: string): RoadmapHubItem {
   return {
     title: '',
     subtitle: layoutType === 'CARD_GRID' ? '공식 로드맵' : null,
+    category: null,
     iconClass: layoutType === 'CARD_GRID' ? 'fas fa-map' : null,
     iconColor: layoutType === 'CARD_GRID' ? '#64748B' : null,
     sortOrder: 0,
@@ -3041,6 +3044,7 @@ function matchesRoadmapHubItem(section: RoadmapHubSection, item: RoadmapHubItem)
     section.description,
     item.title,
     item.subtitle,
+    item.category,
     item.iconClass,
     item.iconColor,
     item.linkedRoadmapId,
@@ -3283,6 +3287,9 @@ function renderRoadmapHubSectionCard(
       `
 
     sectionBodyHtml = `
+      <div class="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-xs font-medium leading-5 text-emerald-700">
+        공개 로드맵 허브의 상단 탭은 섹션 제목으로 표시됩니다. CARD_GRID는 카드형 탭, CHIP_GRID는 기술 버튼형 탭으로 보이고, 항목 카테고리 값이 탭 안의 그룹 제목이 됩니다.
+      </div>
       <div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <label class="block">
           <span class="mb-1 block text-[11px] font-bold text-slate-500">섹션 key</span>
@@ -3403,7 +3410,7 @@ function renderRoadmapHubItemRow(sectionIndex: number, item: RoadmapHubItem, ite
         </div>
       </div>
 
-      <div class="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_260px]">
+      <div class="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_180px_260px]">
         <label class="block">
           <span class="mb-1 block text-[11px] font-bold text-slate-500">항목 제목</span>
           <input
@@ -3422,6 +3429,16 @@ function renderRoadmapHubItemRow(sectionIndex: number, item: RoadmapHubItem, ite
             type="text"
             class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
             placeholder="예: Frontend Roadmap"
+          />
+        </label>
+        <label class="block">
+          <span class="mb-1 block text-[11px] font-bold text-slate-500">카테고리</span>
+          <input
+            value="${escapeHtml(item.category ?? '')}"
+            oninput="updateRoadmapHubItemField(${sectionIndex}, ${itemIndex}, 'category', this.value)"
+            type="text"
+            class="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700 outline-none transition focus:border-indigo-400 focus:ring-2 focus:ring-indigo-100"
+            placeholder="예: 웹 개발"
           />
         </label>
         <label class="block">
@@ -3889,7 +3906,7 @@ function installGlobalActions() {
         }
       } finally {
         clearStoredAuthSession()
-        window.location.replace('/home.html')
+        window.location.replace('/home')
       }
     })
   }
@@ -4445,6 +4462,9 @@ function installGlobalActions() {
         case 'subtitle':
           item.subtitle = value.trim() ? value : null
           break
+        case 'category':
+          item.category = value.trim() ? value : null
+          break
         case 'iconClass':
           item.iconClass = value.trim() ? value : null
           break
@@ -4481,12 +4501,12 @@ function installGlobalActions() {
 async function bootstrap() {
   const session = readStoredAuthSession()
   if (!session) {
-    window.location.replace('/home.html?auth=login')
+    window.location.replace('/home?auth=login')
     return
   }
 
   if (session.role !== 'ROLE_ADMIN') {
-    window.location.replace('/home.html')
+    window.location.replace('/home')
     return
   }
 
@@ -4497,8 +4517,10 @@ async function bootstrap() {
   await refreshActiveTab()
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+export function mountAdminDashboardPage() {
+  prepareAdminDashboardDocument()
+
   void runAdminAction(async () => {
     await bootstrap()
   })
-})
+}

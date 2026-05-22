@@ -18,6 +18,7 @@ export interface RoadmapHubSection {
 export interface RoadmapHubItem {
   title: string
   subtitle: string | null
+  category: string | null
   iconClass: string | null
   iconColor: string | null
   sortOrder: number

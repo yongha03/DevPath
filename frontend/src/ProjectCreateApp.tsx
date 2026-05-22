@@ -68,7 +68,7 @@ export function ProjectCreatePanel({ onClose, onCreated }: ProjectCreatePanelPro
       return
     }
 
-    window.location.assign('workspace-hub.html')
+    window.location.assign('/workspace-hub')
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -76,7 +76,7 @@ export function ProjectCreatePanel({ onClose, onCreated }: ProjectCreatePanelPro
     const session = readStoredAuthSession()
 
     if (!session?.accessToken) {
-      window.location.assign('login.html')
+      window.location.assign('/home?auth=login')
       return
     }
 
@@ -116,7 +116,7 @@ export function ProjectCreatePanel({ onClose, onCreated }: ProjectCreatePanelPro
         return
       }
 
-      window.location.assign('workspace-hub.html')
+      window.location.assign('/workspace-hub')
     } catch (error) {
       console.error(error)
       setErrorMessage(error instanceof Error ? error.message : '프로젝트 생성에 실패했습니다.')

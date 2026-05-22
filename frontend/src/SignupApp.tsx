@@ -6,11 +6,11 @@ function SignupApp() {
     const existingSession = readStoredAuthSession()
 
     if (existingSession) {
-      window.location.replace('/')
+      window.location.replace('/home')
       return
     }
 
-    window.location.replace('/?auth=signup')
+    window.location.replace('/home?auth=signup')
   }, [])
 
   return (

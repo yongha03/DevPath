@@ -876,7 +876,7 @@ function MyRoadmapBuilderPage() {
           profileImage={profileImage}
           onLogout={handleLogout}
           onLoginClick={() => setAuthView('login')}
-          activeNavHref="roadmap-hub.html"
+          activeNavHref="/roadmap-hub"
           brandSuffix="마스터 빌더"
         />
         <div className="flex h-screen items-center justify-center bg-[#F8FAFC] px-4 pt-16">
@@ -927,7 +927,7 @@ function MyRoadmapBuilderPage() {
         profileImage={profileImage}
         onLogout={handleLogout}
         onLoginClick={() => setAuthView('login')}
-        activeNavHref="roadmap-hub.html"
+        activeNavHref="/roadmap-hub"
         brandSuffix="마스터 빌더"
       />
       <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
@@ -952,7 +952,7 @@ function MyRoadmapBuilderPage() {
               {savedCustomRoadmapId != null && (
                 <button
                   type="button"
-                  onClick={() => { window.location.href = `roadmap.html?id=${savedCustomRoadmapId}` }}
+                    onClick={() => { window.location.href = `/roadmap?id=${savedCustomRoadmapId}` }}
                   className="w-full rounded-lg bg-[#00C471] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-green-600"
                 >
                   <i className="fas fa-map mr-2" />나의 학습 로드맵으로 이동

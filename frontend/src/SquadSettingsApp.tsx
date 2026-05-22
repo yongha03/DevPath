@@ -413,7 +413,7 @@ export default function SquadSettingsApp() {
         'required',
       )
       showAuthToast('스쿼드가 삭제되었습니다.')
-      window.location.replace('workspace-hub.html')
+      window.location.replace('/workspace-hub')
     } catch (deleteError) {
       const message = deleteError instanceof Error ? deleteError.message : '스쿼드를 삭제하지 못했습니다.'
       showAuthToast({ message, variant: 'error' })
@@ -427,7 +427,7 @@ export default function SquadSettingsApp() {
   return (
     <div className="squad-dashboard-page squad-settings-page flex h-screen overflow-hidden text-gray-800">
       <aside className="w-20 hover:w-64 bg-white border-r border-gray-200 flex flex-col shrink-0 z-50 transition-all duration-300 ease-in-out group shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
-        <a href="workspace-hub.html" className="h-20 flex items-center px-5 hover:bg-gray-50 transition border-b border-gray-100 shrink-0">
+        <a href="/workspace-hub" className="h-20 flex items-center px-5 hover:bg-gray-50 transition border-b border-gray-100 shrink-0">
           <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold text-lg shrink-0 shadow-md">
             <i className="fas fa-arrow-left" />
           </div>

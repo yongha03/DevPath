@@ -240,7 +240,7 @@ function SurveyPage() {
   }
 
   function handleLoginClick() {
-    window.location.href = 'home.html?auth=login'
+    window.location.href = '/home?auth=login'
   }
 
   const progress = Math.round((currentStep / QUESTIONS.length) * 100)
@@ -256,10 +256,10 @@ function SurveyPage() {
         profileImage={profileImage}
         onLogout={handleLogout}
         onLoginClick={handleLoginClick}
-        activeNavHref="roadmap-hub.html"
+        activeNavHref="/roadmap-hub"
         startOverlay={
           <a
-            href="home.html"
+            href="/home"
             className="pointer-events-auto absolute top-1/2 flex items-center gap-1 text-sm font-bold text-gray-500 transition hover:text-gray-800"
             style={{
               left: 'calc((var(--left-rail) * -1) + clamp(8px, 2vw, 16px))',
@@ -363,7 +363,7 @@ function SurveyPage() {
               <p className="relative mb-6 leading-relaxed text-gray-600">{topResult.desc}</p>
               <div className="relative flex flex-col gap-3">
                 <a
-                  href={`roadmap.html?original=${SURVEY_KEY_TO_ROADMAP_ID[results[0]?.[0]] ?? 1}`}
+                    href={`/roadmap?original=${SURVEY_KEY_TO_ROADMAP_ID[results[0]?.[0]] ?? 1}`}
                   className="bg-brand block w-full rounded-lg py-3 font-bold text-white shadow-md transition hover:bg-green-600"
                 >
                   로드맵 보러 가기

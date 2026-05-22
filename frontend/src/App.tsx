@@ -11,14 +11,14 @@ import {
 } from './lib/auth-session'
 
 const headerLinks = [
-  { key: 'roadmap', href: 'roadmap-hub.html', label: '로드맵' },
-  { key: 'lecture', href: 'lecture-list.html', label: '강의' },
-  { key: 'project', href: 'lounge-dashboard.html', label: '프로젝트' },
+  { key: 'roadmap', href: '/roadmap-hub', label: '로드맵' },
+  { key: 'lecture', href: '/lecture-list', label: '강의' },
+  { key: 'project', href: '/lounge-dashboard', label: '프로젝트' },
   { key: 'jobMatching', href: '/job-matching', label: '채용분석' },
-  { key: 'community', href: 'community-list.html', label: '커뮤니티' },
+  { key: 'community', href: '/community-list', label: '커뮤니티' },
 ]
 
-const instructorHeaderLink = { key: 'instructorDashboard', href: 'instructor-dashboard.html', label: '강사 대시보드' }
+const instructorHeaderLink = { key: 'instructorDashboard', href: '/instructor-dashboard', label: '강사 대시보드' }
 
 type HeaderMoveKey = 'brandGroup' | 'navGroup'
 
@@ -29,17 +29,17 @@ const headerMoveOffsets: Record<HeaderMoveKey, { x: number; y: number }> = {
 }
 
 const serviceLinks = [
-  { href: 'roadmap-hub.html', label: '로드맵' },
-  { href: 'lecture-list.html', label: '강의' },
-  { href: 'workspace-hub.html', label: '워크스페이스' },
+  { href: '/roadmap-hub', label: '로드맵' },
+  { href: '/lecture-list', label: '강의' },
+  { href: '/workspace-hub', label: '워크스페이스' },
   { href: '/job-matching', label: '채용 분석' },
 ]
 
 const communityLinks = [
-  { href: 'community-lounge.html', label: '라운지' },
-  { href: 'mentoring-hub.html', label: '멘토링 찾기' },
-  { href: 'dev-showcase.html', label: '쇼케이스' },
-  { href: 'project-list.html', label: '프로젝트' },
+  { href: '/community-lounge', label: '라운지' },
+  { href: '/mentoring-hub', label: '멘토링 찾기' },
+  { href: '/dev-showcase', label: '쇼케이스' },
+  { href: '/project-list', label: '프로젝트' },
 ]
 
 const supportLinks = [
@@ -248,7 +248,7 @@ function App() {
         <div className="mx-auto flex h-full w-full max-w-[1600px] items-center gap-8 px-8">
           <div className="hidden w-60 items-center px-4 lg:flex" style={{ transform: 'translateX(var(--logo-nudge))' }}>
             <a
-              href="home.html"
+              href="/home"
               className="group flex items-center gap-2 text-xl font-bold text-gray-900"
               style={getHeaderMoveStyle('brandGroup')}
             >
@@ -261,7 +261,7 @@ function App() {
 
           <div className="flex items-center lg:hidden">
             <a
-              href="home.html"
+              href="/home"
               className="group flex items-center gap-2 text-xl font-bold text-gray-900"
               style={getHeaderMoveStyle('brandGroup')}
             >
@@ -324,18 +324,16 @@ function App() {
       </nav> : null}
 
       <main className="home-page-main">
-      <section className="hero-bg relative overflow-hidden px-6 pt-40 pb-20">
-        <div className="animate-blob absolute top-20 left-10 h-72 w-72 rounded-full bg-green-200 opacity-20 mix-blend-multiply blur-3xl filter" />
-        <div className="animate-blob animation-delay-2000 absolute top-20 right-10 h-72 w-72 rounded-full bg-blue-200 opacity-20 mix-blend-multiply blur-3xl filter" />
-
+      <div className="home-page-body-zoom">
+      <section className="home-hero-section relative overflow-hidden px-6 pt-16 pb-8">
         <div className="relative z-10 mx-auto max-w-6xl text-center" data-aos="fade-up">
-          <span className="text-brand mb-6 inline-block rounded-full border border-green-200 bg-white px-3 py-1 text-xs font-bold shadow-sm">
+          <span className="home-hero-eyebrow text-brand inline-block rounded-full border border-green-200 bg-white shadow-sm">
             🚀 개발자 커리어 가속화 플랫폼
           </span>
-          <h1 className="mb-6 text-5xl leading-tight font-extrabold tracking-tight text-gray-900 md:text-7xl">
+          <h1 className="home-hero-title font-extrabold text-gray-900">
             성장의 길을 찾다,
             <br />
-            <span className="bg-gradient-to-r from-green-500 to-teal-500 bg-clip-text text-transparent">
+            <span className="home-hero-brand bg-gradient-to-r from-green-500 to-teal-500 bg-clip-text text-transparent">
               DevPath
             </span>
           </h1>
@@ -344,17 +342,17 @@ function App() {
             <br />
             그리고 취업 매칭까지 하나의 플랫폼에서 해결하세요.
           </p>
-          <div className="mb-20 flex flex-col justify-center gap-4 sm:flex-row">
+          <div className="mb-8 flex flex-col justify-center gap-4 sm:flex-row">
             <button
               type="button"
-              onClick={() => go('survey.html')}
+                onClick={() => go('/survey')}
               className="hero-primary-button px-8 py-4 bg-brand hover:bg-green-600 text-white font-bold rounded-xl transition shadow-xl shadow-green-500/30 flex items-center justify-center gap-2 text-lg"
             >
               <i className="fas fa-magic" /> 로드맵 추천받기
             </button>
             <button
               type="button"
-              onClick={() => go('roadmap-hub.html')}
+              onClick={() => go('/roadmap-hub')}
               className="hero-secondary-button flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-8 py-4 text-lg font-bold text-gray-700 transition hover:border-gray-400"
             >
               <i className="fas fa-map" /> 로드맵 둘러보기
@@ -457,7 +455,7 @@ function App() {
             </ul>
             <button
               type="button"
-              onClick={() => go('roadmap-hub.html')}
+              onClick={() => go('/roadmap-hub')}
               className="text-brand text-lg font-bold hover:underline"
             >
               로드맵 보러가기 →
@@ -542,7 +540,7 @@ function App() {
             </div>
             <button
               type="button"
-              onClick={() => go('workspace-hub.html')}
+              onClick={() => go('/workspace-hub')}
               className="text-lg font-bold text-blue-600 hover:underline"
             >
               워크스페이스 체험하기 →
@@ -667,7 +665,7 @@ function App() {
           </p>
           <button
             type="button"
-            onClick={() => go('survey.html')}
+              onClick={() => go('/survey')}
             className="px-10 py-4 bg-white text-brand font-bold rounded-xl text-lg shadow-xl hover:bg-gray-100 transition transform hover:scale-105"
           >
             로드맵 추천받기
@@ -734,6 +732,7 @@ function App() {
           </div>
         </div>
       </footer>
+      </div>
       </main>
 
       {authView ? (

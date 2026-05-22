@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import AuthModal, { type AuthView } from '../components/AuthModal'
 import SiteHeader from '../components/SiteHeader'
 import { authApi, roadmapApi, userApi } from '../lib/api'
@@ -11,14 +11,119 @@ import {
 import { useInternalPageScroll } from '../lib/useInternalPageScroll'
 import type { RoadmapHubCatalog, RoadmapHubItem } from '../types/roadmap-hub'
 
+type RoadmapHubSection = RoadmapHubCatalog['sections'][number]
+
 function buildRoadmapHref(linkedRoadmapId: number | null) {
-  return linkedRoadmapId ? `roadmap.html?original=${linkedRoadmapId}` : null
+  return linkedRoadmapId ? `/roadmap?original=${linkedRoadmapId}` : null
 }
 
 function getIconStyle(iconColor: string | null): CSSProperties | undefined {
   const color = iconColor?.trim()
 
   return color ? { color } : undefined
+}
+
+function getHubCategory(category: string | null) {
+  return category?.trim() || ''
+}
+
+function isTabbedRoadmapSection(section: RoadmapHubSection) {
+  return section.layoutType === 'CARD_GRID' || section.layoutType === 'CHIP_GRID'
+}
+
+function buildHubCategoryGroups(items: RoadmapHubItem[]) {
+  const hasCategory = items.some((item) => getHubCategory(item.category))
+
+  if (!hasCategory) {
+    return []
+  }
+
+  const groups = new Map<string, RoadmapHubItem[]>()
+
+  items.forEach((item) => {
+    const category = getHubCategory(item.category) || '기타'
+    groups.set(category, [...(groups.get(category) ?? []), item])
+  })
+
+  return Array.from(groups.entries()).map(([category, categoryItems]) => ({
+    category,
+    items: categoryItems,
+  }))
+}
+
+function RoadmapHubCategoryGroup({
+  category,
+  children,
+  variant,
+}: {
+  category: string
+  children: ReactNode
+  variant: 'card' | 'chip'
+}) {
+  const headingClassName =
+    variant === 'card'
+      ? 'roadmap-hub-category-title roadmap-hub-category-title--card text-lg font-bold text-gray-700'
+      : 'roadmap-hub-category-title roadmap-hub-category-title--chip text-base font-bold text-gray-700'
+
+  return (
+    <div className="roadmap-hub-category-group">
+      <h3 className={headingClassName}>{category}</h3>
+      {children}
+    </div>
+  )
+}
+
+function RoadmapHubSectionTabs({
+  sections,
+  activeSectionKey,
+  onSelect,
+}: {
+  sections: RoadmapHubSection[]
+  activeSectionKey: string
+  onSelect: (sectionKey: string) => void
+}) {
+  return (
+    <div className="roadmap-hub-section-tabs mb-12 flex justify-center border-b border-gray-200">
+      {sections.map((section) => (
+        <button
+          key={section.sectionKey}
+          type="button"
+          onClick={() => onSelect(section.sectionKey)}
+          className={
+            activeSectionKey === section.sectionKey
+              ? 'roadmap-hub-section-tab roadmap-hub-section-tab--active'
+              : 'roadmap-hub-section-tab'
+          }
+        >
+          {section.title}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function RoadmapHubSectionContent({ section }: { section: RoadmapHubSection }) {
+  const groups = buildHubCategoryGroups(section.items)
+  const isChipGrid = section.layoutType === 'CHIP_GRID'
+  const variant = isChipGrid ? 'chip' : 'card'
+  const gridClassName = isChipGrid
+    ? 'grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6'
+    : 'roadmap-hub-card-grid grid grid-cols-1 items-start gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4'
+  const renderItem = isChipGrid ? renderSkillChip : renderRoleCard
+
+  if (groups.length > 0) {
+    return (
+      <div className="roadmap-hub-tab-panel space-y-10">
+        {groups.map((group) => (
+          <RoadmapHubCategoryGroup key={group.category} category={group.category} variant={variant}>
+            <div className={gridClassName}>{group.items.map(renderItem)}</div>
+          </RoadmapHubCategoryGroup>
+        ))}
+      </div>
+    )
+  }
+
+  return <div className={gridClassName}>{section.items.map(renderItem)}</div>
 }
 
 function readAuthViewFromLocation(): AuthView | null {
@@ -113,7 +218,7 @@ function renderLinkListItem(item: RoadmapHubItem) {
   if (!href) {
     return (
       <li key={itemKey}>
-        <div className="flex justify-between rounded border border-gray-200 bg-white p-3 shadow-sm">
+        <div className="roadmap-hub-link-row flex justify-between rounded border border-gray-200 bg-white p-3 shadow-sm">
           <span>{item.title}</span>
           <i className="fas fa-chevron-right mt-1.5 text-xs text-gray-300" />
         </div>
@@ -125,7 +230,7 @@ function renderLinkListItem(item: RoadmapHubItem) {
     <li key={itemKey}>
       <a
         href={href}
-        className="flex justify-between rounded border border-gray-200 bg-white p-3 shadow-sm transition hover:bg-gray-50"
+        className="roadmap-hub-link-row flex justify-between rounded border border-gray-200 bg-white p-3 shadow-sm transition hover:bg-gray-50"
       >
         <span>{item.title}</span>
         <i className="fas fa-chevron-right mt-1.5 text-xs text-gray-400" />
@@ -137,12 +242,14 @@ function renderLinkListItem(item: RoadmapHubItem) {
 function SectionHeading({
   accentClassName,
   title,
+  compact = false,
 }: {
   accentClassName: string
   title: string
+  compact?: boolean
 }) {
   return (
-    <div className="mb-8 flex items-center gap-4">
+    <div className={`${compact ? 'mb-2' : 'mb-8'} flex items-center gap-4`}>
       <span className={`h-8 w-1 rounded-full ${accentClassName}`} />
       <h2 className="text-2xl font-bold text-gray-900">{title}</h2>
     </div>
@@ -181,6 +288,8 @@ function RoadmapHubSections({
   error: string | null
   onRetry: () => void
 }) {
+  const [activeSectionKey, setActiveSectionKey] = useState<string | null>(null)
+
   if (loading) {
     return (
       <div className="rounded-3xl border border-gray-200 bg-white px-6 py-16 text-center text-sm text-gray-500 shadow-sm">
@@ -197,7 +306,7 @@ function RoadmapHubSections({
         <button
           type="button"
           onClick={onRetry}
-          className="mt-4 rounded-full border border-rose-200 bg-white px-5 py-2 text-sm font-bold text-rose-600 transition hover:bg-rose-50"
+          className="roadmap-hub-retry-button mt-4 rounded-full border border-rose-200 bg-white px-5 py-2 text-sm font-bold text-rose-600 transition hover:bg-rose-50"
         >
           다시 불러오기
         </button>
@@ -206,29 +315,34 @@ function RoadmapHubSections({
   }
 
   const sections = catalog?.sections ?? []
-  const cardSections = sections.filter((section) => section.layoutType === 'CARD_GRID')
-  const chipSections = sections.filter((section) => section.layoutType === 'CHIP_GRID')
+  const tabSections = sections.filter(isTabbedRoadmapSection)
   const linkSections = sections.filter((section) => section.layoutType === 'LINK_LIST')
+  const resolvedActiveSectionKey =
+    tabSections.find((section) => section.sectionKey === activeSectionKey)?.sectionKey ?? tabSections[0]?.sectionKey ?? ''
+  const activeSection =
+    tabSections.find((section) => section.sectionKey === resolvedActiveSectionKey) ?? tabSections[0] ?? null
+  const showTabs = tabSections.length > 1
 
   return (
     <>
-      {cardSections.map((section) => (
-        <section key={section.sectionKey}>
-          <SectionHeading accentClassName="bg-brand" title={section.title} />
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {section.items.map(renderRoleCard)}
-          </div>
+      {activeSection ? (
+        <section key={activeSection.sectionKey}>
+          {showTabs ? (
+            <RoadmapHubSectionTabs
+              sections={tabSections}
+              activeSectionKey={resolvedActiveSectionKey}
+              onSelect={setActiveSectionKey}
+            />
+          ) : (
+            <SectionHeading
+              accentClassName={activeSection.layoutType === 'CHIP_GRID' ? 'bg-yellow-400' : 'bg-brand'}
+              title={activeSection.title}
+              compact={buildHubCategoryGroups(activeSection.items).length > 0}
+            />
+          )}
+          <RoadmapHubSectionContent section={activeSection} />
         </section>
-      ))}
-
-      {chipSections.map((section) => (
-        <section key={section.sectionKey}>
-          <SectionHeading accentClassName="bg-yellow-400" title={section.title} />
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6">
-            {section.items.map(renderSkillChip)}
-          </div>
-        </section>
-      ))}
+      ) : null}
 
       {linkSections.length > 0 ? (
         <div className={`grid grid-cols-1 gap-12 ${linkSections.length > 1 ? 'md:grid-cols-2' : ''}`}>
@@ -386,23 +500,24 @@ function RoadmapHubPage() {
   }
 
   return (
-    <div className="flex h-screen min-h-0 flex-col overflow-hidden bg-gray-50 text-gray-900">
+    <div className="roadmap-hub-page flex h-screen min-h-0 flex-col overflow-hidden bg-gray-50 text-gray-900">
       <SiteHeader
         session={session}
         profileImage={profileImage}
         onLogout={handleLogout}
         onLoginClick={() => openAuthModal('login')}
-        activeNavHref="roadmap-hub.html"
+        activeNavHref="/roadmap-hub"
       />
 
       <main className="app-main flex-1">
-        <header className="border-b border-gray-100 bg-gradient-to-b from-white to-gray-50 px-4 py-20 text-center">
-          <h1 className="mb-6 text-4xl font-bold text-gray-900 md:text-6xl">
+        <div className="roadmap-hub-body-zoom">
+          <header className="border-b border-gray-100 bg-gradient-to-b from-white to-gray-50 px-4 py-20 text-center">
+          <h1 className="roadmap-hub-hero-title mb-6 text-4xl font-bold text-gray-900 md:text-6xl">
             <span className="bg-gradient-to-r from-purple-600 to-green-500 bg-clip-text text-transparent">
               개발자 로드맵
             </span>
           </h1>
-          <p className="mx-auto mb-10 max-w-3xl text-lg leading-relaxed text-gray-500">
+          <p className="roadmap-hub-hero-copy mx-auto mb-10 max-w-3xl text-lg leading-relaxed text-gray-500">
             <span className="font-bold text-brand">DevPath</span>는 개발자들의 학습 방향을 잡을 수 있도록 정리합니다.
             <br />
             역할과 기술별로 정리된 로드맵을 확인하고 성장 흐름을 바로 시작해 보세요.
@@ -411,9 +526,9 @@ function RoadmapHubPage() {
             <button
               type="button"
               onClick={() => {
-                window.location.href = 'my-roadmap.html'
+                window.location.href = '/my-roadmap'
               }}
-              className="group relative flex items-center justify-center gap-3 rounded-full bg-brand px-8 py-4 font-bold text-white shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-green-600 hover:shadow-xl"
+              className="roadmap-hub-hero-button group relative flex items-center justify-center gap-3 rounded-full bg-brand px-8 py-4 font-bold text-white shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-green-600 hover:shadow-xl"
             >
               <div className="h-2 w-2 animate-pulse rounded-full bg-white" />
               <span className="text-lg">나만의 로드맵 만들기</span>
@@ -422,9 +537,9 @@ function RoadmapHubPage() {
             <button
               type="button"
               onClick={() => {
-                window.location.href = 'roadmap.html'
+    window.location.href = '/roadmap'
               }}
-              className="group relative flex items-center justify-center gap-3 rounded-full bg-gray-800 px-8 py-4 font-bold text-white shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-gray-900 hover:shadow-xl"
+              className="roadmap-hub-hero-button group relative flex items-center justify-center gap-3 rounded-full bg-gray-800 px-8 py-4 font-bold text-white shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-gray-900 hover:shadow-xl"
             >
               <span className="text-lg">학습 로드맵으로 이동</span>
               <i className="fas fa-arrow-right transition-transform group-hover:translate-x-1" />
@@ -439,6 +554,7 @@ function RoadmapHubPage() {
             error={error}
             onRetry={retryLoadHubCatalog}
           />
+          </div>
         </div>
       </main>
 

@@ -7,11 +7,11 @@
   const AUTH_TOAST_DURATION_MS = 2200;
   const AUTH_TOAST_ROOT_ID = 'devpath-auth-toast-root';
   const headerLinks = [
-    { href: 'roadmap-hub.html', label: '로드맵' },
-    { href: 'lecture-list.html', label: '강의' },
-    { href: 'lounge-dashboard.html', label: '프로젝트' },
-    { href: 'community-list.html', label: '커뮤니티' },
-    { href: 'job-matching.html', label: '채용분석' },
+  { href: '/roadmap-hub', label: '로드맵' },
+    { href: '/lecture-list', label: '강의' },
+  { href: '/lounge-dashboard', label: '프로젝트' },
+  { href: '/community-list', label: '커뮤니티' },
+  { href: '/job-matching', label: '채용분석' },
   ];
 
   let expiryTimeoutId = null;
@@ -180,7 +180,7 @@
 
   function buildBrandMarkup() {
     return [
-      '<a href="home.html" class="group flex items-center gap-2 text-xl font-bold text-gray-900" style="transform: translate(15px, 0px)">',
+      '<a href="/home" class="group flex items-center gap-2 text-xl font-bold text-gray-900" style="transform: translate(15px, 0px)">',
       '  <i class="fas fa-code-branch text-brand inline-block transition group-hover:rotate-12"></i>',
       '  <span class="inline-block">DevPath</span>',
       '</a>',
@@ -189,14 +189,14 @@
 
   function buildAuthMarkup(session) {
     if (!session) {
-      return '<a href="home.html?auth=login" class="rounded-full bg-gray-900 px-5 py-2 text-sm font-bold text-white shadow-lg transition hover:bg-black">로그인</a>';
+      return '<a href="/home?auth=login" class="rounded-full bg-gray-900 px-5 py-2 text-sm font-bold text-white shadow-lg transition hover:bg-black">로그인</a>';
     }
 
     const name = escapeHtml(session.name || '내 계정');
     const initial = escapeHtml((session.name || 'D').trim().charAt(0).toUpperCase());
 
     return [
-      '<button type="button" onclick="window.location.href=\'profile.html\'" class="flex items-center gap-3 rounded-full border border-gray-200 bg-white px-3 py-2 text-left shadow-sm transition hover:border-gray-300 hover:shadow-md">',
+    '<button type="button" onclick="window.location.href=\'/profile\'" class="flex items-center gap-3 rounded-full border border-gray-200 bg-white px-3 py-2 text-left shadow-sm transition hover:border-gray-300 hover:shadow-md">',
       `  <span class="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-50 text-sm font-bold text-emerald-600 shadow-sm">${initial}</span>`,
       '  <span class="min-w-0">',
       `    <span class="block truncate text-sm font-bold text-gray-900">${name}</span>`,
@@ -210,7 +210,7 @@
     const session = readStoredAuthSession();
     const showInstructorDashboard = session?.role === 'ROLE_INSTRUCTOR';
     const instructorHeaderLinks = showInstructorDashboard
-      ? [{ href: 'instructor-dashboard.html', label: '강사 대시보드' }]
+      ? [{ href: '/instructor-dashboard', label: '강사 대시보드' }]
       : [];
     const authMarkup = buildAuthMarkup(session);
 

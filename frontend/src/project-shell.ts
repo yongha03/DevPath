@@ -1,11 +1,11 @@
 export type ProjectAsideKey = 'dashboard' | 'lounge' | 'mentoring' | 'workspace' | 'showcase'
 
 export const projectHeaderLinks = [
-  { href: 'roadmap-hub.html', label: '로드맵' },
-  { href: 'lecture-list.html', label: '강의' },
-  { href: 'lounge-dashboard.html', label: '프로젝트' },
+  { href: '/roadmap-hub', label: '로드맵' },
+  { href: '/lecture-list', label: '강의' },
+  { href: '/lounge-dashboard', label: '프로젝트' },
   { href: '/job-matching', label: '채용분석' },
-  { href: 'community-list.html', label: '커뮤니티' },
+  { href: '/community-list', label: '커뮤니티' },
 ]
 
 export const projectAsideItems: Array<{
@@ -14,11 +14,11 @@ export const projectAsideItems: Array<{
   label: string
   icon: string
 }> = [
-  { key: 'dashboard', href: 'lounge-dashboard.html', label: '대시보드', icon: 'fa-home' },
-  { key: 'lounge', href: 'community-lounge.html', label: '라운지 (팀 찾기)', icon: 'fa-rocket' },
-  { key: 'mentoring', href: 'mentoring-hub.html', label: '멘토링 찾기', icon: 'fa-chalkboard-teacher' },
-  { key: 'workspace', href: 'workspace-hub.html', label: '워크스페이스', icon: 'fa-laptop-code' },
-  { key: 'showcase', href: 'dev-showcase.html', label: '런칭 쇼케이스', icon: 'fa-trophy' },
+  { key: 'dashboard', href: '/lounge-dashboard', label: '대시보드', icon: 'fa-home' },
+  { key: 'lounge', href: '/community-lounge', label: '라운지 (팀 찾기)', icon: 'fa-rocket' },
+  { key: 'mentoring', href: '/mentoring-hub', label: '멘토링 찾기', icon: 'fa-chalkboard-teacher' },
+  { key: 'workspace', href: '/workspace-hub', label: '워크스페이스', icon: 'fa-laptop-code' },
+  { key: 'showcase', href: '/dev-showcase', label: '런칭 쇼케이스', icon: 'fa-trophy' },
 ]
 
 export function createProjectAsideHtml(activeKey: ProjectAsideKey) {
@@ -29,7 +29,7 @@ export function createProjectAsideHtml(activeKey: ProjectAsideKey) {
   }).join('')
 
   return `<aside class="w-20 hover:w-64 bg-white border-r border-gray-200 flex flex-col shrink-0 z-50 transition-all duration-300 ease-in-out group shadow-xl">
-    <div class="h-20 flex items-center px-5 cursor-pointer hover:bg-gray-50 transition border-b border-gray-100 shrink-0" onclick="window.top.location.href='home.html'">
+    <div class="h-20 flex items-center px-5 cursor-pointer hover:bg-gray-50 transition border-b border-gray-100 shrink-0" onclick="window.top.location.href='/home'">
       <div class="w-10 h-10 rounded-xl bg-gray-900 flex items-center justify-center text-brand text-xl shrink-0 shadow-md">
         <i class="fas fa-layer-group"></i>
       </div>
@@ -54,7 +54,7 @@ export function createProjectAsideHtml(activeKey: ProjectAsideKey) {
   </aside>`
 }
 
-export function createProjectHeaderHtml(activeHref = 'lounge-dashboard.html') {
+export function createProjectHeaderHtml(activeHref = '/lounge-dashboard') {
   const navHtml = projectHeaderLinks.map((item) => {
     const activeClass = item.href === activeHref ? 'text-brand transition border-b-2 border-brand pb-1' : 'hover:text-brand transition'
 

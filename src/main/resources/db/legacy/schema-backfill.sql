@@ -173,6 +173,9 @@ ALTER TABLE user_profiles
 ALTER TABLE roadmap_hub_items
     ADD COLUMN IF NOT EXISTS icon_color VARCHAR(32);
 
+ALTER TABLE roadmap_hub_items
+    ADD COLUMN IF NOT EXISTS item_category VARCHAR(80);
+
 -- Legacy local PostgreSQL rows can exist without these newer columns.
 UPDATE lesson_progress
 SET is_pip_enabled = COALESCE(is_pip_enabled, FALSE)

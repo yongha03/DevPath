@@ -724,7 +724,7 @@ export default function DashboardPage({ session }: { session: AuthSession }) {
               onClick={() => {
                 window.location.href = state.roadmap
                   ? `roadmap.html?id=${state.roadmap.customRoadmapId}`
-                  : 'roadmap-hub.html'
+                  : '/roadmap-hub'
               }}
             >
               {state.roadmap ? '이어서 학습하기 →' : '로드맵 허브 둘러보기'}

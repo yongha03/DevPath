@@ -247,10 +247,10 @@ export function getRoleLabel(role: string | null) {
 }
 
 export function getPostLoginRedirect(role: string | null) {
-  // 관리자만 전용 HTML 엔트리로 보내고 나머지는 홈으로 유지한다.
+  // 관리자만 전용 라우트로 보내고 나머지는 홈으로 유지한다.
   switch (role) {
     case 'ROLE_ADMIN':
-      return '/admin-dashboard.html'
+      return '/admin-dashboard'
     case 'ROLE_INSTRUCTOR':
     case 'ROLE_LEARNER':
     default:

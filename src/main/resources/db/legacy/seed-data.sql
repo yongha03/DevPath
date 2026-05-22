@@ -13988,6 +13988,107 @@ WHERE NOT EXISTS (
       )
 );
 
+DROP TABLE IF EXISTS tmp_roadmap_hub_item_category_seed;
+
+CREATE TEMPORARY TABLE tmp_roadmap_hub_item_category_seed (
+    section_key VARCHAR(80) NOT NULL,
+    lookup_value VARCHAR(255) NOT NULL,
+    item_category VARCHAR(80) NOT NULL
+);
+
+INSERT INTO tmp_roadmap_hub_item_category_seed (section_key, lookup_value, item_category)
+VALUES
+        ('role-based', 'Frontend', '웹 개발'),
+        ('role-based', 'Backend', '웹 개발'),
+        ('role-based', 'Full Stack', '웹 개발'),
+        ('role-based', 'DevOps', '인프라/DevOps'),
+        ('role-based', 'DevSecOps', '보안'),
+        ('role-based', 'Data Analyst', '데이터/AI'),
+        ('role-based', 'AI Engineer', '데이터/AI'),
+        ('role-based', 'AI and Data Scientist', '데이터/AI'),
+        ('role-based', 'Data Engineer', '데이터/AI'),
+        ('role-based', 'Android', '모바일'),
+        ('role-based', 'Machine Learning', '데이터/AI'),
+        ('role-based', 'PostgreSQL', '데이터베이스'),
+        ('role-based', 'iOS', '모바일'),
+        ('role-based', 'Blockchain', '블록체인'),
+        ('role-based', 'QA', '품질/테스트'),
+        ('role-based', 'Software Architect', '아키텍처'),
+        ('role-based', 'Cyber Security', '보안'),
+        ('role-based', 'UX Design', '디자인'),
+        ('role-based', 'Technical Writer', '문서/협업'),
+        ('role-based', 'Game Developer', '게임'),
+        ('role-based', 'Server Side Game Developer', '게임'),
+        ('role-based', 'MLOps', '인프라/DevOps'),
+        ('role-based', 'Product Manager', '기획/관리'),
+        ('role-based', 'Engineering Manager', '기획/관리'),
+        ('role-based', 'Developer Relations', '문서/협업'),
+        ('role-based', 'BI Analyst', '데이터/AI'),
+        ('skill-based', 'SQL', '데이터베이스'),
+        ('skill-based', 'Computer Science', 'CS'),
+        ('skill-based', 'React', '프론트엔드'),
+        ('skill-based', 'Vue', '프론트엔드'),
+        ('skill-based', 'Angular', '프론트엔드'),
+        ('skill-based', 'JavaScript', '프론트엔드'),
+        ('skill-based', 'TypeScript', '프론트엔드'),
+        ('skill-based', 'Node.js', '백엔드'),
+        ('skill-based', 'Python', '언어'),
+        ('skill-based', 'System Design', 'CS'),
+        ('skill-based', 'Java', '백엔드'),
+        ('skill-based', 'ASP.NET Core', '백엔드'),
+        ('skill-based', 'API Design', '백엔드'),
+        ('skill-based', 'Spring Boot', '백엔드'),
+        ('skill-based', 'Flutter', '모바일'),
+        ('skill-based', 'C++', '언어'),
+        ('skill-based', 'Rust', '언어'),
+        ('skill-based', 'Go Roadmap', '언어'),
+        ('skill-based', 'Design and Architecture', 'CS'),
+        ('skill-based', 'GraphQL', '백엔드'),
+        ('skill-based', 'React Native', '모바일'),
+        ('skill-based', 'Design System', '디자인'),
+        ('skill-based', 'Prompt Engineering', 'AI'),
+        ('skill-based', 'MongoDB', '데이터베이스'),
+        ('skill-based', 'Linux', 'DevOps/Cloud'),
+        ('skill-based', 'Kubernetes', 'DevOps/Cloud'),
+        ('skill-based', 'Docker', 'DevOps/Cloud'),
+        ('skill-based', 'AWS', 'DevOps/Cloud'),
+        ('skill-based', 'Terraform', 'DevOps/Cloud'),
+        ('skill-based', 'Data Structures & Algorithms', 'CS'),
+        ('skill-based', 'Redis', '데이터베이스'),
+        ('skill-based', 'Git and GitHub', '도구'),
+        ('skill-based', 'PHP', '백엔드'),
+        ('skill-based', 'Cloudflare', 'DevOps/Cloud'),
+        ('skill-based', 'AI Red Teaming', 'AI'),
+        ('skill-based', 'AI Agents', 'AI'),
+        ('skill-based', 'Next.js', '프론트엔드'),
+        ('skill-based', 'Code Review', '도구'),
+        ('skill-based', 'Kotlin', '언어'),
+        ('skill-based', 'HTML', '프론트엔드'),
+        ('skill-based', 'CSS', '프론트엔드'),
+        ('skill-based', 'Swift & Swift UI', '모바일'),
+        ('skill-based', 'Shell / Bash', '도구'),
+        ('skill-based', 'Laravel', '백엔드'),
+        ('skill-based', 'Elasticsearch', '데이터베이스'),
+        ('skill-based', 'WordPress', '백엔드'),
+        ('skill-based', 'Django', '백엔드'),
+        ('skill-based', 'Ruby', '언어'),
+        ('skill-based', 'Ruby on Rails', '백엔드'),
+        ('skill-based', 'Claude Code', 'AI'),
+        ('skill-based', 'Vibe Coding', 'AI'),
+        ('skill-based', 'Scala', '언어'),
+        ('skill-based', 'OpenClaw', 'AI');
+
+UPDATE roadmap_hub_items item
+SET item_category = seed.item_category
+FROM tmp_roadmap_hub_item_category_seed seed
+JOIN roadmap_hub_sections section_item
+    ON section_item.section_key = seed.section_key
+WHERE item.section_id = section_item.id
+  AND (item.title = seed.lookup_value OR item.subtitle = seed.lookup_value)
+  AND (item.item_category IS NULL OR item.item_category = '');
+
+DROP TABLE IF EXISTS tmp_roadmap_hub_item_category_seed;
+
 DROP TABLE IF EXISTS tmp_roadmap_hub_skill_icon_seed;
 
 CREATE TEMPORARY TABLE tmp_roadmap_hub_skill_icon_seed (

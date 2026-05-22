@@ -277,6 +277,15 @@ export default function CommunityLoungeApp() {
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   useEffect(() => {
+    document.title = 'DevPath - 라운지'
+    document.body.classList.add('community-lounge-body')
+
+    return () => {
+      document.body.classList.remove('community-lounge-body')
+    }
+  }, [])
+
+  useEffect(() => {
     const controller = new AbortController()
     const currentSession = readStoredAuthSession()
     const currentUserId = currentSession?.userId ?? null
@@ -567,7 +576,7 @@ export default function CommunityLoungeApp() {
       tech: detailSquad.tags.join(','),
       desc: detailSquad.desc,
     })
-    window.location.href = `project-create.html?${params.toString()}`
+    window.location.href = `/project-create?${params.toString()}`
   }
 
   function openApplyForm() {
@@ -711,7 +720,7 @@ export default function CommunityLoungeApp() {
           <ProjectHeader
             session={session}
             profileImage={profileImage}
-            activeHref="lounge-dashboard.html"
+            activeHref="/lounge-dashboard"
             onLoginClick={() => openAuthModal()}
             onLogout={handleLogout}
           />

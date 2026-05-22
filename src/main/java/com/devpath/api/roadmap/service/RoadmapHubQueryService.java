@@ -93,6 +93,7 @@ public class RoadmapHubQueryService {
     return RoadmapHubCatalogResponse.Item.builder()
         .title(item.getTitle())
         .subtitle(item.getSubtitle())
+        .category(item.getCategory())
         .iconClass(item.getIconClass())
         .iconColor(item.getIconColor())
         .sortOrder(item.getSortOrder())

@@ -4,9 +4,9 @@ import { siteHeaderTuning } from '../../components/SiteHeader'
 import type { AuthSession } from '../../types/auth'
 
 const headerLinks = [
-  { href: 'roadmap-hub.html', label: '로드맵' },
-  { href: 'lecture-list.html', label: '강의' },
-  { href: 'lounge-dashboard.html', label: '프로젝트' },
+  { href: '/roadmap-hub', label: '로드맵' },
+  { href: '/lecture-list', label: '강의' },
+  { href: '/lounge-dashboard', label: '프로젝트' },
   { href: 'community-list.html', label: '커뮤니티' },
   { href: '/job-matching', label: '채용분석' },
 ]
@@ -53,7 +53,7 @@ export default function InstructorHeader({
       <nav className="app-header">
         <div className="mx-auto flex h-full w-full items-center" style={containerStyle}>
           <div className="hidden items-center px-4 lg:flex" style={brandSlotStyle}>
-            <a href="home.html" className="group flex items-center gap-2 text-xl font-bold text-gray-900" style={getMoveStyle(siteHeaderTuning.brandGroup)}>
+            <a href="/home" className="group flex items-center gap-2 text-xl font-bold text-gray-900" style={getMoveStyle(siteHeaderTuning.brandGroup)}>
               <i className="fas fa-code-branch text-brand inline-block transition group-hover:rotate-12" />
               <span className="flex -translate-y-1 flex-col leading-tight">
                 <span>DevPath</span>
@@ -63,7 +63,7 @@ export default function InstructorHeader({
           </div>
 
           <div className="flex items-center lg:hidden">
-            <a href="home.html" className="group flex items-center gap-2 text-xl font-bold text-gray-900" style={getMoveStyle(siteHeaderTuning.brandGroup)}>
+            <a href="/home" className="group flex items-center gap-2 text-xl font-bold text-gray-900" style={getMoveStyle(siteHeaderTuning.brandGroup)}>
               <i className="fas fa-code-branch text-brand inline-block transition group-hover:rotate-12" />
               <span className="flex -translate-y-1 flex-col leading-tight">
                 <span>DevPath</span>
@@ -80,7 +80,7 @@ export default function InstructorHeader({
                 </a>
               ))}
               <a
-                href="instructor-dashboard.html"
+                href="/instructor-dashboard"
                 className="absolute top-1/2 left-full inline-block -translate-y-1/2 whitespace-nowrap border-b-2 border-brand pb-1 text-brand"
                 style={instructorStyle}
               >

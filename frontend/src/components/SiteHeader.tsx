@@ -4,11 +4,11 @@ import AccountUserMenu from './AccountUserMenu'
 import HeaderAlerts from './HeaderAlerts'
 
 const headerLinks = [
-  { href: 'roadmap-hub.html', label: '\uB85C\uB4DC\uB9F5' },
-  { href: 'lecture-list.html', label: '\uAC15\uC758' },
-  { href: 'lounge-dashboard.html', label: '\uD504\uB85C\uC81D\uD2B8' },
+  { href: '/roadmap-hub', label: '\uB85C\uB4DC\uB9F5' },
+  { href: '/lecture-list', label: '\uAC15\uC758' },
+  { href: '/lounge-dashboard', label: '\uD504\uB85C\uC81D\uD2B8' },
   { href: '/job-matching', label: '\uCC44\uC6A9\uBD84\uC11D' },
-  { href: 'community-list.html', label: '\uCEE4\uBBA4\uB2C8\uD2F0' },
+  { href: '/community-list', label: '\uCEE4\uBBA4\uB2C8\uD2F0' },
 ]
 
 // Edit only this object when you want pixel-level header tuning.
@@ -61,7 +61,7 @@ export default function SiteHeader({
 }: SiteHeaderProps) {
   const showInstructorDashboard = session?.role === 'ROLE_INSTRUCTOR'
   const instructorHeaderLinks = showInstructorDashboard
-    ? [{ href: 'instructor-dashboard.html', label: '\uAC15\uC0AC \uB300\uC2DC\uBCF4\uB4DC' }]
+    ? [{ href: '/instructor-dashboard', label: '\uAC15\uC0AC \uB300\uC2DC\uBCF4\uB4DC' }]
     : []
   const containerStyle: CSSProperties = {
     maxWidth: siteHeaderTuning.maxWidthPx == null ? 'none' : `${siteHeaderTuning.maxWidthPx}px`,
@@ -87,7 +87,7 @@ export default function SiteHeader({
   const headerStyle: CSSProperties = { top: `${offsetTopPx}px` }
   const defaultNavLinkClassName = 'site-header-nav-link'
   const activeNavLinkClassName = 'site-header-nav-link site-header-nav-link--active'
-  const showHeaderAlerts = Boolean(session && activeNavHref !== 'roadmap-hub.html')
+  const showHeaderAlerts = Boolean(session && activeNavHref !== '/roadmap-hub')
   const brandLabel = (
     <span className="inline-flex items-baseline gap-2 whitespace-nowrap">
       <span className="inline-block">DevPath</span>
@@ -105,7 +105,7 @@ export default function SiteHeader({
         <div className="mx-auto flex h-full w-full items-center" style={containerStyle}>
           <div className="hidden items-center px-4 lg:flex" style={brandSlotStyle}>
             <a
-              href="home.html"
+              href="/home"
               className="group flex items-center gap-2 text-xl font-bold text-gray-900"
               style={getMoveStyle(siteHeaderTuning.brandGroup)}
             >
@@ -116,7 +116,7 @@ export default function SiteHeader({
 
           <div className="flex items-center lg:hidden">
             <a
-              href="home.html"
+              href="/home"
               className="group flex items-center gap-2 text-xl font-bold text-gray-900"
               style={getMoveStyle(siteHeaderTuning.brandGroup)}
             >

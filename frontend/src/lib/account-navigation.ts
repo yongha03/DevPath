@@ -19,7 +19,7 @@ export interface AccountNavItem {
 export const accountNavItems: AccountNavItem[] = [
   {
     key: 'dashboard',
-    href: 'dashboard.html',
+    href: '/dashboard',
     label: '대시보드',
     shortLabel: '대시보드',
     description: '학습 현황과 추천 콘텐츠를 한 번에 확인합니다.',
@@ -27,7 +27,7 @@ export const accountNavItems: AccountNavItem[] = [
   },
   {
     key: 'my-learning',
-    href: 'my-learning.html',
+    href: '/my-learning',
     label: '내 학습',
     shortLabel: '내 학습',
     description: '수강 중이거나 완료한 강의를 모아 봅니다.',
@@ -35,7 +35,7 @@ export const accountNavItems: AccountNavItem[] = [
   },
   {
     key: 'purchase',
-    href: 'purchase.html',
+    href: '/purchase',
     label: '구매 / 수강 관리',
     shortLabel: '구매/수강',
     description: '구매 내역, 수강 상태, 결제 정보를 관리합니다.',
@@ -43,7 +43,7 @@ export const accountNavItems: AccountNavItem[] = [
   },
   {
     key: 'learning-log-gallery',
-    href: 'learning-log-gallery.html',
+    href: '/learning-log-gallery',
     label: '학습 기록',
     shortLabel: '학습 기록',
     description: 'Proof Card와 학습 인증 기록을 모아 봅니다.',
@@ -51,7 +51,7 @@ export const accountNavItems: AccountNavItem[] = [
   },
   {
     key: 'my-posts',
-    href: 'my-posts.html',
+    href: '/my-posts',
     label: '내 게시글',
     shortLabel: '내 게시글',
     description: '작성한 커뮤니티 글과 댓글 활동을 관리합니다.',
@@ -59,7 +59,7 @@ export const accountNavItems: AccountNavItem[] = [
   },
   {
     key: 'profile',
-    href: 'profile.html',
+    href: '/profile',
     label: '프로필 관리',
     shortLabel: '프로필',
     description: '소개, 태그, 외부 링크 같은 계정 정보를 수정합니다.',
@@ -67,7 +67,7 @@ export const accountNavItems: AccountNavItem[] = [
   },
   {
     key: 'settings',
-    href: 'settings.html',
+    href: '/settings',
     label: '계정 설정',
     shortLabel: '설정',
     description: '비밀번호 변경과 개인 설정을 관리합니다.',
@@ -75,14 +75,14 @@ export const accountNavItems: AccountNavItem[] = [
   },
 ]
 
-const pageKeyByFileName = new Map(
-  accountNavItems.map((item) => [item.href.replace('.html', ''), item.key] as const),
+const pageKeyByRoute = new Map(
+  accountNavItems.map((item) => [item.href.replace(/^\//, ''), item.key] as const),
 )
 
 export function getCurrentAccountPageKey(): AccountPageKey {
-  const fileName = window.location.pathname.split('/').pop()?.replace('.html', '') ?? 'dashboard'
+  const routeName = window.location.pathname.replace(/\/+$/, '').split('/').pop() ?? 'dashboard'
 
-  return pageKeyByFileName.get(fileName) ?? 'dashboard'
+  return pageKeyByRoute.get(routeName) ?? 'dashboard'
 }
 
 export function getAccountPageMeta(key: AccountPageKey) {

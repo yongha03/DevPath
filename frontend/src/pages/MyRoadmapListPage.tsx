@@ -105,7 +105,7 @@ function findNextLearningNode(nodes: RoadmapNodeItem[], progressRate: number): N
 function buildRoadmapUrl(customRoadmapId: number, nodeId?: number) {
   const params = new URLSearchParams({ id: String(customRoadmapId) })
   if (nodeId) params.set('nodeId', String(nodeId))
-  return `roadmap.html?${params.toString()}`
+  return `/roadmap?${params.toString()}`
 }
 
 function activityDate(roadmap: MyRoadmapSummary): string | null | undefined {
@@ -819,7 +819,7 @@ function CreatedCard({
   onDelete: (roadmap: MyRoadmapSummary, label: string) => void
 }) {
   const menuId = `created-${roadmap.customRoadmapId}`
-  const editHref = roadmap.builderRoadmapId ? `my-roadmap.html?edit=${roadmap.builderRoadmapId}` : 'my-roadmap.html'
+  const editHref = roadmap.builderRoadmapId ? `/my-roadmap?edit=${roadmap.builderRoadmapId}` : '/my-roadmap'
 
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 p-5 flex flex-col h-full relative group">
@@ -906,7 +906,7 @@ function CompletedCard({
 
 function FindRoadmapCard() {
   return (
-    <a href="roadmap-hub.html" className="bg-white rounded-2xl border-2 border-dashed border-gray-300 hover:border-brand hover:bg-gray-50 transition-all duration-300 p-5 flex flex-col items-center justify-center text-center h-full min-h-[280px] group outline-none">
+    <a href="/roadmap-hub" className="bg-white rounded-2xl border-2 border-dashed border-gray-300 hover:border-brand hover:bg-gray-50 transition-all duration-300 p-5 flex flex-col items-center justify-center text-center h-full min-h-[280px] group outline-none">
       <div className="w-14 h-14 bg-gray-50 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
         <i className="fas fa-search text-xl text-gray-400 group-hover:text-brand transition-colors" />
       </div>
@@ -917,7 +917,7 @@ function FindRoadmapCard() {
 
 function NewCustomRoadmapCard() {
   return (
-    <a href="my-roadmap.html" className="bg-white rounded-2xl border-2 border-dashed border-gray-300 hover:border-brand hover:bg-gray-50 transition-all duration-300 p-5 flex flex-col items-center justify-center text-center h-full min-h-[280px] group outline-none">
+    <a href="/my-roadmap" className="bg-white rounded-2xl border-2 border-dashed border-gray-300 hover:border-brand hover:bg-gray-50 transition-all duration-300 p-5 flex flex-col items-center justify-center text-center h-full min-h-[280px] group outline-none">
       <div className="w-14 h-14 bg-gray-50 rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300">
         <i className="fas fa-plus text-xl text-gray-400 group-hover:text-brand transition-colors" />
       </div>
@@ -1324,7 +1324,7 @@ function MyRoadmapListPage() {
         profileImage={profileImage}
         onLogout={handleLogout}
         onLoginClick={() => setAuthView('login')}
-        activeNavHref="roadmap-hub.html"
+        activeNavHref="/roadmap-hub"
       />
       <main className="app-main flex-grow flex flex-col">
         <div className="bg-white border-b border-gray-200 py-12 px-4 text-center">
@@ -1333,11 +1333,11 @@ function MyRoadmapListPage() {
             수강 중인 공식 로드맵과 직접 만든 커스텀 로드맵의 진행 상황을 한눈에 파악하세요.
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-3">
-            <a href="my-roadmap.html" className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold rounded-xl shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-0.5">
+            <a href="/my-roadmap" className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold rounded-xl shadow-md hover:shadow-lg transition-all duration-200 transform hover:-translate-y-0.5">
               <i className="fas fa-tools text-sm" />
               나만의 로드맵 만들기
             </a>
-            <a href="roadmap-hub.html" className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm font-semibold rounded-xl shadow-sm transition-all duration-200 transform hover:-translate-y-0.5">
+            <a href="/roadmap-hub" className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm font-semibold rounded-xl shadow-sm transition-all duration-200 transform hover:-translate-y-0.5">
               <i className="fas fa-compass text-sm text-brand" />
               공식 로드맵 둘러보기
             </a>

@@ -543,7 +543,7 @@ export default function LoungeDashboardApp() {
                         <button onClick={() => openAuthModal('로그인 후 프로젝트 라운지를 이용할 수 있습니다.')} className="bg-brand hover:bg-green-600 text-white px-5 py-2.5 rounded-xl font-bold text-xs transition shadow-[0_4px_15px_rgba(0,196,113,0.3)] flex items-center gap-2">
                           <i className="fas fa-sign-in-alt"></i> 로그인하기
                         </button>
-                        <button onClick={() => goTo('community-lounge.html')} className="bg-white/10 hover:bg-white/20 border border-white/20 text-white px-5 py-2.5 rounded-xl font-bold text-xs transition flex items-center gap-2 backdrop-blur-md">
+                        <button onClick={() => goTo('/community-lounge')} className="bg-white/10 hover:bg-white/20 border border-white/20 text-white px-5 py-2.5 rounded-xl font-bold text-xs transition flex items-center gap-2 backdrop-blur-md">
                           <i className="fas fa-rocket"></i> 라운지 둘러보기
                         </button>
                       </>
@@ -552,16 +552,16 @@ export default function LoungeDashboardApp() {
                         <button onClick={() => goTo('/squad-meeting')} className="bg-brand hover:bg-green-600 text-white px-5 py-2.5 rounded-xl font-bold text-xs transition shadow-[0_4px_15px_rgba(0,196,113,0.3)] flex items-center gap-2">
                           <i className="fas fa-headset"></i> 음성 회의 입장
                         </button>
-                        <button onClick={() => goTo('workspace-hub.html')} className="bg-white/10 hover:bg-white/20 border border-white/20 text-white px-5 py-2.5 rounded-xl font-bold text-xs transition flex items-center gap-2 backdrop-blur-md">
+                        <button onClick={() => goTo('/workspace-hub')} className="bg-white/10 hover:bg-white/20 border border-white/20 text-white px-5 py-2.5 rounded-xl font-bold text-xs transition flex items-center gap-2 backdrop-blur-md">
                           <i className="fas fa-laptop-code"></i> 내 워크스페이스
                         </button>
                       </>
                     ) : (
                       <>
-                        <button onClick={() => goTo('community-lounge.html')} className="bg-brand hover:bg-green-600 text-white px-5 py-2.5 rounded-xl font-bold text-xs transition shadow-[0_4px_15px_rgba(0,196,113,0.3)] flex items-center gap-2">
+                        <button onClick={() => goTo('/community-lounge')} className="bg-brand hover:bg-green-600 text-white px-5 py-2.5 rounded-xl font-bold text-xs transition shadow-[0_4px_15px_rgba(0,196,113,0.3)] flex items-center gap-2">
                           <i className="fas fa-rocket"></i> 라운지 둘러보기
                         </button>
-                        <button onClick={() => goTo('community-lounge.html')} className="bg-white/10 hover:bg-white/20 border border-white/20 text-white px-5 py-2.5 rounded-xl font-bold text-xs transition flex items-center gap-2 backdrop-blur-md">
+                        <button onClick={() => goTo('/community-lounge')} className="bg-white/10 hover:bg-white/20 border border-white/20 text-white px-5 py-2.5 rounded-xl font-bold text-xs transition flex items-center gap-2 backdrop-blur-md">
                           <i className="fas fa-plus"></i> 새 스쿼드 만들기
                         </button>
                       </>
@@ -604,7 +604,7 @@ export default function LoungeDashboardApp() {
                         const memberAvatarSeeds = project.memberAvatarSeeds ?? []
 
                         return (
-                          <div key={project.projectId} className="bg-white rounded-2xl p-5 hover-card cursor-pointer flex flex-col justify-between relative h-[220px]" onClick={() => goTo(project.dashboardUrl ?? 'workspace-hub.html')}>
+                          <div key={project.projectId} className="bg-white rounded-2xl p-5 hover-card cursor-pointer flex flex-col justify-between relative h-[220px]" onClick={() => goTo(project.dashboardUrl ?? '/workspace-hub')}>
                             <div className={`absolute top-0 left-0 w-1 h-full rounded-l-2xl ${getHubProjectAccentClass(project)}`}></div>
                             <div>
                               <div className="flex justify-between items-start mb-3">
@@ -654,7 +654,7 @@ export default function LoungeDashboardApp() {
                       </div>
                       <h3 className="text-sm font-bold text-gray-800 mb-1">아직 진행 중인 프로젝트가 없어요</h3>
                       <p className="text-[11px] text-gray-500 mb-4">마음에 드는 스쿼드에 합류하거나 직접 팀을 꾸려보세요!</p>
-                      <button onClick={() => goTo('community-lounge.html')} className="bg-gray-900 hover:bg-gray-800 text-white px-5 py-2 rounded-xl text-xs font-bold transition shadow-md flex items-center gap-2">
+                      <button onClick={() => goTo('/community-lounge')} className="bg-gray-900 hover:bg-gray-800 text-white px-5 py-2 rounded-xl text-xs font-bold transition shadow-md flex items-center gap-2">
                         <i className="fas fa-search"></i> 새로운 프로젝트 찾기
                       </button>
                     </div>
@@ -684,7 +684,7 @@ export default function LoungeDashboardApp() {
                         </button>
                       </div>
                     ) : recommendedProject ? (
-                      <div className="ai-border cursor-pointer group p-5 flex flex-col md:flex-row gap-5 items-start md:items-center justify-between" onClick={() => goTo('community-lounge.html')}>
+                    <div className="ai-border cursor-pointer group p-5 flex flex-col md:flex-row gap-5 items-start md:items-center justify-between" onClick={() => goTo('/community-lounge')}>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-2">
                             <span className="bg-brand text-white text-[10px] font-extrabold px-2 py-0.5 rounded shadow-sm">AI 맞춤 {recommendedProject.recommendationScore ?? 0}%</span>
@@ -714,14 +714,14 @@ export default function LoungeDashboardApp() {
                           <h3 className="font-bold text-gray-900 text-base mb-1 truncate">추천할 프로젝트가 아직 없습니다</h3>
                           <p className="text-[11px] text-gray-500 mb-3 truncate">기술 스택을 등록하거나 공개 모집 중인 프로젝트가 생기면 추천이 표시됩니다.</p>
                         </div>
-                        <button onClick={() => goTo('community-lounge.html')} className="w-full md:w-auto shrink-0 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-5 py-2.5 rounded-xl text-xs font-bold transition shadow-sm">
+                        <button onClick={() => goTo('/community-lounge')} className="w-full md:w-auto shrink-0 bg-white border border-gray-200 hover:bg-gray-50 text-gray-700 px-5 py-2.5 rounded-xl text-xs font-bold transition shadow-sm">
                           라운지 보기
                         </button>
                       </div>
                     )}
 
                     {hotShowcase ? (
-                      <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm hover-card cursor-pointer flex flex-col md:flex-row gap-5 items-start md:items-center justify-between group" onClick={() => goTo('dev-showcase.html')}>
+                      <div className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm hover-card cursor-pointer flex flex-col md:flex-row gap-5 items-start md:items-center justify-between group" onClick={() => goTo('/dev-showcase')}>
                         <div className="flex-1 min-w-0 flex items-center gap-4">
                           <div className="w-20 h-20 bg-gray-100 rounded-lg overflow-hidden shrink-0 border border-gray-100">
                             {hotShowcase.thumbnailUrl ? (

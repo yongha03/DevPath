@@ -86,6 +86,8 @@ public class AdminRoadmapHubService {
               .title(normalizeRequiredValue(itemRequest == null ? null : itemRequest.getTitle()))
               .subtitle(
                   normalizeOptionalValue(itemRequest == null ? null : itemRequest.getSubtitle()))
+              .category(
+                  normalizeOptionalValue(itemRequest == null ? null : itemRequest.getCategory()))
               .iconClass(
                   normalizeOptionalValue(itemRequest == null ? null : itemRequest.getIconClass()))
               .iconColor(
