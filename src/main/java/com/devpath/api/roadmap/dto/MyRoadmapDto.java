@@ -20,6 +20,29 @@ import lombok.NoArgsConstructor;
 
 public class MyRoadmapDto {
 
+  private static final String BUILDER_ROADMAP_INFO_CONTENT =
+      """
+      <div class="p-6 text-sm text-gray-700 leading-relaxed space-y-6">
+        <div>
+          <p class="mb-2"><span class="font-bold text-gray-900">나만의 로드맵</span>은 학습자가 직접 선택한 기술과 관심 주제를 바탕으로 구성한 개인 맞춤형 학습 경로입니다.</p>
+          <p>특정 직무나 기술 스택 하나에만 묶이지 않고, 프론트엔드, 백엔드, 인프라, 데이터, AI처럼 서로 다른 분야의 모듈이 섞여 있어도 선택한 순서와 선행 관계에 따라 단계적으로 학습할 수 있도록 구성됩니다.</p>
+        </div>
+        <div>
+          <strong class="block text-gray-900 text-base mb-2">🧭 이 로드맵은 어떻게 활용하나요?</strong>
+          <p class="mb-4">각 노드는 목표를 작은 학습 단위로 나눈 항목입니다. 먼저 핵심 개념을 정리하고, 관련 강의나 참고 자료로 이해를 보강한 뒤, 과제와 프로젝트에 적용하면서 실전 역량으로 연결해 보세요.</p>
+          <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+            <strong class="block text-[#00C471] mb-2"><i class="fas fa-check-circle mr-1"></i> 학습 포인트</strong>
+            <ul class="list-disc pl-5 space-y-1 text-gray-600">
+              <li><strong>선택한 주제 중심 학습:</strong> 직접 고른 모듈을 기준으로 필요한 개념을 순서대로 정리합니다</li>
+              <li><strong>분야 간 연결:</strong> 여러 분야가 섞여 있어도 하나의 학습 흐름으로 이어지도록 단계별 목표를 확인합니다</li>
+              <li><strong>실습 기반 성장:</strong> 학습한 내용을 과제, 미니 프로젝트, 포트폴리오 작업으로 확장합니다</li>
+              <li><strong>지속적인 조정:</strong> 학습 중 필요한 노드를 추가하거나 변경하며 현재 목표에 맞는 경로로 다듬어 갑니다</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      """;
+
   @Getter
   @NoArgsConstructor(access = AccessLevel.PROTECTED)
   @Schema(name = "MyRoadmapListResponse")
@@ -195,7 +218,7 @@ public class MyRoadmapDto {
           .originalRoadmapId(orig != null ? orig.getRoadmapId() : null)
           .title(customRoadmap.getTitle())
           .infoTitle(orig != null ? orig.getInfoTitle() : null)
-          .infoContent(orig != null ? orig.getInfoContent() : null)
+          .infoContent(resolveInfoContent(customRoadmap, orig))
           .progressRate(progressRate)
           .createdAt(customRoadmap.getCreatedAt())
           .isBuilderOrigin(customRoadmap.isBuilderOrigin())
@@ -224,6 +247,16 @@ public class MyRoadmapDto {
                                   : null))
                   .toList())
           .build();
+    }
+
+    private static String resolveInfoContent(CustomRoadmap customRoadmap, Roadmap originalRoadmap) {
+      if (originalRoadmap != null) {
+        return originalRoadmap.getInfoContent();
+      }
+      if (!customRoadmap.isBuilderOrigin()) {
+        return null;
+      }
+      return BUILDER_ROADMAP_INFO_CONTENT;
     }
   }
 
