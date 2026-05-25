@@ -2743,7 +2743,7 @@ export default function LearningPlayerApp() {
                         : 'fa-video-slash'
                   } text-2xl`} />
                 </div>
-                <h2 className="mt-6 text-2xl font-semibold">
+                <h2 className="mt-6 text-2xl font-semibold text-white">
                   {selectedLessonIsQuiz ? '섹션 퀴즈' : selectedLessonHasAssignment ? '과제 제출' : '영상이 연결되지 않았습니다'}
                 </h2>
                 <p className="mt-3 text-sm leading-7 text-white/60">
