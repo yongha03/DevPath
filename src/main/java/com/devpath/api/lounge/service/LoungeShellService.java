@@ -48,7 +48,7 @@ public class LoungeShellService {
             .limit(30)
             .map(application -> LoungeShellResponse.MessageItem.from(application, userId))
             .toList(),
-        learnerNotificationRepository.findAllByLearnerIdOrderByCreatedAtDesc(userId).stream()
+        learnerNotificationRepository.findAllByLearnerIdAndIsDeletedFalseOrderByCreatedAtDesc(userId).stream()
             .limit(30)
             .map(LoungeShellResponse.NotificationItem::from)
             .toList());

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import AuthModal, { type AuthView } from '../components/AuthModal'
+import LoginRequiredView from '../components/LoginRequiredView'
 import SiteHeader from '../components/SiteHeader'
 import { AUTH_SESSION_SYNC_EVENT, clearStoredAuthSession, readStoredAuthSession } from '../lib/auth-session'
 
@@ -33,6 +34,8 @@ export default function CommunityListPage() {
     setSession(readStoredAuthSession())
     setAuthView(null)
   }
+
+  if (!session) return <LoginRequiredView />
 
   function goDetail() {
     setView('detail')

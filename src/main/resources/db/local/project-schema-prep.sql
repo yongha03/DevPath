@@ -1043,6 +1043,31 @@ BEGIN
            WHERE jp.external_job_id = seed.external_job_id
              AND COALESCE(jp.is_deleted, false) = false
       );
+
+    -- job_skill_tags: local-job-backend-001 (Java, Spring Boot, JPA, PostgreSQL, AWS)
+    INSERT INTO public.job_skill_tags (job_posting_id, name, source, confidence_score, matched_keyword, is_deleted, created_at, updated_at)
+    SELECT jp.job_posting_id, skill.name, 'JD_RULE_BASED', skill.score, skill.name, false, now(), now()
+    FROM public.job_postings jp
+    CROSS JOIN (VALUES ('Java', 0.95), ('Spring Boot', 0.98), ('JPA', 0.91), ('PostgreSQL', 0.90), ('AWS', 0.85)) AS skill(name, score)
+    WHERE jp.external_job_id = 'local-job-backend-001'
+      AND NOT EXISTS (SELECT 1 FROM public.job_skill_tags t WHERE t.job_posting_id = jp.job_posting_id AND t.name = skill.name);
+
+    -- job_skill_tags: local-job-devops-001 (Docker, Kubernetes, AWS, CI/CD, Linux)
+    INSERT INTO public.job_skill_tags (job_posting_id, name, source, confidence_score, matched_keyword, is_deleted, created_at, updated_at)
+    SELECT jp.job_posting_id, skill.name, 'JD_RULE_BASED', skill.score, skill.name, false, now(), now()
+    FROM public.job_postings jp
+    CROSS JOIN (VALUES ('Docker', 0.95), ('Kubernetes', 0.93), ('AWS', 0.88), ('CI/CD', 0.85), ('Linux', 0.80)) AS skill(name, score)
+    WHERE jp.external_job_id = 'local-job-devops-001'
+      AND NOT EXISTS (SELECT 1 FROM public.job_skill_tags t WHERE t.job_posting_id = jp.job_posting_id AND t.name = skill.name);
+
+    -- job_skill_tags: local-job-ai-001 (Python, SQL, Spring Boot, Kafka, MLOps)
+    INSERT INTO public.job_skill_tags (job_posting_id, name, source, confidence_score, matched_keyword, is_deleted, created_at, updated_at)
+    SELECT jp.job_posting_id, skill.name, 'JD_RULE_BASED', skill.score, skill.name, false, now(), now()
+    FROM public.job_postings jp
+    CROSS JOIN (VALUES ('Python', 0.93), ('SQL', 0.90), ('Spring Boot', 0.85), ('Kafka', 0.88), ('MLOps', 0.82)) AS skill(name, score)
+    WHERE jp.external_job_id = 'local-job-ai-001'
+      AND NOT EXISTS (SELECT 1 FROM public.job_skill_tags t WHERE t.job_posting_id = jp.job_posting_id AND t.name = skill.name);
+
 END $$;
 ^^^ END OF SCRIPT ^^^
 DO $$

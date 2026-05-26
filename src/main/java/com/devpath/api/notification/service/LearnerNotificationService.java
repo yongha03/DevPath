@@ -22,7 +22,7 @@ public class LearnerNotificationService {
   public List<NotificationResponse> getMyNotifications(Long learnerId) {
     validateUserExists(learnerId);
 
-    return learnerNotificationRepository.findAllByLearnerIdOrderByCreatedAtDesc(learnerId).stream()
+    return learnerNotificationRepository.findAllByLearnerIdAndIsDeletedFalseOrderByCreatedAtDesc(learnerId).stream()
         .map(NotificationResponse::from)
         .toList();
   }
@@ -31,12 +31,22 @@ public class LearnerNotificationService {
   public NotificationResponse markAsRead(Long learnerId, Long notificationId) {
     LearnerNotification notification =
         learnerNotificationRepository
-            .findByIdAndLearnerId(notificationId, learnerId)
+            .findByIdAndLearnerIdAndIsDeletedFalse(notificationId, learnerId)
             .orElseThrow(() -> new CustomException(ErrorCode.NOTIFICATION_NOT_FOUND));
 
     notification.markAsRead();
 
     return NotificationResponse.from(notification);
+  }
+
+  @Transactional
+  public void deleteNotification(Long learnerId, Long notificationId) {
+    LearnerNotification notification =
+        learnerNotificationRepository
+            .findByIdAndLearnerIdAndIsDeletedFalse(notificationId, learnerId)
+            .orElseThrow(() -> new CustomException(ErrorCode.NOTIFICATION_NOT_FOUND));
+
+    notification.delete();
   }
 
   private void validateUserExists(Long userId) {

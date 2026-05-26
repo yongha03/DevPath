@@ -6793,6 +6793,8 @@ body.squad-dashboard-body .app-viewport {
 .community-editor-toolbar button:hover {
   background-color: #f3f4f6;
   color: #111827;
+}
+
 html.team-ws-dashboard-document {
   height: 100%;
   overflow: hidden;
