@@ -270,15 +270,15 @@ export default function HeaderAlerts({ session }: HeaderAlertsProps) {
                       <p className="text-xs text-gray-800 leading-relaxed truncate">{notification.text || ''}</p>
                       <span className="text-[10px] text-gray-400">{notification.dateText || ''}</span>
                     </div>
-                    <div className="flex items-center gap-1 shrink-0 mt-0.5">
+                    <div className="flex items-center gap-1.5 shrink-0 self-center">
                       {notification.read === false ? <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span> : null}
                       <button
                         type="button"
                         onClick={(e) => deleteNotification(notification.id, e)}
-                        className="opacity-0 group-hover:opacity-100 transition-opacity w-4 h-4 flex items-center justify-center rounded text-gray-400/70 hover:text-gray-600 hover:bg-gray-200/60"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity w-5 h-5 flex items-center justify-center rounded text-gray-400/70 hover:text-gray-600 hover:bg-gray-200/60"
                         aria-label="알림 삭제"
                       >
-                        <i className="fas fa-times text-[9px]"></i>
+                        <i className="fas fa-times text-[15px]"></i>
                       </button>
                     </div>
                   </div>
