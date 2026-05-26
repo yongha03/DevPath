@@ -15,6 +15,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -57,5 +58,17 @@ public class LearnerNotificationController {
       @Parameter(hidden = true) @AuthenticationPrincipal Long learnerId) {
     return ResponseEntity.ok(
         ApiResponse.ok(learnerNotificationService.markAsRead(learnerId, notificationId)));
+  }
+
+  @DeleteMapping("/{notificationId}")
+  @Operation(summary = "알림 삭제", description = "특정 알림을 삭제합니다.")
+  public ResponseEntity<ApiResponse<Void>> deleteNotification(
+      @Parameter(description = "알림 ID", example = "1")
+          @Positive(message = "notificationId는 양수여야 합니다.")
+          @PathVariable
+          Long notificationId,
+      @Parameter(hidden = true) @AuthenticationPrincipal Long learnerId) {
+    learnerNotificationService.deleteNotification(learnerId, notificationId);
+    return ResponseEntity.ok(ApiResponse.ok(null));
   }
 }

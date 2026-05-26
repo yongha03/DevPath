@@ -155,6 +155,12 @@ export default function HeaderAlerts({ session }: HeaderAlertsProps) {
     )
   }
 
+  function deleteNotification(id: number, e: React.MouseEvent) {
+    e.stopPropagation()
+    void projectApiRequest(`/api/notifications/${id}`, { method: 'DELETE' }, 'required')
+    setNotifications((current) => current.filter((n) => n.id !== id))
+  }
+
   return (
     <div ref={panelRef} className="flex items-center gap-2">
       <div className="relative">
@@ -254,7 +260,7 @@ export default function HeaderAlerts({ session }: HeaderAlertsProps) {
                 visibleNotifications.map((notification) => (
                   <div
                     key={`notification-${notification.id}`}
-                    className="p-3 hover:bg-gray-50 border-b border-gray-50 cursor-pointer flex gap-3 items-start"
+                    className="group p-3 hover:bg-gray-50 border-b border-gray-50 cursor-pointer flex gap-3 items-start"
                     onMouseEnter={() => markNotificationRead(notification.id)}
                   >
                     <div className="w-8 h-8 rounded-full bg-green-50 text-brand flex items-center justify-center text-xs shrink-0 border border-green-100">
@@ -264,7 +270,17 @@ export default function HeaderAlerts({ session }: HeaderAlertsProps) {
                       <p className="text-xs text-gray-800 leading-relaxed truncate">{notification.text || ''}</p>
                       <span className="text-[10px] text-gray-400">{notification.dateText || ''}</span>
                     </div>
-                    {notification.read === false ? <span className="w-1.5 h-1.5 bg-red-500 rounded-full mt-1.5 shrink-0"></span> : null}
+                    <div className="flex items-center gap-1 shrink-0 mt-0.5">
+                      {notification.read === false ? <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span> : null}
+                      <button
+                        type="button"
+                        onClick={(e) => deleteNotification(notification.id, e)}
+                        className="opacity-0 group-hover:opacity-100 transition-opacity w-4 h-4 flex items-center justify-center rounded text-gray-400/70 hover:text-gray-600 hover:bg-gray-200/60"
+                        aria-label="알림 삭제"
+                      >
+                        <i className="fas fa-times text-[9px]"></i>
+                      </button>
+                    </div>
                   </div>
                 ))
               ) : (

@@ -42,6 +42,10 @@ public class LearnerNotification {
   @Builder.Default
   private Boolean isRead = false;
 
+  @Column(name = "is_deleted", nullable = false)
+  @Builder.Default
+  private Boolean isDeleted = false;
+
   @Column(name = "created_at", updatable = false)
   private LocalDateTime createdAt;
 
@@ -52,5 +56,9 @@ public class LearnerNotification {
 
   public void markAsRead() {
     this.isRead = true;
+  }
+
+  public void delete() {
+    this.isDeleted = true;
   }
 }
