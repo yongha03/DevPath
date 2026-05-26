@@ -215,7 +215,13 @@ export default function HeaderAlerts({ session }: HeaderAlertsProps) {
         <button
           type="button"
           aria-label={HEADER_TEXT.notifications}
-          onClick={() => setOpenPanel((current) => (current === 'notifications' ? null : 'notifications'))}
+          onClick={() => {
+            const next = openPanel === 'notifications' ? null : 'notifications'
+            setOpenPanel(next)
+            if (next === 'notifications') {
+              void markAllNotificationsRead()
+            }
+          }}
           className="relative cursor-pointer rounded-full p-2.5 text-gray-500 transition hover:bg-gray-100 hover:text-brand"
         >
           <i className="far fa-bell text-lg"></i>
