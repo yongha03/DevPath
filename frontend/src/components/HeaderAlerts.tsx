@@ -144,6 +144,17 @@ export default function HeaderAlerts({ session }: HeaderAlertsProps) {
     setNotifications((current) => current.map((notification) => ({ ...notification, read: true })))
   }
 
+  function markNotificationRead(id: number) {
+    const target = notifications.find((n) => n.id === id)
+    if (!target || target.read !== false) {
+      return
+    }
+    void projectApiRequest(`/api/notifications/${id}/read`, { method: 'PATCH' }, 'required')
+    setNotifications((current) =>
+      current.map((n) => (n.id === id ? { ...n, read: true } : n)),
+    )
+  }
+
   return (
     <div ref={panelRef} className="flex items-center gap-2">
       <div className="relative">
@@ -215,13 +226,7 @@ export default function HeaderAlerts({ session }: HeaderAlertsProps) {
         <button
           type="button"
           aria-label={HEADER_TEXT.notifications}
-          onClick={() => {
-            const next = openPanel === 'notifications' ? null : 'notifications'
-            setOpenPanel(next)
-            if (next === 'notifications') {
-              void markAllNotificationsRead()
-            }
-          }}
+          onClick={() => setOpenPanel((current) => (current === 'notifications' ? null : 'notifications'))}
           className="relative cursor-pointer rounded-full p-2.5 text-gray-500 transition hover:bg-gray-100 hover:text-brand"
         >
           <i className="far fa-bell text-lg"></i>
@@ -250,6 +255,7 @@ export default function HeaderAlerts({ session }: HeaderAlertsProps) {
                   <div
                     key={`notification-${notification.id}`}
                     className="p-3 hover:bg-gray-50 border-b border-gray-50 cursor-pointer flex gap-3 items-start"
+                    onMouseEnter={() => markNotificationRead(notification.id)}
                   >
                     <div className="w-8 h-8 rounded-full bg-green-50 text-brand flex items-center justify-center text-xs shrink-0 border border-green-100">
                       <i className={iconForNotification(notification.type)}></i>
