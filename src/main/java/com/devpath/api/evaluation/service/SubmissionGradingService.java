@@ -84,9 +84,7 @@ public class SubmissionGradingService {
         "AI 코드 리뷰어가 루브릭 기준으로 자동 생성한 피드백입니다.");
 
     notificationEventService.notifyAssignmentGraded(
-        submission.getLearner().getId(),
-        submission.getAssignment().getTitle(),
-        totalScore);
+        submission.getLearner().getId(), submission.getAssignment().getTitle(), totalScore);
   }
 
   public SubmissionGradeResponse gradeSubmission(
@@ -132,9 +130,7 @@ public class SubmissionGradingService {
     submission.grade(instructor, totalScore, null, null);
 
     notificationEventService.notifyAssignmentGraded(
-        submission.getLearner().getId(),
-        submission.getAssignment().getTitle(),
-        totalScore);
+        submission.getLearner().getId(), submission.getAssignment().getTitle(), totalScore);
 
     return SubmissionGradeResponse.builder()
         .submissionId(submission.getId())
@@ -262,7 +258,8 @@ public class SubmissionGradingService {
             : assignment.getSubmissionRuleDescription())
         + "\n"
         + "허용 형식: "
-        + (assignment.getAllowedFileFormats() == null || assignment.getAllowedFileFormats().isBlank()
+        + (assignment.getAllowedFileFormats() == null
+                || assignment.getAllowedFileFormats().isBlank()
             ? "(제한 없음)"
             : assignment.getAllowedFileFormats())
         + "\n\n"
@@ -376,6 +373,7 @@ public class SubmissionGradingService {
                         weakSubmission
                             ? "제출 내용이 너무 짧거나 실제 구현을 확인할 수 없어 기준을 충족하지 못했습니다."
                             : "AI 응답을 받지 못해 보수적인 기본 점수로 산정했습니다.")
+                    .earnedPoints(rubric.getMaxPoints() / 2)
                     .build())
         .toList();
     String feedback =

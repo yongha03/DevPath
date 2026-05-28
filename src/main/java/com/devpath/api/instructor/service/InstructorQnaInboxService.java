@@ -15,6 +15,7 @@ import com.devpath.api.instructor.entity.QnaAnswerDraft;
 import com.devpath.api.instructor.entity.QnaTemplate;
 import com.devpath.api.instructor.repository.QnaAnswerDraftRepository;
 import com.devpath.api.instructor.repository.QnaTemplateRepository;
+import com.devpath.api.notification.service.NotificationEventService;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
 import com.devpath.domain.course.entity.Course;
@@ -151,7 +152,8 @@ public class InstructorQnaInboxService {
     question.markAsAnswered();
     qnaRealtimePublisher.answerCreated(question, saved.getId());
 
-    notificationEventService.notifySystem(question.getUser().getId(), "QnA 질문에 답변이 등록되었습니다: " + question.getTitle());
+    notificationEventService.notifySystem(
+        question.getUser().getId(), "QnA 질문에 답변이 등록되었습니다: " + question.getTitle());
 
     return QnaAnswerResponse.from(
         saved,

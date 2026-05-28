@@ -14,9 +14,9 @@ import com.devpath.domain.workspace.entity.Milestone;
 import com.devpath.domain.workspace.entity.MilestoneStatus;
 import com.devpath.domain.workspace.entity.Workspace;
 import com.devpath.domain.workspace.entity.WorkspaceMember;
+import com.devpath.domain.workspace.entity.WorkspaceStatus;
 import com.devpath.domain.workspace.entity.WorkspaceTask;
 import com.devpath.domain.workspace.entity.WorkspaceTaskStatus;
-import com.devpath.domain.workspace.entity.WorkspaceStatus;
 import com.devpath.domain.workspace.entity.WorkspaceType;
 import com.devpath.domain.workspace.repository.CalendarEventRepository;
 import com.devpath.domain.workspace.repository.MilestoneRepository;
@@ -87,7 +87,8 @@ public class WorkspaceHubProjectService {
             .stream()
             .collect(Collectors.groupingBy(WorkspaceTask::getWorkspaceId));
     Map<Long, List<Milestone>> milestonesByWorkspaceId =
-        milestoneRepository.findAllByWorkspaceIdInAndIsDeletedFalseOrderByDueDateAsc(workspaceIds)
+        milestoneRepository
+            .findAllByWorkspaceIdInAndIsDeletedFalseOrderByDueDateAsc(workspaceIds)
             .stream()
             .collect(Collectors.groupingBy(Milestone::getWorkspaceId));
     Map<Long, Mentoring> mentoringByWorkspaceId = findMentoringByWorkspaceId(workspaces, userId);
@@ -107,7 +108,8 @@ public class WorkspaceHubProjectService {
         mentorIds.isEmpty()
             ? Map.of()
             : userProfileRepository.findAllByUserIdIn(mentorIds).stream()
-                .collect(Collectors.toMap(profile -> profile.getUser().getId(), profile -> profile));
+                .collect(
+                    Collectors.toMap(profile -> profile.getUser().getId(), profile -> profile));
     Map<Long, CalendarEvent> nextScheduleByWorkspaceId =
         calendarEventRepository
             .findAllByWorkspaceIdInAndStartAtGreaterThanEqualAndIsDeletedFalseOrderByStartAtAsc(
@@ -188,14 +190,13 @@ public class WorkspaceHubProjectService {
     }
 
     long doneCount =
-        tasks.stream()
-            .filter(task -> task.getStatus() == WorkspaceTaskStatus.DONE)
-            .count();
+        tasks.stream().filter(task -> task.getStatus() == WorkspaceTaskStatus.DONE).count();
 
     return clampPercent(Math.round(doneCount * 100.0 / tasks.size()));
   }
 
-  private int milestoneProgressPercent(List<Milestone> milestones, List<WorkspaceTask> fallbackTasks) {
+  private int milestoneProgressPercent(
+      List<Milestone> milestones, List<WorkspaceTask> fallbackTasks) {
     if (milestones.isEmpty()) {
       return taskProgressPercent(fallbackTasks);
     }
@@ -226,9 +227,7 @@ public class WorkspaceHubProjectService {
     int totalWeeks =
         post == null || post.getDurationWeeks() == null ? 4 : Math.max(1, post.getDurationWeeks());
     LocalDate startedOn =
-        mentoring.getStartedAt() == null
-            ? LocalDate.now()
-            : mentoring.getStartedAt().toLocalDate();
+        mentoring.getStartedAt() == null ? LocalDate.now() : mentoring.getStartedAt().toLocalDate();
     long elapsedWeeks = Math.max(0L, ChronoUnit.WEEKS.between(startedOn, LocalDate.now()));
 
     return clampPercent(Math.round(Math.min(totalWeeks, elapsedWeeks) * 100.0 / totalWeeks));
@@ -240,9 +239,11 @@ public class WorkspaceHubProjectService {
 
   private Map<Long, Mentoring> findMentoringByWorkspaceId(List<Workspace> workspaces, Long userId) {
     Map<Long, Mentoring> mentoringsById = new LinkedHashMap<>();
-    mentoringRepository.findAllByMentee_IdAndIsDeletedFalseOrderByCreatedAtDesc(userId)
+    mentoringRepository
+        .findAllByMentee_IdAndIsDeletedFalseOrderByCreatedAtDesc(userId)
         .forEach(mentoring -> mentoringsById.putIfAbsent(mentoring.getId(), mentoring));
-    mentoringRepository.findAllByMentor_IdAndIsDeletedFalseOrderByCreatedAtDesc(userId)
+    mentoringRepository
+        .findAllByMentor_IdAndIsDeletedFalseOrderByCreatedAtDesc(userId)
         .forEach(mentoring -> mentoringsById.putIfAbsent(mentoring.getId(), mentoring));
 
     if (mentoringsById.isEmpty()) {
@@ -332,16 +333,17 @@ public class WorkspaceHubProjectService {
   }
 
   private String inferRoleLabel(Workspace workspace, List<WorkspaceTask> tasks) {
-    String taskRoleLabel = tasks.stream()
-        .map(this::inferRoleKey)
-        .filter(Objects::nonNull)
-        .collect(Collectors.groupingBy(role -> role, Collectors.counting()))
-        .entrySet()
-        .stream()
-        .max(Map.Entry.comparingByValue())
-        .map(Map.Entry::getKey)
-        .map(this::roleLabel)
-        .orElse(null);
+    String taskRoleLabel =
+        tasks.stream()
+            .map(this::inferRoleKey)
+            .filter(Objects::nonNull)
+            .collect(Collectors.groupingBy(role -> role, Collectors.counting()))
+            .entrySet()
+            .stream()
+            .max(Map.Entry.comparingByValue())
+            .map(Map.Entry::getKey)
+            .map(this::roleLabel)
+            .orElse(null);
 
     if (taskRoleLabel != null || workspace.getType() != WorkspaceType.MENTORING) {
       return taskRoleLabel;
@@ -357,9 +359,11 @@ public class WorkspaceHubProjectService {
   }
 
   private String inferRoleKey(WorkspaceTask task) {
-    String text = ((task.getTitle() == null ? "" : task.getTitle()) + " "
-            + (task.getDescription() == null ? "" : task.getDescription()))
-        .toLowerCase();
+    String text =
+        ((task.getTitle() == null ? "" : task.getTitle())
+                + " "
+                + (task.getDescription() == null ? "" : task.getDescription()))
+            .toLowerCase();
 
     if (text.contains("[backend]")) {
       return "BACKEND";
@@ -376,7 +380,8 @@ public class WorkspaceHubProjectService {
     if (text.contains("[pm]")) {
       return "PM";
     }
-    if (text.matches(".*(backend|back-end|server|spring|jpa|api|db|database|redis|백엔드|서버|데이터베이스).*")) {
+    if (text.matches(
+        ".*(backend|back-end|server|spring|jpa|api|db|database|redis|백엔드|서버|데이터베이스).*")) {
       return "BACKEND";
     }
     if (text.matches(".*(frontend|front-end|react|next|vue|ui|ux|화면|프론트).*")) {

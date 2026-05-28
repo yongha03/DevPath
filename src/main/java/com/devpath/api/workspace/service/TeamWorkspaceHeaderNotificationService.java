@@ -94,7 +94,8 @@ public class TeamWorkspaceHeaderNotificationService {
     validateMember(workspaceId, userId);
 
     return TeamWorkspaceHeaderNotificationResponse.from(
-        saveNotification(workspaceId, normalizeSquadPage(page), normalizeMessage(message), targetPath));
+        saveNotification(
+            workspaceId, normalizeSquadPage(page), normalizeMessage(message), targetPath));
   }
 
   @Transactional
