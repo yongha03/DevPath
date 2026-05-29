@@ -67,7 +67,14 @@ jobs:
           key: ${{ secrets.ORACLE_SSH_KEY }}
           port: 22
           script: |
-            sudo systemctl restart devpath
+            # systemd 서비스 정지 후, 8083 포트를 점유한 잔존 프로세스
+            # (과거 nohup/setsid 방식으로 띄워진 좀비 프로세스 등)를 정리한 뒤 재기동한다.
+            # 잔존 프로세스가 포트를 쥐고 있으면 새 JAR이 바인딩에 실패(webServerStartStop)하여
+            # 옛 코드가 계속 서비스되는 문제를 방지한다.
+            sudo systemctl stop devpath || true
+            sudo fuser -k 8083/tcp 2>/dev/null || true
+            sleep 3
+            sudo systemctl start devpath
             echo "Backend restarted successfully"
 
   # ─────────────────────────────────────────────
