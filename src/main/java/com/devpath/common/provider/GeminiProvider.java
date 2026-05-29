@@ -24,7 +24,7 @@ public class GeminiProvider {
 
   private static final String GEMINI_URL_FORMAT =
       "https://generativelanguage.googleapis.com/v1beta/models/%s:generateContent?key=%s";
-  private static final int MAX_ATTEMPTS_PER_MODEL = 2;
+  private static final int MAX_ATTEMPTS_PER_MODEL = 1;
   private static final Set<Integer> RETRYABLE_STATUS_CODES = Set.of(429, 500, 502, 503, 504);
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
@@ -36,16 +36,6 @@ public class GeminiProvider {
   }
 
   public String generate(String prompt, String inlineMimeType, String inlineBase64Data) {
-    String apiKey = normalize(geminiProperties.getKey());
-
-    if (apiKey.isBlank()) {
-      log.warn("[GeminiProvider] API key is not configured.");
-      return null;
-    }
-
-    HttpHeaders headers = new HttpHeaders();
-    headers.setContentType(MediaType.APPLICATION_JSON);
-
     List<Object> parts = new ArrayList<>();
     parts.add(Map.of("text", prompt));
 
@@ -57,6 +47,38 @@ public class GeminiProvider {
     }
 
     Map<String, Object> body = Map.of("contents", List.of(Map.of("parts", parts)));
+    return execute(body);
+  }
+
+  /**
+   * 순수 텍스트 분석(채용공고 채점 등) 전용. thinking 모델의 추론 단계를 끄고 JSON 응답을 강제해 응답 지연과 출력 잘림을 방지한다. 이미지/멀티모달
+   * 호출에는 사용하지 않는다.
+   */
+  public String generateJson(String prompt) {
+    Map<String, Object> generationConfig =
+        Map.of(
+            "responseMimeType", "application/json",
+            "thinkingConfig", Map.of("thinkingBudget", 0),
+            "maxOutputTokens", 4096);
+
+    Map<String, Object> body =
+        Map.of(
+            "contents", List.of(Map.of("parts", List.of(Map.of("text", prompt)))),
+            "generationConfig", generationConfig);
+    return execute(body);
+  }
+
+  private String execute(Map<String, Object> body) {
+    String apiKey = normalize(geminiProperties.getKey());
+
+    if (apiKey.isBlank()) {
+      log.warn("[GeminiProvider] API key is not configured.");
+      return null;
+    }
+
+    HttpHeaders headers = new HttpHeaders();
+    headers.setContentType(MediaType.APPLICATION_JSON);
+
     HttpEntity<Map<String, Object>> request = new HttpEntity<>(body, headers);
     List<String> models = resolveModels();
 
