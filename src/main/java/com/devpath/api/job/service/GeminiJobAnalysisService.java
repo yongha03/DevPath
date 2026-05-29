@@ -50,7 +50,7 @@ public class GeminiJobAnalysisService {
     }
 
     String prompt = buildPrompt(profile, postings);
-    String raw = geminiProvider.generate(prompt);
+    String raw = geminiProvider.generateJson(prompt);
 
     if (raw == null) {
       throw new RuntimeException("Gemini 응답이 없습니다.");
