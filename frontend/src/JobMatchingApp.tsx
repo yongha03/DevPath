@@ -76,10 +76,12 @@ type GeminiRecommendation = {
   jobkoreaUrl?: string | null
   aiMatchScore: number
   aiReason?: string | null
+  missingSkills?: string[] | null
 }
 
 type GeminiAnalysis = {
   recommendations: GeminiRecommendation[]
+  stretchRecommendations?: GeminiRecommendation[] | null
   aiAnalyzed: boolean
   analysisNote?: string | null
 }
@@ -186,6 +188,7 @@ type MatchingJob = {
   matchedReasons: string[]
   missingSkills: string[]
   aiAnalyzed?: boolean
+  isStretch?: boolean
 }
 
 const roleOptions: RoleOption[] = [
@@ -537,6 +540,14 @@ function sortJobs(jobs: MatchingJob[]) {
   })
 }
 
+// missingSkills 1~3개인 공고를 성장 공고 후보로 추출 (score 내림차순)
+function extractStretchJobs(candidates: MatchingJob[], count = 3): MatchingJob[] {
+  return sortJobs(candidates)
+    .filter((j) => j.missingSkills.length >= 1 && j.missingSkills.length <= 3)
+    .slice(0, count)
+    .map((j) => ({ ...j, isStretch: true }))
+}
+
 export default function JobMatchingApp() {
   useInternalPageScroll()
 
@@ -550,6 +561,7 @@ export default function JobMatchingApp() {
   const [loading, setLoading] = useState(false)
   const [scanned, setScanned] = useState(false)
   const [jobs, setJobs] = useState<MatchingJob[]>([])
+  const [stretchJobs, setStretchJobs] = useState<MatchingJob[]>([])
   const [sourceWarnings, setSourceWarnings] = useState<string[]>([])
   const [jobkoreaAttribution, setJobkoreaAttribution] = useState<JobkoreaResult['attribution']>(null)
   const [activityProfile, setActivityProfile] = useState<ActivityProfile | null>(null)
@@ -677,6 +689,7 @@ export default function JobMatchingApp() {
     setLoading(true)
     setSourceWarnings([])
     setGeminiMode(false)
+    setStretchJobs([])
 
     try {
       // ── Gemini 시도 ──
@@ -714,9 +727,29 @@ export default function JobMatchingApp() {
           aiAnalyzed: true,
         }))
 
-        setJobs(geminiJobs)
+        setJobs(geminiJobs.slice(0, 7))
         setGeminiMode(true)
         geminiSuccess = true
+
+        // Gemini가 직접 선별한 성장 공고 (missingSkills 포함)
+        const geminiStretch: MatchingJob[] = (analysis.stretchRecommendations ?? []).map((rec, i) => ({
+          id: `gemini-stretch-${rec.externalId ?? i}`,
+          source: 'jobkorea' as const,
+          title: rec.title ?? '채용공고',
+          companyName: rec.companyName ?? '기업명 미공개',
+          regionLabel: rec.areaCode ?? selectedRegion.label,
+          careerLabel: rec.careerCode ?? '상세 조건 확인',
+          skills: rec.keywords ?? [],
+          url: rec.jobkoreaUrl,
+          deadline: rec.deadline,
+          createdAt: rec.postedDate,
+          matchScore: rec.aiMatchScore,
+          matchedReasons: rec.aiReason ? [rec.aiReason] : ['AI 분석 완료'],
+          missingSkills: rec.missingSkills ?? [],
+          aiAnalyzed: true,
+          isStretch: true,
+        }))
+        setStretchJobs(geminiStretch)
 
       } catch {
         clearTimeout(stepTimer)
@@ -769,7 +802,11 @@ export default function JobMatchingApp() {
         const uniqueJobs = Array.from(
           new Map(sortJobs(nextJobs).map((job) => [job.id, job])).values(),
         )
-        setJobs(uniqueJobs)
+        const stretch = extractStretchJobs(uniqueJobs)
+        const stretchIds = new Set(stretch.map((j) => j.id))
+        const matched = uniqueJobs.filter((j) => !stretchIds.has(j.id)).slice(0, 7)
+        setJobs(matched)
+        setStretchJobs(stretch)
         setSourceWarnings(warnings)
         setGeminiMode(false)
       }
@@ -787,7 +824,7 @@ export default function JobMatchingApp() {
       return
     }
 
-    showAuthToast({ message: `[${skill}] 역량을 로드맵에 추가할 수 있도록 표시했습니다.`, durationMs: 2200 })
+    window.location.href = `/roadmap-hub?skill=${encodeURIComponent(skill)}`
   }
 
   function openJob(job: MatchingJob) {
@@ -952,7 +989,12 @@ export default function JobMatchingApp() {
                           ? <><i className="fas fa-robot mr-1"></i>Gemini AI가 {displayName}님의 프로필을 분석하여</>
                           : `${displayName}님의 조건과 채용 데이터를 분석하여`}
                       </span>
-                      <div className="font-bold text-lg text-gray-900">총 <span className={geminiMode ? 'text-purple-600' : 'text-blue-600'}>{visibleJobs.length}건</span>의 핏한 공고를 찾았습니다.</div>
+                      <div className="font-bold text-lg text-gray-900">
+                        총 <span className={geminiMode ? 'text-purple-600' : 'text-blue-600'}>{visibleJobs.length}건</span>의 매칭 공고
+                        {stretchJobs.length > 0 && (
+                          <span className="text-gray-400 font-normal text-base"> · <span className="text-amber-500 font-bold">{stretchJobs.length}건</span>의 성장 공고</span>
+                        )}
+                      </div>
                     </div>
                     <div className="text-right hidden md:block">
                       <span className="text-xs text-gray-500">평균 점수</span>
@@ -1049,6 +1091,70 @@ export default function JobMatchingApp() {
                       결과 더보기
                     </button>
                   ) : null}
+
+                  {stretchJobs.length > 0 && (
+                    <div className="mt-10">
+                      <div className="flex items-center gap-3 mb-4">
+                        <span className="bg-amber-100 text-amber-700 text-xs font-bold px-3 py-1 rounded-full">📈 성장 공고</span>
+                        <p className="text-sm text-gray-500">몇 가지 스킬을 보완하면 지원해 볼 수 있는 공고예요</p>
+                      </div>
+                      <div className="space-y-4">
+                        {stretchJobs.map((job) => (
+                          <article
+                            key={job.id}
+                            className="bg-white border-2 border-amber-200 rounded-xl p-6 hover:shadow-md transition cursor-pointer relative group"
+                            onClick={() => openJob(job)}
+                          >
+                            <div className="absolute top-4 right-4 text-xs font-bold px-3 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                              {job.missingSkills.length}개 스킬 보완 필요
+                            </div>
+
+                            <div className="flex items-start gap-4 mb-4 pr-32">
+                              <div className="w-12 h-12 bg-amber-50 rounded border border-amber-100 flex items-center justify-center font-bold text-amber-400 shrink-0">{initials(job.companyName)}</div>
+                              <div className="min-w-0">
+                                <h3 className="font-bold text-lg text-gray-900 group-hover:text-amber-600 transition">{job.title}</h3>
+                                <p className="text-sm text-gray-500 font-bold">{job.companyName} · {job.regionLabel}</p>
+                              </div>
+                            </div>
+
+                            <div className="bg-amber-50 rounded-lg p-3 mb-4 border border-amber-100">
+                              <p className="text-xs text-amber-700 mb-2 font-bold">🎯 지금 배우면 지원 가능해요</p>
+                              <div className="space-y-2">
+                                {job.matchedReasons.map((reason) => (
+                                  <div key={reason} className="flex justify-between items-center text-xs">
+                                    <span className="text-gray-600"><i className="fas fa-check text-green-500 mr-1"></i> {reason}</span>
+                                    <span className="text-green-600 font-bold">보유</span>
+                                  </div>
+                                ))}
+                                {job.missingSkills.map((skill) => (
+                                  <div
+                                    key={skill}
+                                    onClick={(event) => {
+                                      event.stopPropagation()
+                                      handleMissingSkill(skill)
+                                    }}
+                                    className="flex justify-between items-center text-xs bg-white border border-amber-200 hover:border-amber-400 hover:bg-amber-50 p-2 rounded-lg cursor-pointer transition-all group/skill"
+                                  >
+                                    <span className="text-amber-700 font-bold"><i className="fas fa-book-open mr-1"></i> {skill}</span>
+                                    <span className="text-amber-500 group-hover/skill:text-amber-700 font-bold transition">로드맵에서 학습하기 <i className="fas fa-arrow-right ml-1"></i></span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2 text-[10px] text-gray-500">
+                              <span className="border px-2 py-1 rounded">{job.source === 'jobkorea' ? '잡코리아' : 'DevPath DB'}</span>
+                              <span className="border px-2 py-1 rounded">{job.careerLabel}</span>
+                              <span className="border px-2 py-1 rounded">마감 {toDisplayDate(job.deadline)}</span>
+                              {job.skills.slice(0, 4).map((skill) => (
+                                <span key={skill} className="border px-2 py-1 rounded">{skill}</span>
+                              ))}
+                            </div>
+                          </article>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {jobkoreaAttribution ? (
                     <p className="text-[11px] text-gray-400 leading-relaxed pt-2">
