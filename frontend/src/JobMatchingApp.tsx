@@ -543,9 +543,9 @@ export default function JobMatchingApp() {
   const [session, setSession] = useState(() => readStoredAuthSession())
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [authView, setAuthView] = useState<AuthView | null>(null)
-  const [roleFilter, setRoleFilter] = useState<RoleFilter>('backend')
-  const [regionFilter, setRegionFilter] = useState<RegionFilter>('seoul')
-  const [careerFilter, setCareerFilter] = useState<CareerFilter>('junior')
+  const [roleFilter, setRoleFilter] = useState<RoleFilter>('all')
+  const [regionFilter, setRegionFilter] = useState<RegionFilter>('all')
+  const [careerFilter, setCareerFilter] = useState<CareerFilter>('all')
   const [highMatchOnly, setHighMatchOnly] = useState(false)
   const [loading, setLoading] = useState(false)
   const [scanned, setScanned] = useState(false)
@@ -564,7 +564,7 @@ export default function JobMatchingApp() {
     [highMatchOnly, jobs],
   )
   const averageProofCardScore = activityProfile?.averageProofCardScore ?? 0
-  const displayedSkills = scanned && activityProfile?.skillSignals.length
+  const displayedSkills = activityProfile?.skillSignals.length
     ? activityProfile.skillSignals.slice(0, 8)
     : role.skills
 
@@ -607,6 +607,14 @@ export default function JobMatchingApp() {
     return () => {
       controller.abort()
     }
+  }, [session])
+
+  useEffect(() => {
+    if (!session) return
+
+    projectApiRequest<ActivityProfile>('/api/jobs/activity-profile/me')
+      .then((data) => setActivityProfile(data))
+      .catch(() => setActivityProfile(null))
   }, [session])
 
   useEffect(() => {
@@ -656,15 +664,6 @@ export default function JobMatchingApp() {
     setAuthView(null)
   }
 
-  async function refreshLearningData() {
-    if (!session) {
-      openAuthModal('학습 데이터 최신화는 로그인 후 이용할 수 있습니다.')
-      return
-    }
-
-    showAuthToast({ message: '학습 프로필을 최신 상태로 확인했습니다.', durationMs: 1800 })
-  }
-
   async function scanJobs(size = pageSize) {
     if (!session) {
       openAuthModal('AI 맞춤 공고 스캔하기는 로그인 후 이용할 수 있습니다.')
@@ -680,16 +679,7 @@ export default function JobMatchingApp() {
     setGeminiMode(false)
 
     try {
-      // ── Step 1: 사용자 프로필 fetch ──
-      setLoadingStep('profile')
-      try {
-        const profile = await projectApiRequest<ActivityProfile>('/api/jobs/activity-profile/me')
-        setActivityProfile(profile)
-      } catch {
-        setActivityProfile(null)
-      }
-
-      // ── Step 2~3: Gemini 시도 ──
+      // ── Gemini 시도 ──
       // jobkorea 단계 표시 후 2초 뒤 gemini 단계로 자동 전환 (백엔드 내부 JobKorea 호출 흐름 반영)
       setLoadingStep('jobkorea')
       const stepTimer = setTimeout(() => setLoadingStep('gemini'), 2000)
@@ -814,9 +804,8 @@ export default function JobMatchingApp() {
 
   const displayName = profile?.nickname ?? profile?.name ?? session?.name ?? '-'
   const profileImage = profile?.profileImage
-  const profileStatusText = session ? '실시간 데이터' : '로그인 필요'
-  const activityProjectLabel = activityProfile ? `${activityProfile.projectCount}개` : '스캔 전'
-  const proofCardLabel = activityProfile ? `${activityProfile.proofCardCount}개` : '스캔 전'
+  const activityProjectLabel = activityProfile ? `${activityProfile.projectCount}개` : '-'
+  const proofCardLabel = activityProfile ? `${activityProfile.proofCardCount}개` : '-'
   const proofScoreLabel = activityProfile ? `${averageProofCardScore}점` : '-'
 
   if (!session) return <LoginRequiredView />
@@ -843,7 +832,7 @@ export default function JobMatchingApp() {
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 relative overflow-hidden">
                 <div className="flex justify-between items-center mb-4">
                   <h2 className="font-bold text-lg">내 분석 프로필</h2>
-                  <span className="text-[10px] bg-green-100 text-primary px-2 py-1 rounded font-bold">{profileStatusText}</span>
+                  <span className="text-[10px] bg-green-100 text-primary px-2 py-1 rounded font-bold">실시간 데이터</span>
                 </div>
 
                 <div className="bg-gray-50 rounded-lg p-4 mb-4 border border-gray-100">
@@ -880,14 +869,6 @@ export default function JobMatchingApp() {
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={refreshLearningData}
-                  className="w-full bg-gray-900 hover:bg-gray-800 text-white py-3 rounded-lg font-bold text-sm transition flex justify-center items-center gap-2 shadow-md"
-                >
-                  <i className="fas fa-sync-alt"></i> 학습 데이터 최신화
-                </button>
-                <p className="text-[10px] text-gray-400 text-center mt-2">마지막 업데이트: {session ? '방금 전' : '로그인 후 동기화'}</p>
               </div>
 
               <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
