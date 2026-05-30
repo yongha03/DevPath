@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { projectApiRequest } from '../project-api'
 import type { AuthSession } from '../types/auth'
+import { showAuthToast } from '../lib/auth-toast'
 
 type HeaderMessage = {
   source?: string | null
@@ -43,8 +44,63 @@ const HEADER_TEXT = {
   allNotifications: '\uBAA8\uB4E0 \uC54C\uB9BC \uBCF4\uAE30',
 }
 
+const REJECTED_APPLICATION_TOAST_STORAGE_KEY = 'devpath.header.rejectedApplicationToast.v1'
+
 function avatarUrl(seed: string | number | null | undefined) {
   return `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(String(seed || 'DevPath'))}`
+}
+
+function rejectedApplicationToastKey(userId: number) {
+  return `${REJECTED_APPLICATION_TOAST_STORAGE_KEY}.${userId}`
+}
+
+function readSeenRejectedNotificationIds(userId: number) {
+  try {
+    const rawValue = window.localStorage.getItem(rejectedApplicationToastKey(userId))
+    const parsedValue = rawValue ? JSON.parse(rawValue) : []
+    return new Set(Array.isArray(parsedValue) ? parsedValue.map((value) => Number(value)).filter(Number.isFinite) : [])
+  } catch {
+    return new Set<number>()
+  }
+}
+
+function saveSeenRejectedNotificationIds(userId: number, ids: Set<number>) {
+  window.localStorage.setItem(rejectedApplicationToastKey(userId), JSON.stringify([...ids]))
+}
+
+function isRejectedApplicationNotification(notification: HeaderNotification) {
+  return String(notification.type || '').toUpperCase().includes('APPLICATION_REJECTED')
+}
+
+function showRejectedApplicationNotificationToast(notifications: HeaderNotification[], userId: number | null) {
+  if (userId == null) {
+    return
+  }
+
+  const seenIds = readSeenRejectedNotificationIds(userId)
+  const newlyRejected = notifications.filter(
+    (notification) =>
+      notification.id > 0 &&
+      notification.read !== true &&
+      isRejectedApplicationNotification(notification) &&
+      !seenIds.has(notification.id),
+  )
+
+  if (newlyRejected.length === 0) {
+    return
+  }
+
+  newlyRejected.forEach((notification) => seenIds.add(notification.id))
+  saveSeenRejectedNotificationIds(userId, seenIds)
+
+  showAuthToast({
+    message:
+      newlyRejected.length === 1
+        ? newlyRejected[0].text || '참여 신청이 거절되었습니다. 자세한 내용은 알림에서 확인해주세요.'
+        : `거절된 참여 신청 알림이 ${newlyRejected.length}건 있습니다. 자세한 내용은 알림에서 확인해주세요.`,
+    variant: 'error',
+    durationMs: 7000,
+  })
 }
 
 function iconForNotification(type: string | null | undefined) {
@@ -106,11 +162,11 @@ export default function HeaderAlerts({ session }: HeaderAlertsProps) {
 
         const shell = shellResult.status === 'fulfilled' ? shellResult.value : null
         setMessages(shell?.messages ?? [])
-        setNotifications(
-          notificationsResult.status === 'fulfilled'
-            ? notificationsResult.value
-            : shell?.notifications ?? [],
-        )
+        const nextNotifications = notificationsResult.status === 'fulfilled'
+          ? notificationsResult.value
+          : shell?.notifications ?? []
+        setNotifications(nextNotifications)
+        showRejectedApplicationNotificationToast(nextNotifications, session.userId ?? null)
       })
       .catch(() => {
         if (!controller.signal.aborted) {
