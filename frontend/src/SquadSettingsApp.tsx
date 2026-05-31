@@ -49,6 +49,7 @@ type ExternalIntegration = {
   repositoryName?: string | null
   lastSyncedAt?: string | null
   lastSyncMessage?: string | null
+  githubTokenConfigured?: boolean
 }
 
 type SettingsForm = {
@@ -170,6 +171,7 @@ export default function SquadSettingsApp() {
   const [busyIntegration, setBusyIntegration] = useState<IntegrationProvider | null>(null)
   const [syncingGithub, setSyncingGithub] = useState(false)
   const [githubRepositoryUrl, setGithubRepositoryUrl] = useState('')
+  const [githubToken, setGithubToken] = useState('')
   const [dangerSaving, setDangerSaving] = useState(false)
   const [deleteModalOpen, setDeleteModalOpen] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState('')
@@ -372,7 +374,11 @@ export default function SquadSettingsApp() {
           method: 'PATCH',
           body: JSON.stringify(
             provider === 'GITHUB'
-              ? { isActive: nextActive, repositoryUrl }
+              ? {
+                  isActive: nextActive,
+                  repositoryUrl,
+                  ...(githubToken.trim() ? { githubToken: githubToken.trim() } : {}),
+                }
               : { isActive: nextActive },
           ),
         },
@@ -388,11 +394,12 @@ export default function SquadSettingsApp() {
       })
       if (provider === 'GITHUB') {
         setGithubRepositoryUrl(updated.repositoryUrl ?? repositoryUrl)
+        setGithubToken('')
       }
       notifySettingsChange(`${provider} 연동을 ${nextActive ? '켰습니다.' : '껐습니다.'}`)
       showAuthToast(
         provider === 'GITHUB' && nextActive
-          ? 'GitHub 저장소와 Pull Request를 동기화했습니다.'
+          ? updated.lastSyncMessage ?? 'GitHub 저장소를 연결했습니다.'
           : nextActive ? '외부 연동이 켜졌습니다.' : '외부 연동이 꺼졌습니다.',
       )
     } catch (toggleError) {
@@ -589,7 +596,9 @@ export default function SquadSettingsApp() {
                       busyIntegration={busyIntegration}
                       syncingGithub={syncingGithub}
                       githubRepositoryUrl={githubRepositoryUrl}
+                      githubToken={githubToken}
                       onGithubRepositoryUrlChange={setGithubRepositoryUrl}
+                      onGithubTokenChange={setGithubToken}
                       onToggle={toggleIntegration}
                       onSyncGithub={syncGithubPullRequests}
                     />
@@ -802,7 +811,9 @@ function IntegrationsPanel({
   busyIntegration,
   syncingGithub,
   githubRepositoryUrl,
+  githubToken,
   onGithubRepositoryUrlChange,
+  onGithubTokenChange,
   onToggle,
   onSyncGithub,
 }: {
@@ -811,7 +822,9 @@ function IntegrationsPanel({
   busyIntegration: IntegrationProvider | null
   syncingGithub: boolean
   githubRepositoryUrl: string
+  githubToken: string
   onGithubRepositoryUrlChange: (value: string) => void
+  onGithubTokenChange: (value: string) => void
   onToggle: (provider: IntegrationProvider, forcedActive?: boolean) => void
   onSyncGithub: () => void
 }) {
@@ -865,6 +878,32 @@ function IntegrationsPanel({
                       className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-800 outline-none transition focus:border-gray-900 disabled:bg-gray-50 disabled:text-gray-400"
                       placeholder="https://github.com/owner/repository"
                     />
+                  </label>
+
+                  <label className="block">
+                    <span className="mb-1.5 flex items-center justify-between gap-2 text-[10px] font-black uppercase tracking-wider text-gray-400">
+                      <span>GitHub Access Token</span>
+                      {integration?.githubTokenConfigured ? (
+                        <span className="rounded-full bg-green-50 px-2 py-0.5 text-[9px] text-green-600">
+                          서버 인증 설정됨
+                        </span>
+                      ) : null}
+                    </span>
+                    <input
+                      type="password"
+                      value={githubToken}
+                      onChange={(event) => onGithubTokenChange(event.target.value)}
+                      disabled={!canManage || busy || syncingGithub}
+                      className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-800 outline-none transition focus:border-gray-900 disabled:bg-gray-50 disabled:text-gray-400"
+                      placeholder={
+                        integration?.githubTokenConfigured
+                          ? '새 토큰을 입력하면 기존 토큰을 교체합니다.'
+                          : '토큰을 저장하면 GitHub API 한도가 늘어납니다.'
+                      }
+                    />
+                    <p className="mt-1.5 text-[11px] font-medium leading-relaxed text-gray-500">
+                      토큰은 서버에만 저장되고 화면에 다시 표시되지 않습니다. 공개 저장소 조회용 최소 권한 토큰을 사용하세요.
+                    </p>
                   </label>
 
                   {active ? (
