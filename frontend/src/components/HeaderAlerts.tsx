@@ -15,6 +15,7 @@ type HeaderMessage = {
 }
 
 type HeaderNotification = {
+  source?: string | null
   id: number
   type?: string | null
   text?: string | null
@@ -140,6 +141,26 @@ function iconForNotification(type: string | null | undefined) {
   return 'fas fa-bell'
 }
 
+function notificationReadPath(notification: HeaderNotification) {
+  if (notification.id <= 0) {
+    return null
+  }
+
+  return notification.source === 'instructor'
+    ? `/api/instructor/notifications/${notification.id}/read`
+    : `/api/notifications/${notification.id}/read`
+}
+
+function notificationDeletePath(notification: HeaderNotification) {
+  if (notification.id <= 0) {
+    return null
+  }
+
+  return notification.source === 'instructor'
+    ? `/api/instructor/notifications/${notification.id}`
+    : `/api/notifications/${notification.id}`
+}
+
 export default function HeaderAlerts({ session }: HeaderAlertsProps) {
   const [openPanel, setOpenPanel] = useState<OpenPanel>(null)
   const [messages, setMessages] = useState<HeaderMessage[]>([])
@@ -232,18 +253,18 @@ export default function HeaderAlerts({ session }: HeaderAlertsProps) {
     } catch {
       await Promise.allSettled(
         unread
-          .filter((notification) => notification.id > 0)
-          .map((notification) =>
-            projectApiRequest(`/api/notifications/${notification.id}/read`, { method: 'PATCH' }, 'required'),
-          ),
+          .map(notificationReadPath)
+          .filter((path): path is string => path != null)
+          .map((path) => projectApiRequest(path, { method: 'PATCH' }, 'required')),
       )
       setNotifications((current) => current.map((notification) => ({ ...notification, read: true })))
     }
   }
 
   function openNotification(notification: HeaderNotification) {
-    if (notification.read === false && notification.id > 0) {
-      void projectApiRequest(`/api/notifications/${notification.id}/read`, { method: 'PATCH' }, 'required')
+    const readPath = notificationReadPath(notification)
+    if (notification.read === false && readPath) {
+      void projectApiRequest(readPath, { method: 'PATCH' }, 'required')
         .then(() => {
           setNotifications((current) =>
             current.map((item) => (item.id === notification.id ? { ...item, read: true } : item)),
@@ -262,7 +283,10 @@ export default function HeaderAlerts({ session }: HeaderAlertsProps) {
     if (!target || target.read !== false) {
       return
     }
-    void projectApiRequest(`/api/notifications/${id}/read`, { method: 'PATCH' }, 'required')
+    const readPath = notificationReadPath(target)
+    if (readPath) {
+      void projectApiRequest(readPath, { method: 'PATCH' }, 'required')
+    }
     setNotifications((current) =>
       current.map((n) => (n.id === id ? { ...n, read: true } : n)),
     )
@@ -270,7 +294,11 @@ export default function HeaderAlerts({ session }: HeaderAlertsProps) {
 
   function deleteNotification(id: number, e: React.MouseEvent) {
     e.stopPropagation()
-    void projectApiRequest(`/api/notifications/${id}`, { method: 'DELETE' }, 'required')
+    const target = notifications.find((n) => n.id === id)
+    const deletePath = target ? notificationDeletePath(target) : null
+    if (deletePath) {
+      void projectApiRequest(deletePath, { method: 'DELETE' }, 'required')
+    }
     setNotifications((current) => current.filter((n) => n.id !== id))
   }
 
@@ -372,7 +400,7 @@ export default function HeaderAlerts({ session }: HeaderAlertsProps) {
               {visibleNotifications.length > 0 ? (
                 visibleNotifications.map((notification) => (
                   <div
-                    key={`notification-${notification.id}`}
+                    key={`${notification.source || 'notification'}-${notification.id}`}
                     className="group p-3 hover:bg-gray-50 border-b border-gray-50 cursor-pointer flex gap-3 items-start"
                     onMouseEnter={() => markNotificationRead(notification.id)}
                     onClick={() => openNotification(notification)}
