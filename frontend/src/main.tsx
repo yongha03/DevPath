@@ -1,45 +1,45 @@
 import { Suspense, lazy, type ReactElement } from 'react'
-import App from './App.tsx'
-import CourseDetailApp from './CourseDetailApp'
-import InstructorChannelApp from './InstructorChannelApp'
-import JobMatchingApp from './JobMatchingApp'
-import LectureListApp from './LectureListApp'
-import MyRoadmapListPage from './pages/MyRoadmapListPage'
 import { renderPage } from './render-page'
-import RoadmapHubApp from './RoadmapHubApp'
-import SquadDashboardApp from './SquadDashboardApp'
-import SquadErdApp from './SquadErdApp'
-import SquadFilesApp from './SquadFilesApp'
-import SquadMeetingApp from './SquadMeetingApp'
-import SquadReviewApp from './SquadReviewApp'
-import SquadScheduleApp from './SquadScheduleApp'
-import SquadSettingsApp from './SquadSettingsApp'
-import SquadWorkspaceApp from './SquadWorkspaceApp'
 import { installWorkspacePresenceHeartbeat } from './lib/workspace-presence'
 
+const App = lazy(() => import('./App.tsx'))
 const ContentAssignmentEditorApp = lazy(() => import('./ContentAssignmentEditorApp'))
+const CourseDetailApp = lazy(() => import('./CourseDetailApp'))
 const CourseEditorApp = lazy(() => import('./CourseEditorApp'))
 const CommunityLoungeApp = lazy(() => import('./CommunityLoungeApp'))
 const CommunityListPage = lazy(() => import('./pages/CommunityListPage'))
 const CommunityWritePage = lazy(() => import('./pages/CommunityWritePage'))
 const DevShowcaseApp = lazy(() => import('./DevShowcaseApp'))
 const InstructorApp = lazy(() => import('./InstructorApp'))
+const InstructorChannelApp = lazy(() => import('./InstructorChannelApp'))
 const InstructorCourseDetailApp = lazy(() => import('./InstructorCourseDetailApp'))
 const InstructorEditProfileApp = lazy(() => import('./InstructorEditProfileApp'))
 const InstructorTeamWsDashboardApp = lazy(() => import('./InstructorTeamWsDashboardApp'))
 const InstructorWsDashboardApp = lazy(() => import('./InstructorWsDashboardApp'))
+const JobMatchingApp = lazy(() => import('./JobMatchingApp'))
 const LearnerApp = lazy(() => import('./LearnerApp'))
 const LearningPlayerApp = lazy(() => import('./LearningPlayerApp'))
+const LectureListApp = lazy(() => import('./LectureListApp'))
 const LoginApp = lazy(() => import('./LoginApp'))
 const LoungeDashboardApp = lazy(() => import('./LoungeDashboardApp'))
 const MentoringCommonWorkspaceApp = lazy(() => import('./MentoringCommonWorkspaceApp'))
 const MentoringHubApp = lazy(() => import('./MentoringHubApp'))
 const MyRoadmapBuilderApp = lazy(() => import('./MyRoadmapBuilderApp'))
+const MyRoadmapListPage = lazy(() => import('./pages/MyRoadmapListPage'))
 const OAuthRedirectApp = lazy(() => import('./OAuthRedirectApp'))
 const ProjectCreateApp = lazy(() => import('./ProjectCreateApp'))
 const QuizCreatorApp = lazy(() => import('./QuizCreatorApp'))
 const RoadmapApp = lazy(() => import('./RoadmapApp'))
+const RoadmapHubApp = lazy(() => import('./RoadmapHubApp'))
 const SignupApp = lazy(() => import('./SignupApp'))
+const SquadDashboardApp = lazy(() => import('./SquadDashboardApp'))
+const SquadErdApp = lazy(() => import('./SquadErdApp'))
+const SquadFilesApp = lazy(() => import('./SquadFilesApp'))
+const SquadMeetingApp = lazy(() => import('./SquadMeetingApp'))
+const SquadReviewApp = lazy(() => import('./SquadReviewApp'))
+const SquadScheduleApp = lazy(() => import('./SquadScheduleApp'))
+const SquadSettingsApp = lazy(() => import('./SquadSettingsApp'))
+const SquadWorkspaceApp = lazy(() => import('./SquadWorkspaceApp'))
 const SurveyApp = lazy(() => import('./SurveyApp'))
 const TeamWorkspaceDashboardApp = lazy(() => import('./TeamWorkspaceDashboardApp'))
 const TeamWorkspaceMilestoneApp = lazy(() => import('./TeamWorkspaceMilestoneApp'))
@@ -92,7 +92,7 @@ if (pathname === '/admin-dashboard') {
 } else {
   const page =
     pathname === '/' || pathname === '/home'
-      ? <App />
+      ? suspense(<App />)
       : pathname === '/login'
         ? suspense(<LoginApp />)
         : pathname === '/signup'
@@ -102,7 +102,7 @@ if (pathname === '/admin-dashboard') {
             : accountPageRoutes.has(pathname)
               ? suspense(<LearnerApp />)
               : pathname === '/instructor-channel' || pathname === '/instructor-profile'
-                ? <InstructorChannelApp />
+                ? suspense(<InstructorChannelApp />)
                 : pathname === '/instructor-course-detail'
                   ? suspense(<InstructorCourseDetailApp />)
                   : pathname === '/instructor-edit-profile'
@@ -188,19 +188,19 @@ if (pathname === '/admin-dashboard') {
                                         : pathname === '/learning'
                                           ? suspense(<LearningPlayerApp />)
                                           : pathname === '/course-detail'
-                                            ? <CourseDetailApp />
+                                            ? suspense(<CourseDetailApp />)
                                             : pathname === '/lecture-list'
-                                              ? <LectureListApp />
+                                              ? suspense(<LectureListApp />)
                                               : pathname === '/roadmap'
                                                 ? suspense(<RoadmapApp />)
                                                 : pathname === '/roadmap-hub'
-                                                  ? <RoadmapHubApp />
+                                                  ? suspense(<RoadmapHubApp />)
                                                   : pathname === '/survey'
                                                     ? suspense(<SurveyApp />)
                                                     : pathname === '/job-matching'
-                                                      ? <JobMatchingApp />
+                                                      ? suspense(<JobMatchingApp />)
                                                       : pathname === '/my-roadmap-list'
-                                                        ? <MyRoadmapListPage />
+                                                        ? suspense(<MyRoadmapListPage />)
                                                         : pathname === '/my-roadmap'
                                                           ? suspense(<MyRoadmapBuilderApp />)
                                                             : pathname === '/team-ws-dashboard'
@@ -224,22 +224,22 @@ if (pathname === '/admin-dashboard') {
                                                                               : pathname === '/team-voice-channel'
                                                                                 ? suspense(<TeamWorkspaceSuiteApp page="voice-channel" />)
                                                           : pathname === '/squad-dashboard'
-                                                            ? <SquadDashboardApp />
+                                                            ? suspense(<SquadDashboardApp />)
                                                             : pathname === '/squad-workspace'
-                                                              ? <SquadWorkspaceApp />
+                                                              ? suspense(<SquadWorkspaceApp />)
                                                               : pathname === '/squad-review'
-                                                                ? <SquadReviewApp />
+                                                                ? suspense(<SquadReviewApp />)
                                                                 : pathname === '/squad-erd'
-                                                                  ? <SquadErdApp />
+                                                                  ? suspense(<SquadErdApp />)
                                                                   : pathname === '/squad-schedule'
-                                                                    ? <SquadScheduleApp />
+                                                                    ? suspense(<SquadScheduleApp />)
                                                                     : pathname === '/squad-files'
-                                                                      ? <SquadFilesApp />
+                                                                      ? suspense(<SquadFilesApp />)
                                                                       : pathname === '/squad-meeting'
-                                                                        ? <SquadMeetingApp />
+                                                                        ? suspense(<SquadMeetingApp />)
                                                                         : pathname === '/squad-settings'
-                                                                          ? <SquadSettingsApp />
-                                                                          : <App />
+                                                                          ? suspense(<SquadSettingsApp />)
+                                                                          : suspense(<App />)
 
   renderPage(page, {
     missingRootMessage: 'root element was not found',
