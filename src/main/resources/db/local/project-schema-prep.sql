@@ -1398,7 +1398,12 @@ END $$;
 DO $$
 BEGIN
     IF to_regclass('public.learner_notification') IS NOT NULL THEN
-        ALTER TABLE public.learner_notification ADD COLUMN IF NOT EXISTS is_deleted boolean NOT NULL DEFAULT false;
+        ALTER TABLE public.learner_notification ADD COLUMN IF NOT EXISTS is_deleted boolean;
+        UPDATE public.learner_notification
+           SET is_deleted = false
+         WHERE is_deleted IS NULL;
+        ALTER TABLE public.learner_notification ALTER COLUMN is_deleted SET DEFAULT false;
+        ALTER TABLE public.learner_notification ALTER COLUMN is_deleted SET NOT NULL;
     END IF;
 END $$;
 ^^^ END OF SCRIPT ^^^
