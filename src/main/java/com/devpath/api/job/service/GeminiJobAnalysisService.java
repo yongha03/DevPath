@@ -27,6 +27,8 @@ public class GeminiJobAnalysisService {
   private static final int MAX_KEYWORDS_IN_PROMPT = 5;
   private static final int MATCHED_LIMIT = 7;
   private static final int STRETCH_LIMIT = 3;
+  // Gemini가 점수를 반환하지 않아 성장공고를 공고에서 직접 보강할 때 사용하는 기본 점수
+  private static final int STRETCH_FALLBACK_SCORE = 50;
   private static final ObjectMapper MAPPER = new ObjectMapper();
 
   private final JobActivityProfileService jobActivityProfileService;
@@ -184,19 +186,7 @@ public class GeminiJobAnalysisService {
           isStretch ? computeMissingSkills(p.keywords(), userSkills) : List.of();
 
       GeminiJobAnalysisResponse.RecommendedPosting posting =
-          new GeminiJobAnalysisResponse.RecommendedPosting(
-              p.externalId(),
-              p.companyName(),
-              p.title(),
-              p.keywords(),
-              p.areaCode(),
-              p.careerCode(),
-              p.deadline(),
-              p.postedDate(),
-              p.jobkoreaUrl(),
-              resolveScore(s.matchScore(), p),
-              s.reason().isBlank() ? null : s.reason(),
-              missingSkills);
+          toRecommendedPosting(p, resolveScore(s.matchScore(), p), s.reason(), missingSkills);
 
       if (i < dynamicMatchedLimit) {
         matched.add(posting);
@@ -205,7 +195,39 @@ public class GeminiJobAnalysisService {
       }
     }
 
+    // Gemini가 유효 점수를 반환하지 못해 성장공고가 비는 경우, 공고에서 직접 보강해 항상 노출되도록 한다.
+    if (stretch.isEmpty() && !postings.isEmpty()) {
+      Set<Integer> usedIndexes =
+          scores.stream().limit(dynamicMatchedLimit).map(GeminiScore::index).collect(Collectors.toSet());
+      for (int i = postings.size() - 1; i >= 0 && stretch.size() < STRETCH_LIMIT; i--) {
+        if (usedIndexes.contains(i)) {
+          continue;
+        }
+        JobkoreaJobResponse.Posting p = postings.get(i);
+        stretch.add(
+            toRecommendedPosting(
+                p, STRETCH_FALLBACK_SCORE, null, computeMissingSkills(p.keywords(), userSkills)));
+      }
+    }
+
     return new GeminiJobAnalysisResponse.Analysis(matched, stretch, true, null);
+  }
+
+  private GeminiJobAnalysisResponse.RecommendedPosting toRecommendedPosting(
+      JobkoreaJobResponse.Posting p, int score, String reason, List<String> missingSkills) {
+    return new GeminiJobAnalysisResponse.RecommendedPosting(
+        p.externalId(),
+        p.companyName(),
+        p.title(),
+        p.keywords(),
+        p.areaCode(),
+        p.careerCode(),
+        p.deadline(),
+        p.postedDate(),
+        p.jobkoreaUrl(),
+        score,
+        (reason == null || reason.isBlank()) ? null : reason,
+        missingSkills);
   }
 
   private List<GeminiScore> parseScores(String raw, List<JobkoreaJobResponse.Posting> postings) {
