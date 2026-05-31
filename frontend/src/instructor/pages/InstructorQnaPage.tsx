@@ -1173,8 +1173,8 @@ export default function InstructorQnaPage({ session }: { session: AuthSession })
                   <i className="fas fa-inbox text-xl" />
                 </div>
                 <h3 className="text-lg font-black text-gray-900">표시할 질문이 없습니다.</h3>
-                <p className="mt-2 text-sm leading-6 text-gray-500">
-                  왼쪽 목록에서 다른 필터를 선택하거나, 새 질문이 들어오면 여기서 바로 확인할 수 있습니다.
+                <p className="mt-2 max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-sm text-gray-500">
+                  필터 변경이나 새 질문은 바로 표시됩니다.
                 </p>
               </div>
             </div>
