@@ -42,10 +42,11 @@ public class GeminiJobAnalysisService {
    * 처리한다. 프론트엔드는 HTTP 오류를 감지해 기존 rule-based 로직으로 fallback한다.
    */
   public GeminiJobAnalysisResponse.Analysis analyze(
-      Long userId, String keyword, String areaCode, String jobCode) {
+      Long userId, String keyword, String industryCode, String areaCode, String jobCode) {
 
     JobActivityProfileResponse.Summary profile = fetchProfile(userId);
-    List<JobkoreaJobResponse.Posting> postings = fetchPostings(keyword, areaCode, jobCode);
+    List<JobkoreaJobResponse.Posting> postings =
+        fetchPostings(keyword, industryCode, areaCode, jobCode);
 
     if (postings.isEmpty()) {
       throw new RuntimeException("분석할 채용공고가 없습니다.");
@@ -74,11 +75,16 @@ public class GeminiJobAnalysisService {
   }
 
   private List<JobkoreaJobResponse.Posting> fetchPostings(
-      String keyword, String areaCode, String jobCode) {
+      String keyword, String industryCode, String areaCode, String jobCode) {
     try {
+      // 잡코리아 키워드는 다단어 입력 시 AND로 매칭돼 결과가 급감한다.
+      // 직종 소분류(rpcd=jobCode)가 있으면 대분류(rbcd)+소분류 조합만으로 정확히 검색하고 키워드는 생략한다.
+      boolean hasJobCode = jobCode != null && !jobCode.isBlank();
+      String effectiveKeyword = hasJobCode ? null : keyword;
+      String rbcd = (industryCode == null || industryCode.isBlank()) ? "10031" : industryCode;
       JobkoreaJobRequest.Search request =
           new JobkoreaJobRequest.Search(
-              MAX_JOBS_FOR_ANALYSIS, 1, 1, keyword, "10031", jobCode, areaCode, false);
+              MAX_JOBS_FOR_ANALYSIS, 1, 1, effectiveKeyword, rbcd, jobCode, areaCode, false);
       JobkoreaJobResponse.SearchResult result = jobkoreaApiClient.search(request);
       List<JobkoreaJobResponse.Posting> items = result.items();
       return items != null ? items.stream().limit(MAX_JOBS_FOR_ANALYSIS).toList() : List.of();
