@@ -157,6 +157,7 @@ type RoleOption = {
   label: string
   keyword: string
   jobCode?: string
+  industryCode?: string
   skills: string[]
 }
 
@@ -202,20 +203,20 @@ const roleOptions: RoleOption[] = [
   { value: 'frontend-react', label: 'React 프론트엔드', keyword: 'React TypeScript 프론트엔드', jobCode: '1000230', skills: ['React', 'TypeScript', 'Vite', 'Tailwind', 'Zustand'] },
   { value: 'frontend-next', label: 'Next.js 프론트엔드', keyword: 'Next.js App Router 프론트엔드', jobCode: '1000230', skills: ['Next.js', 'React', 'TypeScript', 'SSR', 'SEO'] },
   { value: 'frontend-vue', label: 'Vue/Nuxt 프론트엔드', keyword: 'Vue Nuxt 프론트엔드', jobCode: '1000230', skills: ['Vue', 'Nuxt', 'TypeScript', 'Pinia', 'CSS'] },
-  { value: 'fullstack', label: '풀스택 개발자', keyword: '풀스택 React Spring Node', skills: ['React', 'Spring Boot', 'Node.js', 'SQL', 'Docker'] },
-  { value: 'mobile', label: '모바일 앱 전체', keyword: '모바일 앱 개발자 iOS Android React Native', skills: ['React Native', 'Flutter', 'Swift', 'Kotlin'] },
-  { value: 'android', label: 'Android 개발자', keyword: 'Android Kotlin 모바일', skills: ['Kotlin', 'Android', 'Jetpack', 'Compose'] },
-  { value: 'ios', label: 'iOS 개발자', keyword: 'iOS Swift 모바일', skills: ['Swift', 'iOS', 'UIKit', 'SwiftUI'] },
+  { value: 'fullstack', label: '풀스택 개발자', keyword: '풀스택 React Spring Node', jobCode: '1000239', skills: ['React', 'Spring Boot', 'Node.js', 'SQL', 'Docker'] },
+  { value: 'mobile', label: '모바일 앱 전체', keyword: '모바일 앱 개발자 iOS Android React Native', jobCode: '1000232', skills: ['React Native', 'Flutter', 'Swift', 'Kotlin'] },
+  { value: 'android', label: 'Android 개발자', keyword: 'Android Kotlin 모바일', jobCode: '1000232', skills: ['Kotlin', 'Android', 'Jetpack', 'Compose'] },
+  { value: 'ios', label: 'iOS 개발자', keyword: 'iOS Swift 모바일', jobCode: '1000232', skills: ['Swift', 'iOS', 'UIKit', 'SwiftUI'] },
   { value: 'devops', label: 'DevOps/SRE', keyword: 'DevOps SRE Kubernetes AWS', jobCode: '1000244', skills: ['Linux', 'Docker', 'Kubernetes', 'AWS', 'CI/CD'] },
   { value: 'cloud', label: '클라우드/인프라', keyword: 'Cloud AWS Azure GCP 인프라', jobCode: '1000244', skills: ['AWS', 'Terraform', 'Kubernetes', 'Nginx', 'Monitoring'] },
-  { value: 'security', label: '보안 엔지니어', keyword: '보안 엔지니어 Security AppSec', skills: ['Security', 'OAuth2', 'JWT', 'OWASP', 'Monitoring'] },
-  { value: 'qa', label: 'QA/테스트 자동화', keyword: 'QA 테스트 자동화 Playwright Cypress', skills: ['QA', 'Playwright', 'Cypress', 'JUnit', 'Test Automation'] },
+  { value: 'security', label: '보안 엔지니어', keyword: '보안 엔지니어 Security AppSec', jobCode: '1000238', skills: ['Security', 'OAuth2', 'JWT', 'OWASP', 'Monitoring'] },
+  { value: 'qa', label: 'QA/테스트 자동화', keyword: 'QA 테스트 자동화 Playwright Cypress', jobCode: '1000247', skills: ['QA', 'Playwright', 'Cypress', 'JUnit', 'Test Automation'] },
   { value: 'data', label: '데이터 엔지니어', keyword: '데이터 엔지니어 Python SQL', jobCode: '1000236', skills: ['Python', 'SQL', 'ETL', 'Spark', 'Kafka'] },
-  { value: 'data-analytics', label: '데이터 분석가', keyword: '데이터 분석 SQL BI Python', jobCode: '1000236', skills: ['SQL', 'Python', 'Tableau', 'Amplitude', 'Statistics'] },
+  { value: 'data-analytics', label: '데이터 분석가', keyword: '데이터 분석 SQL BI Python', jobCode: '1000237', skills: ['SQL', 'Python', 'Tableau', 'Amplitude', 'Statistics'] },
   { value: 'ai', label: 'AI/머신러닝', keyword: 'AI 머신러닝 Python', jobCode: '1000242', skills: ['Python', 'TensorFlow', 'PyTorch', 'LLM', 'MLOps'] },
   { value: 'mlops', label: 'MLOps/AI 플랫폼', keyword: 'MLOps AI Platform Kubernetes', jobCode: '1000242', skills: ['MLOps', 'Python', 'Docker', 'Kubernetes', 'MLflow'] },
-  { value: 'pm', label: '서비스 기획/PM', keyword: '서비스 기획 PM PO 애자일', skills: ['Product', 'Agile', 'Roadmap', 'Analytics', 'Figma'] },
-  { value: 'uiux', label: 'UI/UX 디자이너', keyword: 'UI UX Product Design Figma', skills: ['Figma', 'UX', 'UI', 'Prototype', 'Design System'] },
+  { value: 'pm', label: '서비스 기획/PM', keyword: '서비스 기획 PM PO 애자일', jobCode: '1000188', industryCode: '10026', skills: ['Product', 'Agile', 'Roadmap', 'Analytics', 'Figma'] },
+  { value: 'uiux', label: 'UI/UX 디자이너', keyword: 'UI UX Product Design Figma', jobCode: '1000256', industryCode: '10032', skills: ['Figma', 'UX', 'UI', 'Prototype', 'Design System'] },
 ]
 
 const regionOptions: RegionOption[] = [
@@ -793,8 +794,9 @@ export default function JobMatchingApp() {
       try {
         const geminiQuery = buildQuery({
           keyword: selectedRole.keyword,
+          industryCode: selectedRole.industryCode,
           areaCode: selectedRegion.areaCode,
-          jobCode: selectedRole.value === 'all' ? undefined : selectedRole.jobCode,
+          jobCode: selectedRole.jobCode,
         })
         const analysis = await projectApiRequest<GeminiAnalysis>(
           `/api/jobs/gemini-recommendations/me${geminiQuery}`,
@@ -858,9 +860,10 @@ export default function JobMatchingApp() {
           size,
           page: 1,
           order: 1,
-          keyword: selectedRole.keyword,
-          industryCode: '10031',
-          jobCode: selectedRole.value === 'all' ? undefined : selectedRole.jobCode,
+          // 직종 소분류(jobCode)가 있으면 다단어 키워드 AND 매칭으로 결과가 0이 되는 것을 막기 위해 키워드 생략
+          keyword: selectedRole.jobCode ? undefined : selectedRole.keyword,
+          industryCode: selectedRole.industryCode ?? '10031',
+          jobCode: selectedRole.jobCode,
           areaCode: selectedRegion.areaCode,
           starter: selectedCareer.value === 'intern',
         })

@@ -68,15 +68,19 @@ public class JobRecommendationController {
               + " Gemini 호출 실패 시 503을 반환하며, 클라이언트는 기존 rule-based 로직으로 fallback합니다.")
   public ResponseEntity<ApiResponse<GeminiJobAnalysisResponse.Analysis>> getGeminiRecommendations(
       @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
-      @Parameter(description = "검색 키워드", example = "Java Spring Boot 백엔드") @RequestParam
+      @Parameter(description = "검색 키워드", example = "Java Spring Boot 백엔드")
+          @RequestParam(required = false)
           String keyword,
+      @Parameter(description = "업·직종 대분류 코드", example = "10031") @RequestParam(required = false)
+          String industryCode,
       @Parameter(description = "근무지역 코드", example = "I000") @RequestParam(required = false)
           String areaCode,
       @Parameter(description = "업·직종 소분류 코드", example = "1000229") @RequestParam(required = false)
           String jobCode) {
     try {
       return ResponseEntity.ok(
-          ApiResponse.ok(geminiJobAnalysisService.analyze(userId, keyword, areaCode, jobCode)));
+          ApiResponse.ok(
+              geminiJobAnalysisService.analyze(userId, keyword, industryCode, areaCode, jobCode)));
     } catch (Exception e) {
       log.warn("[GeminiRecommendations] 분석 실패 (fallback 트리거): {}", e.getMessage());
       return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
