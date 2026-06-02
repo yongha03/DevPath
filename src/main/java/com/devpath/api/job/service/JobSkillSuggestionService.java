@@ -2,6 +2,7 @@ package com.devpath.api.job.service;
 
 import com.devpath.api.job.dto.JobSkillSuggestionDto;
 import com.devpath.api.roadmap.service.CustomRoadmapCopyService;
+import com.devpath.api.roadmap.service.NodeRequiredTagRegistrar;
 import com.devpath.api.roadmap.service.RoadmapProgressService;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
@@ -22,6 +23,8 @@ import com.devpath.domain.user.repository.UserRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -60,6 +63,7 @@ public class JobSkillSuggestionService {
   private final RecommendationChangeRepository recommendationChangeRepository;
   private final CustomRoadmapCopyService customRoadmapCopyService;
   private final RoadmapProgressService roadmapProgressService;
+  private final NodeRequiredTagRegistrar nodeRequiredTagRegistrar;
   private final GeminiProvider geminiProvider;
 
   @Transactional
@@ -135,6 +139,7 @@ public class JobSkillSuggestionService {
     if (nodeSubTopics == null || nodeSubTopics.isBlank()) {
       nodeSubTopics = skill;
     }
+    nodeSubTopics = String.join(",", resolveNodeTags(nodeSubTopics, skill, jobTitle));
 
     RoadmapNode dynamicNode =
         saveDynamicNode(resolveSystemRoadmap(), nodeTitle, nodeContent, nodeSubTopics, "BRANCH");
@@ -206,7 +211,9 @@ public class JobSkillSuggestionService {
             + " anchor 노드 하나를 고르세요. 그리고 그 anchor 노드 다음에 학습할 심화/복습 노드를 생성하세요.\n"
             + "반드시 아래 JSON 형식으로만 응답하세요(설명 금지):\n"
             + "{\"customRoadmapId\":숫자,\"anchorCustomNodeId\":숫자,\"branchType\":\"ADVANCED 또는 REVIEW\","
-            + "\"title\":\"노드 제목\",\"content\":\"노드 설명 2~3문장\",\"subTopics\":\"태그1,태그2\"}");
+            + "\"title\":\"노드 제목\",\"content\":\"노드 설명 2~3문장\",\"subTopics\":\"아래 태그 목록에서 고른 2~3개를 쉼표로\"}");
+    sb.append("\n사용 가능한 태그(반드시 이 목록에서만 subTopics 선택): ")
+        .append(String.join(", ", nodeRequiredTagRegistrar.activeTagVocabulary()));
     return sb.toString();
   }
 
@@ -287,13 +294,10 @@ public class JobSkillSuggestionService {
     Roadmap systemRoadmap = resolveSystemRoadmap();
     int order = 0;
     for (GeneratedNode generated : generatedNodes) {
+      String subTopics = String.join(",", resolveNodeTags(generated.subTopics(), skill, null));
       RoadmapNode dynamicNode =
-          saveDynamicNode(
-              systemRoadmap,
-              generated.title(),
-              generated.content(),
-              generated.subTopics(),
-              "NODE");
+          saveDynamicNode(systemRoadmap, generated.title(), generated.content(), subTopics, "NODE");
+      nodeRequiredTagRegistrar.registerFromSubTopics(dynamicNode);
       customRoadmapNodeRepository.save(
           CustomRoadmapNode.builder()
               .customRoadmap(created)
@@ -323,7 +327,10 @@ public class JobSkillSuggestionService {
             + "~"
             + GENERATED_ROADMAP_MAX_NODES
             + "개의 학습 노드를 입문→심화 순서로 구성하세요.\n"
-            + "반드시 아래 JSON 형식으로만 응답하세요(설명 금지):\n"
+            + "각 노드의 subTopics 는 아래 태그 목록에서만 2~3개를 골라 쉼표로 작성하세요.\n"
+            + "사용 가능한 태그: "
+            + String.join(", ", nodeRequiredTagRegistrar.activeTagVocabulary())
+            + "\n반드시 아래 JSON 형식으로만 응답하세요(설명 금지):\n"
             + "{\"nodes\":[{\"title\":\"노드 제목\",\"content\":\"노드 설명 2~3문장\",\"subTopics\":\"태그1,태그2\"}]}";
 
     JsonNode result = callGeminiJson(prompt);
@@ -411,6 +418,55 @@ public class JobSkillSuggestionService {
 
   private String normalizeBranchType(String raw) {
     return "REVIEW".equalsIgnoreCase(raw) ? "REVIEW" : "ADVANCED";
+  }
+
+  // Gemini subTopics 를 기존 공식 태그로 정규화한다. 유효 태그 0개면 차단(노드 생성 거부).
+  private List<String> resolveNodeTags(String geminiSubTopics, String skill, String jobTitle) {
+    List<String> valid = nodeRequiredTagRegistrar.keepExistingTagNames(splitTags(geminiSubTopics));
+    if (valid.isEmpty()) {
+      valid = resolveFallbackTags(skill, jobTitle);
+    }
+    if (valid.isEmpty()) {
+      throw new CustomException(ErrorCode.NODE_TAG_RESOLUTION_FAILED);
+    }
+    return valid.size() > 3 ? valid.subList(0, 3) : valid;
+  }
+
+  // skill/jobTitle 을 기존 태그 어휘와 부분 매칭해 폴백 태그를 찾는다.
+  private List<String> resolveFallbackTags(String skill, String jobTitle) {
+    List<String> vocabulary = nodeRequiredTagRegistrar.activeTagVocabulary();
+    LinkedHashSet<String> candidates = new LinkedHashSet<>();
+    String normalizedSkill = normalizeTag(skill);
+    for (String tag : vocabulary) {
+      String normalizedTag = normalizeTag(tag);
+      if (!normalizedTag.isEmpty()
+          && (normalizedTag.equals(normalizedSkill)
+              || normalizedTag.contains(normalizedSkill)
+              || normalizedSkill.contains(normalizedTag))) {
+        candidates.add(tag);
+      }
+    }
+    if (candidates.isEmpty() && jobTitle != null && !jobTitle.isBlank()) {
+      String normalizedJob = normalizeTag(jobTitle);
+      for (String tag : vocabulary) {
+        String normalizedTag = normalizeTag(tag);
+        if (!normalizedTag.isEmpty() && normalizedJob.contains(normalizedTag)) {
+          candidates.add(tag);
+        }
+      }
+    }
+    return nodeRequiredTagRegistrar.keepExistingTagNames(candidates);
+  }
+
+  private List<String> splitTags(String raw) {
+    if (raw == null || raw.isBlank()) {
+      return List.of();
+    }
+    return Arrays.stream(raw.split(",")).map(String::trim).filter(s -> !s.isEmpty()).toList();
+  }
+
+  private static String normalizeTag(String value) {
+    return value == null ? "" : value.trim().toLowerCase().replaceAll("\\s+", "");
   }
 
   // Gemini JSON 응답을 안전하게 파싱한다. 실패 시 null 반환(호출부에서 폴백).

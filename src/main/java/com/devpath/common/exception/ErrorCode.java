@@ -60,6 +60,8 @@ public enum ErrorCode {
   RECOMMENDATION_ALREADY_PROCESSED(HttpStatus.BAD_REQUEST, "이미 처리된 추천입니다."),
   RECOMMENDATION_EXPIRED(HttpStatus.BAD_REQUEST, "만료된 추천입니다."),
   SUPPLEMENT_RECOMMENDATION_NOT_FOUND(HttpStatus.NOT_FOUND, "보강 노드 추천을 찾을 수 없습니다."),
+  NODE_TAG_RESOLUTION_FAILED(
+      HttpStatus.BAD_REQUEST, "추천 노드에 연결할 적합한 학습 태그를 찾지 못했습니다."),
   RISK_WARNING_NOT_FOUND(HttpStatus.NOT_FOUND, "리스크 경고를 찾을 수 없습니다."),
   OCR_RESULT_NOT_FOUND(HttpStatus.NOT_FOUND, "OCR 결과를 찾을 수 없습니다."),
 
