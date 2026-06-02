@@ -930,7 +930,7 @@ function MyRoadmapBuilderPage() {
                   onClick={() => { window.location.href = '/my-roadmap-list' }}
                   className="w-full rounded-lg border border-blue-200 bg-blue-50 px-5 py-2.5 text-sm font-bold text-blue-700 transition hover:bg-blue-100"
                 >
-                  <i className="fas fa-list mr-2" />로드맵 관리로 돌아가기
+                  <i className="fas fa-list mr-2" />내 로드맵 관리
                 </button>
               )}
               <button
@@ -1181,7 +1181,7 @@ function MyRoadmapBuilderPage() {
               <i className="fas fa-pen-ruler" />
               편집 모드 — 수정 후 저장하면 기존 로드맵이 업데이트됩니다.
               <a href="/my-roadmap-list" className="ml-auto text-xs font-bold text-blue-500 hover:underline">
-                관리 페이지로
+                내 로드맵 관리
               </a>
             </div>
           )}

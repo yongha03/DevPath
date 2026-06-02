@@ -1290,7 +1290,7 @@ export default function DashboardPage({ session }: { session: AuthSession }) {
                     className="w-full rounded-xl border border-gray-200 bg-white py-3 text-sm font-bold text-gray-700 transition hover:bg-gray-50"
                     onClick={() => navigateTo('/my-roadmap-list')}
                   >
-                    로드맵 전체 보기
+                    내 로드맵 관리
                   </button>
                 </div>
               </>

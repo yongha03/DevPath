@@ -1517,7 +1517,7 @@ function RoadmapSwitcherDropdown({
               className="text-xs font-bold text-gray-500 hover:text-gray-700 flex items-center gap-1.5 transition"
             >
               <i className="fas fa-list text-[10px]" />
-              로드맵 관리
+              내 로드맵 관리
             </a>
           </div>
         </div>

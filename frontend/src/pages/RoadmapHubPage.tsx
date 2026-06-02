@@ -537,7 +537,7 @@ function RoadmapHubPage() {
                 className="roadmap-hub-hero-button group relative flex items-center justify-center gap-3 rounded-full bg-brand px-8 py-4 font-bold text-white shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-green-600 hover:shadow-xl"
               >
                 <i className="fas fa-list-ul" />
-                <span className="text-lg">로드맵 목록으로 가기</span>
+                <span className="text-lg">내 로드맵 관리</span>
                 <i className="fas fa-arrow-right transition-transform group-hover:translate-x-1" />
               </button>
               <button
