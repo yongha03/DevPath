@@ -70,7 +70,9 @@ public class ProjectHeaderNotificationService {
   @Transactional
   public List<ProjectHeaderNotificationResponse> markAllRead(Long userId) {
     if (isInstructor(userId)) {
-      instructorNotificationRepository.findAllByInstructorIdOrderByCreatedAtDesc(userId).stream()
+      instructorNotificationRepository
+          .findAllByInstructorIdOrderByCreatedAtDesc(userId)
+          .stream()
           .filter(notification -> !Boolean.TRUE.equals(notification.getIsRead()))
           .forEach(notification -> notification.markAsRead());
     } else {

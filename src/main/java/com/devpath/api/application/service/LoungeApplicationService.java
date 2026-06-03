@@ -150,7 +150,9 @@ public class LoungeApplicationService {
         applications.stream()
             .flatMap(
                 application ->
-                    List.of(application.getSender().getId(), application.getReceiver().getId())
+                    List.of(
+                            application.getSender().getId(),
+                            application.getReceiver().getId())
                         .stream())
             .collect(Collectors.toSet());
 

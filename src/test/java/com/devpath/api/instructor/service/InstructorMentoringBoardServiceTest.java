@@ -75,16 +75,17 @@ class InstructorMentoringBoardServiceTest {
     MentoringApplication application = approvedApplication(post, 2L, "Backend");
     givenWorkspaceCreation(instructorId, 99L);
     when(mentoringPostRepository.findByIdAndIsDeletedFalse(10L)).thenReturn(Optional.of(post));
-    when(mentoringApplicationRepository
-            .findAllByPost_IdAndStatusAndIsDeletedFalseOrderByProcessedAtDesc(
-                10L, MentoringApplicationStatus.APPROVED))
+    when(mentoringApplicationRepository.findAllByPost_IdAndStatusAndIsDeletedFalseOrderByProcessedAtDesc(
+            10L, MentoringApplicationStatus.APPROVED))
         .thenReturn(List.of(application));
 
     InstructorMentoringBoardPayload result =
         service.saveBoard(
             instructorId,
             new InstructorMentoringBoardPayload(
-                List.of(), List.of(), List.of(ongoingProject("post-10", "study", "2026-06-01"))));
+                List.of(),
+                List.of(),
+                List.of(ongoingProject("post-10", "study", "2026-06-01"))));
 
     assertThat(result.ongoingProjects()).hasSize(1);
     assertThat(result.ongoingProjects().getFirst().workspaceId()).isEqualTo(99L);
@@ -147,9 +148,8 @@ class InstructorMentoringBoardServiceTest {
             instructorId, WorkspaceType.MENTORING))
         .thenReturn(List.of(workspace));
     when(mentoringPostRepository.findByIdAndIsDeletedFalse(10L)).thenReturn(Optional.of(post));
-    when(mentoringApplicationRepository
-            .findAllByPost_IdAndStatusAndIsDeletedFalseOrderByProcessedAtDesc(
-                10L, MentoringApplicationStatus.APPROVED))
+    when(mentoringApplicationRepository.findAllByPost_IdAndStatusAndIsDeletedFalseOrderByProcessedAtDesc(
+            10L, MentoringApplicationStatus.APPROVED))
         .thenReturn(List.of(application));
     when(workspaceMemberRepository.existsByWorkspaceIdAndLearnerId(anyLong(), anyLong()))
         .thenReturn(false);
@@ -203,9 +203,8 @@ class InstructorMentoringBoardServiceTest {
               return workspace;
             });
     when(mentoringPostRepository.findByIdAndIsDeletedFalse(12L)).thenReturn(Optional.of(post));
-    when(mentoringApplicationRepository
-            .findAllByPost_IdAndStatusAndIsDeletedFalseOrderByProcessedAtDesc(
-                anyLong(), any(MentoringApplicationStatus.class)))
+    when(mentoringApplicationRepository.findAllByPost_IdAndStatusAndIsDeletedFalseOrderByProcessedAtDesc(
+            anyLong(), any(MentoringApplicationStatus.class)))
         .thenReturn(List.of());
     when(workspaceMemberRepository.existsByWorkspaceIdAndLearnerId(anyLong(), anyLong()))
         .thenReturn(false);
@@ -216,7 +215,9 @@ class InstructorMentoringBoardServiceTest {
             new InstructorMentoringBoardPayload(
                 List.of(),
                 List.of(),
-                List.of(ongoingProject("post-12", "team", "2026-06-01", null, "React 협업 플랫폼 구축"))));
+                List.of(
+                    ongoingProject(
+                        "post-12", "team", "2026-06-01", null, "React 협업 플랫폼 구축"))));
 
     assertThat(result.ongoingProjects()).hasSize(1);
     assertThat(result.ongoingProjects().getFirst().workspaceId()).isEqualTo(newWorkspaceId);
@@ -256,9 +257,8 @@ class InstructorMentoringBoardServiceTest {
               return workspace;
             });
     when(mentoringPostRepository.findByIdAndIsDeletedFalse(12L)).thenReturn(Optional.of(post));
-    when(mentoringApplicationRepository
-            .findAllByPost_IdAndStatusAndIsDeletedFalseOrderByProcessedAtDesc(
-                anyLong(), any(MentoringApplicationStatus.class)))
+    when(mentoringApplicationRepository.findAllByPost_IdAndStatusAndIsDeletedFalseOrderByProcessedAtDesc(
+            anyLong(), any(MentoringApplicationStatus.class)))
         .thenReturn(List.of());
     when(workspaceMemberRepository.existsByWorkspaceIdAndLearnerId(anyLong(), anyLong()))
         .thenReturn(false);
@@ -271,9 +271,17 @@ class InstructorMentoringBoardServiceTest {
                 List.of(),
                 List.of(
                     ongoingProject(
-                        "post-12", "team", "2026-06-01", oldWorkspaceId, "React 협업 플랫폼 구축"),
+                        "post-12",
+                        "team",
+                        "2026-06-01",
+                        oldWorkspaceId,
+                        "React 협업 플랫폼 구축"),
                     ongoingProject(
-                        "ongoing-workspace-5", "team", null, oldWorkspaceId, "React 협업 플랫폼 구축"))));
+                        "ongoing-workspace-5",
+                        "team",
+                        null,
+                        oldWorkspaceId,
+                        "React 협업 플랫폼 구축"))));
 
     assertThat(result.ongoingProjects()).hasSize(1);
     assertThat(result.ongoingProjects().getFirst().workspaceId()).isEqualTo(newWorkspaceId);
@@ -318,7 +326,11 @@ class InstructorMentoringBoardServiceTest {
                 List.of(),
                 List.of(
                     ongoingProject(
-                        "travel", "team", "2026-06-01", oldWorkspaceId, "대용량 이커머스 서버 구축"))));
+                        "travel",
+                        "team",
+                        "2026-06-01",
+                        oldWorkspaceId,
+                        "대용량 이커머스 서버 구축"))));
 
     assertThat(result.ongoingProjects()).hasSize(1);
     assertThat(result.ongoingProjects().getFirst().workspaceId()).isEqualTo(newWorkspaceId);
@@ -344,7 +356,11 @@ class InstructorMentoringBoardServiceTest {
             List.of(),
             List.of(
                 ongoingProject(
-                    "post-12", "team", "2026-06-01", oldWorkspaceId, "React 협업 플랫폼 구축")));
+                    "post-12",
+                    "team",
+                    "2026-06-01",
+                    oldWorkspaceId,
+                    "React 협업 플랫폼 구축")));
     InstructorMentoringBoard board =
         new InstructorMentoringBoard(
             instructorId, new ObjectMapper().writeValueAsString(storedPayload));
@@ -365,9 +381,8 @@ class InstructorMentoringBoardServiceTest {
     when(mentoringPostRepository.findAllByMentor_IdAndIsDeletedFalseOrderByCreatedAtDesc(
             instructorId))
         .thenReturn(List.of());
-    when(mentoringApplicationRepository
-            .findAllByPost_IdAndStatusAndIsDeletedFalseOrderByProcessedAtDesc(
-                anyLong(), any(MentoringApplicationStatus.class)))
+    when(mentoringApplicationRepository.findAllByPost_IdAndStatusAndIsDeletedFalseOrderByProcessedAtDesc(
+            anyLong(), any(MentoringApplicationStatus.class)))
         .thenReturn(List.of());
     when(mentoringApplicationRepository
             .findAllByPost_Mentor_IdAndStatusAndIsDeletedFalseOrderByCreatedAtDesc(
@@ -404,9 +419,8 @@ class InstructorMentoringBoardServiceTest {
               ReflectionTestUtils.setField(workspace, "id", workspaceId);
               return workspace;
             });
-    when(mentoringApplicationRepository
-            .findAllByPost_IdAndStatusAndIsDeletedFalseOrderByProcessedAtDesc(
-                anyLong(), any(MentoringApplicationStatus.class)))
+    when(mentoringApplicationRepository.findAllByPost_IdAndStatusAndIsDeletedFalseOrderByProcessedAtDesc(
+            anyLong(), any(MentoringApplicationStatus.class)))
         .thenReturn(List.of());
     when(workspaceMemberRepository.existsByWorkspaceIdAndLearnerId(anyLong(), anyLong()))
         .thenReturn(false);

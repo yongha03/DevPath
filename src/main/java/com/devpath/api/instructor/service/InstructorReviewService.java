@@ -1,8 +1,5 @@
 package com.devpath.api.instructor.service;
 
-import com.devpath.api.admin.entity.ModerationReport;
-import com.devpath.api.admin.entity.ModerationReportStatus;
-import com.devpath.api.admin.repository.ModerationReportRepository;
 import com.devpath.api.instructor.dto.review.InstructorReviewListResponse;
 import com.devpath.api.instructor.dto.review.ReviewHelpfulResponse;
 import com.devpath.api.instructor.dto.review.ReviewIssueTagRequest;
@@ -12,6 +9,9 @@ import com.devpath.api.instructor.dto.review.ReviewStatusUpdateRequest;
 import com.devpath.api.instructor.dto.review.ReviewSummaryResponse;
 import com.devpath.api.instructor.dto.review.ReviewTemplateRequest;
 import com.devpath.api.instructor.dto.review.ReviewTemplateResponse;
+import com.devpath.api.admin.entity.ModerationReport;
+import com.devpath.api.admin.entity.ModerationReportStatus;
+import com.devpath.api.admin.repository.ModerationReportRepository;
 import com.devpath.api.instructor.entity.ReviewReply;
 import com.devpath.api.instructor.entity.ReviewTemplate;
 import com.devpath.api.instructor.repository.ReviewReplyRepository;

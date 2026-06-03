@@ -68,9 +68,7 @@ public class ShowcaseService {
         .map(
             s ->
                 ShowcaseSummaryResponse.of(
-                    s,
-                    showcaseLikeRepository.countByShowcaseId(s.getId()),
-                    profileImages.get(s.getUserId())))
+                    s, showcaseLikeRepository.countByShowcaseId(s.getId()), profileImages.get(s.getUserId())))
         .toList();
   }
 

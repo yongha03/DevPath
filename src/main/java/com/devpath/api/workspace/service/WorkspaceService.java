@@ -8,6 +8,7 @@ import com.devpath.api.workspace.dto.WorkspaceResponse;
 import com.devpath.api.workspace.dto.WorkspaceSettingsResponse;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
+import com.devpath.domain.mentoring.entity.MentoringApplication;
 import com.devpath.domain.mentoring.entity.MentoringApplicationStatus;
 import com.devpath.domain.mentoring.repository.MentoringApplicationRepository;
 import com.devpath.domain.user.entity.User;
@@ -238,8 +239,7 @@ public class WorkspaceService {
   private WorkspaceSettingsResponse buildWorkspaceSettingsResponse(
       Workspace workspace, Long viewerId) {
     List<WorkspaceMemberResponse> memberResponses =
-        buildMemberResponses(
-            workspace, workspaceMemberRepository.findAllByWorkspaceId(workspace.getId()));
+        buildMemberResponses(workspace, workspaceMemberRepository.findAllByWorkspaceId(workspace.getId()));
     return WorkspaceSettingsResponse.from(workspace, memberResponses, viewerId);
   }
 
@@ -253,8 +253,7 @@ public class WorkspaceService {
             workspace.getOwnerId(), learnerIds, MentoringApplicationStatus.APPROVED)
         .stream()
         .filter(application -> application.getPost() != null)
-        .filter(
-            application -> Objects.equals(application.getPost().getTitle(), workspace.getName()))
+        .filter(application -> Objects.equals(application.getPost().getTitle(), workspace.getName()))
         .map(
             application -> {
               String position =
@@ -267,8 +266,7 @@ public class WorkspaceService {
               return Map.entry(application.getApplicant().getId(), position);
             })
         .filter(Objects::nonNull)
-        .collect(
-            Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (first, ignored) -> first));
+        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (first, ignored) -> first));
   }
 
   private String parseDesiredPositionFromMessage(String message) {
