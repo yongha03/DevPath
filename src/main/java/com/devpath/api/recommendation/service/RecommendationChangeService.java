@@ -347,7 +347,18 @@ public class RecommendationChangeService {
 
   // ADD 타입 변경 적용: 해당 유저의 커스텀 로드맵에 노드 추가 + 진행률 재계산
   private void addNodeToCustomRoadmap(RoadmapNode roadmapNode, Long userId, Long branchFromNodeId) {
-    Long roadmapId = roadmapNode.getRoadmap().getRoadmapId();
+    // 추천 노드는 시스템 동적 로드맵에 저장되므로, 대상 커스텀 로드맵은 분기 기준 노드(클리어한 공식 노드)의
+    // 로드맵으로 찾는다. branchFromNodeId가 없으면(보강 등) 추천 노드 자신의 로드맵을 사용한다.
+    Long roadmapId;
+    if (branchFromNodeId != null) {
+      RoadmapNode branchFromNode =
+          roadmapNodeRepository
+              .findById(branchFromNodeId)
+              .orElseThrow(() -> new CustomException(ErrorCode.ROADMAP_NODE_NOT_FOUND));
+      roadmapId = branchFromNode.getRoadmap().getRoadmapId();
+    } else {
+      roadmapId = roadmapNode.getRoadmap().getRoadmapId();
+    }
 
     CustomRoadmap customRoadmap =
         customRoadmapRepository
