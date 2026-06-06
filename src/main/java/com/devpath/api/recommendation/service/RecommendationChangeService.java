@@ -6,6 +6,7 @@ import com.devpath.api.learning.service.WeaknessAnalysisService;
 import com.devpath.api.notification.service.NotificationEventService;
 import com.devpath.api.recommendation.dto.RecommendationChangeRequest;
 import com.devpath.api.recommendation.dto.RecommendationChangeResponse;
+import com.devpath.api.roadmap.service.NodeRequiredTagRegistrar;
 import com.devpath.api.roadmap.service.RoadmapProgressService;
 import com.devpath.common.exception.CustomException;
 import com.devpath.common.exception.ErrorCode;
@@ -20,18 +21,14 @@ import com.devpath.domain.learning.repository.recommendation.RecommendationChang
 import com.devpath.domain.learning.repository.recommendation.RecommendationHistoryRepository;
 import com.devpath.domain.roadmap.entity.CustomRoadmap;
 import com.devpath.domain.roadmap.entity.CustomRoadmapNode;
-import com.devpath.domain.roadmap.entity.NodeRequiredTag;
 import com.devpath.domain.roadmap.entity.RoadmapNode;
 import com.devpath.domain.roadmap.repository.CustomNodePrerequisiteRepository;
 import com.devpath.domain.roadmap.repository.CustomRoadmapNodeRepository;
 import com.devpath.domain.roadmap.repository.CustomRoadmapRepository;
-import com.devpath.domain.roadmap.repository.NodeRequiredTagRepository;
 import com.devpath.domain.roadmap.repository.RoadmapNodeRepository;
 import com.devpath.domain.roadmap.repository.RoadmapRepository;
 import com.devpath.domain.user.entity.User;
-import com.devpath.domain.user.repository.TagRepository;
 import com.devpath.domain.user.repository.UserRepository;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
@@ -57,8 +54,7 @@ public class RecommendationChangeService {
   private final WeaknessAnalysisService weaknessAnalysisService;
   private final TilService tilService;
   private final RoadmapProgressService roadmapProgressService;
-  private final TagRepository tagRepository;
-  private final NodeRequiredTagRepository nodeRequiredTagRepository;
+  private final NodeRequiredTagRegistrar nodeRequiredTagRegistrar;
   private final NotificationEventService notificationEventService;
 
   @Transactional
@@ -154,13 +150,13 @@ public class RecommendationChangeService {
       // TASK-39 성장공고 기원: 명시적 타깃(커스텀 로드맵 + anchor 커스텀 노드)으로 직접 삽입.
       // 공식 복사본/빌더 기원 로드맵 양쪽 모두 지원한다.
       addBranchNodeByExplicitTarget(recommendationChange);
-      registerRequiredTagsForNode(recommendationChange.getRoadmapNode());
+      nodeRequiredTagRegistrar.registerFromSubTopics(recommendationChange.getRoadmapNode());
     } else if (recommendationChange.getNodeChangeType() == NodeChangeType.ADD) {
       addNodeToCustomRoadmap(
           recommendationChange.getRoadmapNode(),
           userId,
           recommendationChange.getBranchFromNodeId());
-      registerRequiredTagsForNode(recommendationChange.getRoadmapNode());
+      nodeRequiredTagRegistrar.registerFromSubTopics(recommendationChange.getRoadmapNode());
     } else if (recommendationChange.getNodeChangeType() == NodeChangeType.DELETE) {
       deleteNodeFromCustomRoadmaps(recommendationChange.getRoadmapNode().getNodeId(), userId);
     }
@@ -351,7 +347,18 @@ public class RecommendationChangeService {
 
   // ADD 타입 변경 적용: 해당 유저의 커스텀 로드맵에 노드 추가 + 진행률 재계산
   private void addNodeToCustomRoadmap(RoadmapNode roadmapNode, Long userId, Long branchFromNodeId) {
-    Long roadmapId = roadmapNode.getRoadmap().getRoadmapId();
+    // 추천 노드는 시스템 동적 로드맵에 저장되므로, 대상 커스텀 로드맵은 분기 기준 노드(클리어한 공식 노드)의
+    // 로드맵으로 찾는다. branchFromNodeId가 없으면(보강 등) 추천 노드 자신의 로드맵을 사용한다.
+    Long roadmapId;
+    if (branchFromNodeId != null) {
+      RoadmapNode branchFromNode =
+          roadmapNodeRepository
+              .findById(branchFromNodeId)
+              .orElseThrow(() -> new CustomException(ErrorCode.ROADMAP_NODE_NOT_FOUND));
+      roadmapId = branchFromNode.getRoadmap().getRoadmapId();
+    } else {
+      roadmapId = roadmapNode.getRoadmap().getRoadmapId();
+    }
 
     CustomRoadmap customRoadmap =
         customRoadmapRepository
@@ -478,30 +485,6 @@ public class RecommendationChangeService {
     List<CustomRoadmapNode> refreshed =
         customRoadmapNodeRepository.findAllByCustomRoadmap(customRoadmap);
     roadmapProgressService.updateProgressRate(customRoadmap, refreshed);
-  }
-
-  // 추천 노드 수락 시 subTopics 기반 태그를 node_required_tags에 등록
-  private void registerRequiredTagsForNode(RoadmapNode node) {
-    if (node.getSubTopics() == null || node.getSubTopics().isBlank()) return;
-
-    List<String> tagNames =
-        Arrays.stream(node.getSubTopics().split(","))
-            .map(String::trim)
-            .filter(s -> !s.isEmpty())
-            .toList();
-
-    for (String tagName : tagNames) {
-      tagRepository
-          .findByName(tagName)
-          .ifPresent(
-              tag -> {
-                if (!nodeRequiredTagRepository.existsByNodeNodeIdAndTagTagId(
-                    node.getNodeId(), tag.getTagId())) {
-                  nodeRequiredTagRepository.save(
-                      NodeRequiredTag.builder().node(node).tag(tag).build());
-                }
-              });
-    }
   }
 
   // DELETE 타입 변경 적용: 해당 유저의 커스텀 로드맵에서 노드 삭제 + prerequisites 정리 + 진행률 재계산

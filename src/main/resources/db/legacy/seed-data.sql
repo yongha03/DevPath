@@ -412,22 +412,6 @@ WHERE r.title = 'Backend Master Roadmap'
 INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order)
 SELECT
     r.roadmap_id,
-    'Security and JWT',
-    'Build authentication and authorization flows with Spring Security and JWT.',
-    'CONCEPT',
-    5
-FROM roadmaps r
-WHERE r.title = 'Backend Master Roadmap'
-  AND NOT EXISTS (
-      SELECT 1
-      FROM roadmap_nodes
-      WHERE roadmap_id = r.roadmap_id
-        AND title = 'Security and JWT'
-  );
-
-INSERT INTO roadmap_nodes (roadmap_id, title, content, node_type, sort_order)
-SELECT
-    r.roadmap_id,
     'Docker Deployment Basics',
     'Package and run backend services with Docker and compose.',
     'PRACTICE',
@@ -18560,7 +18544,6 @@ WHERE learner.email = 'b-learner-one@devpath.com'
         AND cpc.proof_card_id = 9001
         AND cpc.is_deleted = FALSE
   );
-
 -- ------------------------------------------------------------
 -- B-9a. Evaluation Swagger compatibility roadmap node
 -- ------------------------------------------------------------
@@ -18590,6 +18573,7 @@ WHERE r.title IN ('Backend Master Roadmap', '백엔드')
 -- ------------------------------------------------------------
 -- B-10. Sequence correction
 -- ------------------------------------------------------------
+
 
 SELECT setval(pg_get_serial_sequence('users', 'user_id'), COALESCE((SELECT MAX(user_id) FROM users), 1));
 SELECT setval(pg_get_serial_sequence('workspace', 'id'), COALESCE((SELECT MAX(id) FROM workspace), 1));

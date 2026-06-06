@@ -25,6 +25,22 @@ public class LocalLegacySeedInitializer implements CommandLineRunner {
   private static final ClassPathResource LEGACY_SEED =
       new ClassPathResource("db/legacy/seed-data.sql");
 
+  // 시드 INSERT가 is_deleted(NOT NULL) 값을 생략하는 경우가 있어, 시드 실행 전에 모든 is_deleted 컬럼에
+  // DEFAULT false 를 보장한다(엔티티별 columnDefinition 누락 보완, 멱등). local/dev(PostgreSQL) 전용.
+  private static final String ENSURE_BOOLEAN_FLAG_DEFAULTS_SQL =
+      """
+      DO $$
+      DECLARE r record;
+      BEGIN
+        FOR r IN
+          SELECT table_name FROM information_schema.columns
+          WHERE table_schema = 'public' AND column_name = 'is_deleted'
+        LOOP
+          EXECUTE format('ALTER TABLE public.%I ALTER COLUMN is_deleted SET DEFAULT false', r.table_name);
+        END LOOP;
+      END $$;
+      """;
+
   private final JdbcTemplate jdbcTemplate;
 
   @Override
@@ -36,6 +52,7 @@ public class LocalLegacySeedInitializer implements CommandLineRunner {
     }
 
     log.info("Legacy local seed data is missing. Restoring db/legacy/seed-data.sql.");
+    jdbcTemplate.execute(ENSURE_BOOLEAN_FLAG_DEFAULTS_SQL);
     jdbcTemplate.execute(readLegacySeedSql());
     log.info("Legacy local seed data restore completed.");
   }

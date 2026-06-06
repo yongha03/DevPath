@@ -539,7 +539,6 @@ function RoadmapHubPage() {
               >
                 <i className="fas fa-list-ul" />
                 <span className="text-lg">내 로드맵 관리</span>
-                <i className="fas fa-arrow-right transition-transform group-hover:translate-x-1" />
               </button>
               <button
                 type="button"
