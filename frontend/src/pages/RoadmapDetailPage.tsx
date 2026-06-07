@@ -446,9 +446,13 @@ function buildRoadmapLayout(nodes: RoadmapNodeItem[], changes: RecommendationCha
     edgeKind: LayoutEdgeKind = 'suggestion',
     theme: EdgeTheme = 'suggestion',
   ) {
+    // 추천 노드는 출발 노드와 같은 쪽에 배치한다. 좌측 분기는 좌측, 우측 분기는 우측,
+    // 척추(center)에서 출발한 추천은 기존대로 우측에 둔다. (반대편 분기와의 겹침 방지)
+    const branchLane: RoadmapLane =
+      sourceSlot.lane === 'left' || sourceSlot.lane === 'side-left' ? 'left' : 'right'
     const branchSlot = addSlot({
       ...slot,
-      lane: 'right',
+      lane: branchLane,
       row: reserveBranchRow(sourceSlot.row + offset),
       stackOffset: slot.stackOffset ?? sourceSlot.stackOffset,
     })
@@ -580,6 +584,17 @@ function buildRoadmapLayout(nodes: RoadmapNodeItem[], changes: RecommendationCha
   if (hasOfficialBranch) {
     const branchStartRow = row
     const splitSourceSlotId = previousCenterSlotId
+    const maxBranchDepth = Math.max(
+      0,
+      ...officialBranchGroups.map((branchGroup) => (
+        officialBranchNodes.filter((node) => node.branchGroup === branchGroup).length
+      )),
+    )
+    // 공식 분기 노드가 차지할 행을 미리 선점해, 분기 노드에 달리는 추천 노드가
+    // 분기 팬 아래의 빈 행으로 안전하게 내려가도록 한다(같은 컬럼 행 충돌 방지).
+    for (let i = 0; i < maxBranchDepth; i += 1) {
+      usedBranchRows.add(branchStartRow + i)
+    }
     const branchEndSlotIds = officialBranchGroups
       .map((branchGroup, index) => addOfficialBranchGroup(
         branchGroup,
@@ -588,12 +603,6 @@ function buildRoadmapLayout(nodes: RoadmapNodeItem[], changes: RecommendationCha
         splitSourceSlotId,
       ))
       .filter((slotId): slotId is string => slotId != null)
-    const maxBranchDepth = Math.max(
-      0,
-      ...officialBranchGroups.map((branchGroup) => (
-        officialBranchNodes.filter((node) => node.branchGroup === branchGroup).length
-      )),
-    )
     row = Math.max(branchStartRow + maxBranchDepth, rowCount + 1)
 
     const postSpineItems = makeLayoutSpineItems(postSpineNodes, postSpineAdds)
