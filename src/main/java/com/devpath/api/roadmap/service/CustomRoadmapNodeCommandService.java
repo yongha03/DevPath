@@ -83,13 +83,44 @@ public class CustomRoadmapNodeCommandService {
       return; // 경계(맨 위/아래) — 변경 없음
     }
 
-    // 리스트에서 한 칸 이동 후 1..N으로 재번호 매기기(널/중복 sortOrder도 정규화)
+    // 리스트에서 한 칸 이동 후 재번호+선행관계 재생성+편집본 고정
     ordered.remove(index);
     ordered.add(neighborIndex, node);
-    for (int i = 0; i < ordered.size(); i += 1) {
-      ordered.get(i).changeCustomSortOrder(i + 1);
-    }
+    finalizeReorder(customRoadmap, ordered);
+  }
 
+  /**
+   * 이동 노드를 앵커 노드 '바로 뒤'(앵커가 null이면 맨 앞)로 옮긴다. AI 순서변경 제안(REORDER) 적용에서 호출한다. 호출 측에서
+   * 소유권/존재를 보장한 엔티티를 넘긴다.
+   */
+  @Transactional
+  public void reorderAfter(
+      CustomRoadmap customRoadmap, CustomRoadmapNode moved, CustomRoadmapNode anchorOrNull) {
+    List<CustomRoadmapNode> ordered =
+        new ArrayList<>(
+            customRoadmapNodeRepository.findAllByCustomRoadmapOrderByCustomSortOrderAsc(
+                customRoadmap));
+
+    ordered.removeIf(n -> n.getId().equals(moved.getId()));
+
+    int insertAt = 0;
+    if (anchorOrNull != null) {
+      for (int i = 0; i < ordered.size(); i += 1) {
+        if (ordered.get(i).getId().equals(anchorOrNull.getId())) {
+          insertAt = i + 1;
+          break;
+        }
+      }
+    }
+    ordered.add(insertAt, moved);
+    finalizeReorder(customRoadmap, ordered);
+  }
+
+  // 재배치된 리스트를 1..N으로 재번호 매기고 선행관계 그래프를 재생성한 뒤 편집본으로 고정한다.
+  private void finalizeReorder(CustomRoadmap customRoadmap, List<CustomRoadmapNode> orderedNodes) {
+    for (int i = 0; i < orderedNodes.size(); i += 1) {
+      orderedNodes.get(i).changeCustomSortOrder(i + 1);
+    }
     prerequisiteSyncService.rebuildFromCurrentOrder(customRoadmap);
     customRoadmap.markPrerequisitesCustomized();
   }

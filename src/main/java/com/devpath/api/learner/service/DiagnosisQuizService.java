@@ -54,6 +54,8 @@ public class DiagnosisQuizService {
   private static final double REVIEW_THRESHOLD = 0.7;
   // 고득점 클리어 시 삭제 제안 후보로 검토할 후속 노드 최대 개수
   private static final int DELETE_CANDIDATE_LIMIT = 3;
+  // 클리어 시 순서변경 제안 후보로 검토할 후속 노드 최대 개수
+  private static final int REORDER_CANDIDATE_LIMIT = 5;
 
   private final DiagnosisQuizRepository diagnosisQuizRepository;
   private final DiagnosisResultRepository diagnosisResultRepository;
@@ -173,6 +175,9 @@ public class DiagnosisQuizService {
     if (!isLowScore) {
       buildDeleteSuggestions(user, clearedNode, score, maxScore, roadmapId);
     }
+
+    // 점수와 무관하게, 학습 순서상 더 합리적인 후속 노드 순서변경 제안을 동시 생성한다.
+    buildReorderSuggestions(user, clearedNode, roadmapId);
 
     return recommendedNodeIds.stream().map(String::valueOf).collect(Collectors.joining(","));
   }
@@ -482,6 +487,145 @@ public class DiagnosisQuizService {
       }
     } catch (Exception e) {
       log.warn("[DiagnosisQuizService] Gemini 삭제 제안 추출 실패: {}", e.getMessage());
+    }
+    return result;
+  }
+
+  // ── 후속 노드 순서변경 제안 생성 ────────────────────────────────────────────
+
+  private record ReorderSuggestion(Long moveNodeId, Long afterNodeId, String reason) {}
+
+  /**
+   * 클리어 시, 후속 노드들의 학습 순서를 Gemini가 더 합리적으로 재배치하도록 제안(REORDER, SUGGESTED)으로 생성한다. 후보는
+   * 클리어 노드 이후의 미완료 노드 최대 {@link #REORDER_CANDIDATE_LIMIT}개. Gemini가 후보 밖/자기참조/되돌리기 불가한
+   * 노드를 지목하면 폐기한다.
+   */
+  private void buildReorderSuggestions(User user, RoadmapNode clearedNode, Long roadmapId) {
+    CustomRoadmap customRoadmap =
+        customRoadmapRepository
+            .findByUserIdAndOriginalRoadmapRoadmapId(user.getId(), roadmapId)
+            .orElse(null);
+    if (customRoadmap == null) return;
+
+    List<CustomRoadmapNode> ordered =
+        customRoadmapNodeRepository.findAllByCustomRoadmapOrderByCustomSortOrderAsc(customRoadmap);
+
+    Integer clearedOrder =
+        ordered.stream()
+            .filter(
+                n ->
+                    n.getOriginalNode() != null
+                        && n.getOriginalNode().getNodeId().equals(clearedNode.getNodeId()))
+            .map(CustomRoadmapNode::getCustomSortOrder)
+            .filter(Objects::nonNull)
+            .findFirst()
+            .orElse(null);
+    if (clearedOrder == null) return;
+
+    // originalNodeId → 후보 노드 (현재 순서 유지). 척추/분기 구분 없이 후속 미완료 노드.
+    Map<Long, CustomRoadmapNode> candidateById =
+        ordered.stream()
+            .filter(n -> n.getOriginalNode() != null)
+            .filter(n -> n.getStatus() != NodeStatus.COMPLETED)
+            .filter(n -> n.getCustomSortOrder() != null && n.getCustomSortOrder() > clearedOrder)
+            .limit(REORDER_CANDIDATE_LIMIT)
+            .collect(
+                Collectors.toMap(
+                    n -> n.getOriginalNode().getNodeId(),
+                    n -> n,
+                    (a, b) -> a,
+                    LinkedHashMap::new));
+    if (candidateById.size() < 2) return; // 2개 미만이면 순서변경 의미 없음
+
+    List<ReorderSuggestion> suggestions =
+        getReorderSuggestionsFromGemini(clearedNode, candidateById);
+
+    for (ReorderSuggestion suggestion : suggestions) {
+      Long moveId = suggestion.moveNodeId();
+      Long afterId = suggestion.afterNodeId();
+
+      // 검증: 이동 노드는 후보 내, 앵커는 후보 내·클리어 노드·null, 자기참조 금지
+      if (moveId == null || !candidateById.containsKey(moveId)) continue;
+      if (afterId != null
+          && !candidateById.containsKey(afterId)
+          && !afterId.equals(clearedNode.getNodeId())) continue;
+      if (afterId != null && afterId.equals(moveId)) continue;
+
+      boolean alreadySuggested =
+          recommendationChangeRepository
+              .findTopByUserIdAndRoadmapNodeNodeIdAndChangeStatusOrderByCreatedAtDesc(
+                  user.getId(), moveId, RecommendationChangeStatus.SUGGESTED)
+              .isPresent();
+      if (alreadySuggested) continue;
+
+      recommendationChangeRepository.save(
+          RecommendationChange.builder()
+              .user(user)
+              .roadmapNode(candidateById.get(moveId).getOriginalNode())
+              .reorderAfterNodeId(afterId)
+              .reason(
+                  suggestion.reason() != null && !suggestion.reason().isBlank()
+                      ? suggestion.reason()
+                      : "학습 순서상 더 적합한 위치로 이동을 제안합니다.")
+              .nodeChangeType(NodeChangeType.REORDER)
+              .build());
+    }
+  }
+
+  /** Gemini가 후속 노드의 순서변경을 제안한다. {moveNodeId, afterNodeId, reason} 목록을 반환한다. */
+  private List<ReorderSuggestion> getReorderSuggestionsFromGemini(
+      RoadmapNode clearedNode, Map<Long, CustomRoadmapNode> candidateById) {
+
+    StringBuilder candidateLines = new StringBuilder();
+    candidateById.forEach(
+        (nodeId, node) -> {
+          List<String> tags = nodeRequiredTagRepository.findTagNamesByNodeId(nodeId);
+          candidateLines
+              .append("- id=")
+              .append(nodeId)
+              .append(", 제목=\"")
+              .append(node.getOriginalNode().getTitle())
+              .append("\", 태그=[")
+              .append(String.join(", ", tags))
+              .append("]\n");
+        });
+
+    String prompt =
+        String.format(
+            "학습자가 '%s'(id=%d) 노드를 클리어했습니다.\n"
+                + "아래는 현재 순서대로 나열된 후속 학습 노드입니다:\n%s"
+                + "학습 흐름상 순서를 바꾸는 게 더 합리적인 노드가 있으면 제안하라.\n"
+                + "각 항목은 '이 노드(moveNodeId)를 afterNodeId 노드 바로 뒤로 이동'을 의미한다.\n"
+                + "afterNodeId는 위 후보 id 또는 클리어한 노드 id(%d), 맨 앞으로 보내려면 null.\n"
+                + "바꿀 필요가 없으면 빈 배열 []로 응답하라.\n"
+                + "반드시 아래 JSON 배열로만 응답하라:\n"
+                + "[{\"moveNodeId\":숫자,\"afterNodeId\":숫자또는null,\"reason\":\"간단한 사유\"}]",
+            clearedNode.getTitle(),
+            clearedNode.getNodeId(),
+            candidateLines,
+            clearedNode.getNodeId());
+
+    List<ReorderSuggestion> result = new java.util.ArrayList<>();
+    try {
+      String response = geminiProvider.generate(prompt);
+      if (response != null) {
+        int start = response.indexOf('[');
+        int end = response.lastIndexOf(']');
+        if (start >= 0 && end > start) {
+          JsonNode array = OBJECT_MAPPER.readTree(response.substring(start, end + 1));
+          if (array.isArray()) {
+            for (JsonNode item : array) {
+              if (!item.hasNonNull("moveNodeId")) continue;
+              Long moveId = item.get("moveNodeId").asLong();
+              Long afterId =
+                  item.hasNonNull("afterNodeId") ? item.get("afterNodeId").asLong() : null;
+              result.add(new ReorderSuggestion(moveId, afterId, item.path("reason").asText(null)));
+            }
+          }
+        }
+      }
+    } catch (Exception e) {
+      log.warn("[DiagnosisQuizService] Gemini 순서변경 제안 추출 실패: {}", e.getMessage());
     }
     return result;
   }

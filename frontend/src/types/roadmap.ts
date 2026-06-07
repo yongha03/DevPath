@@ -1,5 +1,5 @@
 export type NodeStatus = 'COMPLETED' | 'IN_PROGRESS' | 'LOCKED' | 'PENDING' | 'NOT_STARTED'
-export type ChangeType = 'ADD' | 'MODIFY' | 'DELETE'
+export type ChangeType = 'ADD' | 'MODIFY' | 'DELETE' | 'REORDER'
 export type DecisionStatus = 'PENDING' | 'APPLIED' | 'IGNORED'
 
 export interface RoadmapNodeItem {
@@ -71,6 +71,8 @@ export interface RecommendationChange {
   nodeTitle: string
   nodeSortOrder: number | null
   branchFromNodeId: number | null
+  reorderAfterNodeId: number | null
+  reorderAfterNodeTitle: string | null
   reason: string
   contextSummary: string
   nodeChangeType: ChangeType

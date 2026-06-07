@@ -60,7 +60,7 @@ function isPendingNodeStatus(status: NodeStatus) {
 }
 
 function normalizeChangeType(type?: string | null): ChangeType | null {
-  if (type === 'ADD' || type === 'MODIFY' || type === 'DELETE') return type
+  if (type === 'ADD' || type === 'MODIFY' || type === 'DELETE' || type === 'REORDER') return type
   return null
 }
 
@@ -89,6 +89,7 @@ function getNodeBoxClass(node: RoadmapNodeItem, change?: RecommendationChange): 
     if (change.nodeChangeType === 'ADD')    return 'node-box node-change-add'
     if (change.nodeChangeType === 'MODIFY') return 'node-box node-change-modify'
     if (change.nodeChangeType === 'DELETE') return 'node-box node-change-delete'
+    if (change.nodeChangeType === 'REORDER') return 'node-box node-change-reorder'
   }
   if (node.status === 'COMPLETED') return 'node-box status-done'
   if (node.status === 'IN_PROGRESS' || isNodeReadyToClear(node)) return 'node-box status-active'
@@ -100,6 +101,7 @@ function getChangeItemClass(type?: ChangeType | null) {
   if (type === 'ADD')    return 'change-item new'
   if (type === 'MODIFY') return 'change-item modified'
   if (type === 'DELETE') return 'change-item delete'
+  if (type === 'REORDER') return 'change-item reorder'
   return 'change-item'
 }
 
@@ -107,6 +109,7 @@ function changeBadgeStyle(type?: ChangeType | null): CSSProperties {
   if (type === 'ADD')    return { background: '#3b82f6' }
   if (type === 'MODIFY') return { background: '#f59e0b' }
   if (type === 'DELETE') return { background: '#ef4444' }
+  if (type === 'REORDER') return { background: '#6366f1' }
   return { background: '#64748b' }
 }
 
@@ -114,6 +117,7 @@ function changeTypeLabel(type?: ChangeType | null) {
   if (type === 'ADD')    return '추가 제안'
   if (type === 'MODIFY') return '수정 제안'
   if (type === 'DELETE') return '삭제 제안'
+  if (type === 'REORDER') return '순서변경 제안'
   return '변경 제안'
 }
 
@@ -168,6 +172,7 @@ function changeTypeIcon(type?: ChangeType | null) {
   if (type === 'ADD')    return 'fa-plus'
   if (type === 'MODIFY') return 'fa-edit'
   if (type === 'DELETE') return 'fa-trash'
+  if (type === 'REORDER') return 'fa-arrows-up-down'
   return 'fa-history'
 }
 
@@ -175,6 +180,7 @@ function changeChipStyle(type?: ChangeType | null): string {
   if (type === 'ADD')    return 'text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded'
   if (type === 'MODIFY') return 'text-xs font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded'
   if (type === 'DELETE') return 'text-xs font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded'
+  if (type === 'REORDER') return 'text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded'
   return 'text-xs font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded'
 }
 
@@ -182,6 +188,7 @@ function changeChipLabel(type?: ChangeType | null) {
   if (type === 'ADD')    return '추가'
   if (type === 'MODIFY') return '수정'
   if (type === 'DELETE') return '삭제'
+  if (type === 'REORDER') return '순서변경'
   return '변경'
 }
 
@@ -1309,7 +1316,7 @@ interface ChangesPanelProps {
   processing: boolean
 }
 
-type FilterType = 'all' | 'ADD' | 'MODIFY' | 'DELETE'
+type FilterType = 'all' | 'ADD' | 'MODIFY' | 'DELETE' | 'REORDER'
 
 function ChangesPanel({
   open,
@@ -1357,13 +1364,21 @@ function ChangesPanel({
       {/* 필터 (pending 탭에서만) */}
       {tab === 'pending' && (
         <div className="flex gap-2 p-3 bg-white border-b border-gray-100 overflow-x-auto">
-          {(['all', 'ADD', 'MODIFY', 'DELETE'] as const).map((f) => (
+          {(['all', 'ADD', 'MODIFY', 'DELETE', 'REORDER'] as const).map((f) => (
             <button
               key={f}
               className={`filter-chip${filter === f ? ' active' : ''}`}
               onClick={() => setFilter(f)}
             >
-              {f === 'all' ? '전체' : f === 'ADD' ? '추가' : f === 'MODIFY' ? '수정' : '삭제'}
+              {f === 'all'
+                ? '전체'
+                : f === 'ADD'
+                  ? '추가'
+                  : f === 'MODIFY'
+                    ? '수정'
+                    : f === 'DELETE'
+                      ? '삭제'
+                      : '순서변경'}
             </button>
           ))}
         </div>
@@ -1384,7 +1399,8 @@ function ChangesPanel({
                     style={{
                       background:
                         change.nodeChangeType === 'ADD' ? '#dbeafe' :
-                        change.nodeChangeType === 'MODIFY' ? '#fed7aa' : '#fee2e2',
+                        change.nodeChangeType === 'MODIFY' ? '#fed7aa' :
+                        change.nodeChangeType === 'REORDER' ? '#e0e7ff' : '#fee2e2',
                     }}
                   >
                     <i
@@ -1392,7 +1408,8 @@ function ChangesPanel({
                       style={{
                         color:
                           change.nodeChangeType === 'ADD' ? '#2563eb' :
-                          change.nodeChangeType === 'MODIFY' ? '#d97706' : '#dc2626',
+                          change.nodeChangeType === 'MODIFY' ? '#d97706' :
+                          change.nodeChangeType === 'REORDER' ? '#4f46e5' : '#dc2626',
                       }}
                     />
                   </div>
@@ -1409,6 +1426,14 @@ function ChangesPanel({
                         change.nodeTitle
                       )}
                     </h4>
+                    {change.nodeChangeType === 'REORDER' && (
+                      <p className="text-xs text-indigo-600 mb-1">
+                        <i className="fas fa-arrow-right-long mr-1" />
+                        {change.reorderAfterNodeTitle
+                          ? `"${change.reorderAfterNodeTitle}" 다음으로 이동`
+                          : '맨 앞으로 이동'}
+                      </p>
+                    )}
                     <p className="text-xs text-gray-600 mb-3 line-clamp-2">{change.reason}</p>
                     <div className="flex gap-2">
                       <button
