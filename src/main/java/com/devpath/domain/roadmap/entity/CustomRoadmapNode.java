@@ -125,6 +125,11 @@ public class CustomRoadmapNode {
     }
   }
 
+  // 커스텀 순서를 특정 값으로 설정한다(수동 순서변경 시 재번호 매기기에 사용).
+  public void changeCustomSortOrder(Integer order) {
+    this.customSortOrder = order;
+  }
+
   // 학습 시작 상태로 변경하는 비즈니스 메서드
   public void startLearning() {
     this.status = NodeStatus.IN_PROGRESS;

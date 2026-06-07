@@ -410,6 +410,20 @@ export const roadmapApi = {
       { auth: true },
     )
   },
+  moveNodeUp(customRoadmapId: number, customNodeId: number) {
+    return request<void>(
+      `/api/my-roadmaps/${customRoadmapId}/nodes/${customNodeId}/move-up`,
+      { method: 'POST' },
+      { auth: true },
+    )
+  },
+  moveNodeDown(customRoadmapId: number, customNodeId: number) {
+    return request<void>(
+      `/api/my-roadmaps/${customRoadmapId}/nodes/${customNodeId}/move-down`,
+      { method: 'POST' },
+      { auth: true },
+    )
+  },
 
   // [TEMP] 추천 무료 강좌 courseId 조회 — 임시 하드코딩, 추후 삭제 예정
   getRecommendedFreeCourse(customRoadmapId: number, customNodeId: number) {

@@ -126,6 +126,30 @@ public class CustomRoadmapController {
     return ResponseEntity.ok(ApiResponse.success("노드를 삭제했습니다.", null));
   }
 
+  @Operation(
+      summary = "노드 순서 위로 이동",
+      description = "노드를 한 칸 위로 이동하고 현재 순서 기준으로 선행관계를 재구성합니다(진행상태 보존).")
+  @PostMapping("/{customRoadmapId}/nodes/{customNodeId}/move-up")
+  public ResponseEntity<ApiResponse<Void>> moveNodeUp(
+      @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
+      @Parameter(description = "커스텀 로드맵 ID", example = "10") @PathVariable Long customRoadmapId,
+      @Parameter(description = "커스텀 노드 ID", example = "101") @PathVariable Long customNodeId) {
+    customRoadmapNodeCommandService.moveNode(userId, customRoadmapId, customNodeId, true);
+    return ResponseEntity.ok(ApiResponse.success("노드 순서를 변경했습니다.", null));
+  }
+
+  @Operation(
+      summary = "노드 순서 아래로 이동",
+      description = "노드를 한 칸 아래로 이동하고 현재 순서 기준으로 선행관계를 재구성합니다(진행상태 보존).")
+  @PostMapping("/{customRoadmapId}/nodes/{customNodeId}/move-down")
+  public ResponseEntity<ApiResponse<Void>> moveNodeDown(
+      @Parameter(hidden = true) @AuthenticationPrincipal Long userId,
+      @Parameter(description = "커스텀 로드맵 ID", example = "10") @PathVariable Long customRoadmapId,
+      @Parameter(description = "커스텀 노드 ID", example = "101") @PathVariable Long customNodeId) {
+    customRoadmapNodeCommandService.moveNode(userId, customRoadmapId, customNodeId, false);
+    return ResponseEntity.ok(ApiResponse.success("노드 순서를 변경했습니다.", null));
+  }
+
   // [TEMP] 추천 무료 강좌 조회 엔드포인트 — 임시 하드코딩, 추후 삭제 예정
   @Operation(
       summary = "추천 무료 강좌 courseId 조회 (임시)",

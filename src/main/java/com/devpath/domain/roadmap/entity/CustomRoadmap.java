@@ -50,6 +50,11 @@ public class CustomRoadmap {
   @Column(name = "progress_rate", nullable = false)
   private Integer progressRate = 0; // 진행률 (0~100%)
 
+  // 사용자가 순서/선행관계를 직접 편집한 로드맵 여부. true면 공식 선행관계 자동 재적용을 중단하고
+  // 현재 영속 엣지를 단일 진실로 사용한다.
+  @Column(name = "prerequisites_customized", nullable = false, columnDefinition = "boolean default false")
+  private boolean prerequisitesCustomized = false;
+
   @CreationTimestamp
   @Column(name = "created_at", updatable = false)
   private LocalDateTime createdAt;
@@ -83,5 +88,10 @@ public class CustomRoadmap {
   // 제목 변경 비즈니스 메서드
   public void changeTitle(String newTitle) {
     this.title = newTitle;
+  }
+
+  // 선행관계를 사용자 편집본으로 고정한다(공식 선행관계 자동 재적용 중단).
+  public void markPrerequisitesCustomized() {
+    this.prerequisitesCustomized = true;
   }
 }

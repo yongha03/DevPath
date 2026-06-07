@@ -1084,6 +1084,21 @@ function NodeDrawer({ node, customRoadmapId, originalRoadmapId, onClose, onClear
     }
   }
 
+  async function handleMove(up: boolean) {
+    if (!node) return
+    setBusy(true)
+    try {
+      if (up) await roadmapApi.moveNodeUp(customRoadmapId, node.customNodeId)
+      else await roadmapApi.moveNodeDown(customRoadmapId, node.customNodeId)
+      onCleared()
+      onClose()
+    } catch (err) {
+      alert((err as Error).message)
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function handleClear() {
     if (!node) return
     if (!confirm(`"${node.title}" 노드를 완료 처리하시겠습니까?`)) return
@@ -1241,6 +1256,22 @@ function NodeDrawer({ node, customRoadmapId, originalRoadmapId, onClose, onClear
           >
             <i className="fas fa-list" /> 전체 강좌 목록 보기
           </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => handleMove(true)}
+              disabled={busy}
+              className="flex-1 bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-50 text-gray-700 py-3 rounded-xl font-bold text-sm flex justify-center items-center gap-2 transition"
+            >
+              <i className="fas fa-arrow-up" /> 위로 이동
+            </button>
+            <button
+              onClick={() => handleMove(false)}
+              disabled={busy}
+              className="flex-1 bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-50 text-gray-700 py-3 rounded-xl font-bold text-sm flex justify-center items-center gap-2 transition"
+            >
+              <i className="fas fa-arrow-down" /> 아래로 이동
+            </button>
+          </div>
           <div className="flex gap-3">
             {node.status !== 'COMPLETED' && (
               <button

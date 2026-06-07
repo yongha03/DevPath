@@ -8,11 +8,13 @@ import com.devpath.domain.roadmap.entity.NodeStatus;
 import com.devpath.domain.roadmap.repository.CustomNodePrerequisiteRepository;
 import com.devpath.domain.roadmap.repository.CustomRoadmapNodeRepository;
 import com.devpath.domain.roadmap.repository.CustomRoadmapRepository;
+import java.util.ArrayList;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** 학습자가 커스텀 로드맵 노드를 직접 보류(defer)하거나 삭제하는 명령 서비스. */
+/** 학습자가 커스텀 로드맵 노드를 직접 보류(defer)·삭제·순서변경하는 명령 서비스. */
 @Service
 @RequiredArgsConstructor
 public class CustomRoadmapNodeCommandService {
@@ -21,6 +23,7 @@ public class CustomRoadmapNodeCommandService {
   private final CustomRoadmapNodeRepository customRoadmapNodeRepository;
   private final CustomNodePrerequisiteRepository customNodePrerequisiteRepository;
   private final RoadmapProgressService roadmapProgressService;
+  private final CustomRoadmapPrerequisiteSyncService prerequisiteSyncService;
 
   /** 노드 보류 설정/해제. 보류 시 완료하지 않아도 다음 노드 진행이 허용된다(미완료 상태 유지). */
   @Transactional
@@ -52,6 +55,43 @@ public class CustomRoadmapNodeCommandService {
         customRoadmapNodeRepository.countByCustomRoadmapAndStatus(
             customRoadmap, NodeStatus.COMPLETED);
     roadmapProgressService.updateProgressRate(customRoadmap, total, completed);
+  }
+
+  /**
+   * 노드를 한 칸 위/아래로 이동한다(customSortOrder 재배치). 이동 후 현재 순서 기준으로 선행관계 그래프를 재생성하고, 해당
+   * 로드맵을 편집본으로 고정(공식 선행관계 자동 재적용 중단)한다. 진행상태는 보존된다.
+   */
+  @Transactional
+  public void moveNode(Long userId, Long customRoadmapId, Long customNodeId, boolean up) {
+    CustomRoadmapNode node = getOwnedNode(userId, customRoadmapId, customNodeId);
+    CustomRoadmap customRoadmap = node.getCustomRoadmap();
+
+    List<CustomRoadmapNode> ordered =
+        new ArrayList<>(
+            customRoadmapNodeRepository.findAllByCustomRoadmapOrderByCustomSortOrderAsc(
+                customRoadmap));
+
+    int index = -1;
+    for (int i = 0; i < ordered.size(); i += 1) {
+      if (ordered.get(i).getId().equals(node.getId())) {
+        index = i;
+        break;
+      }
+    }
+    int neighborIndex = up ? index - 1 : index + 1;
+    if (index < 0 || neighborIndex < 0 || neighborIndex >= ordered.size()) {
+      return; // 경계(맨 위/아래) — 변경 없음
+    }
+
+    // 리스트에서 한 칸 이동 후 1..N으로 재번호 매기기(널/중복 sortOrder도 정규화)
+    ordered.remove(index);
+    ordered.add(neighborIndex, node);
+    for (int i = 0; i < ordered.size(); i += 1) {
+      ordered.get(i).changeCustomSortOrder(i + 1);
+    }
+
+    prerequisiteSyncService.rebuildFromCurrentOrder(customRoadmap);
+    customRoadmap.markPrerequisitesCustomized();
   }
 
   private CustomRoadmapNode getOwnedNode(Long userId, Long customRoadmapId, Long customNodeId) {
