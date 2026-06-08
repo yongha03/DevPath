@@ -7,11 +7,19 @@ import { AUTH_SESSION_SYNC_EVENT, clearStoredAuthSession, readStoredAuthSession 
 type View = 'list' | 'detail'
 type CategoryFilter = 'all' | 'qa' | 'tech' | 'career' | 'free'
 
+const categoryFilters: CategoryFilter[] = ['all', 'qa', 'tech', 'career', 'free']
+
+function readCategoryFilterFromLocation(): CategoryFilter {
+  const value = new URLSearchParams(window.location.search).get('category')
+
+  return categoryFilters.includes(value as CategoryFilter) ? (value as CategoryFilter) : 'all'
+}
+
 export default function CommunityListPage() {
   const [session, setSession] = useState(() => readStoredAuthSession())
   const [authView, setAuthView] = useState<AuthView | null>(null)
   const [view, setView] = useState<View>('list')
-  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>('all')
+  const [categoryFilter, setCategoryFilter] = useState<CategoryFilter>(() => readCategoryFilterFromLocation())
 
   useEffect(() => {
     function handleSessionSync() {

@@ -3,12 +3,60 @@ import type { AuthSession } from '../types/auth'
 import AccountUserMenu from './AccountUserMenu'
 import HeaderAlerts from './HeaderAlerts'
 
-const headerLinks = [
-  { href: '/roadmap-hub', label: '\uB85C\uB4DC\uB9F5' },
+type HeaderSubLink = {
+  href: string
+  label: string
+}
+
+type HeaderLink = HeaderSubLink & {
+  children?: HeaderSubLink[]
+}
+
+export const siteHeaderLinks: HeaderLink[] = [
+  {
+    href: '/roadmap-hub',
+    label: '\uB85C\uB4DC\uB9F5',
+    children: [
+      { href: '/survey', label: 'AI \uB85C\uB4DC\uB9F5 \uCD94\uCC9C' },
+      { href: '/roadmap-hub', label: '\uB85C\uB4DC\uB9F5 \uD0D0\uC0C9' },
+      { href: '/my-roadmap-list', label: '\uB0B4 \uB85C\uB4DC\uB9F5' },
+    ],
+  },
   { href: '/lecture-list', label: '\uAC15\uC758' },
-  { href: '/lounge-dashboard', label: '\uD504\uB85C\uC81D\uD2B8' },
+  {
+    href: '/lounge-dashboard',
+    label: '\uD504\uB85C\uC81D\uD2B8',
+    children: [
+      { href: '/lounge-dashboard', label: '\uD504\uB85C\uC81D\uD2B8 \uB300\uC2DC\uBCF4\uB4DC' },
+      { href: '/community-lounge', label: '\uB77C\uC6B4\uC9C0 (\uD300 \uCC3E\uAE30)' },
+      { href: '/mentoring-hub', label: '\uBA58\uD1A0\uB9C1 \uCC3E\uAE30' },
+      { href: '/workspace-hub', label: '\uC6CC\uD06C\uC2A4\uD398\uC774\uC2A4' },
+      { href: '/dev-showcase', label: '\uB7F0\uCE6D \uC1FC\uCF00\uC774\uC2A4' },
+    ],
+  },
   { href: '/job-matching', label: '\uCC44\uC6A9\uBD84\uC11D' },
-  { href: '/community-list', label: '\uCEE4\uBBA4\uB2C8\uD2F0' },
+  {
+    href: '/community-list',
+    label: '\uCEE4\uBBA4\uB2C8\uD2F0',
+    children: [
+      { href: '/community-list?category=all', label: '\uC804\uCCB4\uAE00' },
+      { href: '/community-list?category=qa', label: 'Q&A' },
+      { href: '/community-list?category=tech', label: '\uAE30\uC220 \uACF5\uC720' },
+      { href: '/community-list?category=career', label: '\uCEE4\uB9AC\uC5B4/\uC774\uC9C1' },
+      { href: '/community-list?category=free', label: '\uC790\uC720\uAC8C\uC2DC\uD310' },
+    ],
+  },
+]
+
+export const instructorDashboardLinks: HeaderSubLink[] = [
+  { href: '/instructor-dashboard', label: '\uB300\uC2DC\uBCF4\uB4DC' },
+  { href: '/course-management', label: '\uAC15\uC758 \uAD00\uB9AC' },
+  { href: '/instructor-mentoring', label: '\uBA58\uD1A0\uB9C1 \uAD00\uB9AC' },
+  { href: '/student-analytics', label: '\uC218\uAC15\uC0DD \uBD84\uC11D' },
+  { href: '/instructor-qna', label: '\uC9C8\uBB38 \uAC8C\uC2DC\uD310' },
+  { href: '/instructor-reviews', label: '\uC218\uAC15\uD3C9 \uAD00\uB9AC' },
+  { href: '/instructor-revenue', label: '\uC815\uC0B0 \uAD00\uB9AC' },
+  { href: '/instructor-marketing', label: '\uB9C8\uCF00\uD305 \uAD00\uB9AC' },
 ]
 
 // Edit only this object when you want pixel-level header tuning.
@@ -61,7 +109,7 @@ export default function SiteHeader({
 }: SiteHeaderProps) {
   const showInstructorDashboard = session?.role === 'ROLE_INSTRUCTOR'
   const instructorHeaderLinks = showInstructorDashboard
-    ? [{ href: '/instructor-dashboard', label: '\uAC15\uC0AC \uB300\uC2DC\uBCF4\uB4DC' }]
+    ? [{ href: '/instructor-dashboard', label: '\uAC15\uC0AC \uB300\uC2DC\uBCF4\uB4DC', children: instructorDashboardLinks }]
     : []
   const containerStyle: CSSProperties = {
     maxWidth: siteHeaderTuning.maxWidthPx == null ? 'none' : `${siteHeaderTuning.maxWidthPx}px`,
@@ -127,30 +175,83 @@ export default function SiteHeader({
 
           <div className="hidden flex-1 items-center justify-center text-sm font-bold text-gray-500 md:flex">
             <div className="relative inline-flex items-center" style={navStyle}>
-              {headerLinks.map((item) => (
-                <a
-                  key={item.href}
-                  href={item.href}
-                  className={activeNavHref === item.href ? activeNavLinkClassName : defaultNavLinkClassName}
-                >
-                  {item.label}
-                </a>
-              ))}
+              {siteHeaderLinks.map((item) => {
+                const children = item.children ?? []
+                const hasChildren = children.length > 0
+                const isActive =
+                  activeNavHref === item.href ||
+                  children.some((child) => activeNavHref === child.href.split('?')[0])
+
+                return (
+                  <div key={item.href} className="site-header-nav-item">
+                    <a
+                      href={item.href}
+                      className={isActive ? activeNavLinkClassName : defaultNavLinkClassName}
+                      aria-haspopup={hasChildren ? 'menu' : undefined}
+                    >
+                      {item.label}
+                    </a>
+
+                    {hasChildren ? (
+                      <div
+                        className="site-header-mega-menu"
+                        role="menu"
+                        aria-label={`${item.label} \uC138\uBD80 \uBA54\uB274`}
+                      >
+                        <div className="site-header-mega-panel">
+                          <div className="site-header-mega-links">
+                            {children.map((child) => (
+                              <a key={child.href + child.label} href={child.href} className="site-header-mega-link" role="menuitem">
+                                {child.label}
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                )
+              })}
 
               {showInstructorDashboard ? (
                 <div
                   className="absolute top-1/2 left-full inline-flex -translate-y-1/2 whitespace-nowrap"
                   style={instructorStyle}
                 >
-                  {instructorHeaderLinks.map((item) => (
-                    <a
-                      key={item.href}
-                      href={item.href}
-                      className={activeNavHref === item.href ? activeNavLinkClassName : defaultNavLinkClassName}
-                    >
-                      {item.label}
-                    </a>
-                  ))}
+                  {instructorHeaderLinks.map((item) => {
+                    const children = item.children ?? []
+                    const isActive =
+                      activeNavHref === item.href ||
+                      children.some((child) => activeNavHref === child.href)
+
+                    return (
+                      <div key={item.href} className="site-header-nav-item">
+                        <a
+                          href={item.href}
+                          className={isActive ? activeNavLinkClassName : defaultNavLinkClassName}
+                          aria-haspopup="menu"
+                        >
+                          {item.label}
+                        </a>
+
+                        <div
+                          className="site-header-mega-menu"
+                          role="menu"
+                          aria-label={`${item.label} \uC138\uBD80 \uBA54\uB274`}
+                        >
+                          <div className="site-header-mega-panel">
+                            <div className="site-header-mega-links">
+                              {children.map((child) => (
+                                <a key={child.href} href={child.href} className="site-header-mega-link" role="menuitem">
+                                  {child.label}
+                                </a>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )
+                  })}
                 </div>
               ) : null}
             </div>
@@ -210,3 +311,4 @@ export default function SiteHeader({
     </>
   )
 }
+
