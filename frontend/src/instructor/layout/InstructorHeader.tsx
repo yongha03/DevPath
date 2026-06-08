@@ -1,16 +1,8 @@
 import type { CSSProperties } from 'react'
 import AccountUserMenu from '../../components/AccountUserMenu'
 import HeaderAlerts from '../../components/HeaderAlerts'
-import { siteHeaderTuning } from '../../components/SiteHeader'
+import { instructorDashboardLinks, siteHeaderLinks, siteHeaderTuning } from '../../components/SiteHeader'
 import type { AuthSession } from '../../types/auth'
-
-const headerLinks = [
-  { href: '/roadmap-hub', label: '\uB85C\uB4DC\uB9F5' },
-  { href: '/lecture-list', label: '\uAC15\uC758' },
-  { href: '/lounge-dashboard', label: '\uD504\uB85C\uC81D\uD2B8' },
-  { href: '/job-matching', label: '\uCC44\uC6A9\uBD84\uC11D' },
-  { href: '/community-list', label: '\uCEE4\uBBA4\uB2C8\uD2F0' },
-]
 
 function getMoveStyle(offset: { x: number; y: number }): CSSProperties {
   return {
@@ -74,17 +66,65 @@ export default function InstructorHeader({
 
           <div className="hidden flex-1 items-center justify-center text-sm font-bold text-gray-500 md:flex">
             <div className="relative inline-flex items-center" style={navStyle}>
-              {headerLinks.map((item) => (
-                <a key={item.href} href={item.href} className={defaultNavLinkClassName}>
-                  {item.label}
+              {siteHeaderLinks.map((item) => {
+                const children = item.children ?? []
+                const hasChildren = children.length > 0
+
+                return (
+                  <div key={item.href} className="site-header-nav-item">
+                    <a
+                      href={item.href}
+                      className={defaultNavLinkClassName}
+                      aria-haspopup={hasChildren ? 'menu' : undefined}
+                    >
+                      {item.label}
+                    </a>
+
+                    {hasChildren ? (
+                      <div
+                        className="site-header-mega-menu"
+                        role="menu"
+                        aria-label={`${item.label} \uC138\uBD80 \uBA54\uB274`}
+                      >
+                        <div className="site-header-mega-panel">
+                          <div className="site-header-mega-links">
+                            {children.map((child) => (
+                              <a key={child.href + child.label} href={child.href} className="site-header-mega-link" role="menuitem">
+                                {child.label}
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                )
+              })}
+              <div className="site-header-nav-item">
+                <a
+                  href="/instructor-dashboard"
+                  className={activeNavLinkClassName}
+                  aria-haspopup="menu"
+                >
+                  {'\uAC15\uC0AC \uB300\uC2DC\uBCF4\uB4DC'}
                 </a>
-              ))}
-              <a
-                href="/instructor-dashboard"
-                className={activeNavLinkClassName}
-              >
-                {'\uAC15\uC0AC \uB300\uC2DC\uBCF4\uB4DC'}
-              </a>
+
+                <div
+                  className="site-header-mega-menu"
+                  role="menu"
+                  aria-label={'\uAC15\uC0AC \uB300\uC2DC\uBCF4\uB4DC \uC138\uBD80 \uBA54\uB274'}
+                >
+                  <div className="site-header-mega-panel">
+                    <div className="site-header-mega-links">
+                      {instructorDashboardLinks.map((item) => (
+                        <a key={item.href} href={item.href} className="site-header-mega-link" role="menuitem">
+                          {item.label}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 

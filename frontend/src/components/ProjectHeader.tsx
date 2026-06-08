@@ -1,9 +1,8 @@
 import type { CSSProperties } from 'react'
-import { projectHeaderLinks } from '../project-shell'
 import type { AuthSession } from '../types/auth'
 import AccountUserMenu from './AccountUserMenu'
 import HeaderAlerts from './HeaderAlerts'
-import { siteHeaderTuning } from './SiteHeader'
+import { siteHeaderLinks, siteHeaderTuning } from './SiteHeader'
 
 type ProjectHeaderProps = {
   session: AuthSession | null
@@ -58,15 +57,43 @@ export default function ProjectHeader({
 
         <nav className="hidden flex-1 items-center justify-center text-sm font-bold text-gray-500 md:flex">
           <div className="relative inline-flex items-center" style={navStyle}>
-            {projectHeaderLinks.map((item) => (
-              <a
-                key={item.href}
-                href={item.href}
-                className={item.href === activeHref ? 'site-header-nav-link site-header-nav-link--active' : 'site-header-nav-link'}
-              >
-                {item.label}
-              </a>
-            ))}
+            {siteHeaderLinks.map((item) => {
+              const children = item.children ?? []
+              const hasChildren = children.length > 0
+              const isActive =
+                item.href === activeHref ||
+                children.some((child) => child.href.split('?')[0] === activeHref)
+
+              return (
+                <div key={item.href} className="site-header-nav-item">
+                  <a
+                    href={item.href}
+                    className={isActive ? 'site-header-nav-link site-header-nav-link--active' : 'site-header-nav-link'}
+                    aria-haspopup={hasChildren ? 'menu' : undefined}
+                  >
+                    {item.label}
+                  </a>
+
+                  {hasChildren ? (
+                    <div
+                      className="site-header-mega-menu"
+                      role="menu"
+                      aria-label={`${item.label} \uC138\uBD80 \uBA54\uB274`}
+                    >
+                      <div className="site-header-mega-panel">
+                        <div className="site-header-mega-links">
+                          {children.map((child) => (
+                            <a key={child.href + child.label} href={child.href} className="site-header-mega-link" role="menuitem">
+                              {child.label}
+                            </a>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ) : null}
+                </div>
+              )
+            })}
           </div>
         </nav>
 
