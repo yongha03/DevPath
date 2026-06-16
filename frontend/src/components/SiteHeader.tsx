@@ -1,4 +1,4 @@
-import type { CSSProperties, ReactNode } from 'react'
+import { useState, type CSSProperties, type ReactNode } from 'react'
 import type { AuthSession } from '../types/auth'
 import AccountUserMenu from './AccountUserMenu'
 import HeaderAlerts from './HeaderAlerts'
@@ -107,10 +107,12 @@ export default function SiteHeader({
   startOverlay,
   endOverlay,
 }: SiteHeaderProps) {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const showInstructorDashboard = session?.role === 'ROLE_INSTRUCTOR'
   const instructorHeaderLinks = showInstructorDashboard
     ? [{ href: '/instructor-dashboard', label: '\uAC15\uC0AC \uB300\uC2DC\uBCF4\uB4DC', children: instructorDashboardLinks }]
     : []
+  const mobileMenuLinks = [...siteHeaderLinks, ...instructorHeaderLinks]
   const containerStyle: CSSProperties = {
     maxWidth: siteHeaderTuning.maxWidthPx == null ? 'none' : `${siteHeaderTuning.maxWidthPx}px`,
     paddingLeft: `clamp(16px, 3vw, ${siteHeaderTuning.horizontalPaddingPx}px)`,
@@ -133,6 +135,10 @@ export default function SiteHeader({
   const userStyle = getMoveStyle(userGroupOffsetOverride ?? siteHeaderTuning.userGroup)
   const railStyle: CSSProperties = { top: `${offsetTopPx}px` }
   const headerStyle: CSSProperties = { top: `${offsetTopPx}px` }
+  const mobileMenuStyle: CSSProperties = {
+    top: `calc(var(--app-header-height) + ${offsetTopPx}px)`,
+    maxHeight: `calc(100dvh - var(--app-header-height) - ${offsetTopPx}px)`,
+  }
   const defaultNavLinkClassName = 'site-header-nav-link'
   const activeNavLinkClassName = 'site-header-nav-link site-header-nav-link--active'
   const showHeaderAlerts = Boolean(session && activeNavHref !== '/roadmap-hub')
@@ -276,6 +282,17 @@ export default function SiteHeader({
             </div>
 
             <div className="site-header-mobile-user flex min-w-0 items-center justify-end gap-2 lg:hidden">
+              <button
+                type="button"
+                className="site-header-mobile-menu-button"
+                aria-label={mobileMenuOpen ? '\uBA54\uB274 \uB2EB\uAE30' : '\uBA54\uB274 \uC5F4\uAE30'}
+                aria-expanded={mobileMenuOpen}
+                aria-controls="site-header-mobile-menu"
+                onClick={() => setMobileMenuOpen((current) => !current)}
+              >
+                <i className={`fas ${mobileMenuOpen ? 'fa-times' : 'fa-bars'}`} aria-hidden="true" />
+              </button>
+
               {session ? (
                 <>
                   {showHeaderAlerts ? <HeaderAlerts session={session} /> : null}
@@ -294,6 +311,64 @@ export default function SiteHeader({
             </div>
           </div>
         </div>
+
+        {mobileMenuOpen ? (
+          <>
+            <button
+              type="button"
+              className="site-header-mobile-menu-backdrop lg:hidden"
+              style={mobileMenuStyle}
+              aria-label={"\uBA54\uB274 \uB2EB\uAE30"}
+              onClick={() => setMobileMenuOpen(false)}
+            />
+
+            <div
+              id="site-header-mobile-menu"
+              className="site-header-mobile-menu-panel lg:hidden"
+              style={mobileMenuStyle}
+            >
+              <div className="site-header-mobile-menu-inner">
+                <div className="site-header-mobile-menu-title">{'\uBA54\uB274'}</div>
+                <div className="site-header-mobile-menu-links">
+                  {mobileMenuLinks.map((item) => {
+                    const children = item.children ?? []
+                    const isActive =
+                      activeNavHref === item.href ||
+                      children.some((child) => activeNavHref === child.href.split('?')[0])
+
+                    return (
+                      <div key={item.href} className="site-header-mobile-menu-group">
+                        <a
+                          href={item.href}
+                          className={isActive ? 'site-header-mobile-menu-link active' : 'site-header-mobile-menu-link'}
+                          onClick={() => setMobileMenuOpen(false)}
+                        >
+                          <span>{item.label}</span>
+                          <i className="fas fa-chevron-right" aria-hidden="true" />
+                        </a>
+
+                        {children.length > 0 ? (
+                          <div className="site-header-mobile-sub-links">
+                            {children.map((child) => (
+                              <a
+                                key={child.href + child.label}
+                                href={child.href}
+                                className="site-header-mobile-sub-link"
+                                onClick={() => setMobileMenuOpen(false)}
+                              >
+                                {child.label}
+                              </a>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            </div>
+          </>
+        ) : null}
 
         {startOverlay ? (
           <div className="absolute inset-0 pointer-events-none">

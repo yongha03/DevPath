@@ -15901,6 +15901,120 @@ aside::-webkit-scrollbar-track {
     text-overflow: ellipsis;
   }
 
+  .site-header-mobile-menu-button {
+    display: inline-flex;
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #e5e7eb;
+    border-radius: 999px;
+    background: #fff;
+    color: #111827;
+    font-size: 15px;
+    line-height: 1;
+    box-shadow: 0 6px 16px rgba(15, 23, 42, 0.08);
+  }
+
+  .site-header-mobile-menu-backdrop {
+    position: fixed;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 1000;
+    border: 0;
+    background: rgba(15, 23, 42, 0.28);
+    backdrop-filter: blur(2px);
+  }
+
+  .site-header-mobile-menu-panel {
+    position: fixed;
+    right: 0;
+    left: 0;
+    z-index: 1001;
+    overflow-y: auto;
+    border-top: 1px solid #f3f4f6;
+    background: #fff;
+    box-shadow: 0 24px 48px rgba(15, 23, 42, 0.16);
+  }
+
+  .site-header-mobile-menu-inner {
+    width: min(100%, 560px);
+    margin-inline: auto;
+    padding: 18px var(--app-page-gutter) 28px;
+  }
+
+  .site-header-mobile-menu-title {
+    margin-bottom: 10px;
+    color: #9ca3af;
+    font-size: 11px;
+    font-weight: 800;
+    line-height: 16px;
+  }
+
+  .site-header-mobile-menu-links {
+    display: grid;
+    gap: 10px;
+  }
+
+  .site-header-mobile-menu-group {
+    min-width: 0;
+    border: 1px solid #eef2f7;
+    border-radius: 14px;
+    background: #fff;
+  }
+
+  .site-header-mobile-menu-link {
+    display: flex;
+    min-height: 48px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 0 16px;
+    color: #1f2937;
+    font-size: 15px;
+    font-weight: 800;
+    line-height: 20px;
+    text-decoration: none;
+  }
+
+  .site-header-mobile-menu-link.active {
+    color: #00c471;
+  }
+
+  .site-header-mobile-menu-link i {
+    flex: 0 0 auto;
+    color: #cbd5e1;
+    font-size: 11px;
+  }
+
+  .site-header-mobile-sub-links {
+    display: grid;
+    gap: 2px;
+    border-top: 1px solid #f3f4f6;
+    padding: 6px;
+  }
+
+  .site-header-mobile-sub-link {
+    display: flex;
+    min-height: 38px;
+    align-items: center;
+    border-radius: 10px;
+    padding: 0 10px;
+    color: #6b7280;
+    font-size: 13px;
+    font-weight: 700;
+    line-height: 18px;
+    text-decoration: none;
+  }
+
+  .site-header-mobile-sub-link:active,
+  .site-header-mobile-sub-link:hover {
+    background: #f7fffb;
+    color: #047857;
+  }
+
   .home-page-body-zoom,
   .lecture-list-body-zoom,
   .course-detail-body-zoom,
