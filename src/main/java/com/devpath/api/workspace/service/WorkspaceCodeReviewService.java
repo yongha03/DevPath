@@ -13,6 +13,7 @@ import java.sql.PreparedStatement;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
@@ -134,6 +135,11 @@ public class WorkspaceCodeReviewService {
         resolveSelectedFilePath(row, request == null ? null : request.filePath());
     String reviewDiff = buildAiReviewDiff(row, selectedFilePath);
 
+    if (isDemoFrontendCommerceReview(workspaceId, row)) {
+      return createDemoAiReview(
+          workspaceId, reviewId, userId, row, selectedFilePath, reviewDiff, dashboard);
+    }
+
     AiCodeReviewResponse.Detail aiReview =
         aiCodeReviewService.createReview(
             userId,
@@ -167,6 +173,115 @@ public class WorkspaceCodeReviewService {
         workspaceId);
 
     return toDetail(findDetailRow(workspaceId, reviewId), dashboard);
+  }
+
+  private WorkspaceCodeReviewResponse.Detail createDemoAiReview(
+      Long workspaceId,
+      Long reviewId,
+      Long userId,
+      DetailRow row,
+      String selectedFilePath,
+      String reviewDiff,
+      WorkspaceDashboardResponse dashboard) {
+    delayDemoAiReview();
+
+    Long aiReviewId =
+        jdbcTemplate.queryForObject(
+            """
+            INSERT INTO ai_code_reviews (
+                requester_id, pull_request_submission_id, title, diff_text, summary,
+                comment_count, provider_name, is_deleted, created_at, updated_at
+            )
+            VALUES (?, NULL, ?, ?, ?, 3, 'GEMINI_FALLBACK', FALSE, now(), now())
+            RETURNING ai_code_review_id
+            """,
+            Long.class,
+            userId,
+            "AI 시니어 멘토 리뷰 - " + row.summary().title(),
+            reviewDiff,
+            "PR은 시연 가능한 상태지만 품절 상태 처리, 접근성 라벨, 장바구니 side effect 분리를 더 명확히 해야 합니다.");
+
+    if (aiReviewId == null) {
+      throw new CustomException(ErrorCode.INVALID_INPUT);
+    }
+
+    insertDemoAiReviewComment(
+        aiReviewId,
+        "상태 관리",
+        42,
+        "장바구니 변경은 카드 밖에서 처리",
+        "ProductCard는 표시용 컴포넌트로 유지해야 상품 목록과 상세 화면에서 재사용하기 좋습니다.",
+        "부모 컨테이너에서 onAddToCart와 disabledReason을 props로 넘겨주세요.");
+    insertDemoAiReviewComment(
+        aiReviewId,
+        "접근성",
+        48,
+        "품절 사유를 스크린리더에도 노출",
+        "disabled 버튼은 키보드 탐색 중에도 품절 이유를 이해할 수 있어야 합니다.",
+        "간단한 재고 상태 메시지에 연결되는 aria-describedby를 추가해 주세요.");
+    insertDemoAiReviewComment(
+        aiReviewId,
+        "테스트",
+        55,
+        "상호작용 테스트 1개 추가",
+        "정상 흐름은 데모 데이터로 보이지만 품절 상태는 쉽게 회귀할 수 있습니다.",
+        "품절 버튼 비활성화와 장바구니 추가 callback을 확인하는 컴포넌트 테스트를 추가해 주세요.");
+
+    jdbcTemplate.update(
+        """
+        UPDATE workspace_code_reviews
+           SET ai_code_review_id = ?,
+               file_path = ?,
+               updated_at = now()
+         WHERE id = ?
+           AND workspace_id = ?
+           AND is_deleted = FALSE
+        """,
+        aiReviewId,
+        selectedFilePath,
+        reviewId,
+        workspaceId);
+
+    return toDetail(findDetailRow(workspaceId, reviewId), dashboard);
+  }
+
+  private void insertDemoAiReviewComment(
+      Long aiReviewId,
+      String category,
+      Integer lineNumber,
+      String title,
+      String message,
+      String suggestion) {
+    jdbcTemplate.update(
+        """
+        INSERT INTO ai_review_comments (
+            ai_code_review_id, category, line_number, title, message, suggestion,
+            status, decided_at, is_deleted, created_at, updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, 'PENDING', NULL, FALSE, now(), now())
+        """,
+        aiReviewId,
+        category,
+        lineNumber,
+        title,
+        message,
+        suggestion);
+  }
+
+  private void delayDemoAiReview() {
+    try {
+      Thread.sleep(ThreadLocalRandom.current().nextLong(7000L, 10001L));
+    } catch (InterruptedException exception) {
+      Thread.currentThread().interrupt();
+      throw new CustomException(ErrorCode.INVALID_INPUT);
+    }
+  }
+
+  private boolean isDemoFrontendCommerceReview(Long workspaceId, DetailRow row) {
+    return Long.valueOf(6L).equals(workspaceId)
+        && "GITHUB".equals(row.externalProvider())
+        && "devpath/frontend-commerce#17".equals(row.externalId())
+        && row.summary().aiCodeReviewId() == null;
   }
 
   @Transactional
@@ -401,6 +516,8 @@ public class WorkspaceCodeReviewService {
                       toLocalDateTime(rs.getTimestamp("updated_at")));
               return new DetailRow(
                   summary,
+                  rs.getString("external_provider"),
+                  rs.getString("external_id"),
                   rs.getString("description"),
                   rs.getString("pr_url"),
                   rs.getString("diff_text"),
@@ -626,6 +743,8 @@ public class WorkspaceCodeReviewService {
 
   private record DetailRow(
       WorkspaceCodeReviewResponse.Summary summary,
+      String externalProvider,
+      String externalId,
       String description,
       String prUrl,
       String diffText,
