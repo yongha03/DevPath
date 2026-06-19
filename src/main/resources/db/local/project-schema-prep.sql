@@ -54,6 +54,294 @@ BEGIN
 END $$;
 ^^^ END OF SCRIPT ^^^
 
+-- 비백엔드 공식 로드맵 노드 필수 태그 정리
+-- 노드 수정 화면은 node_required_tags를 읽으므로 기존 DB 매핑도 의미 있는 태그만 남긴다.
+DO $$
+BEGIN
+    IF to_regclass('public.node_required_tags') IS NULL
+        OR to_regclass('public.roadmap_nodes') IS NULL
+        OR to_regclass('public.roadmaps') IS NULL
+        OR to_regclass('public.roadmap_hub_items') IS NULL
+        OR to_regclass('public.roadmap_hub_sections') IS NULL
+        OR to_regclass('public.tags') IS NULL THEN
+        RETURN;
+    END IF;
+
+    WITH target_roadmaps AS (
+        SELECT
+            r.roadmap_id,
+            COALESCE(MAX(item.subtitle), r.title) AS display_name,
+            CASE
+                WHEN MAX(CASE WHEN section_item.section_key = 'role-based' THEN 1 ELSE 0 END) = 1 THEN 'Role Roadmap'
+                ELSE 'Skill Roadmap'
+            END AS tag_category
+        FROM public.roadmap_hub_items item
+        JOIN public.roadmap_hub_sections section_item ON section_item.id = item.section_id
+        JOIN public.roadmaps r ON r.roadmap_id = item.linked_roadmap_id
+        WHERE item.linked_roadmap_id IS NOT NULL
+          AND item.is_active = TRUE
+          AND section_item.is_active = TRUE
+          AND r.is_official = TRUE
+          AND r.is_deleted = FALSE
+          AND r.title <> 'Backend Master Roadmap'
+        GROUP BY r.roadmap_id, r.title
+        HAVING COALESCE(MAX(item.subtitle), r.title) <> 'Backend'
+    ),
+    target_nodes AS (
+        SELECT
+            target.display_name,
+            target.tag_category,
+            rn.node_id,
+            rn.sort_order,
+            rn.sub_topics
+        FROM target_roadmaps target
+        JOIN public.roadmap_nodes rn ON rn.roadmap_id = target.roadmap_id
+    ),
+    topic_segments AS (
+        SELECT
+            target_nodes.node_id,
+            target_nodes.tag_category,
+            split_item.segment_order,
+            split_part(btrim(split_item.segment), ':', 1) AS topic_text
+        FROM target_nodes
+        CROSS JOIN LATERAL regexp_split_to_table(COALESCE(target_nodes.sub_topics, ''), ',') WITH ORDINALITY AS split_item(segment, segment_order)
+        WHERE NOT (target_nodes.sort_order = 1 AND split_item.segment_order = 1)
+    ),
+    raw_topic_tokens AS (
+        SELECT
+            topic_segments.node_id,
+            topic_segments.tag_category,
+            topic_segments.segment_order,
+            split_token.token_order,
+            regexp_replace(
+                regexp_replace(
+                    btrim(regexp_replace(split_token.token, '[^[:alnum:]가-힣+#./&-]+', '', 'g')),
+                    '하는$',
+                    ''
+                ),
+                '(으로|로|과|와|은|는|이|가|을|를|의)$',
+                ''
+            ) AS tag_name
+        FROM topic_segments
+        CROSS JOIN LATERAL regexp_split_to_table(topic_segments.topic_text, '\s+') WITH ORDINALITY AS split_token(token, token_order)
+    ),
+    filtered_topic_tokens AS (
+        SELECT node_id, tag_category, tag_name, segment_order, token_order
+        FROM raw_topic_tokens
+        WHERE tag_name <> ''
+          AND char_length(tag_name) BETWEEN 2 AND 40
+          AND tag_name NOT IN ('개요', '로드맵', '이해', '역할', '정의', '학습', '목표', '책임', '범위', 'and', 'or', 'with', '및')
+    ),
+    deduped_topic_tokens AS (
+        SELECT
+            node_id,
+            tag_name,
+            tag_category AS category,
+            MIN(segment_order) AS segment_order,
+            MIN(token_order) AS token_order
+        FROM filtered_topic_tokens
+        GROUP BY node_id, tag_name, tag_category
+    ),
+    generated_tags AS (
+        SELECT node_id, tag_name, category
+        FROM (
+            SELECT
+                node_id,
+                tag_name,
+                category,
+                ROW_NUMBER() OVER (PARTITION BY node_id ORDER BY segment_order, token_order, tag_name) AS tag_rank
+            FROM deduped_topic_tokens
+        ) ranked_tags
+        WHERE tag_rank <= 5
+    )
+    INSERT INTO public.tags (name, category, is_official, is_deleted)
+    SELECT generated_tags.tag_name, MIN(generated_tags.category), TRUE, FALSE
+    FROM generated_tags
+    LEFT JOIN public.tags existing ON existing.name = generated_tags.tag_name
+    WHERE existing.tag_id IS NULL
+    GROUP BY generated_tags.tag_name;
+
+    WITH target_roadmaps AS (
+        SELECT
+            r.roadmap_id,
+            COALESCE(MAX(item.subtitle), r.title) AS display_name
+        FROM public.roadmap_hub_items item
+        JOIN public.roadmap_hub_sections section_item ON section_item.id = item.section_id
+        JOIN public.roadmaps r ON r.roadmap_id = item.linked_roadmap_id
+        WHERE item.linked_roadmap_id IS NOT NULL
+          AND item.is_active = TRUE
+          AND section_item.is_active = TRUE
+          AND r.is_official = TRUE
+          AND r.is_deleted = FALSE
+          AND r.title <> 'Backend Master Roadmap'
+        GROUP BY r.roadmap_id, r.title
+        HAVING COALESCE(MAX(item.subtitle), r.title) <> 'Backend'
+    ),
+    target_nodes AS (
+        SELECT
+            target.display_name,
+            rn.node_id,
+            rn.sort_order,
+            rn.sub_topics
+        FROM target_roadmaps target
+        JOIN public.roadmap_nodes rn ON rn.roadmap_id = target.roadmap_id
+    ),
+    topic_segments AS (
+        SELECT
+            target_nodes.node_id,
+            split_item.segment_order,
+            split_part(btrim(split_item.segment), ':', 1) AS topic_text
+        FROM target_nodes
+        CROSS JOIN LATERAL regexp_split_to_table(COALESCE(target_nodes.sub_topics, ''), ',') WITH ORDINALITY AS split_item(segment, segment_order)
+        WHERE NOT (target_nodes.sort_order = 1 AND split_item.segment_order = 1)
+    ),
+    raw_topic_tokens AS (
+        SELECT
+            topic_segments.node_id,
+            topic_segments.segment_order,
+            split_token.token_order,
+            regexp_replace(
+                regexp_replace(
+                    btrim(regexp_replace(split_token.token, '[^[:alnum:]가-힣+#./&-]+', '', 'g')),
+                    '하는$',
+                    ''
+                ),
+                '(으로|로|과|와|은|는|이|가|을|를|의)$',
+                ''
+            ) AS tag_name
+        FROM topic_segments
+        CROSS JOIN LATERAL regexp_split_to_table(topic_segments.topic_text, '\s+') WITH ORDINALITY AS split_token(token, token_order)
+    ),
+    filtered_topic_tokens AS (
+        SELECT node_id, tag_name, segment_order, token_order
+        FROM raw_topic_tokens
+        WHERE tag_name <> ''
+          AND char_length(tag_name) BETWEEN 2 AND 40
+          AND tag_name NOT IN ('개요', '로드맵', '이해', '역할', '정의', '학습', '목표', '책임', '범위', 'and', 'or', 'with', '및')
+    ),
+    deduped_topic_tokens AS (
+        SELECT
+            node_id,
+            tag_name,
+            MIN(segment_order) AS segment_order,
+            MIN(token_order) AS token_order
+        FROM filtered_topic_tokens
+        GROUP BY node_id, tag_name
+    ),
+    allowed_node_tags AS (
+        SELECT node_id, tag_name
+        FROM (
+            SELECT
+                node_id,
+                tag_name,
+                ROW_NUMBER() OVER (PARTITION BY node_id ORDER BY segment_order, token_order, tag_name) AS tag_rank
+            FROM deduped_topic_tokens
+        ) ranked_tags
+        WHERE tag_rank <= 5
+    )
+    INSERT INTO public.node_required_tags (node_id, tag_id)
+    SELECT DISTINCT allowed.node_id, tag_item.tag_id
+    FROM allowed_node_tags allowed
+    JOIN public.tags tag_item ON tag_item.name = allowed.tag_name
+    WHERE NOT EXISTS (
+        SELECT 1
+        FROM public.node_required_tags existing
+        WHERE existing.node_id = allowed.node_id
+          AND existing.tag_id = tag_item.tag_id
+    );
+
+    WITH target_roadmaps AS (
+        SELECT
+            r.roadmap_id,
+            COALESCE(MAX(item.subtitle), r.title) AS display_name
+        FROM public.roadmap_hub_items item
+        JOIN public.roadmap_hub_sections section_item ON section_item.id = item.section_id
+        JOIN public.roadmaps r ON r.roadmap_id = item.linked_roadmap_id
+        WHERE item.linked_roadmap_id IS NOT NULL
+          AND item.is_active = TRUE
+          AND section_item.is_active = TRUE
+          AND r.is_official = TRUE
+          AND r.is_deleted = FALSE
+          AND r.title <> 'Backend Master Roadmap'
+        GROUP BY r.roadmap_id, r.title
+        HAVING COALESCE(MAX(item.subtitle), r.title) <> 'Backend'
+    ),
+    target_nodes AS (
+        SELECT
+            target.display_name,
+            rn.node_id,
+            rn.sort_order,
+            rn.sub_topics
+        FROM target_roadmaps target
+        JOIN public.roadmap_nodes rn ON rn.roadmap_id = target.roadmap_id
+    ),
+    topic_segments AS (
+        SELECT
+            target_nodes.node_id,
+            split_item.segment_order,
+            split_part(btrim(split_item.segment), ':', 1) AS topic_text
+        FROM target_nodes
+        CROSS JOIN LATERAL regexp_split_to_table(COALESCE(target_nodes.sub_topics, ''), ',') WITH ORDINALITY AS split_item(segment, segment_order)
+        WHERE NOT (target_nodes.sort_order = 1 AND split_item.segment_order = 1)
+    ),
+    raw_topic_tokens AS (
+        SELECT
+            topic_segments.node_id,
+            topic_segments.segment_order,
+            split_token.token_order,
+            regexp_replace(
+                regexp_replace(
+                    btrim(regexp_replace(split_token.token, '[^[:alnum:]가-힣+#./&-]+', '', 'g')),
+                    '하는$',
+                    ''
+                ),
+                '(으로|로|과|와|은|는|이|가|을|를|의)$',
+                ''
+            ) AS tag_name
+        FROM topic_segments
+        CROSS JOIN LATERAL regexp_split_to_table(topic_segments.topic_text, '\s+') WITH ORDINALITY AS split_token(token, token_order)
+    ),
+    filtered_topic_tokens AS (
+        SELECT node_id, tag_name, segment_order, token_order
+        FROM raw_topic_tokens
+        WHERE tag_name <> ''
+          AND char_length(tag_name) BETWEEN 2 AND 40
+          AND tag_name NOT IN ('개요', '로드맵', '이해', '역할', '정의', '학습', '목표', '책임', '범위', 'and', 'or', 'with', '및')
+    ),
+    deduped_topic_tokens AS (
+        SELECT
+            node_id,
+            tag_name,
+            MIN(segment_order) AS segment_order,
+            MIN(token_order) AS token_order
+        FROM filtered_topic_tokens
+        GROUP BY node_id, tag_name
+    ),
+    allowed_node_tags AS (
+        SELECT node_id, tag_name
+        FROM (
+            SELECT
+                node_id,
+                tag_name,
+                ROW_NUMBER() OVER (PARTITION BY node_id ORDER BY segment_order, token_order, tag_name) AS tag_rank
+            FROM deduped_topic_tokens
+        ) ranked_tags
+        WHERE tag_rank <= 5
+    )
+    DELETE FROM public.node_required_tags nrt
+    USING public.roadmap_nodes rn, target_roadmaps target, public.tags tag_item
+    WHERE nrt.node_id = rn.node_id
+      AND rn.roadmap_id = target.roadmap_id
+      AND nrt.tag_id = tag_item.tag_id
+      AND NOT EXISTS (
+          SELECT 1
+          FROM allowed_node_tags allowed
+          WHERE allowed.node_id = rn.node_id
+            AND allowed.tag_name = tag_item.name
+      );
+END $$;
+^^^ END OF SCRIPT ^^^
+
 DO $$
 BEGIN
     IF to_regclass('public.courses') IS NOT NULL THEN

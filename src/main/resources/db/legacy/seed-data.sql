@@ -15305,6 +15305,7 @@ FROM (
           AND r.is_deleted = FALSE
           AND r.title <> 'Backend Master Roadmap'
         GROUP BY r.roadmap_id, r.title
+        HAVING COALESCE(MAX(item.subtitle), r.title) <> 'Backend'
     ) target
     JOIN roadmap_hub_node_profile_seed profile ON profile.display_name = target.display_name
 ) detail
@@ -15326,6 +15327,7 @@ WITH target_roadmaps AS (
       AND r.is_deleted = FALSE
       AND r.title <> 'Backend Master Roadmap'
     GROUP BY r.roadmap_id, r.title
+    HAVING COALESCE(MAX(item.subtitle), r.title) <> 'Backend'
 ),
 node_seed(sort_order, branch_group, node_type, stage_label) AS (
     VALUES
@@ -15441,6 +15443,7 @@ WITH target_roadmaps AS (
       AND r.is_deleted = FALSE
       AND r.title <> 'Backend Master Roadmap'
     GROUP BY r.roadmap_id, r.title
+    HAVING COALESCE(MAX(item.subtitle), r.title) <> 'Backend'
 ),
 edge_seed(child_sort_order, child_branch_group, pre_sort_order, pre_branch_group) AS (
     VALUES
@@ -15502,151 +15505,74 @@ WITH target_roadmaps AS (
       AND r.is_deleted = FALSE
       AND r.title <> 'Backend Master Roadmap'
     GROUP BY r.roadmap_id, r.title
+    HAVING COALESCE(MAX(item.subtitle), r.title) <> 'Backend'
 ),
-generated_tags AS (
-    SELECT display_name || ' Fundamentals' AS tag_name, tag_category AS category FROM target_roadmaps
-    UNION ALL
-    SELECT display_name || ' Practice' AS tag_name, tag_category AS category FROM target_roadmaps
-    UNION ALL
-    SELECT display_name || ' Advanced' AS tag_name, tag_category AS category FROM target_roadmaps
-)
-SELECT generated_tags.tag_name, generated_tags.category, TRUE, FALSE
-FROM generated_tags
-WHERE NOT EXISTS (
-    SELECT 1
-    FROM tags existing
-    WHERE existing.name = generated_tags.tag_name
-);
-
-INSERT INTO node_required_tags (node_id, tag_id)
-WITH target_roadmaps AS (
+target_nodes AS (
     SELECT
-        r.roadmap_id,
-        COALESCE(MAX(item.subtitle), r.title) AS display_name
-    FROM roadmap_hub_items item
-    JOIN roadmap_hub_sections section_item ON section_item.id = item.section_id
-    JOIN roadmaps r ON r.roadmap_id = item.linked_roadmap_id
-    WHERE item.linked_roadmap_id IS NOT NULL
-      AND item.is_active = TRUE
-      AND section_item.is_active = TRUE
-      AND r.is_official = TRUE
-      AND r.is_deleted = FALSE
-      AND r.title <> 'Backend Master Roadmap'
-    GROUP BY r.roadmap_id, r.title
-),
-node_stage AS (
-    SELECT
-        target.roadmap_id,
+        target.display_name,
+        target.tag_category,
         rn.node_id,
-        target.display_name ||
-            CASE
-                WHEN rn.branch_group IS NULL AND rn.sort_order <= 3 THEN ' Fundamentals'
-                WHEN rn.branch_group IS NULL AND rn.sort_order <= 7 THEN ' Practice'
-                ELSE ' Advanced'
-            END AS tag_name
+        rn.sort_order,
+        rn.sub_topics
     FROM target_roadmaps target
     JOIN roadmap_nodes rn ON rn.roadmap_id = target.roadmap_id
-)
-SELECT node_stage.node_id, tag_item.tag_id
-FROM node_stage
-JOIN tags tag_item ON tag_item.name = node_stage.tag_name
-WHERE NOT EXISTS (
-    SELECT 1
-    FROM node_required_tags existing
-    WHERE existing.node_id = node_stage.node_id
-      AND existing.tag_id = tag_item.tag_id
-);
-
--- 각 로드맵 노드별 상세 필수 태그 보강
--- 노드마다 로드맵명, 단계, 노드 목적, 핵심 역량 태그가 함께 붙도록 구성한다.
-INSERT INTO tags (name, category, is_official, is_deleted)
-WITH target_roadmaps AS (
+),
+topic_segments AS (
     SELECT
-        r.roadmap_id,
-        COALESCE(MAX(item.subtitle), r.title) AS display_name,
-        CASE
-            WHEN MAX(CASE WHEN section_item.section_key = 'role-based' THEN 1 ELSE 0 END) = 1 THEN 'Role Roadmap'
-            ELSE 'Skill Roadmap'
-        END AS tag_category
-    FROM roadmap_hub_items item
-    JOIN roadmap_hub_sections section_item ON section_item.id = item.section_id
-    JOIN roadmaps r ON r.roadmap_id = item.linked_roadmap_id
-    WHERE item.linked_roadmap_id IS NOT NULL
-      AND item.is_active = TRUE
-      AND section_item.is_active = TRUE
-      AND r.is_official = TRUE
-      AND r.is_deleted = FALSE
-      AND r.title <> 'Backend Master Roadmap'
-    GROUP BY r.roadmap_id, r.title
+        target_nodes.node_id,
+        target_nodes.tag_category,
+        split_item.segment_order,
+        split_part(btrim(split_item.segment), ':', 1) AS topic_text
+    FROM target_nodes
+    CROSS JOIN LATERAL regexp_split_to_table(COALESCE(target_nodes.sub_topics, ''), ',') WITH ORDINALITY AS split_item(segment, segment_order)
+    WHERE NOT (target_nodes.sort_order = 1 AND split_item.segment_order = 1)
 ),
-detail_tag_seed(sort_order, branch_group, detail_suffix) AS (
-    VALUES
-        (1, CAST(NULL AS INTEGER), '개요'),
-        (2, CAST(NULL AS INTEGER), '핵심 개념'),
-        (3, CAST(NULL AS INTEGER), '작업 환경'),
-        (4, CAST(NULL AS INTEGER), '기초 실습'),
-        (5, CAST(NULL AS INTEGER), '데이터 설계'),
-        (6, CAST(NULL AS INTEGER), '테스트'),
-        (7, CAST(NULL AS INTEGER), '협업 문서화'),
-        (8, 1, '성능 최적화'),
-        (9, 1, '운영 자동화'),
-        (8, 2, '아키텍처 설계'),
-        (9, 2, '보안 안정성'),
-        (10, CAST(NULL AS INTEGER), '실전 프로젝트'),
-        (11, CAST(NULL AS INTEGER), '포트폴리오')
+raw_topic_tokens AS (
+    SELECT
+        topic_segments.node_id,
+        topic_segments.tag_category,
+        topic_segments.segment_order,
+        split_token.token_order,
+        regexp_replace(
+            regexp_replace(
+                btrim(regexp_replace(split_token.token, '[^[:alnum:]가-힣+#./&-]+', '', 'g')),
+                '하는$',
+                ''
+            ),
+            '(으로|로|과|와|은|는|이|가|을|를|의)$',
+            ''
+        ) AS tag_name
+    FROM topic_segments
+    CROSS JOIN LATERAL regexp_split_to_table(topic_segments.topic_text, '\s+') WITH ORDINALITY AS split_token(token, token_order)
 ),
-core_tag_seed(sort_order, branch_group, core_tag) AS (
-    VALUES
-        (1, CAST(NULL AS INTEGER), '로드맵 이해'),
-        (1, CAST(NULL AS INTEGER), '역할 정의'),
-        (1, CAST(NULL AS INTEGER), '학습 목표'),
-        (2, CAST(NULL AS INTEGER), '핵심 용어'),
-        (2, CAST(NULL AS INTEGER), '개념 모델링'),
-        (2, CAST(NULL AS INTEGER), '기초 원리'),
-        (3, CAST(NULL AS INTEGER), '개발 환경'),
-        (3, CAST(NULL AS INTEGER), '도구 설정'),
-        (3, CAST(NULL AS INTEGER), '워크플로우'),
-        (4, CAST(NULL AS INTEGER), '기초 실습'),
-        (4, CAST(NULL AS INTEGER), '기능 구현'),
-        (4, CAST(NULL AS INTEGER), '피드백 루프'),
-        (5, CAST(NULL AS INTEGER), '데이터 모델링'),
-        (5, CAST(NULL AS INTEGER), '상태 관리'),
-        (5, CAST(NULL AS INTEGER), '요구사항 분석'),
-        (6, CAST(NULL AS INTEGER), '테스트'),
-        (6, CAST(NULL AS INTEGER), '품질 관리'),
-        (6, CAST(NULL AS INTEGER), '오류 처리'),
-        (7, CAST(NULL AS INTEGER), '문서화'),
-        (7, CAST(NULL AS INTEGER), '코드 리뷰'),
-        (7, CAST(NULL AS INTEGER), '협업'),
-        (8, 1, '성능 측정'),
-        (8, 1, '병목 분석'),
-        (8, 1, '최적화'),
-        (9, 1, '자동화'),
-        (9, 1, '모니터링'),
-        (9, 1, '배포'),
-        (8, 2, '아키텍처'),
-        (8, 2, '모듈화'),
-        (8, 2, '확장성'),
-        (9, 2, '보안'),
-        (9, 2, '안정성'),
-        (9, 2, '장애 대응'),
-        (10, CAST(NULL AS INTEGER), '프로젝트 설계'),
-        (10, CAST(NULL AS INTEGER), 'MVP'),
-        (10, CAST(NULL AS INTEGER), '실전 구현'),
-        (11, CAST(NULL AS INTEGER), '포트폴리오'),
-        (11, CAST(NULL AS INTEGER), '면접 준비'),
-        (11, CAST(NULL AS INTEGER), '기술 설명')
+filtered_topic_tokens AS (
+    SELECT node_id, tag_category, tag_name, segment_order, token_order
+    FROM raw_topic_tokens
+    WHERE tag_name <> ''
+      AND char_length(tag_name) BETWEEN 2 AND 40
+      AND tag_name NOT IN ('개요', '로드맵', '이해', '역할', '정의', '학습', '목표', '책임', '범위', 'and', 'or', 'with', '및')
+),
+deduped_topic_tokens AS (
+    SELECT
+        node_id,
+        tag_name,
+        tag_category AS category,
+        MIN(segment_order) AS segment_order,
+        MIN(token_order) AS token_order
+    FROM filtered_topic_tokens
+    GROUP BY node_id, tag_name, tag_category
 ),
 generated_tags AS (
-    SELECT display_name AS tag_name, tag_category AS category
-    FROM target_roadmaps
-    UNION ALL
-    SELECT display_name || ' ' || detail_seed.detail_suffix AS tag_name, tag_category AS category
-    FROM target_roadmaps
-    CROSS JOIN detail_tag_seed detail_seed
-    UNION ALL
-    SELECT core_seed.core_tag AS tag_name, 'Roadmap Node' AS category
-    FROM core_tag_seed core_seed
+    SELECT node_id, tag_name, category
+    FROM (
+        SELECT
+            node_id,
+            tag_name,
+            category,
+            ROW_NUMBER() OVER (PARTITION BY node_id ORDER BY segment_order, token_order, tag_name) AS tag_rank
+        FROM deduped_topic_tokens
+    ) ranked_tags
+    WHERE tag_rank <= 5
 )
 SELECT generated_tags.tag_name, MIN(generated_tags.category), TRUE, FALSE
 FROM generated_tags
@@ -15669,104 +15595,69 @@ WITH target_roadmaps AS (
       AND r.is_deleted = FALSE
       AND r.title <> 'Backend Master Roadmap'
     GROUP BY r.roadmap_id, r.title
-),
-detail_tag_seed(sort_order, branch_group, detail_suffix) AS (
-    VALUES
-        (1, CAST(NULL AS INTEGER), '개요'),
-        (2, CAST(NULL AS INTEGER), '핵심 개념'),
-        (3, CAST(NULL AS INTEGER), '작업 환경'),
-        (4, CAST(NULL AS INTEGER), '기초 실습'),
-        (5, CAST(NULL AS INTEGER), '데이터 설계'),
-        (6, CAST(NULL AS INTEGER), '테스트'),
-        (7, CAST(NULL AS INTEGER), '협업 문서화'),
-        (8, 1, '성능 최적화'),
-        (9, 1, '운영 자동화'),
-        (8, 2, '아키텍처 설계'),
-        (9, 2, '보안 안정성'),
-        (10, CAST(NULL AS INTEGER), '실전 프로젝트'),
-        (11, CAST(NULL AS INTEGER), '포트폴리오')
-),
-core_tag_seed(sort_order, branch_group, core_tag) AS (
-    VALUES
-        (1, CAST(NULL AS INTEGER), '로드맵 이해'),
-        (1, CAST(NULL AS INTEGER), '역할 정의'),
-        (1, CAST(NULL AS INTEGER), '학습 목표'),
-        (2, CAST(NULL AS INTEGER), '핵심 용어'),
-        (2, CAST(NULL AS INTEGER), '개념 모델링'),
-        (2, CAST(NULL AS INTEGER), '기초 원리'),
-        (3, CAST(NULL AS INTEGER), '개발 환경'),
-        (3, CAST(NULL AS INTEGER), '도구 설정'),
-        (3, CAST(NULL AS INTEGER), '워크플로우'),
-        (4, CAST(NULL AS INTEGER), '기초 실습'),
-        (4, CAST(NULL AS INTEGER), '기능 구현'),
-        (4, CAST(NULL AS INTEGER), '피드백 루프'),
-        (5, CAST(NULL AS INTEGER), '데이터 모델링'),
-        (5, CAST(NULL AS INTEGER), '상태 관리'),
-        (5, CAST(NULL AS INTEGER), '요구사항 분석'),
-        (6, CAST(NULL AS INTEGER), '테스트'),
-        (6, CAST(NULL AS INTEGER), '품질 관리'),
-        (6, CAST(NULL AS INTEGER), '오류 처리'),
-        (7, CAST(NULL AS INTEGER), '문서화'),
-        (7, CAST(NULL AS INTEGER), '코드 리뷰'),
-        (7, CAST(NULL AS INTEGER), '협업'),
-        (8, 1, '성능 측정'),
-        (8, 1, '병목 분석'),
-        (8, 1, '최적화'),
-        (9, 1, '자동화'),
-        (9, 1, '모니터링'),
-        (9, 1, '배포'),
-        (8, 2, '아키텍처'),
-        (8, 2, '모듈화'),
-        (8, 2, '확장성'),
-        (9, 2, '보안'),
-        (9, 2, '안정성'),
-        (9, 2, '장애 대응'),
-        (10, CAST(NULL AS INTEGER), '프로젝트 설계'),
-        (10, CAST(NULL AS INTEGER), 'MVP'),
-        (10, CAST(NULL AS INTEGER), '실전 구현'),
-        (11, CAST(NULL AS INTEGER), '포트폴리오'),
-        (11, CAST(NULL AS INTEGER), '면접 준비'),
-        (11, CAST(NULL AS INTEGER), '기술 설명')
+    HAVING COALESCE(MAX(item.subtitle), r.title) <> 'Backend'
 ),
 target_nodes AS (
     SELECT
         target.display_name,
         rn.node_id,
         rn.sort_order,
-        rn.branch_group,
-        target.display_name ||
-            CASE
-                WHEN rn.branch_group IS NULL AND rn.sort_order <= 3 THEN ' Fundamentals'
-                WHEN rn.branch_group IS NULL AND rn.sort_order <= 7 THEN ' Practice'
-                ELSE ' Advanced'
-            END AS stage_tag
+        rn.sub_topics
     FROM target_roadmaps target
     JOIN roadmap_nodes rn ON rn.roadmap_id = target.roadmap_id
 ),
+topic_segments AS (
+    SELECT
+        target_nodes.node_id,
+        split_item.segment_order,
+        split_part(btrim(split_item.segment), ':', 1) AS topic_text
+    FROM target_nodes
+    CROSS JOIN LATERAL regexp_split_to_table(COALESCE(target_nodes.sub_topics, ''), ',') WITH ORDINALITY AS split_item(segment, segment_order)
+    WHERE NOT (target_nodes.sort_order = 1 AND split_item.segment_order = 1)
+),
+raw_topic_tokens AS (
+    SELECT
+        topic_segments.node_id,
+        topic_segments.segment_order,
+        split_token.token_order,
+        regexp_replace(
+            regexp_replace(
+                btrim(regexp_replace(split_token.token, '[^[:alnum:]가-힣+#./&-]+', '', 'g')),
+                '하는$',
+                ''
+            ),
+            '(으로|로|과|와|은|는|이|가|을|를|의)$',
+            ''
+        ) AS tag_name
+    FROM topic_segments
+    CROSS JOIN LATERAL regexp_split_to_table(topic_segments.topic_text, '\s+') WITH ORDINALITY AS split_token(token, token_order)
+),
+filtered_topic_tokens AS (
+    SELECT node_id, tag_name, segment_order, token_order
+    FROM raw_topic_tokens
+    WHERE tag_name <> ''
+      AND char_length(tag_name) BETWEEN 2 AND 40
+      AND tag_name NOT IN ('개요', '로드맵', '이해', '역할', '정의', '학습', '목표', '책임', '범위', 'and', 'or', 'with', '및')
+),
+deduped_topic_tokens AS (
+    SELECT
+        node_id,
+        tag_name,
+        MIN(segment_order) AS segment_order,
+        MIN(token_order) AS token_order
+    FROM filtered_topic_tokens
+    GROUP BY node_id, tag_name
+),
 node_tag_candidates AS (
-    SELECT node_id, display_name AS tag_name
-    FROM target_nodes
-    UNION ALL
-    SELECT node_id, stage_tag AS tag_name
-    FROM target_nodes
-    UNION ALL
-    SELECT target_nodes.node_id, target_nodes.display_name || ' ' || detail_seed.detail_suffix AS tag_name
-    FROM target_nodes
-    JOIN detail_tag_seed detail_seed
-        ON detail_seed.sort_order = target_nodes.sort_order
-       AND (
-           detail_seed.branch_group = target_nodes.branch_group
-           OR (detail_seed.branch_group IS NULL AND target_nodes.branch_group IS NULL)
-       )
-    UNION ALL
-    SELECT target_nodes.node_id, core_seed.core_tag AS tag_name
-    FROM target_nodes
-    JOIN core_tag_seed core_seed
-        ON core_seed.sort_order = target_nodes.sort_order
-       AND (
-           core_seed.branch_group = target_nodes.branch_group
-           OR (core_seed.branch_group IS NULL AND target_nodes.branch_group IS NULL)
-       )
+    SELECT node_id, tag_name
+    FROM (
+        SELECT
+            node_id,
+            tag_name,
+            ROW_NUMBER() OVER (PARTITION BY node_id ORDER BY segment_order, token_order, tag_name) AS tag_rank
+        FROM deduped_topic_tokens
+    ) ranked_tags
+    WHERE tag_rank <= 5
 )
 SELECT DISTINCT node_tags.node_id, tag_item.tag_id
 FROM node_tag_candidates node_tags
@@ -15777,6 +15668,9 @@ WHERE NOT EXISTS (
     WHERE existing.node_id = node_tags.node_id
       AND existing.tag_id = tag_item.tag_id
 );
+
+-- 비백엔드 공식 로드맵 노드 태그는 백엔드 로드맵과 비슷하게 노드 sub_topics의 핵심 주제어 5개 안팎만 사용한다.
+-- 로드맵 이해, 역할 정의, 학습 목표처럼 학습 행동을 설명하는 범용 태그는 필수 태그로 사용하지 않는다.
 
 -- Roadmap Hub official roadmap free reference resources
 -- Adds primary official/free documentation links to every node of each official roadmap.
