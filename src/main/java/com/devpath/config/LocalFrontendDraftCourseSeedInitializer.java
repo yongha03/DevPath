@@ -44,6 +44,8 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
         && tableExists("roadmap_nodes")
         && tableExists("course_node_mappings")
         && tableExists("quizzes")
+        && tableExists("quiz_questions")
+        && tableExists("quiz_question_options")
         && tableExists("assignments")
         && tableExists("assignment_rubrics");
   }
@@ -72,6 +74,7 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
       DECLARE
         v_instructor_id bigint;
         v_course_id bigint;
+        v_frontend_roadmap_id bigint;
         v_target_node_id bigint;
         v_eval_roadmap_id bigint;
         v_quiz_node_id bigint;
@@ -83,7 +86,8 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
         v_quiz_id bigint;
         v_assignment_id bigint;
         v_tag_name text;
-        v_course_title text := 'Frontend Fundamentals: 로드맵으로 이해하는 프론트엔드 첫걸음';
+        v_previous_course_title text := 'Frontend Fundamentals: 로드맵으로 이해하는 프론트엔드 첫걸음';
+        v_course_title text := 'HTML CSS JavaScript 렌더링 입문';
       BEGIN
         SELECT user_id
           INTO v_instructor_id
@@ -96,12 +100,11 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
         END IF;
 
         FOREACH v_tag_name IN ARRAY ARRAY[
-          'Frontend Fundamentals',
-          'Frontend',
-          'Frontend 개요',
-          '로드맵 이해',
-          '역할 정의',
-          '학습 목표'
+          'JavaScript',
+          'CSS',
+          'HTML',
+          'Vite',
+          '렌더링'
         ]
         LOOP
           IF EXISTS (SELECT 1 FROM tags WHERE name = v_tag_name) THEN
@@ -120,7 +123,8 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
           INTO v_course_id
           FROM courses
          WHERE instructor_id = v_instructor_id
-           AND title = v_course_title
+           AND title = ANY (ARRAY[v_course_title, v_previous_course_title])
+         ORDER BY CASE WHEN title = v_course_title THEN 0 ELSE 1 END, course_id
          LIMIT 1;
 
         IF v_course_id IS NULL THEN
@@ -133,10 +137,10 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
           VALUES (
             v_instructor_id,
             v_course_title,
-            '프론트엔드의 역할, 로드맵 구조, 학습 목표를 첫 노드 기준으로 정리하는 입문 초안 강의',
-            '프론트엔드 학습을 시작하기 전에 화면 개발자가 실제 제품에서 어떤 문제를 해결하는지, 로드맵의 첫 노드를 어떻게 읽어야 하는지, 앞으로의 학습 목표를 어떻게 쪼개야 하는지 정리하는 강의입니다.
+            '브라우저가 HTML, CSS, JavaScript를 화면으로 바꾸는 흐름을 첫 노드 기준으로 정리하는 입문 초안 강의',
+            '프론트엔드 로드맵의 첫 번째 노드인 HTML CSS JavaScript 렌더링을 기준으로 브라우저가 문서와 스타일, 스크립트를 해석해 화면을 만드는 흐름을 정리하는 강의입니다.
 
-이 강의는 HTML/CSS/JavaScript 세부 문법을 깊게 들어가기보다 프론트엔드 직무의 역할, 협업 범위, 학습 순서, 결과물 기준을 먼저 잡는 데 집중합니다. 이후 React, Next.js, 상태 관리, 테스트 학습으로 넘어가기 전에 방향을 잃지 않도록 개인 학습 계획과 산출물 체크리스트를 함께 만듭니다.',
+이 강의는 HTML 문서 구조, CSS 캐스케이드와 레이아웃, JavaScript DOM 조작, Vite 개발 서버를 연결해 렌더링 결과가 언제 다시 계산되는지 확인하는 데 집중합니다. 이후 React 학습으로 넘어가기 전에 화면이 만들어지는 기본 흐름과 디버깅 기준을 먼저 잡습니다.',
             0.00,
             0.00,
             'KRW',
@@ -155,10 +159,11 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
           RETURNING course_id INTO v_course_id;
         ELSE
           UPDATE courses
-             SET subtitle = '프론트엔드의 역할, 로드맵 구조, 학습 목표를 첫 노드 기준으로 정리하는 입문 초안 강의',
-                 description = '프론트엔드 학습을 시작하기 전에 화면 개발자가 실제 제품에서 어떤 문제를 해결하는지, 로드맵의 첫 노드를 어떻게 읽어야 하는지, 앞으로의 학습 목표를 어떻게 쪼개야 하는지 정리하는 강의입니다.
+             SET title = v_course_title,
+                 subtitle = '브라우저가 HTML, CSS, JavaScript를 화면으로 바꾸는 흐름을 첫 노드 기준으로 정리하는 입문 초안 강의',
+                 description = '프론트엔드 로드맵의 첫 번째 노드인 HTML CSS JavaScript 렌더링을 기준으로 브라우저가 문서와 스타일, 스크립트를 해석해 화면을 만드는 흐름을 정리하는 강의입니다.
 
-이 강의는 HTML/CSS/JavaScript 세부 문법을 깊게 들어가기보다 프론트엔드 직무의 역할, 협업 범위, 학습 순서, 결과물 기준을 먼저 잡는 데 집중합니다. 이후 React, Next.js, 상태 관리, 테스트 학습으로 넘어가기 전에 방향을 잃지 않도록 개인 학습 계획과 산출물 체크리스트를 함께 만듭니다.',
+이 강의는 HTML 문서 구조, CSS 캐스케이드와 레이아웃, JavaScript DOM 조작, Vite 개발 서버를 연결해 렌더링 결과가 언제 다시 계산되는지 확인하는 데 집중합니다. 이후 React 학습으로 넘어가기 전에 화면이 만들어지는 기본 흐름과 디버깅 기준을 먼저 잡습니다.',
                  price = 0.00,
                  original_price = 0.00,
                  currency = 'KRW',
@@ -175,11 +180,19 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
            WHERE course_id = v_course_id;
         END IF;
 
+        DELETE FROM course_prerequisites WHERE course_id = v_course_id;
+        DELETE FROM course_job_relevance WHERE course_id = v_course_id;
+        DELETE FROM course_objectives WHERE course_id = v_course_id;
+        DELETE FROM course_target_audiences WHERE course_id = v_course_id;
+        DELETE FROM course_info_section_items WHERE course_id = v_course_id;
+        DELETE FROM course_tag_maps WHERE course_id = v_course_id;
+        DELETE FROM course_node_mappings WHERE course_id = v_course_id;
+
         INSERT INTO course_prerequisites (course_id, prerequisite)
         SELECT v_course_id, seed.item
           FROM (VALUES
-            ('HTML, CSS, JavaScript를 아직 깊게 몰라도 수강할 수 있습니다.'),
-            ('프론트엔드 직무와 학습 순서를 먼저 정리하고 싶은 학습자에게 맞습니다.')
+            ('HTML 태그, CSS 선택자, JavaScript 변수와 함수의 아주 기본 문법을 본 적 있으면 충분합니다.'),
+            ('브라우저 개발자 도구와 터미널에서 Vite 개발 서버를 실행할 수 있는 환경이 있으면 좋습니다.')
           ) AS seed(item)
          WHERE NOT EXISTS (
            SELECT 1
@@ -191,9 +204,9 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
         INSERT INTO course_job_relevance (course_id, job_relevance)
         SELECT v_course_id, seed.item
           FROM (VALUES
-            ('직무명: 프론트엔드 개발자; 영문명: Frontend Developer; 설명: 제품 화면을 구현하고 사용자 경험, 상태, API 연동을 책임지는 역할을 이해합니다.; 키워드: UI 구현, 사용자 경험, API 연동, 협업'),
-            ('직무명: 웹 UI 엔지니어; 영문명: Web UI Engineer; 설명: 디자인 시안을 접근성과 유지보수성을 고려한 웹 인터페이스로 옮기는 기본 관점을 정리합니다.; 키워드: HTML, CSS, JavaScript, 접근성'),
-            ('직무명: 주니어 프론트엔드 개발자; 영문명: Junior Frontend Developer; 설명: React 또는 Next.js 학습 전에 필요한 로드맵 기반 학습 계획과 산출물 기준을 세웁니다.; 키워드: 로드맵, 학습 계획, 산출물, 체크리스트')
+            ('직무명: 프론트엔드 개발자; 영문명: Frontend Developer; 설명: HTML 구조, CSS 레이아웃, JavaScript 상호작용이 브라우저 화면으로 렌더링되는 원리를 이해합니다.; 키워드: HTML, CSS, JavaScript, 렌더링'),
+            ('직무명: 웹 UI 엔지니어; 영문명: Web UI Engineer; 설명: DOM, CSSOM, 레이아웃, 페인트 흐름을 기준으로 UI 문제를 추적하고 설명하는 기본기를 정리합니다.; 키워드: DOM, CSSOM, 레이아웃, 페인트'),
+            ('직무명: 주니어 프론트엔드 개발자; 영문명: Junior Frontend Developer; 설명: Vite 개발 서버에서 코드 변경이 화면에 반영되는 과정을 확인하고 디버깅 기준을 세웁니다.; 키워드: Vite, 개발 서버, DevTools, HMR')
           ) AS seed(item)
          WHERE NOT EXISTS (
            SELECT 1
@@ -205,9 +218,9 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
         INSERT INTO course_objectives (course_id, objective_text, display_order)
         SELECT v_course_id, seed.item, seed.display_order
           FROM (VALUES
-            ('프론트엔드 개발자가 제품에서 맡는 책임과 협업 지점을 설명할 수 있습니다.', 1),
-            ('로드맵 첫 노드를 기준으로 학습 목표와 산출물을 작은 단위로 쪼갤 수 있습니다.', 2),
-            ('개인 학습 계획과 체크리스트를 만들어 다음 강의 학습으로 이어갈 수 있습니다.', 3)
+            ('HTML이 DOM으로, CSS가 CSSOM으로 해석된 뒤 렌더 트리가 만들어지는 흐름을 설명할 수 있습니다.', 1),
+            ('CSS 레이아웃과 페인트, JavaScript DOM 변경이 화면 갱신에 어떤 영향을 주는지 구분할 수 있습니다.', 2),
+            ('Vite 개발 서버에서 간단한 페이지를 만들고 DevTools로 렌더링 결과를 확인할 수 있습니다.', 3)
           ) AS seed(item, display_order)
          WHERE NOT EXISTS (
            SELECT 1
@@ -219,8 +232,8 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
         INSERT INTO course_target_audiences (course_id, audience_description, display_order)
         SELECT v_course_id, seed.item, seed.display_order
           FROM (VALUES
-            ('프론트엔드 로드맵을 처음 펼쳐 보고 어디서 시작할지 막히는 입문자', 1),
-            ('React나 Next.js를 배우기 전에 화면 개발자의 역할을 먼저 정리하고 싶은 학습자', 2)
+            ('프론트엔드 로드맵의 첫 노드에서 HTML, CSS, JavaScript가 어떻게 연결되는지 알고 싶은 입문자', 1),
+            ('React를 배우기 전에 브라우저 렌더링과 Vite 개발 흐름을 먼저 잡고 싶은 학습자', 2)
           ) AS seed(item, display_order)
          WHERE NOT EXISTS (
            SELECT 1
@@ -235,13 +248,13 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
         SELECT v_course_id, seed.section_key, seed.section_title, seed.section_order,
                seed.item_text, seed.item_order
           FROM (VALUES
-            ('TARGET_AUDIENCE', '이런 분들께 추천합니다', 0, '프론트엔드 로드맵을 처음 펼쳐 보고 어디서 시작할지 막히는 입문자', 1),
-            ('TARGET_AUDIENCE', '이런 분들께 추천합니다', 0, 'React나 Next.js를 배우기 전에 화면 개발자의 역할을 먼저 정리하고 싶은 학습자', 2),
-            ('PREREQUISITES', '수강 전 알아두면 좋습니다', 1, 'HTML, CSS, JavaScript를 아직 깊게 몰라도 수강할 수 있습니다.', 1),
-            ('PREREQUISITES', '수강 전 알아두면 좋습니다', 1, '프론트엔드 직무와 학습 순서를 먼저 정리하고 싶은 학습자에게 맞습니다.', 2),
-            ('OBJECTIVES', '이 강의를 끝내면', 2, '프론트엔드 개발자가 제품에서 맡는 책임과 협업 지점을 설명할 수 있습니다.', 1),
-            ('OBJECTIVES', '이 강의를 끝내면', 2, '로드맵 첫 노드를 기준으로 학습 목표와 산출물을 작은 단위로 쪼갤 수 있습니다.', 2),
-            ('OBJECTIVES', '이 강의를 끝내면', 2, '개인 학습 계획과 체크리스트를 만들어 다음 강의 학습으로 이어갈 수 있습니다.', 3)
+            ('TARGET_AUDIENCE', '이런 분들께 추천합니다', 0, '프론트엔드 로드맵의 첫 노드에서 HTML, CSS, JavaScript가 어떻게 연결되는지 알고 싶은 입문자', 1),
+            ('TARGET_AUDIENCE', '이런 분들께 추천합니다', 0, 'React를 배우기 전에 브라우저 렌더링과 Vite 개발 흐름을 먼저 잡고 싶은 학습자', 2),
+            ('PREREQUISITES', '수강 전 알아두면 좋습니다', 1, 'HTML 태그, CSS 선택자, JavaScript 변수와 함수의 아주 기본 문법을 본 적 있으면 충분합니다.', 1),
+            ('PREREQUISITES', '수강 전 알아두면 좋습니다', 1, '브라우저 개발자 도구와 터미널에서 Vite 개발 서버를 실행할 수 있는 환경이 있으면 좋습니다.', 2),
+            ('OBJECTIVES', '이 강의를 끝내면', 2, 'HTML이 DOM으로, CSS가 CSSOM으로 해석된 뒤 렌더 트리가 만들어지는 흐름을 설명할 수 있습니다.', 1),
+            ('OBJECTIVES', '이 강의를 끝내면', 2, 'CSS 레이아웃과 페인트, JavaScript DOM 변경이 화면 갱신에 어떤 영향을 주는지 구분할 수 있습니다.', 2),
+            ('OBJECTIVES', '이 강의를 끝내면', 2, 'Vite 개발 서버에서 간단한 페이지를 만들고 DevTools로 렌더링 결과를 확인할 수 있습니다.', 3)
           ) AS seed(section_key, section_title, section_order, item_text, item_order)
          WHERE NOT EXISTS (
            SELECT 1
@@ -255,12 +268,11 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
         SELECT v_course_id, t.tag_id, 1
           FROM tags t
          WHERE t.name = ANY (ARRAY[
-           'Frontend Fundamentals',
-           'Frontend',
-           'Frontend 개요',
-           '로드맵 이해',
-           '역할 정의',
-           '학습 목표'
+           'JavaScript',
+           'CSS',
+           'HTML',
+           'Vite',
+           '렌더링'
          ])
            AND NOT EXISTS (
              SELECT 1
@@ -275,18 +287,25 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
          WHERE ctm.tag_id = t.tag_id
            AND ctm.course_id = v_course_id
            AND t.name = ANY (ARRAY[
-             'Frontend Fundamentals',
-             'Frontend',
-             'Frontend 개요',
-             '로드맵 이해',
-             '역할 정의',
-             '학습 목표'
+             'JavaScript',
+             'CSS',
+             'HTML',
+             'Vite',
+             '렌더링'
            ]);
+
+        SELECT roadmap_id
+          INTO v_frontend_roadmap_id
+          FROM roadmaps
+         WHERE title = '프론트엔드'
+           AND is_deleted = FALSE
+         ORDER BY is_official DESC, roadmap_id DESC
+         LIMIT 1;
 
         SELECT node_id
           INTO v_target_node_id
           FROM roadmap_nodes
-         WHERE roadmap_id = 5
+         WHERE roadmap_id = v_frontend_roadmap_id
          ORDER BY sort_order NULLS LAST, node_id
          LIMIT 1;
 
@@ -305,7 +324,7 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
           INTO v_section1_id
           FROM course_sections
          WHERE course_id = v_course_id
-           AND title = '프론트엔드 로드맵 시작하기'
+           AND title = ANY (ARRAY['HTML/CSS/JavaScript 렌더링 이해', '프론트엔드 로드맵 시작하기'])
          LIMIT 1;
 
         IF v_section1_id IS NULL THEN
@@ -314,15 +333,16 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
           )
           VALUES (
             v_course_id,
-            '프론트엔드 로드맵 시작하기',
-            '로드맵 첫 노드의 의미와 프론트엔드 직무가 다루는 문제를 정리합니다.',
+            'HTML/CSS/JavaScript 렌더링 이해',
+            'HTML 문서, CSS 스타일, JavaScript 실행이 브라우저 화면으로 이어지는 흐름을 정리합니다.',
             0,
             FALSE
           )
           RETURNING section_id INTO v_section1_id;
         ELSE
           UPDATE course_sections
-             SET description = '로드맵 첫 노드의 의미와 프론트엔드 직무가 다루는 문제를 정리합니다.',
+             SET title = 'HTML/CSS/JavaScript 렌더링 이해',
+                 description = 'HTML 문서, CSS 스타일, JavaScript 실행이 브라우저 화면으로 이어지는 흐름을 정리합니다.',
                  sort_order = 0,
                  is_published = FALSE
            WHERE section_id = v_section1_id;
@@ -332,7 +352,7 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
           INTO v_section2_id
           FROM course_sections
          WHERE course_id = v_course_id
-           AND title = '역할 정의와 학습 목표 설계'
+           AND title = ANY (ARRAY['Vite로 렌더링 흐름 확인하기', '역할 정의와 학습 목표 설계'])
          LIMIT 1;
 
         IF v_section2_id IS NULL THEN
@@ -341,24 +361,45 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
           )
           VALUES (
             v_course_id,
-            '역할 정의와 학습 목표 설계',
-            '프론트엔드 개발자의 협업 범위와 개인 학습 목표를 실제 산출물로 정리합니다.',
+            'Vite로 렌더링 흐름 확인하기',
+            'Vite 개발 서버와 DevTools를 사용해 DOM, 스타일, 스크립트 변경 결과를 확인합니다.',
             1,
             FALSE
           )
           RETURNING section_id INTO v_section2_id;
         ELSE
           UPDATE course_sections
-             SET description = '프론트엔드 개발자의 협업 범위와 개인 학습 목표를 실제 산출물로 정리합니다.',
+             SET title = 'Vite로 렌더링 흐름 확인하기',
+                 description = 'Vite 개발 서버와 DevTools를 사용해 DOM, 스타일, 스크립트 변경 결과를 확인합니다.',
                  sort_order = 1,
                  is_published = FALSE
            WHERE section_id = v_section2_id;
         END IF;
 
+        UPDATE lessons
+           SET title = '브라우저 렌더링 흐름과 HTML 구조'
+         WHERE section_id = v_section1_id
+           AND title = '프론트엔드가 제품에서 해결하는 문제';
+
+        UPDATE lessons
+           SET title = '퀴즈: HTML CSS JavaScript 렌더링 점검'
+         WHERE section_id = v_section1_id
+           AND title = '퀴즈: 프론트엔드 로드맵 이해 점검';
+
+        UPDATE lessons
+           SET title = 'Vite 개발 서버에서 DOM과 스타일 변경 관찰'
+         WHERE section_id = v_section2_id
+           AND title = '화면 개발자의 협업 범위와 산출물';
+
+        UPDATE lessons
+           SET title = '과제: 렌더링 흐름 미니 페이지 만들기'
+         WHERE section_id = v_section2_id
+           AND title = '과제: 나만의 프론트엔드 학습 로드맵 작성';
+
         IF NOT EXISTS (
           SELECT 1 FROM lessons
            WHERE section_id = v_section1_id
-             AND title = '프론트엔드가 제품에서 해결하는 문제'
+             AND title = '브라우저 렌더링 흐름과 HTML 구조'
         ) THEN
           INSERT INTO lessons (
             section_id, title, description, lesson_type, video_url,
@@ -367,8 +408,8 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
           )
           VALUES (
             v_section1_id,
-            '프론트엔드가 제품에서 해결하는 문제',
-            '사용자 경험, 화면 상태, API 연동, 접근성 관점에서 프론트엔드의 역할을 정리합니다.',
+            '브라우저 렌더링 흐름과 HTML 구조',
+            'HTML 파싱, DOM 생성, CSSOM 결합, 렌더 트리 구성까지 브라우저가 화면을 준비하는 흐름을 정리합니다.',
             'VIDEO',
             NULL,
             NULL,
@@ -383,7 +424,7 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
           );
         ELSE
           UPDATE lessons
-             SET description = '사용자 경험, 화면 상태, API 연동, 접근성 관점에서 프론트엔드의 역할을 정리합니다.',
+             SET description = 'HTML 파싱, DOM 생성, CSSOM 결합, 렌더 트리 구성까지 브라우저가 화면을 준비하는 흐름을 정리합니다.',
                  lesson_type = 'VIDEO',
                  video_url = NULL,
                  video_asset_key = NULL,
@@ -394,14 +435,14 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
                  is_published = FALSE,
                  sort_order = 0
            WHERE section_id = v_section1_id
-             AND title = '프론트엔드가 제품에서 해결하는 문제';
+             AND title = '브라우저 렌더링 흐름과 HTML 구조';
         END IF;
 
         SELECT lesson_id
           INTO v_quiz_lesson_id
           FROM lessons
          WHERE section_id = v_section1_id
-           AND title = '퀴즈: 프론트엔드 로드맵 이해 점검'
+           AND title = '퀴즈: HTML CSS JavaScript 렌더링 점검'
          LIMIT 1;
 
         IF v_quiz_lesson_id IS NULL THEN
@@ -412,8 +453,8 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
           )
           VALUES (
             v_section1_id,
-            '퀴즈: 프론트엔드 로드맵 이해 점검',
-            '로드맵 첫 노드에서 확인해야 할 핵심 개념과 학습 순서를 스스로 점검합니다.',
+            '퀴즈: HTML CSS JavaScript 렌더링 점검',
+            '브라우저 렌더링 흐름, DOM/CSSOM, JavaScript 변경, Vite 실행 흐름을 스스로 점검합니다.',
             'READING',
             NULL,
             NULL,
@@ -429,7 +470,7 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
           RETURNING lesson_id INTO v_quiz_lesson_id;
         ELSE
           UPDATE lessons
-             SET description = '로드맵 첫 노드에서 확인해야 할 핵심 개념과 학습 순서를 스스로 점검합니다.',
+             SET description = '브라우저 렌더링 흐름, DOM/CSSOM, JavaScript 변경, Vite 실행 흐름을 스스로 점검합니다.',
                  lesson_type = 'READING',
                  video_url = NULL,
                  video_asset_key = NULL,
@@ -446,7 +487,7 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
         IF NOT EXISTS (
           SELECT 1 FROM lessons
            WHERE section_id = v_section2_id
-             AND title = '화면 개발자의 협업 범위와 산출물'
+             AND title = 'Vite 개발 서버에서 DOM과 스타일 변경 관찰'
         ) THEN
           INSERT INTO lessons (
             section_id, title, description, lesson_type, video_url,
@@ -455,8 +496,8 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
           )
           VALUES (
             v_section2_id,
-            '화면 개발자의 협업 범위와 산출물',
-            '디자인, 백엔드, QA와 맞춰야 하는 프론트엔드 산출물과 의사결정 기준을 다룹니다.',
+            'Vite 개발 서버에서 DOM과 스타일 변경 관찰',
+            'Vite로 실행한 페이지에서 HTML, CSS, JavaScript 변경이 화면에 반영되는 과정을 DevTools로 확인합니다.',
             'VIDEO',
             NULL,
             NULL,
@@ -471,7 +512,7 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
           );
         ELSE
           UPDATE lessons
-             SET description = '디자인, 백엔드, QA와 맞춰야 하는 프론트엔드 산출물과 의사결정 기준을 다룹니다.',
+             SET description = 'Vite로 실행한 페이지에서 HTML, CSS, JavaScript 변경이 화면에 반영되는 과정을 DevTools로 확인합니다.',
                  lesson_type = 'VIDEO',
                  video_url = NULL,
                  video_asset_key = NULL,
@@ -482,14 +523,14 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
                  is_published = FALSE,
                  sort_order = 0
            WHERE section_id = v_section2_id
-             AND title = '화면 개발자의 협업 범위와 산출물';
+             AND title = 'Vite 개발 서버에서 DOM과 스타일 변경 관찰';
         END IF;
 
         SELECT lesson_id
           INTO v_assignment_lesson_id
           FROM lessons
          WHERE section_id = v_section2_id
-           AND title = '과제: 나만의 프론트엔드 학습 로드맵 작성'
+           AND title = '과제: 렌더링 흐름 미니 페이지 만들기'
          LIMIT 1;
 
         IF v_assignment_lesson_id IS NULL THEN
@@ -500,8 +541,8 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
           )
           VALUES (
             v_section2_id,
-            '과제: 나만의 프론트엔드 학습 로드맵 작성',
-            '로드맵 첫 노드를 기준으로 2주 학습 계획과 산출물 체크리스트를 작성합니다.',
+            '과제: 렌더링 흐름 미니 페이지 만들기',
+            'HTML, CSS, JavaScript, Vite를 사용해 렌더링 변화를 관찰할 수 있는 미니 페이지를 만듭니다.',
             'CODING',
             NULL,
             NULL,
@@ -517,7 +558,7 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
           RETURNING lesson_id INTO v_assignment_lesson_id;
         ELSE
           UPDATE lessons
-             SET description = '로드맵 첫 노드를 기준으로 2주 학습 계획과 산출물 체크리스트를 작성합니다.',
+             SET description = 'HTML, CSS, JavaScript, Vite를 사용해 렌더링 변화를 관찰할 수 있는 미니 페이지를 만듭니다.',
                  lesson_type = 'CODING',
                  video_url = NULL,
                  video_asset_key = NULL,
@@ -534,7 +575,7 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
           INTO v_eval_roadmap_id
           FROM roadmaps
          WHERE creator_id = v_instructor_id
-           AND title = 'Frontend Fundamentals 초안 과제 워크스페이스'
+           AND title = ANY (ARRAY['HTML CSS JavaScript 렌더링 초안 과제 워크스페이스', 'Frontend Fundamentals 초안 과제 워크스페이스'])
          LIMIT 1;
 
         IF v_eval_roadmap_id IS NULL THEN
@@ -543,8 +584,8 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
             creator_id, is_official, is_public, is_deleted, created_at
           )
           VALUES (
-            'Frontend Fundamentals 초안 과제 워크스페이스',
-            'Frontend Fundamentals 초안 강의의 과제 편집 데이터를 보관하는 비공개 로드맵입니다.',
+            'HTML CSS JavaScript 렌더링 초안 과제 워크스페이스',
+            'HTML CSS JavaScript 렌더링 초안 강의의 퀴즈와 과제 편집 데이터를 보관하는 비공개 로드맵입니다.',
             NULL,
             NULL,
             v_instructor_id,
@@ -556,7 +597,8 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
           RETURNING roadmap_id INTO v_eval_roadmap_id;
         ELSE
           UPDATE roadmaps
-             SET description = 'Frontend Fundamentals 초안 강의의 과제 편집 데이터를 보관하는 비공개 로드맵입니다.',
+             SET title = 'HTML CSS JavaScript 렌더링 초안 과제 워크스페이스',
+                 description = 'HTML CSS JavaScript 렌더링 초안 강의의 퀴즈와 과제 편집 데이터를 보관하는 비공개 로드맵입니다.',
                  is_official = FALSE,
                  is_public = FALSE,
                  is_deleted = FALSE
@@ -567,7 +609,7 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
           INTO v_quiz_node_id
           FROM roadmap_nodes
          WHERE roadmap_id = v_eval_roadmap_id
-           AND title = '퀴즈: 프론트엔드 로드맵 이해 점검'
+           AND title = ANY (ARRAY['퀴즈: HTML CSS JavaScript 렌더링 점검', '퀴즈: 프론트엔드 로드맵 이해 점검'])
          LIMIT 1;
 
         IF v_quiz_node_id IS NULL THEN
@@ -576,8 +618,8 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
           )
           VALUES (
             v_eval_roadmap_id,
-            '퀴즈: 프론트엔드 로드맵 이해 점검',
-            '프론트엔드 로드맵 첫 노드와 직무 역할 이해도를 점검하는 퀴즈 생성 노드입니다.',
+            '퀴즈: HTML CSS JavaScript 렌더링 점검',
+            '프론트엔드 첫 노드인 HTML CSS JavaScript 렌더링 이해도를 점검하는 퀴즈 생성 노드입니다.',
             'COURSE_QUIZ',
             0,
             v_course_title,
@@ -586,7 +628,8 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
           RETURNING node_id INTO v_quiz_node_id;
         ELSE
           UPDATE roadmap_nodes
-             SET content = '프론트엔드 로드맵 첫 노드와 직무 역할 이해도를 점검하는 퀴즈 생성 노드입니다.',
+             SET title = '퀴즈: HTML CSS JavaScript 렌더링 점검',
+                 content = '프론트엔드 첫 노드인 HTML CSS JavaScript 렌더링 이해도를 점검하는 퀴즈 생성 노드입니다.',
                  node_type = 'COURSE_QUIZ',
                  sort_order = 0,
                  sub_topics = v_course_title,
@@ -624,8 +667,8 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
           )
           VALUES (
             v_quiz_node_id,
-            '프론트엔드 로드맵 이해 점검 퀴즈 초안',
-            '프론트엔드 역할, 로드맵 첫 노드, 학습 목표를 기준으로 문항을 생성하기 위한 비공개 초안입니다.',
+            'HTML CSS JavaScript 렌더링 점검 퀴즈 초안',
+            'HTML, CSS, JavaScript, Vite, 렌더링 흐름을 기준으로 문항을 생성하기 위한 비공개 초안입니다.',
             'AI_TOPIC',
             0,
             60,
@@ -635,59 +678,63 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
             FALSE,
             FALSE,
             FALSE,
-            'Frontend Fundamentals,Frontend,Frontend 개요,로드맵 이해,역할 정의,학습 목표',
-            '오늘 강의에서는 프론트엔드 학습을 시작하기 전에 먼저 “프론트엔드가 제품에서 어떤 문제를 해결하는 역할인지”를 정리합니다.
+            'JavaScript,CSS,HTML,Vite,렌더링',
+            '이번 강의는 프론트엔드 로드맵의 첫 번째 노드인 HTML CSS JavaScript 렌더링을 다룹니다. 목표는 브라우저가 코드를 화면으로 바꾸는 과정을 하나의 흐름으로 설명하고, 작은 코드 변경이 어떤 렌더링 결과를 만드는지 확인하는 것입니다.
 
-프론트엔드는 단순히 화면을 예쁘게 만드는 사람이 아니라, 사용자가 제품을 이해하고 원하는 행동을 문제없이 완료할 수 있도록 화면 구조, 상호작용, 상태 변화, API 연동, 접근성, 성능을 함께 책임지는 역할입니다. 버튼 하나를 배치할 때도 클릭 후 상태가 어떻게 바뀌는지, 실패했을 때 어떤 안내를 보여줄지, 백엔드 응답이 늦을 때 사용자가 무엇을 보게 될지까지 고려해야 합니다.
+브라우저는 HTML을 읽어 DOM 트리를 만들고, CSS를 읽어 CSSOM을 만듭니다. DOM과 CSSOM이 결합되면 실제로 화면에 그릴 요소와 스타일을 담은 렌더 트리가 만들어지고, 브라우저는 각 요소의 크기와 위치를 계산하는 레이아웃 단계를 거친 뒤 픽셀을 칠하는 페인트와 합성 과정을 수행합니다.
 
-로드맵의 첫 번째 노드는 이 역할을 이해하고 앞으로의 학습 순서를 잡는 출발점입니다. HTML, CSS, JavaScript 같은 기술 이름을 외우기 전에 “내가 어떤 문제를 해결하기 위해 이 기술을 배우는가”를 먼저 정의해야 합니다. 화면 구조를 잡기 위해 HTML을 배우고, 시각적 규칙과 반응형 레이아웃을 만들기 위해 CSS를 배우며, 사용자 행동과 데이터 변화를 처리하기 위해 JavaScript를 배웁니다.
+HTML은 문서의 의미와 구조를 담당합니다. 제목, 목록, 버튼, 입력 폼처럼 사용자가 인식하는 정보의 뼈대를 만들고, 접근성 도구가 화면을 이해할 수 있게 돕습니다. CSS는 그 구조에 시각 규칙을 부여합니다. 선택자, 박스 모델, flex 또는 grid 레이아웃, 반응형 규칙은 브라우저가 어디에 무엇을 배치할지 결정하는 데 직접 연결됩니다.
 
-프론트엔드 개발자는 디자이너와는 화면 의도와 상태별 UI를 맞추고, 백엔드 개발자와는 API 계약과 에러 응답을 맞추며, QA와는 재현 조건과 기대 동작을 확인합니다. 따라서 좋은 학습 목표는 “문법을 안다”가 아니라 “로그인 화면의 성공, 실패, 로딩 상태를 설명하고 구현할 수 있다”처럼 확인 가능한 산출물로 표현되어야 합니다.
+JavaScript는 이미 만들어진 DOM을 조회하거나 바꾸고, 이벤트에 반응해 텍스트, 클래스, 속성, 목록을 변경합니다. 이런 변경은 상황에 따라 스타일 재계산, 레이아웃, 페인트를 다시 일으킬 수 있습니다. 그래서 프론트엔드 입문자는 문법만이 아니라 어떤 코드가 화면 갱신을 만드는지 같이 봐야 합니다.
 
-이번 강의의 학습 목표는 세 가지입니다. 첫째, 프론트엔드 개발자의 책임 범위를 설명할 수 있습니다. 둘째, 로드맵 첫 노드에서 무엇을 먼저 확인해야 하는지 말할 수 있습니다. 셋째, 다음 학습으로 넘어가기 전에 만들 산출물과 체크리스트를 직접 정의할 수 있습니다.',
+Vite는 이 흐름을 빠르게 확인하기 위한 개발 서버 역할을 합니다. 파일을 저장하면 개발 서버가 변경을 감지하고 브라우저에 반영합니다. DevTools의 Elements, Console, Network 패널을 함께 보면 HTML 구조, CSS 적용 여부, JavaScript 오류, 리소스 로딩 상태를 빠르게 추적할 수 있습니다.
+
+이 노드를 마치면 학습자는 DOM, CSSOM, 렌더 트리, 레이아웃, 페인트의 순서를 설명하고, HTML/CSS/JavaScript/Vite가 각각 렌더링 흐름에서 맡는 역할을 구분할 수 있어야 합니다.',
             NOW(),
             NOW()
           )
           RETURNING quiz_id INTO v_quiz_id;
         ELSE
           UPDATE quizzes
-             SET generation_keywords =
-                   CASE
-                     WHEN generation_keywords IS NULL OR btrim(generation_keywords) = ''
-                       THEN 'Frontend Fundamentals,Frontend,Frontend 개요,로드맵 이해,역할 정의,학습 목표'
-                     ELSE generation_keywords
-                   END,
-                 generation_script =
-                   CASE
-                     WHEN generation_script IS NULL OR btrim(generation_script) = ''
-                       THEN '오늘 강의에서는 프론트엔드 학습을 시작하기 전에 먼저 “프론트엔드가 제품에서 어떤 문제를 해결하는 역할인지”를 정리합니다.
+             SET title = 'HTML CSS JavaScript 렌더링 점검 퀴즈 초안',
+                 description = 'HTML, CSS, JavaScript, Vite, 렌더링 흐름을 기준으로 문항을 생성하기 위한 비공개 초안입니다.',
+                 quiz_type = 'AI_TOPIC',
+                 total_score = 0,
+                 pass_score = 60,
+                 time_limit_minutes = 10,
+                 is_published = FALSE,
+                 is_active = TRUE,
+                 expose_answer = FALSE,
+                 expose_explanation = FALSE,
+                 generation_keywords = 'JavaScript,CSS,HTML,Vite,렌더링',
+                 generation_script = '이번 강의는 프론트엔드 로드맵의 첫 번째 노드인 HTML CSS JavaScript 렌더링을 다룹니다. 목표는 브라우저가 코드를 화면으로 바꾸는 과정을 하나의 흐름으로 설명하고, 작은 코드 변경이 어떤 렌더링 결과를 만드는지 확인하는 것입니다.
 
-프론트엔드는 단순히 화면을 예쁘게 만드는 사람이 아니라, 사용자가 제품을 이해하고 원하는 행동을 문제없이 완료할 수 있도록 화면 구조, 상호작용, 상태 변화, API 연동, 접근성, 성능을 함께 책임지는 역할입니다. 버튼 하나를 배치할 때도 클릭 후 상태가 어떻게 바뀌는지, 실패했을 때 어떤 안내를 보여줄지, 백엔드 응답이 늦을 때 사용자가 무엇을 보게 될지까지 고려해야 합니다.
+브라우저는 HTML을 읽어 DOM 트리를 만들고, CSS를 읽어 CSSOM을 만듭니다. DOM과 CSSOM이 결합되면 실제로 화면에 그릴 요소와 스타일을 담은 렌더 트리가 만들어지고, 브라우저는 각 요소의 크기와 위치를 계산하는 레이아웃 단계를 거친 뒤 픽셀을 칠하는 페인트와 합성 과정을 수행합니다.
 
-로드맵의 첫 번째 노드는 이 역할을 이해하고 앞으로의 학습 순서를 잡는 출발점입니다. HTML, CSS, JavaScript 같은 기술 이름을 외우기 전에 “내가 어떤 문제를 해결하기 위해 이 기술을 배우는가”를 먼저 정의해야 합니다. 화면 구조를 잡기 위해 HTML을 배우고, 시각적 규칙과 반응형 레이아웃을 만들기 위해 CSS를 배우며, 사용자 행동과 데이터 변화를 처리하기 위해 JavaScript를 배웁니다.
+HTML은 문서의 의미와 구조를 담당합니다. 제목, 목록, 버튼, 입력 폼처럼 사용자가 인식하는 정보의 뼈대를 만들고, 접근성 도구가 화면을 이해할 수 있게 돕습니다. CSS는 그 구조에 시각 규칙을 부여합니다. 선택자, 박스 모델, flex 또는 grid 레이아웃, 반응형 규칙은 브라우저가 어디에 무엇을 배치할지 결정하는 데 직접 연결됩니다.
 
-프론트엔드 개발자는 디자이너와는 화면 의도와 상태별 UI를 맞추고, 백엔드 개발자와는 API 계약과 에러 응답을 맞추며, QA와는 재현 조건과 기대 동작을 확인합니다. 따라서 좋은 학습 목표는 “문법을 안다”가 아니라 “로그인 화면의 성공, 실패, 로딩 상태를 설명하고 구현할 수 있다”처럼 확인 가능한 산출물로 표현되어야 합니다.
+JavaScript는 이미 만들어진 DOM을 조회하거나 바꾸고, 이벤트에 반응해 텍스트, 클래스, 속성, 목록을 변경합니다. 이런 변경은 상황에 따라 스타일 재계산, 레이아웃, 페인트를 다시 일으킬 수 있습니다. 그래서 프론트엔드 입문자는 문법만이 아니라 어떤 코드가 화면 갱신을 만드는지 같이 봐야 합니다.
 
-이번 강의의 학습 목표는 세 가지입니다. 첫째, 프론트엔드 개발자의 책임 범위를 설명할 수 있습니다. 둘째, 로드맵 첫 노드에서 무엇을 먼저 확인해야 하는지 말할 수 있습니다. 셋째, 다음 학습으로 넘어가기 전에 만들 산출물과 체크리스트를 직접 정의할 수 있습니다.'
-                     ELSE generation_script
-                   END,
-                 updated_at =
-                   CASE
-                     WHEN generation_keywords IS NULL
-                       OR btrim(generation_keywords) = ''
-                       OR generation_script IS NULL
-                       OR btrim(generation_script) = ''
-                       THEN NOW()
-                     ELSE updated_at
-                   END
+Vite는 이 흐름을 빠르게 확인하기 위한 개발 서버 역할을 합니다. 파일을 저장하면 개발 서버가 변경을 감지하고 브라우저에 반영합니다. DevTools의 Elements, Console, Network 패널을 함께 보면 HTML 구조, CSS 적용 여부, JavaScript 오류, 리소스 로딩 상태를 빠르게 추적할 수 있습니다.
+
+이 노드를 마치면 학습자는 DOM, CSSOM, 렌더 트리, 레이아웃, 페인트의 순서를 설명하고, HTML/CSS/JavaScript/Vite가 각각 렌더링 흐름에서 맡는 역할을 구분할 수 있어야 합니다.',
+                 updated_at = NOW()
            WHERE quiz_id = v_quiz_id;
         END IF;
+
+        DELETE FROM quiz_question_options qqo
+         USING quiz_questions qq
+         WHERE qqo.question_id = qq.question_id
+           AND qq.quiz_id = v_quiz_id;
+
+        DELETE FROM quiz_questions
+         WHERE quiz_id = v_quiz_id;
 
         SELECT node_id
           INTO v_assignment_node_id
           FROM roadmap_nodes
          WHERE roadmap_id = v_eval_roadmap_id
-           AND title = '과제: 나만의 프론트엔드 학습 로드맵 작성'
+           AND title = ANY (ARRAY['과제: 렌더링 흐름 미니 페이지 만들기', '과제: 나만의 프론트엔드 학습 로드맵 작성'])
          LIMIT 1;
 
         IF v_assignment_node_id IS NULL THEN
@@ -696,8 +743,8 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
           )
           VALUES (
             v_eval_roadmap_id,
-            '과제: 나만의 프론트엔드 학습 로드맵 작성',
-            '로드맵 첫 노드를 기준으로 학습 목표와 산출물 체크리스트를 작성하는 과제 노드입니다.',
+            '과제: 렌더링 흐름 미니 페이지 만들기',
+            'HTML, CSS, JavaScript, Vite를 사용해 렌더링 흐름을 확인하는 과제 노드입니다.',
             'COURSE_ASSIGNMENT',
             0,
             v_course_title,
@@ -706,7 +753,8 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
           RETURNING node_id INTO v_assignment_node_id;
         ELSE
           UPDATE roadmap_nodes
-             SET content = '로드맵 첫 노드를 기준으로 학습 목표와 산출물 체크리스트를 작성하는 과제 노드입니다.',
+             SET title = '과제: 렌더링 흐름 미니 페이지 만들기',
+                 content = 'HTML, CSS, JavaScript, Vite를 사용해 렌더링 흐름을 확인하는 과제 노드입니다.',
                  node_type = 'COURSE_ASSIGNMENT',
                  sort_order = 0,
                  sub_topics = v_course_title,
@@ -746,37 +794,37 @@ public class LocalFrontendDraftCourseSeedInitializer implements CommandLineRunne
           )
           VALUES (
             v_assignment_node_id,
-            '나만의 프론트엔드 학습 로드맵 작성',
-            '프론트엔드 로드맵의 첫 번째 노드를 기준으로 앞으로 2주 동안 어떤 순서로 학습하고 어떤 산출물을 만들지 정리하는 과제입니다.
+            'HTML/CSS/JavaScript 렌더링 흐름 미니 페이지 만들기',
+            '프론트엔드 로드맵의 첫 번째 노드인 HTML CSS JavaScript 렌더링을 기준으로, Vite에서 실행되는 작은 페이지를 만들고 화면 갱신 흐름을 설명하는 과제입니다.
 
 상황.
-당신은 프론트엔드 학습을 막 시작한 주니어 개발자입니다. 무작정 React부터 들어가기 전에 프론트엔드가 제품에서 맡는 역할과 로드맵의 첫 노드가 요구하는 기본기를 정리해야 합니다.
+당신은 React를 배우기 전에 브라우저가 HTML, CSS, JavaScript를 어떻게 화면으로 바꾸는지 검증해야 하는 입문 프론트엔드 개발자입니다. 단순한 정적 페이지가 아니라, 버튼 클릭으로 DOM과 스타일이 바뀌는 장면을 만들어 렌더링 변화를 관찰해야 합니다.
 
 요구사항.
-1. 로드맵 첫 노드에서 반드시 이해해야 할 키워드 5개를 선정하고, 각 키워드를 한 문장으로 설명하세요.
-2. 프론트엔드 개발자가 디자이너, 백엔드 개발자, QA와 협업할 때 확인해야 할 질문을 각각 2개씩 작성하세요.
-3. 2주 학습 계획을 day 단위로 작성하고, 각 day마다 학습 목표와 확인 가능한 산출물을 적으세요.
-4. 마지막에 “다음 강의로 넘어가기 전에 확인할 체크리스트”를 7개 이상 작성하세요.
-5. README 형식으로 정리하고, 표와 체크박스를 최소 1개 이상 포함하세요.
+1. Vite 프로젝트를 만들고 메인 화면에 header, main, section, button을 포함한 의미 있는 HTML 구조를 구성하세요.
+2. CSS로 카드 목록 또는 상태 패널을 배치하고, hover 또는 active 상태가 보이도록 스타일을 작성하세요.
+3. JavaScript로 버튼 클릭 시 텍스트, 클래스, 목록 중 2가지 이상이 DOM에서 바뀌게 만드세요.
+4. index.html 안의 주석 또는 화면 하단 설명 영역에 DOM, CSSOM, 렌더 트리, 레이아웃, 페인트를 한 문장씩 정리하세요.
+5. DevTools Elements 또는 Console에서 확인한 내용을 HTML 주석이나 화면 하단 설명 영역에 짧게 남기세요.
 
 제출물.
-GitHub 저장소 URL 또는 Markdown 파일을 제출하세요. 저장소로 제출하는 경우 README.md에 과제 내용을 정리하고, 필요한 경우 /docs/frontend-roadmap-plan.md를 추가하세요.',
-            'MULTIPLE',
+index.html 파일 하나만 업로드하세요. 외부 링크나 텍스트 직접 입력은 사용하지 않습니다. HTML 파일 안에 구조, 스타일, 스크립트, 렌더링 흐름 설명, DevTools 확인 기록을 모두 포함하세요.',
+            'FILE',
             NULL,
-            'md,pdf,zip',
-            TRUE,
+            'html',
             FALSE,
             FALSE,
-            'README 또는 Markdown 파일에 학습 계획과 체크리스트를 작성해 제출하세요. URL 제출과 파일 제출을 모두 허용합니다. 제출 전 맞춤법, 표 렌더링, 체크박스 표시가 깨지지 않는지 확인하세요.',
+            FALSE,
+            'index.html 파일 하나로 제출하세요. 파일 안에는 HTML 구조, CSS 레이아웃과 상태 스타일, JavaScript DOM 변경 코드, DOM/CSSOM/렌더 트리/레이아웃/페인트 설명 주석, DevTools 확인 기록을 포함하세요.',
             100,
             80,
             FALSE,
             TRUE,
             FALSE,
             TRUE,
+            FALSE,
             TRUE,
-            TRUE,
-            TRUE,
+            FALSE,
             FALSE,
             NOW(),
             NOW()
@@ -784,40 +832,43 @@ GitHub 저장소 URL 또는 Markdown 파일을 제출하세요. 저장소로 제
           RETURNING assignment_id INTO v_assignment_id;
         ELSE
           UPDATE assignments
-             SET title = '나만의 프론트엔드 학습 로드맵 작성',
-                 description = '프론트엔드 로드맵의 첫 번째 노드를 기준으로 앞으로 2주 동안 어떤 순서로 학습하고 어떤 산출물을 만들지 정리하는 과제입니다.
+             SET title = 'HTML/CSS/JavaScript 렌더링 흐름 미니 페이지 만들기',
+                 description = '프론트엔드 로드맵의 첫 번째 노드인 HTML CSS JavaScript 렌더링을 기준으로, Vite에서 실행되는 작은 페이지를 만들고 화면 갱신 흐름을 설명하는 과제입니다.
 
 상황.
-당신은 프론트엔드 학습을 막 시작한 주니어 개발자입니다. 무작정 React부터 들어가기 전에 프론트엔드가 제품에서 맡는 역할과 로드맵의 첫 노드가 요구하는 기본기를 정리해야 합니다.
+당신은 React를 배우기 전에 브라우저가 HTML, CSS, JavaScript를 어떻게 화면으로 바꾸는지 검증해야 하는 입문 프론트엔드 개발자입니다. 단순한 정적 페이지가 아니라, 버튼 클릭으로 DOM과 스타일이 바뀌는 장면을 만들어 렌더링 변화를 관찰해야 합니다.
 
 요구사항.
-1. 로드맵 첫 노드에서 반드시 이해해야 할 키워드 5개를 선정하고, 각 키워드를 한 문장으로 설명하세요.
-2. 프론트엔드 개발자가 디자이너, 백엔드 개발자, QA와 협업할 때 확인해야 할 질문을 각각 2개씩 작성하세요.
-3. 2주 학습 계획을 day 단위로 작성하고, 각 day마다 학습 목표와 확인 가능한 산출물을 적으세요.
-4. 마지막에 “다음 강의로 넘어가기 전에 확인할 체크리스트”를 7개 이상 작성하세요.
-5. README 형식으로 정리하고, 표와 체크박스를 최소 1개 이상 포함하세요.
+1. Vite 프로젝트를 만들고 메인 화면에 header, main, section, button을 포함한 의미 있는 HTML 구조를 구성하세요.
+2. CSS로 카드 목록 또는 상태 패널을 배치하고, hover 또는 active 상태가 보이도록 스타일을 작성하세요.
+3. JavaScript로 버튼 클릭 시 텍스트, 클래스, 목록 중 2가지 이상이 DOM에서 바뀌게 만드세요.
+4. index.html 안의 주석 또는 화면 하단 설명 영역에 DOM, CSSOM, 렌더 트리, 레이아웃, 페인트를 한 문장씩 정리하세요.
+5. DevTools Elements 또는 Console에서 확인한 내용을 HTML 주석이나 화면 하단 설명 영역에 짧게 남기세요.
 
 제출물.
-GitHub 저장소 URL 또는 Markdown 파일을 제출하세요. 저장소로 제출하는 경우 README.md에 과제 내용을 정리하고, 필요한 경우 /docs/frontend-roadmap-plan.md를 추가하세요.',
-                 submission_type = 'MULTIPLE',
+index.html 파일 하나만 업로드하세요. 외부 링크나 텍스트 직접 입력은 사용하지 않습니다. HTML 파일 안에 구조, 스타일, 스크립트, 렌더링 흐름 설명, DevTools 확인 기록을 모두 포함하세요.',
+                 submission_type = 'FILE',
                  due_at = NULL,
-                 allowed_file_formats = 'md,pdf,zip',
-                 readme_required = TRUE,
+                 allowed_file_formats = 'html',
+                 readme_required = FALSE,
                  test_required = FALSE,
                  lint_required = FALSE,
-                 submission_rule_description = 'README 또는 Markdown 파일에 학습 계획과 체크리스트를 작성해 제출하세요. URL 제출과 파일 제출을 모두 허용합니다. 제출 전 맞춤법, 표 렌더링, 체크박스 표시가 깨지지 않는지 확인하세요.',
+                 submission_rule_description = 'index.html 파일 하나로 제출하세요. 파일 안에는 HTML 구조, CSS 레이아웃과 상태 스타일, JavaScript DOM 변경 코드, DOM/CSSOM/렌더 트리/레이아웃/페인트 설명 주석, DevTools 확인 기록을 포함하세요.',
                  total_score = 100,
                  pass_score = 80,
                  is_published = FALSE,
                  is_active = TRUE,
                  allow_late_submission = FALSE,
                  ai_review_enabled = TRUE,
-                 allow_text_submission = TRUE,
+                 allow_text_submission = FALSE,
                  allow_file_submission = TRUE,
-                 allow_url_submission = TRUE,
+                 allow_url_submission = FALSE,
                  updated_at = NOW()
            WHERE assignment_id = v_assignment_id;
         END IF;
+
+        DELETE FROM assignment_rubrics
+         WHERE assignment_id = v_assignment_id;
 
         INSERT INTO assignment_rubrics (
           assignment_id, criteria_name, criteria_description,
@@ -826,17 +877,12 @@ GitHub 저장소 URL 또는 Markdown 파일을 제출하세요. 저장소로 제
         SELECT v_assignment_id, seed.criteria_name, seed.criteria_description,
                seed.max_points, seed.display_order, FALSE, NOW(), NOW()
           FROM (VALUES
-            ('로드맵 키워드 이해', '첫 노드의 핵심 키워드를 정확히 설명하고 서로의 관계를 정리했습니다.', 25, 1),
-            ('직무 역할과 협업 질문', '프론트엔드 개발자의 책임과 협업 대상별 확인 질문이 실제 업무 상황에 맞습니다.', 25, 2),
-            ('2주 학습 계획의 실행 가능성', 'day 단위 목표와 산출물이 구체적이고 다음 학습으로 이어지도록 구성되었습니다.', 30, 3),
-            ('README 구성과 제출 완성도', '표, 체크박스, 제출 링크 또는 파일 구조가 명확하고 읽기 쉽습니다.', 20, 4)
+            ('HTML 구조와 의미 요소', 'header, main, section, button 등 의미 있는 구조를 사용하고 화면 정보의 계층이 명확합니다.', 25, 1),
+            ('CSS 레이아웃과 상태 표현', '박스 모델, flex 또는 grid, hover 또는 active 상태를 활용해 렌더링 결과가 분명하게 보입니다.', 25, 2),
+            ('JavaScript DOM 이벤트와 화면 갱신', '이벤트 처리로 텍스트, 클래스, 목록 중 2가지 이상을 변경하고 화면 갱신 원리를 설명했습니다.', 30, 3),
+            ('렌더링 흐름 설명과 DevTools 기록', 'DOM, CSSOM, 렌더 트리, 레이아웃, 페인트 설명과 DevTools 확인 기록이 HTML 파일 안에 정리되었습니다.', 20, 4)
           ) AS seed(criteria_name, criteria_description, max_points, display_order)
-         WHERE NOT EXISTS (
-           SELECT 1
-             FROM assignment_rubrics ar
-            WHERE ar.assignment_id = v_assignment_id
-              AND ar.display_order = seed.display_order
-         );
+        ;
       END $$;
       """;
 }
