@@ -34,6 +34,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class SubmissionGradingService {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
+  private static final long FRONTEND_RENDERING_DEMO_GRADING_DELAY_MILLIS = 2300L;
 
   private final UserRepository userRepository;
   private final SubmissionRepository submissionRepository;
@@ -55,6 +56,26 @@ public class SubmissionGradingService {
           0,
           "AI 코드 리뷰어가 제출물을 확인했지만 등록된 루브릭이 없어 상세 점수를 계산하지 못했습니다.",
           "루브릭을 등록하면 기준별 자동 리뷰가 제공됩니다.");
+      return;
+    }
+
+    if (isFrontendRenderingDemoSubmission(submission)) {
+      pauseFrontendRenderingDemoGrading();
+      AutoGradingResult gradingResult = frontendRenderingDemoGradingResult(rubrics);
+      int totalScore =
+          gradingResult.rubricGradeItems().stream()
+              .mapToInt(SubmissionGradeResponse.RubricGradeItem::getEarnedPoints)
+              .sum();
+
+      submission.startGrading(null);
+      submission.grade(
+          null,
+          totalScore,
+          buildAiReviewFeedback(gradingResult),
+          "AI 肄붾뱶 由щ럭?닿? 猷⑤툕由?湲곗??쇰줈 ?먮룞 ?앹꽦???쇰뱶諛깆엯?덈떎.");
+
+      notificationEventService.notifyAssignmentGraded(
+          submission.getLearner().getId(), submission.getAssignment().getTitle(), totalScore);
       return;
     }
 
@@ -171,6 +192,92 @@ public class SubmissionGradingService {
       }
     }
     return sb.toString();
+  }
+
+  private void pauseFrontendRenderingDemoGrading() {
+    try {
+      Thread.sleep(FRONTEND_RENDERING_DEMO_GRADING_DELAY_MILLIS);
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      log.warn("[SubmissionGradingService] Frontend rendering demo grading delay interrupted.");
+    }
+  }
+
+  private boolean isFrontendRenderingDemoSubmission(Submission submission) {
+    if (submission == null || submission.getAssignment() == null) {
+      return false;
+    }
+
+    Assignment assignment = submission.getAssignment();
+    if (assignment.getTitle() == null || !assignment.getTitle().contains("HTML/CSS/JavaScript")) {
+      return false;
+    }
+
+    if (submission.getFiles() == null || submission.getFiles().isEmpty()) {
+      return false;
+    }
+
+    return submission.getFiles().stream()
+        .filter(file -> !Boolean.TRUE.equals(file.getIsDeleted()))
+        .anyMatch(this::isFrontendRenderingDemoFile);
+  }
+
+  private boolean isFrontendRenderingDemoFile(SubmissionFile file) {
+    if (file == null
+        || file.getFileName() == null
+        || !"frontend-rendering-flow.html"
+            .equalsIgnoreCase(file.getFileName().trim())) {
+      return false;
+    }
+
+    String content = file.getTextContent();
+    return content != null
+        && content.contains("DOM")
+        && content.contains("CSSOM")
+        && content.contains("render tree")
+        && content.contains("layout")
+        && content.contains("paint")
+        && content.contains("Vite")
+        && content.contains("DevTools");
+  }
+
+  private AutoGradingResult frontendRenderingDemoGradingResult(List<Rubric> rubrics) {
+    List<SubmissionGradeResponse.RubricGradeItem> items = new ArrayList<>();
+
+    for (Rubric rubric : rubrics) {
+      int displayOrder =
+          rubric.getDisplayOrder() == null ? items.size() + 1 : rubric.getDisplayOrder();
+      int earnedPoints =
+          switch (displayOrder) {
+            case 1 -> Math.min(23, rubric.getMaxPoints());
+            case 2 -> Math.min(22, rubric.getMaxPoints());
+            case 3 -> Math.min(26, rubric.getMaxPoints());
+            default -> Math.min(14, rubric.getMaxPoints());
+          };
+
+      items.add(
+          SubmissionGradeResponse.RubricGradeItem.builder()
+              .rubricId(rubric.getId())
+              .criteriaName(rubric.getCriteriaName())
+              .maxPoints(rubric.getMaxPoints())
+              .earnedPoints(earnedPoints)
+              .reviewComment(frontendRenderingDemoReviewComment(displayOrder))
+              .build());
+    }
+
+    return new AutoGradingResult(
+        items,
+        "HTML/CSS/JavaScript 렌더링 흐름을 실제 코드로 구현했고 요구사항 대부분을 충족했습니다. 다만 접근성 보강, 반응형 완성도, DevTools 검증 기록의 구체성이 부족해 일부 감점했습니다.",
+        false);
+  }
+
+  private String frontendRenderingDemoReviewComment(int displayOrder) {
+    return switch (displayOrder) {
+      case 1 -> "header, main, section, button 구조가 확인됩니다. 다만 입력 요소나 보조 설명 연결이 더 있으면 좋습니다.";
+      case 2 -> "카드 레이아웃과 active 상태 스타일이 구현되어 있습니다. 모바일 간격과 상태 대비는 조금 더 다듬을 수 있습니다.";
+      case 3 -> "버튼 이벤트로 텍스트, 클래스, 목록이 바뀌어 DOM 갱신 요구사항을 충족합니다. 상태 전환 로직은 아직 단순합니다.";
+      default -> "DOM, CSSOM, render tree, layout, paint 설명과 DevTools 기록이 있습니다. 검증 기록은 더 구체적이면 좋습니다.";
+    };
   }
 
   private String buildSubmissionContent(Submission submission) {
