@@ -54,6 +54,211 @@ BEGIN
 END $$;
 ^^^ END OF SCRIPT ^^^
 
+-- 비백엔드 공식 로드맵 노드 제목과 주제 정리
+-- Backend 로드맵은 유지하고, 나머지 공식 로드맵만 백엔드처럼 짧은 주제형 제목으로 맞춘다.
+DO $$
+BEGIN
+    IF to_regclass('public.roadmap_nodes') IS NULL
+        OR to_regclass('public.roadmaps') IS NULL
+        OR to_regclass('public.roadmap_hub_items') IS NULL
+        OR to_regclass('public.roadmap_hub_sections') IS NULL THEN
+        RETURN;
+    END IF;
+
+    WITH target_roadmaps AS (
+        SELECT
+            r.roadmap_id,
+            COALESCE(MAX(item.subtitle), r.title) AS display_name
+        FROM public.roadmap_hub_items item
+        JOIN public.roadmap_hub_sections section_item ON section_item.id = item.section_id
+        JOIN public.roadmaps r ON r.roadmap_id = item.linked_roadmap_id
+        WHERE item.linked_roadmap_id IS NOT NULL
+          AND item.is_active = TRUE
+          AND section_item.is_active = TRUE
+          AND r.is_official = TRUE
+          AND r.is_deleted = FALSE
+          AND r.title <> 'Backend Master Roadmap'
+        GROUP BY r.roadmap_id, r.title
+        HAVING COALESCE(MAX(item.subtitle), r.title) <> 'Backend'
+    ),
+    current_titles AS (
+        SELECT
+            target.roadmap_id,
+            rn.sort_order,
+            rn.branch_group,
+            CASE
+                WHEN rn.title LIKE target.display_name || ' - %'
+                    THEN substring(rn.title FROM char_length(target.display_name) + 4)
+                ELSE rn.title
+            END AS clean_title
+        FROM target_roadmaps target
+        JOIN public.roadmap_nodes rn ON rn.roadmap_id = target.roadmap_id
+    ),
+    topic_segments AS (
+        SELECT
+            segment_rows.roadmap_id,
+            segment_rows.sort_order,
+            segment_rows.branch_group,
+            segment_rows.segment_order,
+            segment_rows.segment_total,
+            NULLIF(split_part(btrim(segment_rows.segment), ':', 1), '') AS topic_text
+        FROM (
+            SELECT
+                target.roadmap_id,
+                rn.node_id,
+                rn.sort_order,
+                rn.branch_group,
+                split_item.segment,
+                split_item.segment_order,
+                COUNT(*) OVER (PARTITION BY rn.node_id) AS segment_total
+            FROM target_roadmaps target
+            JOIN public.roadmap_nodes rn ON rn.roadmap_id = target.roadmap_id
+            CROSS JOIN LATERAL regexp_split_to_table(COALESCE(rn.sub_topics, ''), ',') WITH ORDINALITY AS split_item(segment, segment_order)
+        ) segment_rows
+    ),
+    segment_profile AS (
+        SELECT
+            roadmap_id,
+            MAX(topic_text) FILTER (WHERE branch_group IS NULL AND sort_order IN (1, 2, 3) AND segment_total >= 3 AND segment_order = 2) AS core_topic,
+            MAX(topic_text) FILTER (WHERE branch_group IS NULL AND sort_order IN (1, 2, 3) AND segment_total >= 3 AND segment_order = 3) AS tool_topic,
+            MAX(topic_text) FILTER (WHERE branch_group IS NULL AND sort_order IN (4, 5, 6, 7) AND segment_total >= 4 AND segment_order = 1) AS practice_topic,
+            MAX(topic_text) FILTER (WHERE branch_group IS NULL AND sort_order IN (4, 5, 6, 7) AND segment_total >= 4 AND segment_order = 2) AS model_topic,
+            MAX(topic_text) FILTER (WHERE branch_group IS NULL AND sort_order IN (4, 5, 6, 7) AND segment_total >= 4 AND segment_order = 3) AS quality_topic,
+            COALESCE(
+                MAX(topic_text) FILTER (WHERE branch_group IS NULL AND sort_order IN (4, 5, 6, 7) AND segment_total >= 4 AND segment_order = 4),
+                MAX(topic_text) FILTER (WHERE segment_total >= 5 AND segment_order = 5)
+            ) AS project_topic,
+            MAX(topic_text) FILTER (WHERE segment_total >= 5 AND segment_order = 1) AS perf_topic,
+            MAX(topic_text) FILTER (WHERE segment_total >= 5 AND segment_order = 2) AS ops_topic,
+            MAX(topic_text) FILTER (WHERE segment_total >= 5 AND segment_order = 3) AS arch_topic,
+            MAX(topic_text) FILTER (WHERE segment_total >= 5 AND segment_order = 4) AS security_topic
+        FROM topic_segments
+        GROUP BY roadmap_id
+    ),
+    title_profile AS (
+        SELECT
+            roadmap_id,
+            MAX(clean_title) FILTER (WHERE branch_group IS NULL AND sort_order = 1) AS core_topic,
+            MAX(clean_title) FILTER (WHERE branch_group IS NULL AND sort_order = 2) AS tool_topic,
+            MAX(clean_title) FILTER (WHERE branch_group IS NULL AND sort_order = 3) AS practice_topic,
+            MAX(clean_title) FILTER (WHERE branch_group IS NULL AND sort_order = 4) AS model_topic,
+            MAX(clean_title) FILTER (WHERE branch_group IS NULL AND sort_order = 5) AS quality_topic,
+            MAX(clean_title) FILTER (WHERE branch_group IS NULL AND sort_order = 6) AS security_topic,
+            MAX(clean_title) FILTER (WHERE branch_group IS NULL AND sort_order = 10) AS project_topic,
+            MAX(clean_title) FILTER (WHERE branch_group = 1 AND sort_order = 8) AS perf_topic,
+            MAX(clean_title) FILTER (WHERE branch_group = 1 AND sort_order = 9) AS ops_topic,
+            MAX(clean_title) FILTER (WHERE branch_group = 2 AND sort_order = 8) AS arch_topic,
+            regexp_replace(
+                regexp_replace(MAX(clean_title) FILTER (WHERE branch_group = 2 AND sort_order = 9), '^보안 심화 ', ''),
+                ' 심화$',
+                ''
+            ) AS branch_security_topic
+        FROM current_titles
+        GROUP BY roadmap_id
+    ),
+    profile AS (
+        SELECT
+            target.roadmap_id,
+            target.display_name,
+            COALESCE(segment_profile.core_topic, title_profile.core_topic, '핵심 개념') AS core_topic,
+            COALESCE(segment_profile.tool_topic, title_profile.tool_topic, '도구와 작업 환경') AS tool_topic,
+            COALESCE(segment_profile.practice_topic, title_profile.practice_topic, '기초 실습') AS practice_topic,
+            COALESCE(segment_profile.model_topic, title_profile.model_topic, '데이터와 상태 흐름') AS model_topic,
+            COALESCE(segment_profile.quality_topic, title_profile.quality_topic, '검증과 품질 기준') AS quality_topic,
+            COALESCE(segment_profile.security_topic, title_profile.branch_security_topic, title_profile.security_topic, '보안 안정성') AS security_topic,
+            COALESCE(segment_profile.project_topic, title_profile.project_topic, '실전 프로젝트') AS project_topic,
+            COALESCE(segment_profile.perf_topic, title_profile.perf_topic, '성능 최적화') AS perf_topic,
+            COALESCE(segment_profile.ops_topic, title_profile.ops_topic, '운영 자동화') AS ops_topic,
+            COALESCE(segment_profile.arch_topic, title_profile.arch_topic, '구조 설계') AS arch_topic
+        FROM target_roadmaps target
+        LEFT JOIN segment_profile ON segment_profile.roadmap_id = target.roadmap_id
+        LEFT JOIN title_profile ON title_profile.roadmap_id = target.roadmap_id
+    ),
+    node_seed(sort_order, branch_group, node_type) AS (
+        VALUES
+            (1, CAST(NULL AS INTEGER), 'CONCEPT'),
+            (2, CAST(NULL AS INTEGER), 'CONCEPT'),
+            (3, CAST(NULL AS INTEGER), 'CONCEPT'),
+            (4, CAST(NULL AS INTEGER), 'PRACTICE'),
+            (5, CAST(NULL AS INTEGER), 'PRACTICE'),
+            (6, CAST(NULL AS INTEGER), 'PRACTICE'),
+            (7, CAST(NULL AS INTEGER), 'CONCEPT'),
+            (8, 1, 'PRACTICE'),
+            (9, 1, 'PRACTICE'),
+            (8, 2, 'CONCEPT'),
+            (9, 2, 'PRACTICE'),
+            (10, CAST(NULL AS INTEGER), 'PROJECT'),
+            (11, CAST(NULL AS INTEGER), 'PROJECT')
+    ),
+    desired_nodes AS (
+        SELECT
+            profile.roadmap_id,
+            seed.sort_order,
+            seed.branch_group,
+            seed.node_type,
+            CASE
+                WHEN seed.sort_order = 1 THEN profile.core_topic
+                WHEN seed.sort_order = 2 THEN profile.tool_topic
+                WHEN seed.sort_order = 3 THEN profile.practice_topic
+                WHEN seed.sort_order = 4 THEN profile.model_topic
+                WHEN seed.sort_order = 5 THEN profile.quality_topic
+                WHEN seed.sort_order = 6 THEN profile.security_topic
+                WHEN seed.sort_order = 7 THEN '협업 산출물과 변경 기록'
+                WHEN seed.sort_order = 8 AND seed.branch_group = 1 THEN profile.perf_topic
+                WHEN seed.sort_order = 9 AND seed.branch_group = 1 THEN profile.ops_topic
+                WHEN seed.sort_order = 8 AND seed.branch_group = 2 THEN profile.arch_topic
+                WHEN seed.sort_order = 9 AND seed.branch_group = 2 THEN '보안 심화 ' || profile.security_topic
+                WHEN seed.sort_order = 10 THEN profile.project_topic
+                ELSE '포트폴리오 ' || profile.project_topic
+            END AS title,
+            CASE
+                WHEN seed.sort_order = 1 THEN profile.tool_topic
+                WHEN seed.sort_order = 2 THEN profile.core_topic
+                WHEN seed.sort_order = 3 THEN profile.tool_topic
+                WHEN seed.sort_order = 4 THEN profile.tool_topic
+                WHEN seed.sort_order = 5 THEN profile.tool_topic
+                WHEN seed.sort_order = 6 THEN profile.tool_topic
+                WHEN seed.sort_order = 7 THEN profile.tool_topic
+                WHEN seed.sort_order = 8 AND seed.branch_group = 1 THEN profile.tool_topic
+                WHEN seed.sort_order = 9 AND seed.branch_group = 1 THEN profile.tool_topic
+                WHEN seed.sort_order = 8 AND seed.branch_group = 2 THEN profile.tool_topic
+                WHEN seed.sort_order = 9 AND seed.branch_group = 2 THEN profile.tool_topic
+                WHEN seed.sort_order = 10 THEN profile.tool_topic
+                ELSE profile.tool_topic
+            END AS related_topic,
+            CASE
+                WHEN seed.sort_order = 1 THEN profile.display_name || ' 학습은 ' || profile.core_topic || '을 기준으로 시작합니다. 이 단계에서는 핵심 개념의 범위를 잡고, 최종적으로 ' || profile.project_topic || '까지 이어질 학습 흐름을 확인합니다.'
+                WHEN seed.sort_order = 2 THEN profile.tool_topic || '을 설치하고 기본 작업 흐름을 맞춥니다. 실습을 반복할 수 있도록 프로젝트 구조, 실행 명령, 디버깅 방법, 협업 규칙을 함께 세팅합니다.'
+                WHEN seed.sort_order = 3 THEN profile.practice_topic || '을 작은 단위로 직접 구현합니다. 입력을 받고 처리한 뒤 결과를 확인하는 흐름을 만들면서 ' || profile.model_topic || '이 코드 안에서 어떻게 드러나는지 확인합니다.'
+                WHEN seed.sort_order = 4 THEN profile.model_topic || '을 기준으로 데이터와 상태 흐름을 설계합니다. 어떤 정보를 어디에 두고, 어떤 이벤트가 변경을 만들며, 어떤 산출물이 남아야 하는지 ' || profile.arch_topic || ' 관점으로 정리합니다.'
+                WHEN seed.sort_order = 5 THEN profile.quality_topic || '을 기준으로 결과물을 검증합니다. 정상 동작만 확인하지 않고 실패 케이스, 경계값, 리뷰 기준을 포함해 품질 기준을 세웁니다.'
+                WHEN seed.sort_order = 6 THEN profile.security_topic || '을 중심으로 안정성을 보강합니다. 권한, 입력값, 예외, 장애 상황을 검토하고 운영 중 문제가 생겼을 때 추적 가능한 기준을 만듭니다.'
+                WHEN seed.sort_order = 7 THEN profile.project_topic || '을 팀에 설명할 수 있도록 문서와 변경 기록을 남깁니다. 이슈, PR, 의사결정 이유, 테스트 결과를 정리해 다음 사람이 ' || profile.tool_topic || ' 흐름을 그대로 재현할 수 있게 만듭니다.'
+                WHEN seed.sort_order = 8 AND seed.branch_group = 1 THEN profile.perf_topic || '을 깊게 다룹니다. 측정 지표를 먼저 정하고 병목을 찾은 뒤, ' || profile.display_name || ' 결과물에서 가장 효과가 큰 최적화 순서를 선택합니다.'
+                WHEN seed.sort_order = 9 AND seed.branch_group = 1 THEN profile.ops_topic || '을 운영 관점에서 설계합니다. 배포, 모니터링, 알림, 롤백, 반복 작업 자동화를 정리해 학습 결과물이 한 번 만들고 끝나는 수준에 머물지 않게 합니다.'
+                WHEN seed.sort_order = 8 AND seed.branch_group = 2 THEN profile.arch_topic || '을 기준으로 구조를 다시 봅니다. 책임 경계, 모듈 분리, 확장 전략을 점검하고 ' || profile.model_topic || '이 커져도 유지보수 가능한 형태인지 판단합니다.'
+                WHEN seed.sort_order = 9 AND seed.branch_group = 2 THEN profile.security_topic || '을 심화 기준으로 점검합니다. 권한, 입력값, 예외, 장애 상황을 검토하고 운영 중 문제가 생겼을 때 추적 가능한 기준을 만듭니다.'
+                WHEN seed.sort_order = 10 THEN profile.project_topic || '을 하나의 완성물로 묶습니다. 요구사항, 설계, 구현, 검증, 회고가 모두 남도록 만들고 ' || profile.quality_topic || '을 통과한 결과물을 목표로 합니다.'
+                ELSE profile.project_topic || ' 포트폴리오는 왜 만들었고 어떤 선택을 했는지 설명할 수 있어야 합니다. 핵심 개념, 구조, 보안에서 내린 판단을 면접 답변처럼 정리합니다.'
+            END AS content
+        FROM profile
+        CROSS JOIN node_seed seed
+    )
+    UPDATE public.roadmap_nodes rn
+       SET title = desired.title,
+           content = desired.content,
+           node_type = desired.node_type,
+           sub_topics = desired.title || ': 핵심 주제,' || desired.related_topic || ': 관련 기술'
+      FROM desired_nodes desired
+     WHERE rn.roadmap_id = desired.roadmap_id
+       AND rn.sort_order = desired.sort_order
+       AND (
+           rn.branch_group = desired.branch_group
+           OR (rn.branch_group IS NULL AND desired.branch_group IS NULL)
+       );
+END $$;
+^^^ END OF SCRIPT ^^^
+
 -- 비백엔드 공식 로드맵 노드 필수 태그 정리
 -- 노드 수정 화면은 node_required_tags를 읽으므로 기존 DB 매핑도 의미 있는 태그만 남긴다.
 DO $$
@@ -105,7 +310,6 @@ BEGIN
             split_part(btrim(split_item.segment), ':', 1) AS topic_text
         FROM target_nodes
         CROSS JOIN LATERAL regexp_split_to_table(COALESCE(target_nodes.sub_topics, ''), ',') WITH ORDINALITY AS split_item(segment, segment_order)
-        WHERE NOT (target_nodes.sort_order = 1 AND split_item.segment_order = 1)
     ),
     raw_topic_tokens AS (
         SELECT
@@ -130,17 +334,66 @@ BEGIN
         FROM raw_topic_tokens
         WHERE tag_name <> ''
           AND char_length(tag_name) BETWEEN 2 AND 40
-          AND tag_name NOT IN ('개요', '로드맵', '이해', '역할', '정의', '학습', '목표', '책임', '범위', 'and', 'or', 'with', '및')
+          AND tag_name NOT IN ('개요', '로드맵', '이해', '역할', '정의', '학습', '목표', '책임', '범위', '가능한', 'and', 'or', 'with', '및')
     ),
     deduped_topic_tokens AS (
         SELECT
             node_id,
             tag_name,
             tag_category AS category,
+            CASE WHEN tag_name ~ '[A-Za-z]' THEN 1 ELSE 0 END AS has_english,
             MIN(segment_order) AS segment_order,
             MIN(token_order) AS token_order
         FROM filtered_topic_tokens
         GROUP BY node_id, tag_name, tag_category
+    ),
+    ranked_topic_tokens AS (
+        SELECT
+            node_id,
+            tag_name,
+            category,
+            has_english,
+            segment_order,
+            token_order,
+            ROW_NUMBER() OVER (PARTITION BY node_id ORDER BY segment_order, token_order, tag_name) AS overall_rank,
+            ROW_NUMBER() OVER (PARTITION BY node_id, has_english ORDER BY segment_order, token_order, tag_name) AS language_rank
+        FROM deduped_topic_tokens
+    ),
+    preferred_topic_tokens AS (
+        SELECT node_id, tag_name, category, has_english, segment_order, token_order, overall_rank, 0 AS priority
+        FROM ranked_topic_tokens
+        WHERE has_english = 1
+          AND language_rank <= 4
+        UNION ALL
+        SELECT node_id, tag_name, category, has_english, segment_order, token_order, overall_rank, 1 AS priority
+        FROM ranked_topic_tokens
+        WHERE has_english = 0
+          AND segment_order = 1
+        UNION ALL
+        SELECT node_id, tag_name, category, has_english, segment_order, token_order, overall_rank, 2 AS priority
+        FROM ranked_topic_tokens
+        WHERE has_english = 1
+        UNION ALL
+        SELECT node_id, tag_name, category, has_english, segment_order, token_order, overall_rank, 3 AS priority
+        FROM ranked_topic_tokens
+        WHERE has_english = 0
+    ),
+    unique_topic_tokens AS (
+        SELECT node_id, tag_name, category, has_english, segment_order, token_order, overall_rank, priority
+        FROM (
+            SELECT
+                node_id,
+                tag_name,
+                category,
+                has_english,
+                segment_order,
+                token_order,
+                overall_rank,
+                priority,
+                ROW_NUMBER() OVER (PARTITION BY node_id, tag_name ORDER BY priority, overall_rank) AS duplicate_rank
+            FROM preferred_topic_tokens
+        ) unique_candidates
+        WHERE duplicate_rank = 1
     ),
     generated_tags AS (
         SELECT node_id, tag_name, category
@@ -149,8 +402,8 @@ BEGIN
                 node_id,
                 tag_name,
                 category,
-                ROW_NUMBER() OVER (PARTITION BY node_id ORDER BY segment_order, token_order, tag_name) AS tag_rank
-            FROM deduped_topic_tokens
+                ROW_NUMBER() OVER (PARTITION BY node_id ORDER BY priority, overall_rank, tag_name) AS tag_rank
+            FROM unique_topic_tokens
         ) ranked_tags
         WHERE tag_rank <= 5
     )
@@ -193,7 +446,6 @@ BEGIN
             split_part(btrim(split_item.segment), ':', 1) AS topic_text
         FROM target_nodes
         CROSS JOIN LATERAL regexp_split_to_table(COALESCE(target_nodes.sub_topics, ''), ',') WITH ORDINALITY AS split_item(segment, segment_order)
-        WHERE NOT (target_nodes.sort_order = 1 AND split_item.segment_order = 1)
     ),
     raw_topic_tokens AS (
         SELECT
@@ -217,16 +469,63 @@ BEGIN
         FROM raw_topic_tokens
         WHERE tag_name <> ''
           AND char_length(tag_name) BETWEEN 2 AND 40
-          AND tag_name NOT IN ('개요', '로드맵', '이해', '역할', '정의', '학습', '목표', '책임', '범위', 'and', 'or', 'with', '및')
+          AND tag_name NOT IN ('개요', '로드맵', '이해', '역할', '정의', '학습', '목표', '책임', '범위', '가능한', 'and', 'or', 'with', '및')
     ),
     deduped_topic_tokens AS (
         SELECT
             node_id,
             tag_name,
+            CASE WHEN tag_name ~ '[A-Za-z]' THEN 1 ELSE 0 END AS has_english,
             MIN(segment_order) AS segment_order,
             MIN(token_order) AS token_order
         FROM filtered_topic_tokens
         GROUP BY node_id, tag_name
+    ),
+    ranked_topic_tokens AS (
+        SELECT
+            node_id,
+            tag_name,
+            has_english,
+            segment_order,
+            token_order,
+            ROW_NUMBER() OVER (PARTITION BY node_id ORDER BY segment_order, token_order, tag_name) AS overall_rank,
+            ROW_NUMBER() OVER (PARTITION BY node_id, has_english ORDER BY segment_order, token_order, tag_name) AS language_rank
+        FROM deduped_topic_tokens
+    ),
+    preferred_topic_tokens AS (
+        SELECT node_id, tag_name, has_english, segment_order, token_order, overall_rank, 0 AS priority
+        FROM ranked_topic_tokens
+        WHERE has_english = 1
+          AND language_rank <= 4
+        UNION ALL
+        SELECT node_id, tag_name, has_english, segment_order, token_order, overall_rank, 1 AS priority
+        FROM ranked_topic_tokens
+        WHERE has_english = 0
+          AND segment_order = 1
+        UNION ALL
+        SELECT node_id, tag_name, has_english, segment_order, token_order, overall_rank, 2 AS priority
+        FROM ranked_topic_tokens
+        WHERE has_english = 1
+        UNION ALL
+        SELECT node_id, tag_name, has_english, segment_order, token_order, overall_rank, 3 AS priority
+        FROM ranked_topic_tokens
+        WHERE has_english = 0
+    ),
+    unique_topic_tokens AS (
+        SELECT node_id, tag_name, has_english, segment_order, token_order, overall_rank, priority
+        FROM (
+            SELECT
+                node_id,
+                tag_name,
+                has_english,
+                segment_order,
+                token_order,
+                overall_rank,
+                priority,
+                ROW_NUMBER() OVER (PARTITION BY node_id, tag_name ORDER BY priority, overall_rank) AS duplicate_rank
+            FROM preferred_topic_tokens
+        ) unique_candidates
+        WHERE duplicate_rank = 1
     ),
     allowed_node_tags AS (
         SELECT node_id, tag_name
@@ -234,8 +533,8 @@ BEGIN
             SELECT
                 node_id,
                 tag_name,
-                ROW_NUMBER() OVER (PARTITION BY node_id ORDER BY segment_order, token_order, tag_name) AS tag_rank
-            FROM deduped_topic_tokens
+                ROW_NUMBER() OVER (PARTITION BY node_id ORDER BY priority, overall_rank, tag_name) AS tag_rank
+            FROM unique_topic_tokens
         ) ranked_tags
         WHERE tag_rank <= 5
     )
@@ -282,7 +581,6 @@ BEGIN
             split_part(btrim(split_item.segment), ':', 1) AS topic_text
         FROM target_nodes
         CROSS JOIN LATERAL regexp_split_to_table(COALESCE(target_nodes.sub_topics, ''), ',') WITH ORDINALITY AS split_item(segment, segment_order)
-        WHERE NOT (target_nodes.sort_order = 1 AND split_item.segment_order = 1)
     ),
     raw_topic_tokens AS (
         SELECT
@@ -306,16 +604,63 @@ BEGIN
         FROM raw_topic_tokens
         WHERE tag_name <> ''
           AND char_length(tag_name) BETWEEN 2 AND 40
-          AND tag_name NOT IN ('개요', '로드맵', '이해', '역할', '정의', '학습', '목표', '책임', '범위', 'and', 'or', 'with', '및')
+          AND tag_name NOT IN ('개요', '로드맵', '이해', '역할', '정의', '학습', '목표', '책임', '범위', '가능한', 'and', 'or', 'with', '및')
     ),
     deduped_topic_tokens AS (
         SELECT
             node_id,
             tag_name,
+            CASE WHEN tag_name ~ '[A-Za-z]' THEN 1 ELSE 0 END AS has_english,
             MIN(segment_order) AS segment_order,
             MIN(token_order) AS token_order
         FROM filtered_topic_tokens
         GROUP BY node_id, tag_name
+    ),
+    ranked_topic_tokens AS (
+        SELECT
+            node_id,
+            tag_name,
+            has_english,
+            segment_order,
+            token_order,
+            ROW_NUMBER() OVER (PARTITION BY node_id ORDER BY segment_order, token_order, tag_name) AS overall_rank,
+            ROW_NUMBER() OVER (PARTITION BY node_id, has_english ORDER BY segment_order, token_order, tag_name) AS language_rank
+        FROM deduped_topic_tokens
+    ),
+    preferred_topic_tokens AS (
+        SELECT node_id, tag_name, has_english, segment_order, token_order, overall_rank, 0 AS priority
+        FROM ranked_topic_tokens
+        WHERE has_english = 1
+          AND language_rank <= 4
+        UNION ALL
+        SELECT node_id, tag_name, has_english, segment_order, token_order, overall_rank, 1 AS priority
+        FROM ranked_topic_tokens
+        WHERE has_english = 0
+          AND segment_order = 1
+        UNION ALL
+        SELECT node_id, tag_name, has_english, segment_order, token_order, overall_rank, 2 AS priority
+        FROM ranked_topic_tokens
+        WHERE has_english = 1
+        UNION ALL
+        SELECT node_id, tag_name, has_english, segment_order, token_order, overall_rank, 3 AS priority
+        FROM ranked_topic_tokens
+        WHERE has_english = 0
+    ),
+    unique_topic_tokens AS (
+        SELECT node_id, tag_name, has_english, segment_order, token_order, overall_rank, priority
+        FROM (
+            SELECT
+                node_id,
+                tag_name,
+                has_english,
+                segment_order,
+                token_order,
+                overall_rank,
+                priority,
+                ROW_NUMBER() OVER (PARTITION BY node_id, tag_name ORDER BY priority, overall_rank) AS duplicate_rank
+            FROM preferred_topic_tokens
+        ) unique_candidates
+        WHERE duplicate_rank = 1
     ),
     allowed_node_tags AS (
         SELECT node_id, tag_name
@@ -323,8 +668,8 @@ BEGIN
             SELECT
                 node_id,
                 tag_name,
-                ROW_NUMBER() OVER (PARTITION BY node_id ORDER BY segment_order, token_order, tag_name) AS tag_rank
-            FROM deduped_topic_tokens
+                ROW_NUMBER() OVER (PARTITION BY node_id ORDER BY priority, overall_rank, tag_name) AS tag_rank
+            FROM unique_topic_tokens
         ) ranked_tags
         WHERE tag_rank <= 5
     )
