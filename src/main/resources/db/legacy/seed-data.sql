@@ -15344,51 +15344,72 @@ node_seed(sort_order, branch_group, node_type, stage_label) AS (
         (9, 2, 'PRACTICE', 'ADVANCED'),
         (10, CAST(NULL AS INTEGER), 'PROJECT', 'ADVANCED'),
         (11, CAST(NULL AS INTEGER), 'PROJECT', 'ADVANCED')
-)
-SELECT
-    target.roadmap_id,
-    target.display_name || ' - ' ||
+),
+node_detail AS (
+    SELECT
+        target.roadmap_id,
+        target.display_name,
+        seed.node_type,
+        seed.sort_order,
+        seed.branch_group,
         CASE
-            WHEN seed.sort_order = 1 THEN profile.intro_topic
-            WHEN seed.sort_order = 2 THEN profile.core_topic
-            WHEN seed.sort_order = 3 THEN profile.tool_topic
-            WHEN seed.sort_order = 4 THEN profile.practice_topic
-            WHEN seed.sort_order = 5 THEN profile.model_topic
-            WHEN seed.sort_order = 6 THEN profile.quality_topic
+            WHEN seed.sort_order = 1 THEN profile.core_topic
+            WHEN seed.sort_order = 2 THEN profile.tool_topic
+            WHEN seed.sort_order = 3 THEN profile.practice_topic
+            WHEN seed.sort_order = 4 THEN profile.model_topic
+            WHEN seed.sort_order = 5 THEN profile.quality_topic
+            WHEN seed.sort_order = 6 THEN profile.security_topic
             WHEN seed.sort_order = 7 THEN '협업 산출물과 변경 기록'
             WHEN seed.sort_order = 8 AND seed.branch_group = 1 THEN profile.perf_topic
             WHEN seed.sort_order = 9 AND seed.branch_group = 1 THEN profile.ops_topic
             WHEN seed.sort_order = 8 AND seed.branch_group = 2 THEN profile.arch_topic
-            WHEN seed.sort_order = 9 AND seed.branch_group = 2 THEN profile.security_topic
+            WHEN seed.sort_order = 9 AND seed.branch_group = 2 THEN '보안 심화 ' || profile.security_topic
             WHEN seed.sort_order = 10 THEN profile.project_topic
-            ELSE '포트폴리오 설명과 면접 정리'
-        END AS title,
-    CASE
-        WHEN seed.sort_order = 1 THEN target.display_name || ' 학습은 ' || profile.intro_topic || '을 먼저 이해하는 데서 시작합니다. 이 단계에서는 ' || profile.core_topic || '이 왜 필요한지 확인하고, 최종적으로 ' || profile.project_topic || '까지 이어질 학습 범위를 잡습니다.'
-        WHEN seed.sort_order = 2 THEN profile.core_topic || '을 실제 판단 기준으로 정리합니다. 단어를 외우는 단계가 아니라 ' || target.display_name || ' 작업 중 어떤 문제를 만나면 어떤 개념을 꺼내 써야 하는지 연결합니다.'
-        WHEN seed.sort_order = 3 THEN profile.tool_topic || '을 설치하고 기본 작업 흐름을 맞춥니다. 실습을 반복할 수 있도록 프로젝트 구조, 실행 명령, 디버깅 방법, 협업 규칙을 함께 세팅합니다.'
-        WHEN seed.sort_order = 4 THEN profile.practice_topic || '을 작은 단위로 직접 구현합니다. 입력을 받고 처리한 뒤 결과를 확인하는 흐름을 만들면서 ' || profile.model_topic || '이 코드 안에서 어떻게 드러나는지 확인합니다.'
-        WHEN seed.sort_order = 5 THEN profile.model_topic || '을 기준으로 데이터와 상태 흐름을 설계합니다. 어떤 정보를 어디에 두고, 어떤 이벤트가 변경을 만들며, 어떤 산출물이 남아야 하는지 ' || profile.arch_topic || ' 관점으로 정리합니다.'
-        WHEN seed.sort_order = 6 THEN profile.quality_topic || '을 기준으로 결과물을 검증합니다. 정상 동작만 확인하지 않고 실패 케이스, 경계값, 리뷰 기준, ' || profile.security_topic || '까지 포함해 품질 기준을 세웁니다.'
-        WHEN seed.sort_order = 7 THEN profile.project_topic || '을 팀에 설명할 수 있도록 문서와 변경 기록을 남깁니다. 이슈, PR, 의사결정 이유, 테스트 결과를 정리해 다음 사람이 ' || profile.tool_topic || ' 흐름을 그대로 재현할 수 있게 만듭니다.'
-        WHEN seed.sort_order = 8 AND seed.branch_group = 1 THEN profile.perf_topic || '을 깊게 다룹니다. 측정 지표를 먼저 정하고 병목을 찾은 뒤, ' || target.display_name || ' 결과물에서 가장 효과가 큰 최적화 순서를 선택합니다.'
-        WHEN seed.sort_order = 9 AND seed.branch_group = 1 THEN profile.ops_topic || '을 운영 관점에서 설계합니다. 배포, 모니터링, 알림, 롤백, 반복 작업 자동화를 정리해 학습 결과물이 한 번 만들고 끝나는 수준에 머물지 않게 합니다.'
-        WHEN seed.sort_order = 8 AND seed.branch_group = 2 THEN profile.arch_topic || '을 기준으로 구조를 다시 봅니다. 책임 경계, 모듈 분리, 확장 전략을 점검하고 ' || profile.model_topic || '이 커져도 유지보수 가능한 형태인지 판단합니다.'
-        WHEN seed.sort_order = 9 AND seed.branch_group = 2 THEN profile.security_topic || '을 중심으로 안정성을 보강합니다. 권한, 입력값, 예외, 장애 상황을 검토하고 운영 중 문제가 생겼을 때 추적 가능한 기준을 만듭니다.'
-        WHEN seed.sort_order = 10 THEN profile.project_topic || '을 하나의 완성물로 묶습니다. 요구사항, 설계, 구현, 검증, 회고가 모두 남도록 만들고 ' || profile.quality_topic || '을 통과한 결과물을 목표로 합니다.'
-        ELSE target.display_name || ' 포트폴리오는 ' || profile.project_topic || '을 왜 만들었고 어떤 선택을 했는지 설명할 수 있어야 합니다. ' || profile.core_topic || ', ' || profile.arch_topic || ', ' || profile.security_topic || '에서 내린 판단을 면접 답변처럼 정리합니다.'
-    END AS content,
-    seed.node_type,
-    seed.sort_order,
-    CASE seed.stage_label
-        WHEN 'FOUNDATION' THEN profile.intro_topic || ': 학습 목표와 책임 범위,' || profile.core_topic || ': 반드시 구분해야 할 핵심 개념,' || profile.tool_topic || ': 실습을 반복할 기본 환경'
-        WHEN 'PRACTICE' THEN profile.practice_topic || ': 작은 기능 구현,' || profile.model_topic || ': 데이터와 상태 흐름,' || profile.quality_topic || ': 검증과 리뷰 기준,' || profile.project_topic || ': 협업 산출물 정리'
-        ELSE profile.perf_topic || ': 성능 개선 기준,' || profile.ops_topic || ': 운영과 자동화,' || profile.arch_topic || ': 구조와 확장 전략,' || profile.security_topic || ': 보안과 안정성,' || profile.project_topic || ': 포트폴리오 완성물'
-    END AS sub_topics,
-    seed.branch_group
-FROM target_roadmaps target
-JOIN roadmap_hub_node_profile_seed profile ON profile.display_name = target.display_name
-CROSS JOIN node_seed seed;
+            ELSE '포트폴리오 ' || profile.project_topic
+        END AS title_topic,
+        CASE
+            WHEN seed.sort_order = 1 THEN profile.tool_topic
+            WHEN seed.sort_order = 2 THEN profile.core_topic
+            WHEN seed.sort_order = 3 THEN profile.tool_topic
+            WHEN seed.sort_order = 4 THEN profile.tool_topic
+            WHEN seed.sort_order = 5 THEN profile.tool_topic
+            WHEN seed.sort_order = 6 THEN profile.tool_topic
+            WHEN seed.sort_order = 7 THEN profile.tool_topic
+            WHEN seed.sort_order = 8 AND seed.branch_group = 1 THEN profile.tool_topic
+            WHEN seed.sort_order = 9 AND seed.branch_group = 1 THEN profile.tool_topic
+            WHEN seed.sort_order = 8 AND seed.branch_group = 2 THEN profile.tool_topic
+            WHEN seed.sort_order = 9 AND seed.branch_group = 2 THEN profile.tool_topic
+            WHEN seed.sort_order = 10 THEN profile.tool_topic
+            ELSE profile.tool_topic
+        END AS related_topic,
+        CASE
+            WHEN seed.sort_order = 1 THEN target.display_name || ' 학습은 ' || profile.core_topic || '을 기준으로 시작합니다. 이 단계에서는 ' || profile.intro_topic || '의 범위를 잡고, 최종적으로 ' || profile.project_topic || '까지 이어질 학습 흐름을 확인합니다.'
+            WHEN seed.sort_order = 2 THEN profile.tool_topic || '을 설치하고 기본 작업 흐름을 맞춥니다. 실습을 반복할 수 있도록 프로젝트 구조, 실행 명령, 디버깅 방법, 협업 규칙을 함께 세팅합니다.'
+            WHEN seed.sort_order = 3 THEN profile.practice_topic || '을 작은 단위로 직접 구현합니다. 입력을 받고 처리한 뒤 결과를 확인하는 흐름을 만들면서 ' || profile.model_topic || '이 코드 안에서 어떻게 드러나는지 확인합니다.'
+            WHEN seed.sort_order = 4 THEN profile.model_topic || '을 기준으로 데이터와 상태 흐름을 설계합니다. 어떤 정보를 어디에 두고, 어떤 이벤트가 변경을 만들며, 어떤 산출물이 남아야 하는지 ' || profile.arch_topic || ' 관점으로 정리합니다.'
+            WHEN seed.sort_order = 5 THEN profile.quality_topic || '을 기준으로 결과물을 검증합니다. 정상 동작만 확인하지 않고 실패 케이스, 경계값, 리뷰 기준을 포함해 품질 기준을 세웁니다.'
+            WHEN seed.sort_order = 6 THEN profile.security_topic || '을 중심으로 안정성을 보강합니다. 권한, 입력값, 예외, 장애 상황을 검토하고 운영 중 문제가 생겼을 때 추적 가능한 기준을 만듭니다.'
+            WHEN seed.sort_order = 7 THEN profile.project_topic || '을 팀에 설명할 수 있도록 문서와 변경 기록을 남깁니다. 이슈, PR, 의사결정 이유, 테스트 결과를 정리해 다음 사람이 ' || profile.tool_topic || ' 흐름을 그대로 재현할 수 있게 만듭니다.'
+            WHEN seed.sort_order = 8 AND seed.branch_group = 1 THEN profile.perf_topic || '을 깊게 다룹니다. 측정 지표를 먼저 정하고 병목을 찾은 뒤, ' || target.display_name || ' 결과물에서 가장 효과가 큰 최적화 순서를 선택합니다.'
+            WHEN seed.sort_order = 9 AND seed.branch_group = 1 THEN profile.ops_topic || '을 운영 관점에서 설계합니다. 배포, 모니터링, 알림, 롤백, 반복 작업 자동화를 정리해 학습 결과물이 한 번 만들고 끝나는 수준에 머물지 않게 합니다.'
+            WHEN seed.sort_order = 8 AND seed.branch_group = 2 THEN profile.arch_topic || '을 기준으로 구조를 다시 봅니다. 책임 경계, 모듈 분리, 확장 전략을 점검하고 ' || profile.model_topic || '이 커져도 유지보수 가능한 형태인지 판단합니다.'
+            WHEN seed.sort_order = 9 AND seed.branch_group = 2 THEN profile.security_topic || '을 심화 기준으로 점검합니다. 권한, 입력값, 예외, 장애 상황을 검토하고 운영 중 문제가 생겼을 때 추적 가능한 기준을 만듭니다.'
+            WHEN seed.sort_order = 10 THEN profile.project_topic || '을 하나의 완성물로 묶습니다. 요구사항, 설계, 구현, 검증, 회고가 모두 남도록 만들고 ' || profile.quality_topic || '을 통과한 결과물을 목표로 합니다.'
+            ELSE profile.project_topic || ' 포트폴리오는 왜 만들었고 어떤 선택을 했는지 설명할 수 있어야 합니다. ' || profile.core_topic || ', ' || profile.arch_topic || ', ' || profile.security_topic || '에서 내린 판단을 면접 답변처럼 정리합니다.'
+        END AS content
+    FROM target_roadmaps target
+    JOIN roadmap_hub_node_profile_seed profile ON profile.display_name = target.display_name
+    CROSS JOIN node_seed seed
+)
+SELECT
+    node_detail.roadmap_id,
+    node_detail.title_topic AS title,
+    node_detail.content,
+    node_detail.node_type,
+    node_detail.sort_order,
+    node_detail.title_topic || ': 핵심 주제,' || node_detail.related_topic || ': 관련 기술' AS sub_topics,
+    node_detail.branch_group
+FROM node_detail;
 
 UPDATE roadmap_nodes rn
 SET
@@ -15525,7 +15546,6 @@ topic_segments AS (
         split_part(btrim(split_item.segment), ':', 1) AS topic_text
     FROM target_nodes
     CROSS JOIN LATERAL regexp_split_to_table(COALESCE(target_nodes.sub_topics, ''), ',') WITH ORDINALITY AS split_item(segment, segment_order)
-    WHERE NOT (target_nodes.sort_order = 1 AND split_item.segment_order = 1)
 ),
 raw_topic_tokens AS (
     SELECT
@@ -15550,17 +15570,66 @@ filtered_topic_tokens AS (
     FROM raw_topic_tokens
     WHERE tag_name <> ''
       AND char_length(tag_name) BETWEEN 2 AND 40
-      AND tag_name NOT IN ('개요', '로드맵', '이해', '역할', '정의', '학습', '목표', '책임', '범위', 'and', 'or', 'with', '및')
+      AND tag_name NOT IN ('개요', '로드맵', '이해', '역할', '정의', '학습', '목표', '책임', '범위', '가능한', 'and', 'or', 'with', '및')
 ),
 deduped_topic_tokens AS (
     SELECT
         node_id,
         tag_name,
         tag_category AS category,
+        CASE WHEN tag_name ~ '[A-Za-z]' THEN 1 ELSE 0 END AS has_english,
         MIN(segment_order) AS segment_order,
         MIN(token_order) AS token_order
     FROM filtered_topic_tokens
     GROUP BY node_id, tag_name, tag_category
+),
+ranked_topic_tokens AS (
+    SELECT
+        node_id,
+        tag_name,
+        category,
+        has_english,
+        segment_order,
+        token_order,
+        ROW_NUMBER() OVER (PARTITION BY node_id ORDER BY segment_order, token_order, tag_name) AS overall_rank,
+        ROW_NUMBER() OVER (PARTITION BY node_id, has_english ORDER BY segment_order, token_order, tag_name) AS language_rank
+    FROM deduped_topic_tokens
+),
+preferred_topic_tokens AS (
+    SELECT node_id, tag_name, category, has_english, segment_order, token_order, overall_rank, 0 AS priority
+    FROM ranked_topic_tokens
+    WHERE has_english = 1
+      AND language_rank <= 4
+    UNION ALL
+    SELECT node_id, tag_name, category, has_english, segment_order, token_order, overall_rank, 1 AS priority
+    FROM ranked_topic_tokens
+    WHERE has_english = 0
+      AND segment_order = 1
+    UNION ALL
+    SELECT node_id, tag_name, category, has_english, segment_order, token_order, overall_rank, 2 AS priority
+    FROM ranked_topic_tokens
+    WHERE has_english = 1
+    UNION ALL
+    SELECT node_id, tag_name, category, has_english, segment_order, token_order, overall_rank, 3 AS priority
+    FROM ranked_topic_tokens
+    WHERE has_english = 0
+),
+unique_topic_tokens AS (
+    SELECT node_id, tag_name, category, has_english, segment_order, token_order, overall_rank, priority
+    FROM (
+        SELECT
+            node_id,
+            tag_name,
+            category,
+            has_english,
+            segment_order,
+            token_order,
+            overall_rank,
+            priority,
+            ROW_NUMBER() OVER (PARTITION BY node_id, tag_name ORDER BY priority, overall_rank) AS duplicate_rank
+        FROM preferred_topic_tokens
+    ) unique_candidates
+    WHERE duplicate_rank = 1
 ),
 generated_tags AS (
     SELECT node_id, tag_name, category
@@ -15569,8 +15638,8 @@ generated_tags AS (
             node_id,
             tag_name,
             category,
-            ROW_NUMBER() OVER (PARTITION BY node_id ORDER BY segment_order, token_order, tag_name) AS tag_rank
-        FROM deduped_topic_tokens
+            ROW_NUMBER() OVER (PARTITION BY node_id ORDER BY priority, overall_rank, tag_name) AS tag_rank
+        FROM unique_topic_tokens
     ) ranked_tags
     WHERE tag_rank <= 5
 )
@@ -15613,7 +15682,6 @@ topic_segments AS (
         split_part(btrim(split_item.segment), ':', 1) AS topic_text
     FROM target_nodes
     CROSS JOIN LATERAL regexp_split_to_table(COALESCE(target_nodes.sub_topics, ''), ',') WITH ORDINALITY AS split_item(segment, segment_order)
-    WHERE NOT (target_nodes.sort_order = 1 AND split_item.segment_order = 1)
 ),
 raw_topic_tokens AS (
     SELECT
@@ -15637,16 +15705,63 @@ filtered_topic_tokens AS (
     FROM raw_topic_tokens
     WHERE tag_name <> ''
       AND char_length(tag_name) BETWEEN 2 AND 40
-      AND tag_name NOT IN ('개요', '로드맵', '이해', '역할', '정의', '학습', '목표', '책임', '범위', 'and', 'or', 'with', '및')
+      AND tag_name NOT IN ('개요', '로드맵', '이해', '역할', '정의', '학습', '목표', '책임', '범위', '가능한', 'and', 'or', 'with', '및')
 ),
 deduped_topic_tokens AS (
     SELECT
         node_id,
         tag_name,
+        CASE WHEN tag_name ~ '[A-Za-z]' THEN 1 ELSE 0 END AS has_english,
         MIN(segment_order) AS segment_order,
         MIN(token_order) AS token_order
     FROM filtered_topic_tokens
     GROUP BY node_id, tag_name
+),
+ranked_topic_tokens AS (
+    SELECT
+        node_id,
+        tag_name,
+        has_english,
+        segment_order,
+        token_order,
+        ROW_NUMBER() OVER (PARTITION BY node_id ORDER BY segment_order, token_order, tag_name) AS overall_rank,
+        ROW_NUMBER() OVER (PARTITION BY node_id, has_english ORDER BY segment_order, token_order, tag_name) AS language_rank
+    FROM deduped_topic_tokens
+),
+preferred_topic_tokens AS (
+    SELECT node_id, tag_name, has_english, segment_order, token_order, overall_rank, 0 AS priority
+    FROM ranked_topic_tokens
+    WHERE has_english = 1
+      AND language_rank <= 4
+    UNION ALL
+    SELECT node_id, tag_name, has_english, segment_order, token_order, overall_rank, 1 AS priority
+    FROM ranked_topic_tokens
+    WHERE has_english = 0
+      AND segment_order = 1
+    UNION ALL
+    SELECT node_id, tag_name, has_english, segment_order, token_order, overall_rank, 2 AS priority
+    FROM ranked_topic_tokens
+    WHERE has_english = 1
+    UNION ALL
+    SELECT node_id, tag_name, has_english, segment_order, token_order, overall_rank, 3 AS priority
+    FROM ranked_topic_tokens
+    WHERE has_english = 0
+),
+unique_topic_tokens AS (
+    SELECT node_id, tag_name, has_english, segment_order, token_order, overall_rank, priority
+    FROM (
+        SELECT
+            node_id,
+            tag_name,
+            has_english,
+            segment_order,
+            token_order,
+            overall_rank,
+            priority,
+            ROW_NUMBER() OVER (PARTITION BY node_id, tag_name ORDER BY priority, overall_rank) AS duplicate_rank
+        FROM preferred_topic_tokens
+    ) unique_candidates
+    WHERE duplicate_rank = 1
 ),
 node_tag_candidates AS (
     SELECT node_id, tag_name
@@ -15654,8 +15769,8 @@ node_tag_candidates AS (
         SELECT
             node_id,
             tag_name,
-            ROW_NUMBER() OVER (PARTITION BY node_id ORDER BY segment_order, token_order, tag_name) AS tag_rank
-        FROM deduped_topic_tokens
+            ROW_NUMBER() OVER (PARTITION BY node_id ORDER BY priority, overall_rank, tag_name) AS tag_rank
+        FROM unique_topic_tokens
     ) ranked_tags
     WHERE tag_rank <= 5
 )
