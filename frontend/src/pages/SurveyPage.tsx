@@ -339,7 +339,7 @@ function SurveyPage() {
               <i className="fas fa-compass text-4xl text-brand" />
             </div>
             <h1 className="mb-6 text-3xl font-bold text-gray-900 md:text-5xl">
-              나에게 맞는 개발 로드맵 찾기
+              나에게 맞는 개발 직무 찾기
             </h1>
             <p className="mx-auto mb-10 max-w-xl text-lg text-gray-600">
               몇 가지 간단한 질문에 답해주시면, 당신의 성향과 목표에 가장 적합한 기술 로드맵을
