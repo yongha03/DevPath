@@ -1,5 +1,6 @@
 package com.devpath.api.learner.service;
 
+import com.devpath.api.learner.component.CourseScoreAnalyzer;
 import com.devpath.api.learner.dto.DiagnosisQuizDto;
 import com.devpath.api.roadmap.service.SystemDynamicRoadmapProvider;
 import com.devpath.common.exception.CustomException;
@@ -76,6 +77,7 @@ public class DiagnosisQuizService {
   private final CustomRoadmapNodeRepository customRoadmapNodeRepository;
   private final UserTechStackRepository userTechStackRepository;
   private final ProofCardRepository proofCardRepository;
+  private final CourseScoreAnalyzer courseScoreAnalyzer;
 
   /** 진단 퀴즈 생성 */
   @Transactional
@@ -116,12 +118,14 @@ public class DiagnosisQuizService {
     }
     quiz.submit();
 
-    int score = calculateScore(answers);
-    int maxScore = quiz.getQuestionCount() * 10;
+    CourseScoreAnalyzer.CourseScores courseScores =
+        courseScoreAnalyzer.analyze(userId, clearedNodeId);
+    int score = resolveScore(courseScores);
+    int maxScore = 100;
 
     String recommendedNodes =
         analyzeAndRecommend(
-            userId, clearedNodeId, score, maxScore, quiz.getRoadmap().getRoadmapId());
+            userId, clearedNodeId, score, quiz.getRoadmap().getRoadmapId(), courseScores);
 
     DiagnosisResult result =
         DiagnosisResult.builder()
@@ -161,7 +165,11 @@ public class DiagnosisQuizService {
    * 파싱·저장하여 일부 섹션이 깨져도 나머지는 반영한다. 반환값은 생성된 분기 노드 ID 목록(콤마 구분)으로 진단 결과 저장에 사용된다.
    */
   private String analyzeAndRecommend(
-      Long userId, Long clearedNodeId, int score, int maxScore, Long roadmapId) {
+      Long userId,
+      Long clearedNodeId,
+      int score,
+      Long roadmapId,
+      CourseScoreAnalyzer.CourseScores courseScores) {
 
     if (clearedNodeId == null) return "";
 
@@ -174,7 +182,7 @@ public class DiagnosisQuizService {
     List<String> nodeTags = nodeRequiredTagRepository.findTagNamesByNodeId(clearedNodeId);
     if (nodeTags.isEmpty()) return "";
 
-    boolean isLowScore = (double) score / maxScore < REVIEW_THRESHOLD;
+    boolean isLowScore = (double) score / 100 < REVIEW_THRESHOLD;
 
     // 분기 후보 태그: 복습=노드 태그 전체, 심화=이후 로드맵에서 다루지 않는 태그만
     List<String> branchCandidateTags;
@@ -263,8 +271,8 @@ public class DiagnosisQuizService {
         buildUnifiedPrompt(
             clearedNode,
             score,
-            maxScore,
             isLowScore,
+            courseScores,
             branchCandidateTags,
             deleteCandidates,
             reorderCandidates,
@@ -292,8 +300,8 @@ public class DiagnosisQuizService {
   private String buildUnifiedPrompt(
       RoadmapNode clearedNode,
       int score,
-      int maxScore,
       boolean isLowScore,
+      CourseScoreAnalyzer.CourseScores courseScores,
       List<String> branchCandidateTags,
       Map<Long, CustomRoadmapNode> deleteCandidates,
       Map<Long, CustomRoadmapNode> reorderCandidates,
@@ -305,12 +313,21 @@ public class DiagnosisQuizService {
     StringBuilder sb = new StringBuilder();
     sb.append(
         String.format(
-            "학습자가 '%s'(id=%d) 노드를 %d/%d 점으로 클리어했습니다.%n",
-            clearedNode.getTitle(), clearedNode.getNodeId(), score, maxScore));
+            "학습자가 '%s'(id=%d) 노드를 %d/100점으로 클리어했습니다.%n",
+            clearedNode.getTitle(), clearedNode.getNodeId(), score));
     sb.append(
         String.format(
             "학습자 현황: 완료 노드 %d개, 보유 인증(Proof) %d개, 보유 기술 태그 [%s].%n%n",
             completedCount, proofCount, String.join(", ", userTags)));
+
+    // 강의별 성취도: 같은 노드라도 어느 강의를 통해 학습했는지에 따라 강약이 다를 수 있어 함께 제공한다.
+    if (courseScores.hasData()) {
+      sb.append("[강의별 성취도]\n");
+      courseScores
+          .perCourse()
+          .forEach(cs -> sb.append(String.format("- %s: %d점%n", cs.courseName(), cs.percent())));
+      sb.append("강의별로 강약이 다르면 점수가 낮은 강의 영역은 복습을, 높은 영역은 심화를 우선 고려해 추천하라.\n\n");
+    }
 
     // 1) 분기 노드
     sb.append("[분기 노드]\n");
@@ -661,20 +678,21 @@ public class DiagnosisQuizService {
 
   // ── [TEST] 노드 완료 즉시 추천 테스트 ── 실 서비스 전 삭제 대상 ────────────
 
-  /** [TEST] 진단 퀴즈 없이 랜덤 점수로 즉시 분기 추천을 생성한다. 노드 완료 시 추천 동작을 확인하기 위한 테스트 전용 메서드. */
+  /** [TEST] 진단 퀴즈 없이 강의 성취도(없으면 랜덤) 기반으로 즉시 분기 추천을 생성한다. 노드 완료 시 추천 동작 확인용 테스트 전용 메서드. */
   @Transactional
   public DiagnosisQuizDto.TestRunResponse testRunRecommend(
       Long userId, Long roadmapId, Long originalNodeId) {
-    int score = 60 + RANDOM.nextInt(41);
-    int maxScore = 100;
+    CourseScoreAnalyzer.CourseScores courseScores =
+        courseScoreAnalyzer.analyze(userId, originalNodeId);
+    int score = resolveScore(courseScores);
 
     String recommendedNodes =
-        analyzeAndRecommend(userId, originalNodeId, score, maxScore, roadmapId);
+        analyzeAndRecommend(userId, originalNodeId, score, roadmapId, courseScores);
 
-    boolean isLowScore = (double) score / maxScore < REVIEW_THRESHOLD;
+    boolean isLowScore = (double) score / 100 < REVIEW_THRESHOLD;
     return DiagnosisQuizDto.TestRunResponse.builder()
         .score(score)
-        .maxScore(maxScore)
+        .maxScore(100)
         .branchType(isLowScore ? "REVIEW" : "ADVANCED")
         .recommendedNodes(recommendedNodes)
         .build();
@@ -690,8 +708,11 @@ public class DiagnosisQuizService {
     };
   }
 
-  private int calculateScore(Map<Integer, String> answers) {
-    // 퀴즈 문항 저장 구조가 없어 임시 점수 사용 (추후 실제 채점 로직으로 교체 예정)
+  // 강의 성취도 평균을 분기 점수(0~100)로 사용한다. 강의 점수 근거가 없으면 임시로 랜덤(60~100) 폴백한다.
+  private int resolveScore(CourseScoreAnalyzer.CourseScores courseScores) {
+    if (courseScores.hasData()) {
+      return (int) Math.round(courseScores.average());
+    }
     return 60 + RANDOM.nextInt(41);
   }
 }
