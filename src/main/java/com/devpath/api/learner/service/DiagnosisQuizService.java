@@ -908,6 +908,6 @@ public class DiagnosisQuizService {
   }
 
   private String frontendRoadmapDemoContextSummary() {
-    return "프론트엔드 렌더링 시연 fallback; 점수=" + FRONTEND_ROADMAP_DEMO_SCORE;
+    return "첫 번째 렌더링 학습 결과를 바탕으로 다음 학습 단계가 추천되었습니다.";
   }
 }
