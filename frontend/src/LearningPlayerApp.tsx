@@ -1,4 +1,4 @@
-import { startTransition, useCallback, useDeferredValue, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
+import { startTransition, type DragEvent, useCallback, useDeferredValue, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import { captureAndOcr, warmupOcrWorker, type ScreenRegion } from './lib/videoOcr'
 import { courseApi, learnerAssignmentApi, learningPlayerApi, lessonNoteApi, lessonSessionApi, nodeClearanceApi, qnaApi } from './lib/api'
 import { AUTH_SESSION_SYNC_EVENT, readStoredAuthSession } from './lib/auth-session'
@@ -1061,6 +1061,7 @@ export default function LearningPlayerApp() {
   const [quizFeedback, setQuizFeedback] = useState<'correct' | 'wrong' | null>(null)
   const [assignmentModalLessonId, setAssignmentModalLessonId] = useState<number | null>(null)
   const [assignmentForm, setAssignmentForm] = useState<AssignmentSubmissionFormState>(() => createAssignmentFormState())
+  const [assignmentFileDragActive, setAssignmentFileDragActive] = useState(false)
   const [assignmentSubmitBusy, setAssignmentSubmitBusy] = useState(false)
   const [assignmentMessage, setAssignmentMessage] = useState<string | null>(null)
   const [assignmentLoadingVisible, setAssignmentLoadingVisible] = useState(false)
@@ -1679,16 +1680,13 @@ export default function LearningPlayerApp() {
       return
     }
 
-    if (!session || !course?.courseId) return
+    if (!session?.accessToken || !course?.courseId) return
     let cancelled = false
     const courseId = course.courseId
 
     async function loadQna() {
       setLoadingQna(true)
       setQnaError(null)
-      setQnaQuestions([])
-      setQnaDetails({})
-      setOpenQuestionId(null)
       setQuestionForm(createQuestionFormState())
 
       const [questionsResult, templatesResult] = await Promise.allSettled([
@@ -1700,6 +1698,7 @@ export default function LearningPlayerApp() {
 
       if (questionsResult.status === 'fulfilled') {
         setQnaQuestions(questionsResult.value)
+        setQnaError(null)
       } else {
         setQnaQuestions([])
         setQnaError('Q&A 데이터를 불러오지 못했습니다.')
@@ -1720,7 +1719,7 @@ export default function LearningPlayerApp() {
 
     void loadQna()
     return () => { cancelled = true }
-  }, [course?.courseId, isStudentPreview, session, sessionUserId])
+  }, [course?.courseId, isStudentPreview, session?.accessToken, sessionUserId])
 
   useEffect(() => {
     if (isStudentPreview || !course?.courseId || !session?.accessToken) return
@@ -2299,6 +2298,7 @@ export default function LearningPlayerApp() {
     if (!isAssignmentLesson(item)) return
     setAssignmentModalLessonId(item.lessonId)
     setAssignmentForm(createAssignmentFormState(resolveLessonAssignment(item)))
+    setAssignmentFileDragActive(false)
     setAssignmentMessage(null)
     setAssignmentLoadingVisible(false)
     setAssignmentGradingResult(null)
@@ -2307,6 +2307,7 @@ export default function LearningPlayerApp() {
   function closeAssignmentModal() {
     setAssignmentModalLessonId(null)
     setAssignmentForm(createAssignmentFormState())
+    setAssignmentFileDragActive(false)
     setAssignmentMessage(null)
     setAssignmentLoadingVisible(false)
   }
@@ -2463,6 +2464,26 @@ export default function LearningPlayerApp() {
       return { ...current, files: mergedFiles }
     })
     setAssignmentMessage(null)
+  }
+
+  function handleAssignmentFileDragOver(event: DragEvent<HTMLLabelElement>) {
+    event.preventDefault()
+    event.stopPropagation()
+    event.dataTransfer.dropEffect = 'copy'
+    setAssignmentFileDragActive(true)
+  }
+
+  function handleAssignmentFileDragLeave(event: DragEvent<HTMLLabelElement>) {
+    event.preventDefault()
+    event.stopPropagation()
+    setAssignmentFileDragActive(false)
+  }
+
+  function handleAssignmentFileDrop(event: DragEvent<HTMLLabelElement>) {
+    event.preventDefault()
+    event.stopPropagation()
+    setAssignmentFileDragActive(false)
+    handleAssignmentFilesSelected(event.dataTransfer.files)
   }
 
   function handleAssignmentFileRemove(fileName: string) {
@@ -4105,16 +4126,26 @@ export default function LearningPlayerApp() {
                 {assignmentModalMethods.allowFile ? (
                   <div>
                 <label className="mb-2 block text-xs font-bold text-gray-700">파일 첨부</label>
-                <label className="group block cursor-pointer rounded-2xl border-2 border-dashed border-gray-300 bg-gray-50 p-10 text-center transition hover:border-[#00C471] hover:bg-green-50">
+                <label
+                  onDragEnter={handleAssignmentFileDragOver}
+                  onDragOver={handleAssignmentFileDragOver}
+                  onDragLeave={handleAssignmentFileDragLeave}
+                  onDrop={handleAssignmentFileDrop}
+                  className={`group block cursor-pointer rounded-2xl border-2 border-dashed p-10 text-center transition ${
+                    assignmentFileDragActive
+                      ? 'border-[#00C471] bg-green-50 ring-2 ring-emerald-100'
+                      : 'border-gray-300 bg-gray-50 hover:border-[#00C471] hover:bg-green-50'
+                  }`}
+                >
                   <input
                     type="file"
                     multiple
                     className="hidden"
                     onChange={(event) => handleAssignmentFilesSelected(event.target.files)}
                   />
-                  <i className="fas fa-cloud-upload-alt mb-3 text-4xl text-gray-300 transition group-hover:text-[#00C471]" />
-                  <p className="text-sm font-bold text-gray-600 transition group-hover:text-[#00C471]">
-                    여기를 눌러 파일을 업로드
+                  <i className={`fas fa-cloud-upload-alt mb-3 text-4xl transition group-hover:text-[#00C471] ${assignmentFileDragActive ? 'text-[#00C471]' : 'text-gray-300'}`} />
+                  <p className={`text-sm font-bold transition group-hover:text-[#00C471] ${assignmentFileDragActive ? 'text-[#00C471]' : 'text-gray-600'}`}>
+                    {assignmentFileDragActive ? '파일을 놓으면 업로드됩니다' : '여기를 누르거나 파일을 드래그해 업로드'}
                   </p>
                   <p className="mt-1.5 text-xs font-medium text-gray-400">
                     지원 포맷:{' '}

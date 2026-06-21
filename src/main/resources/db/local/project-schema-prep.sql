@@ -140,7 +140,7 @@ BEGIN
                now()
         FROM (
             VALUES
-                (v_demo_user_id, 'https://api.dicebear.com/7.x/avataaars/svg?seed=kim-hakseup', '김학습', '프론트엔드 프로젝트를 진행 중인 데모 학습자입니다.', 'https://github.com/devpath-demo/kim-hakseup'),
+                (v_demo_user_id, NULL, NULL, NULL, NULL),
                 (v_taehyung_id, 'https://api.dicebear.com/7.x/avataaars/svg?seed=kim-taehyung', '김태형', 'React UI 구현을 맡은 팀원입니다.', 'https://github.com/devpath-demo/kim-taehyung'),
                 (v_juseung_id, 'https://api.dicebear.com/7.x/avataaars/svg?seed=park-juseung', '박주승', 'TypeScript 상태 모델과 QA를 맡은 팀원입니다.', 'https://github.com/devpath-demo/park-juseung'),
                 (v_common_mentor_id, 'https://api.dicebear.com/7.x/avataaars/svg?seed=frontend-common-mentor', '정다은', '공통과제형 React 과제를 멘토링하는 프론트엔드 멘토입니다.', 'https://github.com/devpath-demo/frontend-common-mentor'),
@@ -163,7 +163,7 @@ BEGIN
                updated_at = now()
           FROM (
               VALUES
-                  (v_demo_user_id, 'https://api.dicebear.com/7.x/avataaars/svg?seed=kim-hakseup', '김학습', '프론트엔드 프로젝트를 진행 중인 데모 학습자입니다.', 'https://github.com/devpath-demo/kim-hakseup'),
+                  (v_demo_user_id, NULL, NULL, NULL, NULL),
                   (v_taehyung_id, 'https://api.dicebear.com/7.x/avataaars/svg?seed=kim-taehyung', '김태형', 'React UI 구현을 맡은 팀원입니다.', 'https://github.com/devpath-demo/kim-taehyung'),
                   (v_juseung_id, 'https://api.dicebear.com/7.x/avataaars/svg?seed=park-juseung', '박주승', 'TypeScript 상태 모델과 QA를 맡은 팀원입니다.', 'https://github.com/devpath-demo/park-juseung'),
                   (v_common_mentor_id, 'https://api.dicebear.com/7.x/avataaars/svg?seed=frontend-common-mentor', '정다은', '공통과제형 React 과제를 멘토링하는 프론트엔드 멘토입니다.', 'https://github.com/devpath-demo/frontend-common-mentor'),
@@ -604,14 +604,14 @@ BEGIN
           FROM (
               VALUES
                   (v_squad_workspace_id, v_demo_user_id, TIMESTAMP '2026-06-10 09:05:00', TIMESTAMP '2026-06-18 17:40:00', 'Frontend Lead'),
-                  (v_squad_workspace_id, v_taehyung_id, TIMESTAMP '2026-06-10 09:20:00', TIMESTAMP '2026-06-18 17:20:00', 'React UI'),
-                  (v_squad_workspace_id, v_juseung_id, TIMESTAMP '2026-06-10 09:30:00', TIMESTAMP '2026-06-18 17:05:00', 'TypeScript QA'),
-                  (v_common_workspace_id, v_demo_user_id, TIMESTAMP '2026-06-11 11:30:00', TIMESTAMP '2026-06-18 16:30:00', 'Frontend'),
-                  (v_common_workspace_id, v_taehyung_id, TIMESTAMP '2026-06-11 11:40:00', TIMESTAMP '2026-06-18 16:20:00', 'React UI'),
-                  (v_common_workspace_id, v_juseung_id, TIMESTAMP '2026-06-11 11:45:00', TIMESTAMP '2026-06-18 16:10:00', 'TypeScript QA'),
-                  (v_team_workspace_id, v_demo_user_id, TIMESTAMP '2026-06-12 11:15:00', TIMESTAMP '2026-06-18 16:45:00', 'Frontend'),
-                  (v_team_workspace_id, v_taehyung_id, TIMESTAMP '2026-06-12 11:25:00', TIMESTAMP '2026-06-18 16:35:00', 'React UI'),
-                  (v_team_workspace_id, v_juseung_id, TIMESTAMP '2026-06-12 11:35:00', TIMESTAMP '2026-06-18 16:25:00', 'TypeScript QA')
+                  (v_squad_workspace_id, v_taehyung_id, TIMESTAMP '2026-06-10 09:20:00', TIMESTAMP '2026-06-18 17:20:00', 'UI Developer'),
+                  (v_squad_workspace_id, v_juseung_id, TIMESTAMP '2026-06-10 09:30:00', TIMESTAMP '2026-06-18 17:05:00', 'QA Engineer'),
+                  (v_common_workspace_id, v_demo_user_id, TIMESTAMP '2026-06-11 11:30:00', TIMESTAMP '2026-06-18 16:30:00', 'Frontend Learner'),
+                  (v_common_workspace_id, v_taehyung_id, TIMESTAMP '2026-06-11 11:40:00', TIMESTAMP '2026-06-18 16:20:00', 'React UI Developer'),
+                  (v_common_workspace_id, v_juseung_id, TIMESTAMP '2026-06-11 11:45:00', TIMESTAMP '2026-06-18 16:10:00', 'TypeScript QA Engineer'),
+                  (v_team_workspace_id, v_demo_user_id, TIMESTAMP '2026-06-12 11:15:00', TIMESTAMP '2026-06-18 16:45:00', 'Frontend Lead'),
+                  (v_team_workspace_id, v_taehyung_id, TIMESTAMP '2026-06-12 11:25:00', TIMESTAMP '2026-06-18 16:35:00', 'UI Developer'),
+                  (v_team_workspace_id, v_juseung_id, TIMESTAMP '2026-06-12 11:35:00', TIMESTAMP '2026-06-18 16:25:00', 'QA Engineer')
           ) AS member_seed(workspace_id, user_id, joined_at, last_active_at, position_label)
          WHERE member_seed.workspace_id IS NOT NULL
            AND member_seed.user_id IS NOT NULL
@@ -628,14 +628,14 @@ BEGIN
           FROM (
               VALUES
                   (v_squad_workspace_id, v_demo_user_id, TIMESTAMP '2026-06-18 17:40:00', 'Frontend Lead'),
-                  (v_squad_workspace_id, v_taehyung_id, TIMESTAMP '2026-06-18 17:20:00', 'React UI'),
-                  (v_squad_workspace_id, v_juseung_id, TIMESTAMP '2026-06-18 17:05:00', 'TypeScript QA'),
-                  (v_common_workspace_id, v_demo_user_id, TIMESTAMP '2026-06-18 16:30:00', 'Frontend'),
-                  (v_common_workspace_id, v_taehyung_id, TIMESTAMP '2026-06-18 16:20:00', 'React UI'),
-                  (v_common_workspace_id, v_juseung_id, TIMESTAMP '2026-06-18 16:10:00', 'TypeScript QA'),
-                  (v_team_workspace_id, v_demo_user_id, TIMESTAMP '2026-06-18 16:45:00', 'Frontend'),
-                  (v_team_workspace_id, v_taehyung_id, TIMESTAMP '2026-06-18 16:35:00', 'React UI'),
-                  (v_team_workspace_id, v_juseung_id, TIMESTAMP '2026-06-18 16:25:00', 'TypeScript QA')
+                  (v_squad_workspace_id, v_taehyung_id, TIMESTAMP '2026-06-18 17:20:00', 'UI Developer'),
+                  (v_squad_workspace_id, v_juseung_id, TIMESTAMP '2026-06-18 17:05:00', 'QA Engineer'),
+                  (v_common_workspace_id, v_demo_user_id, TIMESTAMP '2026-06-18 16:30:00', 'Frontend Learner'),
+                  (v_common_workspace_id, v_taehyung_id, TIMESTAMP '2026-06-18 16:20:00', 'React UI Developer'),
+                  (v_common_workspace_id, v_juseung_id, TIMESTAMP '2026-06-18 16:10:00', 'TypeScript QA Engineer'),
+                  (v_team_workspace_id, v_demo_user_id, TIMESTAMP '2026-06-18 16:45:00', 'Frontend Lead'),
+                  (v_team_workspace_id, v_taehyung_id, TIMESTAMP '2026-06-18 16:35:00', 'UI Developer'),
+                  (v_team_workspace_id, v_juseung_id, TIMESTAMP '2026-06-18 16:25:00', 'QA Engineer')
           ) AS member_seed(workspace_id, user_id, last_active_at, position_label)
          WHERE member_existing.workspace_id = member_seed.workspace_id
            AND member_existing.learner_id = member_seed.user_id;
@@ -850,7 +850,7 @@ $demo_diff$,
                 'GITHUB',
                 'devpath/frontend-commerce#17',
                 'kim-hakseup',
-                'https://api.dicebear.com/7.x/avataaars/svg?seed=kim-hakseup',
+                NULL,
                 TIMESTAMP '2026-06-18 16:20:00',
                 false,
                 TIMESTAMP '2026-06-18 15:40:00',
@@ -892,7 +892,7 @@ $demo_diff$,
                    additions = 14,
                    deletions = 3,
                    external_author_name = 'kim-hakseup',
-                   external_author_avatar_url = 'https://api.dicebear.com/7.x/avataaars/svg?seed=kim-hakseup',
+                   external_author_avatar_url = NULL,
                    external_updated_at = TIMESTAMP '2026-06-18 16:20:00',
                    is_deleted = false,
                    updated_at = TIMESTAMP '2026-06-18 16:20:00'
@@ -1129,6 +1129,709 @@ $file_diff_two$,
                       AND tag.name = skill.name
                       AND COALESCE(tag.is_deleted, false) = false
                );
+        END IF;
+    END IF;
+
+END $$;
+^^^ END OF SCRIPT ^^^
+
+DO $$
+DECLARE
+    v_demo_user_id bigint;
+    v_taehyung_id bigint;
+    v_juseung_id bigint;
+    v_common_mentor_id bigint;
+    v_team_mentor_id bigint;
+    v_squad_workspace_id bigint;
+    v_common_workspace_id bigint;
+    v_team_workspace_id bigint;
+    v_question_id bigint;
+    v_review_id bigint;
+    v_ai_review_id bigint;
+BEGIN
+    IF to_regclass('public.users') IS NULL OR to_regclass('public.workspace') IS NULL THEN
+        RETURN;
+    END IF;
+
+    SELECT user_id INTO v_demo_user_id FROM public.users WHERE email = 'kim.hakseup@devpath.com' LIMIT 1;
+    SELECT user_id INTO v_taehyung_id FROM public.users WHERE email = 'kim.taehyung@devpath.com' LIMIT 1;
+    SELECT user_id INTO v_juseung_id FROM public.users WHERE email = 'park.juseung@devpath.com' LIMIT 1;
+    SELECT user_id INTO v_common_mentor_id FROM public.users WHERE email = 'mentor.frontend.common@devpath.com' LIMIT 1;
+    SELECT user_id INTO v_team_mentor_id FROM public.users WHERE email = 'mentor.frontend.team@devpath.com' LIMIT 1;
+
+    IF v_demo_user_id IS NULL THEN
+        RETURN;
+    END IF;
+
+    SELECT id INTO v_squad_workspace_id
+      FROM public.workspace
+     WHERE id = 6
+       AND type = 'SQUAD'
+       AND COALESCE(is_deleted, false) = false
+     LIMIT 1;
+
+    IF v_squad_workspace_id IS NULL THEN
+        SELECT id INTO v_squad_workspace_id
+          FROM public.workspace
+         WHERE owner_id = v_demo_user_id
+           AND name = 'React 커머스 UI 스쿼드'
+           AND type = 'SQUAD'
+           AND COALESCE(is_deleted, false) = false
+         ORDER BY id ASC
+         LIMIT 1;
+    END IF;
+
+    SELECT id INTO v_common_workspace_id
+      FROM public.workspace
+     WHERE id = 7
+       AND type = 'MENTORING'
+       AND COALESCE(is_deleted, false) = false
+     LIMIT 1;
+
+    IF v_common_workspace_id IS NULL THEN
+        SELECT id INTO v_common_workspace_id
+          FROM public.workspace
+         WHERE owner_id = v_common_mentor_id
+           AND name = '프론트엔드 공통과제형 멘토링'
+           AND type = 'MENTORING'
+           AND COALESCE(is_deleted, false) = false
+         ORDER BY id ASC
+         LIMIT 1;
+    END IF;
+
+    SELECT id INTO v_team_workspace_id
+      FROM public.workspace
+     WHERE id = 8
+       AND type = 'MENTORING'
+       AND COALESCE(is_deleted, false) = false
+     LIMIT 1;
+
+    IF v_team_workspace_id IS NULL THEN
+        SELECT id INTO v_team_workspace_id
+          FROM public.workspace
+         WHERE owner_id = v_team_mentor_id
+           AND name = 'TypeScript 팀프로젝트형 멘토링'
+           AND type = 'MENTORING'
+           AND COALESCE(is_deleted, false) = false
+         ORDER BY id ASC
+         LIMIT 1;
+    END IF;
+
+    IF to_regclass('public.workspace_member') IS NOT NULL THEN
+        INSERT INTO public.workspace_member (workspace_id, learner_id, joined_at, last_active_at, position_label)
+        SELECT seed.workspace_id, seed.user_id, seed.joined_at, seed.last_active_at, seed.position_label
+          FROM (
+              VALUES
+                  (v_common_workspace_id, v_common_mentor_id, TIMESTAMP '2026-06-11 09:00:00', TIMESTAMP '2026-06-19 09:20:00', 'Mentor'),
+                  (v_team_workspace_id, v_team_mentor_id, TIMESTAMP '2026-06-12 09:00:00', TIMESTAMP '2026-06-19 09:25:00', 'Mentor')
+          ) AS seed(workspace_id, user_id, joined_at, last_active_at, position_label)
+         WHERE seed.workspace_id IS NOT NULL
+           AND seed.user_id IS NOT NULL
+           AND NOT EXISTS (
+               SELECT 1 FROM public.workspace_member existing
+                WHERE existing.workspace_id = seed.workspace_id
+                  AND existing.learner_id = seed.user_id
+           );
+
+        UPDATE public.workspace_member existing
+           SET position_label = seed.position_label,
+               last_active_at = seed.last_active_at
+          FROM (
+              VALUES
+                  (v_common_workspace_id, v_common_mentor_id, TIMESTAMP '2026-06-19 09:20:00', 'Mentor'),
+                  (v_team_workspace_id, v_team_mentor_id, TIMESTAMP '2026-06-19 09:25:00', 'Mentor'),
+                  (v_common_workspace_id, v_demo_user_id, TIMESTAMP '2026-06-19 09:10:00', 'Frontend Learner'),
+                  (v_team_workspace_id, v_demo_user_id, TIMESTAMP '2026-06-19 09:12:00', 'Frontend Lead'),
+                  (v_team_workspace_id, v_taehyung_id, TIMESTAMP '2026-06-19 09:08:00', 'UI Developer'),
+                  (v_team_workspace_id, v_juseung_id, TIMESTAMP '2026-06-19 09:05:00', 'QA Engineer'),
+                  (v_squad_workspace_id, v_demo_user_id, TIMESTAMP '2026-06-19 09:15:00', 'Frontend Lead'),
+                  (v_squad_workspace_id, v_taehyung_id, TIMESTAMP '2026-06-19 09:11:00', 'UI Developer'),
+                  (v_squad_workspace_id, v_juseung_id, TIMESTAMP '2026-06-19 09:09:00', 'QA Engineer')
+          ) AS seed(workspace_id, user_id, last_active_at, position_label)
+         WHERE existing.workspace_id = seed.workspace_id
+           AND existing.learner_id = seed.user_id;
+    END IF;
+
+    IF to_regclass('public.workspace_task') IS NOT NULL THEN
+        INSERT INTO public.workspace_task (
+            workspace_id, title, description, status, priority, assignee_id,
+            due_date, created_by_id, is_deleted, created_at, updated_at
+        )
+        SELECT seed.workspace_id, seed.title, seed.description, seed.status, seed.priority,
+               seed.assignee_id, seed.due_date, seed.created_by_id, false, seed.created_at, seed.updated_at
+          FROM (
+              VALUES
+                  (v_common_workspace_id, '1주차 시맨틱 마크업 점검', '접근성 기준에 맞춰 제목 계층과 랜드마크 구조를 정리합니다.', 'DONE', 'MEDIUM', v_demo_user_id, DATE '2026-06-14', v_common_mentor_id, TIMESTAMP '2026-06-11 10:00:00', TIMESTAMP '2026-06-14 18:20:00'),
+                  (v_common_workspace_id, '2주차 폼 검증 피드백 반영', 'controlled input과 에러 메시지 표시 상태를 리팩터링합니다.', 'IN_REVIEW', 'HIGH', v_demo_user_id, DATE '2026-06-21', v_common_mentor_id, TIMESTAMP '2026-06-15 10:10:00', TIMESTAMP '2026-06-19 09:15:00'),
+                  (v_common_workspace_id, '3주차 컴포넌트 분리 계획', '가입 폼을 필드, 요약, 제출 버튼 컴포넌트로 나누는 구조를 정리합니다.', 'TODO', 'MEDIUM', v_demo_user_id, DATE '2026-06-25', v_common_mentor_id, TIMESTAMP '2026-06-18 11:00:00', TIMESTAMP '2026-06-18 11:00:00'),
+                  (v_common_workspace_id, '4주차 반응형 QA 체크리스트', '모바일 화면과 키보드 이동 흐름을 검수할 체크리스트를 준비합니다.', 'TODO', 'LOW', v_demo_user_id, DATE '2026-06-30', v_common_mentor_id, TIMESTAMP '2026-06-18 11:10:00', TIMESTAMP '2026-06-18 11:10:00'),
+                  (v_team_workspace_id, '[프론트엔드] 대시보드 KPI 카드', '시연용 대시보드 카드와 빈 상태 UI를 재사용 가능한 컴포넌트로 구현합니다.', 'IN_PROGRESS', 'HIGH', v_demo_user_id, DATE '2026-06-22', v_team_mentor_id, TIMESTAMP '2026-06-13 10:00:00', TIMESTAMP '2026-06-19 09:30:00'),
+                  (v_team_workspace_id, '[프론트엔드] 필터 상호작용 QA', '기간 필터, 로딩 상태, 에러 배너 동작을 짝 리뷰로 점검합니다.', 'TODO', 'MEDIUM', v_taehyung_id, DATE '2026-06-24', v_team_mentor_id, TIMESTAMP '2026-06-14 10:20:00', TIMESTAMP '2026-06-14 10:20:00'),
+                  (v_team_workspace_id, '[QA] 시나리오 매트릭스 작성', '프로젝트 대시보드와 마일스톤 화면의 수락 기준을 정리합니다.', 'IN_REVIEW', 'MEDIUM', v_juseung_id, DATE '2026-06-23', v_team_mentor_id, TIMESTAMP '2026-06-14 11:00:00', TIMESTAMP '2026-06-19 09:35:00'),
+                  (v_team_workspace_id, '[멘토] API 계약 검토', '최종 시연 전에 DTO 이름과 응답 구조를 검토합니다.', 'IN_PROGRESS', 'HIGH', v_team_mentor_id, DATE '2026-06-21', v_team_mentor_id, TIMESTAMP '2026-06-15 09:40:00', TIMESTAMP '2026-06-19 09:40:00'),
+                  (v_squad_workspace_id, '장바구니 CTA PR 피드백 반영', '상품 카드의 장바구니 추가 흐름과 품절 상태 리뷰 코멘트를 반영합니다.', 'IN_PROGRESS', 'HIGH', v_demo_user_id, DATE '2026-06-21', v_demo_user_id, TIMESTAMP '2026-06-18 10:20:00', TIMESTAMP '2026-06-19 09:45:00'),
+                  (v_squad_workspace_id, '체크아웃 상태 모델 정리', '장바구니 상품, 쿠폰, 배송 상태 전환 흐름을 문서화합니다.', 'IN_REVIEW', 'MEDIUM', v_taehyung_id, DATE '2026-06-22', v_demo_user_id, TIMESTAMP '2026-06-18 10:30:00', TIMESTAMP '2026-06-19 09:48:00'),
+                  (v_squad_workspace_id, '반응형 QA 검수', '상품 그리드와 장바구니 패널의 데스크톱, 모바일 캡처를 준비합니다.', 'TODO', 'MEDIUM', v_juseung_id, DATE '2026-06-24', v_demo_user_id, TIMESTAMP '2026-06-18 10:40:00', TIMESTAMP '2026-06-18 10:40:00')
+          ) AS seed(workspace_id, title, description, status, priority, assignee_id, due_date, created_by_id, created_at, updated_at)
+         WHERE seed.workspace_id IS NOT NULL
+           AND seed.created_by_id IS NOT NULL
+           AND NOT EXISTS (
+               SELECT 1 FROM public.workspace_task existing
+                WHERE existing.workspace_id = seed.workspace_id
+                  AND existing.title = seed.title
+                  AND COALESCE(existing.is_deleted, false) = false
+           );
+    END IF;
+
+    IF to_regclass('public.milestone') IS NOT NULL THEN
+        INSERT INTO public.milestone (
+            workspace_id, title, description, start_date, due_date, status,
+            created_by_id, is_deleted, created_at, updated_at
+        )
+        SELECT seed.workspace_id, seed.title, seed.description, seed.start_date, seed.due_date,
+               seed.status, seed.created_by_id, false, seed.created_at, seed.updated_at
+          FROM (
+              VALUES
+                  (v_common_workspace_id, '2주차 과제 리뷰 기간', '폼 검증 과제 리뷰와 재제출 범위를 확정합니다.', DATE '2026-06-15', DATE '2026-06-21', 'IN_PROGRESS', v_common_mentor_id, TIMESTAMP '2026-06-15 09:00:00', TIMESTAMP '2026-06-19 09:20:00'),
+                  (v_common_workspace_id, '공통과제 최종 다듬기', '접근성, 반응형 QA, 멘토 피드백 반영을 마무리합니다.', DATE '2026-06-24', DATE '2026-06-30', 'OPEN', v_common_mentor_id, TIMESTAMP '2026-06-18 12:00:00', TIMESTAMP '2026-06-18 12:00:00'),
+                  (v_team_workspace_id, '대시보드 MVP 시연', '강사 시연용 카드 UI, API 계약, QA 시나리오를 완성합니다.', DATE '2026-06-13', DATE '2026-06-24', 'IN_PROGRESS', v_team_mentor_id, TIMESTAMP '2026-06-13 09:30:00', TIMESTAMP '2026-06-19 09:30:00'),
+                  (v_team_workspace_id, '멘토 최종 승인', '멘토 리뷰 코멘트를 모으고 시연 범위를 동결합니다.', DATE '2026-06-25', DATE '2026-06-28', 'OPEN', v_team_mentor_id, TIMESTAMP '2026-06-18 12:10:00', TIMESTAMP '2026-06-18 12:10:00'),
+                  (v_squad_workspace_id, '커머스 UI 1차 스프린트', '상품 카드, 장바구니 패널, 코드리뷰 코멘트 정리를 진행합니다.', DATE '2026-06-10', DATE '2026-06-22', 'IN_PROGRESS', v_demo_user_id, TIMESTAMP '2026-06-10 10:00:00', TIMESTAMP '2026-06-19 09:35:00'),
+                  (v_squad_workspace_id, '설계 리뷰 동결', 'Proof Card 시연용 ERD, API mock, 반응형 QA 산출물을 확정합니다.', DATE '2026-06-23', DATE '2026-06-27', 'OPEN', v_demo_user_id, TIMESTAMP '2026-06-18 12:20:00', TIMESTAMP '2026-06-18 12:20:00')
+          ) AS seed(workspace_id, title, description, start_date, due_date, status, created_by_id, created_at, updated_at)
+         WHERE seed.workspace_id IS NOT NULL
+           AND seed.created_by_id IS NOT NULL
+           AND NOT EXISTS (
+               SELECT 1 FROM public.milestone existing
+                WHERE existing.workspace_id = seed.workspace_id
+                  AND existing.title = seed.title
+                  AND COALESCE(existing.is_deleted, false) = false
+           );
+    END IF;
+
+    IF to_regclass('public.calendar_event') IS NOT NULL THEN
+        INSERT INTO public.calendar_event (
+            workspace_id, title, description, start_at, end_at,
+            created_by_id, is_deleted, created_at, updated_at
+        )
+        SELECT seed.workspace_id, seed.title, seed.description, seed.start_at, seed.end_at,
+               seed.created_by_id, false, now(), now()
+          FROM (
+              VALUES
+                  (v_common_workspace_id, '2주차 멘토 피드백', '폼 검증 제출물을 리뷰하고 재제출 범위를 결정합니다.', TIMESTAMP '2026-06-20 20:00:00', TIMESTAMP '2026-06-20 20:40:00', v_common_mentor_id),
+                  (v_common_workspace_id, '3주차 미션 킥오프', '컴포넌트 분리 계획과 Tailwind 반응형 규칙을 정리합니다.', TIMESTAMP '2026-06-23 20:00:00', TIMESTAMP '2026-06-23 20:30:00', v_common_mentor_id),
+                  (v_team_workspace_id, '데일리 스크럼', '대시보드 MVP 진행 상황, 블로커, 담당자를 확인합니다.', TIMESTAMP '2026-06-20 09:30:00', TIMESTAMP '2026-06-20 09:45:00', v_team_mentor_id),
+                  (v_team_workspace_id, '멘토 아키텍처 리뷰', 'API 명세, ERD, 데이터 로딩 전략을 함께 검토합니다.', TIMESTAMP '2026-06-21 21:00:00', TIMESTAMP '2026-06-21 21:45:00', v_team_mentor_id),
+                  (v_squad_workspace_id, '스쿼드 스탠드업', 'PR 코멘트를 확인하고 다음 상품 카드 작업을 맞춥니다.', TIMESTAMP '2026-06-20 10:00:00', TIMESTAMP '2026-06-20 10:20:00', v_demo_user_id),
+                  (v_squad_workspace_id, '코드 피드백 리뷰', 'GitHub PR fallback과 AI 리뷰 코멘트를 같이 확인합니다.', TIMESTAMP '2026-06-21 14:00:00', TIMESTAMP '2026-06-21 14:40:00', v_demo_user_id)
+          ) AS seed(workspace_id, title, description, start_at, end_at, created_by_id)
+         WHERE seed.workspace_id IS NOT NULL
+           AND seed.created_by_id IS NOT NULL
+           AND NOT EXISTS (
+               SELECT 1 FROM public.calendar_event existing
+                WHERE existing.workspace_id = seed.workspace_id
+                  AND existing.title = seed.title
+                  AND existing.start_at = seed.start_at
+                  AND COALESCE(existing.is_deleted, false) = false
+           );
+    END IF;
+
+    IF to_regclass('public.workspace_doc') IS NOT NULL THEN
+        INSERT INTO public.workspace_doc (workspace_id, doc_type, content, updated_by_id, created_at, updated_at)
+        SELECT seed.workspace_id, seed.doc_type, seed.content, seed.updated_by_id, now(), now()
+          FROM (
+              VALUES
+                  (v_common_workspace_id, 'ERD', $doc$# 공통과제 ERD
+- assignment_submission: 학습자 제출 메타데이터.
+- assignment_feedback: 멘토 피드백, 점수, 재제출 상태.
+- submission_attachment: 업로드한 HTML/CSS/JS 산출물.$doc$, v_common_mentor_id),
+                  (v_common_workspace_id, 'API_SPEC', $doc$# 피드백 API 초안
+GET /submissions/{id}: 제출물, 첨부파일, 멘토 점수, 피드백 스레드를 반환합니다.
+POST /submissions/{id}/feedback: 멘토 점수와 수정 코멘트를 등록합니다.$doc$, v_common_mentor_id),
+                  (v_team_workspace_id, 'API_SPEC', $doc$# 팀 대시보드 API 초안
+GET /projects/{id}/summary: KPI 카드, 마일스톤, 역할별 과제, 최근 활동을 반환합니다.
+GET /projects/{id}/scrums: 데일리 노트, 블로커, 다음 액션을 반환합니다.$doc$, v_team_mentor_id),
+                  (v_team_workspace_id, 'ERD', $doc$# 팀프로젝트 ERD
+- project: 대시보드 기준 프로젝트.
+- milestone: 스프린트 체크포인트.
+- role_task: 팀원 역할별 과제.
+- scrum_note: 데일리 스크럼 요약.$doc$, v_team_mentor_id),
+                  (v_team_workspace_id, 'INFRA', $doc$# 프론트엔드 전달 메모
+- Next.js route group은 대시보드, 협업, 자료실 영역으로 분리합니다.
+- mock API client는 workspace API 모듈 뒤에 격리합니다.
+- 시연 데이터는 강사 워크스루에서 항상 같은 상태로 보이게 유지합니다.$doc$, v_team_mentor_id),
+                  (v_squad_workspace_id, 'API_SPEC', $doc$# 커머스 UI API mock
+GET /products: id, name, price, thumbnailUrl, inventoryState를 반환합니다.
+POST /cart/items: productId, quantity, optimistic update token을 받습니다.$doc$, v_demo_user_id),
+                  (v_squad_workspace_id, 'ERD', $doc$# 스쿼드 커머스 ERD
+- product: 상품 카탈로그 항목.
+- cart_item: 선택한 상품과 수량.
+- review_comment: PR 파일에 연결되는 코드 피드백.$doc$, v_demo_user_id),
+                  (v_squad_workspace_id, 'INFRA', $doc$# GitHub 리뷰 fallback
+이 데모 워크스페이스는 GitHub 저장소가 연결된 것처럼 보이고, PR 리뷰 데이터는 시드로 제공합니다.
+수업 시연에서는 실제 저장소 토큰 없이 코드 피드백 화면을 열 수 있습니다.$doc$, v_demo_user_id)
+          ) AS seed(workspace_id, doc_type, content, updated_by_id)
+         WHERE seed.workspace_id IS NOT NULL
+           AND seed.updated_by_id IS NOT NULL
+           AND NOT EXISTS (
+               SELECT 1 FROM public.workspace_doc existing
+                WHERE existing.workspace_id = seed.workspace_id
+                  AND existing.doc_type = seed.doc_type
+           );
+    END IF;
+
+    IF to_regclass('public.workspace_file') IS NOT NULL THEN
+        INSERT INTO public.workspace_file (
+            workspace_id, parent_id, original_file_name, stored_file_name, file_path, file_size,
+            content_type, item_type, storage_provider, object_key, uploaded_by_id,
+            is_deleted, created_at, updated_at
+        )
+        SELECT seed.workspace_id, NULL, seed.original_file_name, seed.original_file_name,
+               seed.file_path, seed.file_size, seed.content_type, seed.item_type, 'LOCAL',
+               seed.file_path, seed.uploaded_by_id, false, seed.created_at, seed.created_at
+          FROM (
+              VALUES
+                  (v_common_workspace_id, '2주차-피드백-루브릭.md', '/demo/common/week-2-feedback-rubric.md', 1840, 'text/markdown', 'FILE', v_common_mentor_id, TIMESTAMP '2026-06-15 11:00:00'),
+                  (v_common_workspace_id, '폼-검증-참고.html', '/demo/common/form-validation-reference.html', 3290, 'text/html', 'FILE', v_demo_user_id, TIMESTAMP '2026-06-16 21:20:00'),
+                  (v_team_workspace_id, '대시보드-API-계약.md', '/demo/team/dashboard-api-contract.md', 2140, 'text/markdown', 'FILE', v_team_mentor_id, TIMESTAMP '2026-06-14 15:30:00'),
+                  (v_team_workspace_id, '2주차-스크럼-노트.md', '/demo/team/scrum-notes-week-2.md', 1280, 'text/markdown', 'FILE', v_juseung_id, TIMESTAMP '2026-06-18 09:40:00'),
+                  (v_team_workspace_id, 'Figma 대시보드 와이어프레임', 'https://www.figma.com/file/devpath-demo-dashboard', 0, 'text/uri-list', 'LINK', v_taehyung_id, TIMESTAMP '2026-06-18 14:30:00'),
+                  (v_squad_workspace_id, '장바구니-흐름-리뷰노트.md', '/demo/squad/cart-flow-review-notes.md', 1720, 'text/markdown', 'FILE', v_demo_user_id, TIMESTAMP '2026-06-18 17:00:00'),
+                  (v_squad_workspace_id, '커머스-UI-스크린샷.zip', '/demo/squad/commerce-ui-screenshots.zip', 845120, 'application/zip', 'FILE', v_juseung_id, TIMESTAMP '2026-06-19 09:10:00'),
+                  (v_squad_workspace_id, 'GitHub PR #17', 'https://github.com/devpath-demo/frontend-commerce/pull/17', 0, 'text/uri-list', 'LINK', v_demo_user_id, TIMESTAMP '2026-06-18 16:20:00')
+          ) AS seed(workspace_id, original_file_name, file_path, file_size, content_type, item_type, uploaded_by_id, created_at)
+         WHERE seed.workspace_id IS NOT NULL
+           AND seed.uploaded_by_id IS NOT NULL
+           AND NOT EXISTS (
+               SELECT 1 FROM public.workspace_file existing
+                WHERE existing.workspace_id = seed.workspace_id
+                  AND existing.original_file_name = seed.original_file_name
+                  AND COALESCE(existing.is_deleted, false) = false
+           );
+    END IF;
+
+    IF to_regclass('public.qna_questions') IS NOT NULL AND to_regclass('public.qna_answers') IS NOT NULL THEN
+        INSERT INTO public.qna_questions (
+            user_id, template_type, difficulty, title, content, adopted_answer_id,
+            course_id, lesson_id, lecture_timestamp, question_scope, mentoring_id,
+            workspace_id, qna_status, view_count, is_deleted, created_at, updated_at
+        )
+        SELECT seed.user_id, seed.template_type, seed.difficulty, seed.title, seed.content,
+               NULL, NULL, NULL, NULL, 'WORKSPACE', NULL, seed.workspace_id, seed.qna_status,
+               seed.view_count, false, seed.created_at, seed.created_at
+          FROM (
+              VALUES
+                  (v_demo_user_id, 'IMPLEMENTATION', 'MEDIUM', '2주차 폼 검증 피드백 질문', '에러 메시지가 제출 후에만 보입니다. 시연 루브릭 기준으로 blur 시점에도 보여주는 게 맞을까요?', v_common_workspace_id, 'ANSWERED', 6, TIMESTAMP '2026-06-18 20:10:00'),
+                  (v_demo_user_id, 'PROJECT', 'MEDIUM', '대시보드 API 상태 분리 방식', 'KPI 카드와 마일스톤 목록이 로딩 상태를 공유합니다. 하나의 query로 둘지 위젯별로 나누는 게 좋을까요?', v_team_workspace_id, 'ANSWERED', 8, TIMESTAMP '2026-06-18 21:05:00'),
+                  (v_taehyung_id, 'CODE_REVIEW', 'MEDIUM', '장바구니 CTA 리뷰 우선순위', 'CTA 동작은 되는데 품절 상태를 컴포넌트 안에서 처리할지 부모 컨테이너에서 처리할지 고민됩니다.', v_squad_workspace_id, 'ANSWERED', 5, TIMESTAMP '2026-06-18 17:40:00'),
+                  (v_juseung_id, 'PROJECT', 'EASY', '반응형 QA 증빙 형식', '최종 증빙은 zip 파일 하나로 올리는 게 좋을까요, 아니면 자료실에 스크린샷을 나눠 올리는 게 좋을까요?', v_squad_workspace_id, 'UNANSWERED', 2, TIMESTAMP '2026-06-19 09:00:00')
+          ) AS seed(user_id, template_type, difficulty, title, content, workspace_id, qna_status, view_count, created_at)
+         WHERE seed.user_id IS NOT NULL
+           AND seed.workspace_id IS NOT NULL
+           AND NOT EXISTS (
+               SELECT 1 FROM public.qna_questions existing
+                WHERE existing.workspace_id = seed.workspace_id
+                  AND existing.question_scope = 'WORKSPACE'
+                  AND existing.title = seed.title
+                  AND COALESCE(existing.is_deleted, false) = false
+           );
+
+        SELECT question_id INTO v_question_id
+          FROM public.qna_questions
+         WHERE workspace_id = v_common_workspace_id AND question_scope = 'WORKSPACE'
+           AND title = '2주차 폼 검증 피드백 질문' AND COALESCE(is_deleted, false) = false
+         LIMIT 1;
+
+        IF v_question_id IS NOT NULL AND v_common_mentor_id IS NOT NULL THEN
+            INSERT INTO public.qna_answers (question_id, user_id, content, is_adopted, is_deleted, created_at, updated_at)
+            SELECT v_question_id, v_common_mentor_id,
+                   '필수 입력값은 blur 시점에 검증하고, 제출 시점에는 전체 오류 요약을 같이 보여주세요. 학습자가 한 번에 수정 범위를 볼 수 있어야 합니다.',
+                   true, false, TIMESTAMP '2026-06-18 20:35:00', TIMESTAMP '2026-06-18 20:35:00'
+             WHERE NOT EXISTS (
+                   SELECT 1 FROM public.qna_answers existing
+                    WHERE existing.question_id = v_question_id
+                      AND existing.user_id = v_common_mentor_id
+                      AND COALESCE(existing.is_deleted, false) = false
+             );
+            UPDATE public.qna_questions
+               SET qna_status = 'ANSWERED',
+                   adopted_answer_id = (
+                       SELECT answer_id FROM public.qna_answers
+                        WHERE question_id = v_question_id AND user_id = v_common_mentor_id
+                          AND COALESCE(is_deleted, false) = false
+                        ORDER BY created_at ASC LIMIT 1
+                   ),
+                   updated_at = TIMESTAMP '2026-06-18 20:35:00'
+             WHERE question_id = v_question_id;
+        END IF;
+
+        SELECT question_id INTO v_question_id
+          FROM public.qna_questions
+         WHERE workspace_id = v_team_workspace_id AND question_scope = 'WORKSPACE'
+           AND title = '대시보드 API 상태 분리 방식' AND COALESCE(is_deleted, false) = false
+         LIMIT 1;
+
+        IF v_question_id IS NOT NULL AND v_team_mentor_id IS NOT NULL THEN
+            INSERT INTO public.qna_answers (question_id, user_id, content, is_adopted, is_deleted, created_at, updated_at)
+            SELECT v_question_id, v_team_mentor_id,
+                   'summary와 timeline query를 분리하세요. KPI 카드는 먼저 렌더링하고, 타임라인 데이터는 별도로 들어오게 두는 편이 시연 흐름에 좋습니다.',
+                   true, false, TIMESTAMP '2026-06-18 21:25:00', TIMESTAMP '2026-06-18 21:25:00'
+             WHERE NOT EXISTS (
+                   SELECT 1 FROM public.qna_answers existing
+                    WHERE existing.question_id = v_question_id
+                      AND existing.user_id = v_team_mentor_id
+                      AND COALESCE(existing.is_deleted, false) = false
+             );
+            UPDATE public.qna_questions
+               SET qna_status = 'ANSWERED',
+                   adopted_answer_id = (
+                       SELECT answer_id FROM public.qna_answers
+                        WHERE question_id = v_question_id AND user_id = v_team_mentor_id
+                          AND COALESCE(is_deleted, false) = false
+                        ORDER BY created_at ASC LIMIT 1
+                   ),
+                   updated_at = TIMESTAMP '2026-06-18 21:25:00'
+             WHERE question_id = v_question_id;
+        END IF;
+
+        SELECT question_id INTO v_question_id
+          FROM public.qna_questions
+         WHERE workspace_id = v_squad_workspace_id AND question_scope = 'WORKSPACE'
+           AND title = '장바구니 CTA 리뷰 우선순위' AND COALESCE(is_deleted, false) = false
+         LIMIT 1;
+
+        IF v_question_id IS NOT NULL AND v_taehyung_id IS NOT NULL THEN
+            INSERT INTO public.qna_answers (question_id, user_id, content, is_adopted, is_deleted, created_at, updated_at)
+            SELECT v_question_id, v_taehyung_id,
+                   '품절 판단은 부모에서 처리하고 카드에는 disabledReason을 넘겨주세요. 그러면 검색 목록과 상세 화면에서 같은 카드를 재사용하기 좋습니다.',
+                   true, false, TIMESTAMP '2026-06-18 18:00:00', TIMESTAMP '2026-06-18 18:00:00'
+             WHERE NOT EXISTS (
+                   SELECT 1 FROM public.qna_answers existing
+                    WHERE existing.question_id = v_question_id
+                      AND existing.user_id = v_taehyung_id
+                      AND COALESCE(existing.is_deleted, false) = false
+             );
+            UPDATE public.qna_questions
+               SET qna_status = 'ANSWERED',
+                   adopted_answer_id = (
+                       SELECT answer_id FROM public.qna_answers
+                        WHERE question_id = v_question_id AND user_id = v_taehyung_id
+                          AND COALESCE(is_deleted, false) = false
+                        ORDER BY created_at ASC LIMIT 1
+                   ),
+                   updated_at = TIMESTAMP '2026-06-18 18:00:00'
+             WHERE question_id = v_question_id;
+        END IF;
+    END IF;
+
+    IF to_regclass('public.meeting_note') IS NOT NULL THEN
+        INSERT INTO public.meeting_note (workspace_id, title, content, created_by_id, is_deleted, created_at, updated_at)
+        SELECT seed.workspace_id, seed.title, seed.content, seed.created_by_id, false, seed.created_at, seed.created_at
+          FROM (
+              VALUES
+                  (v_common_workspace_id, '2주차 피드백 요약', 'blur 검증, aria-describedby 연결, 제출 오류 요약의 일관성을 중점적으로 봅니다.', v_common_mentor_id, TIMESTAMP '2026-06-18 20:45:00'),
+                  (v_team_workspace_id, '팀 스프린트 리뷰', 'KPI 카드는 구현 중입니다. API 계약과 QA 시나리오 매트릭스를 마지막으로 확인해야 합니다.', v_team_mentor_id, TIMESTAMP '2026-06-18 21:45:00'),
+                  (v_squad_workspace_id, '스쿼드 코드리뷰 싱크', 'PR #17 fallback 코멘트가 준비됐습니다. 품절 상태와 checkout 상태 명명 피드백을 반영합니다.', v_demo_user_id, TIMESTAMP '2026-06-18 18:20:00')
+          ) AS seed(workspace_id, title, content, created_by_id, created_at)
+         WHERE seed.workspace_id IS NOT NULL
+           AND seed.created_by_id IS NOT NULL
+           AND NOT EXISTS (
+               SELECT 1 FROM public.meeting_note existing
+                WHERE existing.workspace_id = seed.workspace_id
+                  AND existing.title = seed.title
+                  AND COALESCE(existing.is_deleted, false) = false
+           );
+    END IF;
+
+    IF to_regclass('public.workspace_notice') IS NOT NULL THEN
+        INSERT INTO public.workspace_notice (workspace_id, title, content, is_deleted, created_at, updated_at)
+        SELECT seed.workspace_id, seed.title, seed.content, false, seed.created_at, seed.created_at
+          FROM (
+              VALUES
+                  (v_common_workspace_id, '2주차 수정본은 일요일까지 제출', '수정된 HTML 파일만 업로드하고 검증 방식 변경 내용을 짧게 남겨주세요.', TIMESTAMP '2026-06-18 19:30:00'),
+                  (v_team_workspace_id, '아키텍처 리뷰 후 시연 범위 동결', '멘토 승인 후 새 위젯은 추가하지 말고 로딩 상태와 빈 상태를 먼저 다듬어 주세요.', TIMESTAMP '2026-06-18 19:35:00'),
+                  (v_squad_workspace_id, 'GitHub 리뷰 fallback 활성화', '코드 피드백 화면은 수업 시연용 PR 시드 데이터를 사용합니다.', TIMESTAMP '2026-06-18 19:40:00')
+          ) AS seed(workspace_id, title, content, created_at)
+         WHERE seed.workspace_id IS NOT NULL
+           AND NOT EXISTS (
+               SELECT 1 FROM public.workspace_notice existing
+                WHERE existing.workspace_id = seed.workspace_id
+                  AND existing.title = seed.title
+                  AND COALESCE(existing.is_deleted, false) = false
+           );
+    END IF;
+
+    IF to_regclass('public.activity_log') IS NOT NULL THEN
+        INSERT INTO public.activity_log (workspace_id, actor_id, activity_type, description, created_at)
+        SELECT seed.workspace_id, seed.actor_id, seed.activity_type, seed.description, seed.created_at
+          FROM (
+              VALUES
+                  (v_common_workspace_id, v_common_mentor_id, 'TASK_CREATED', '멘토가 2주차 폼 검증 리뷰를 열었습니다.', TIMESTAMP '2026-06-18 20:35:00'),
+                  (v_common_workspace_id, v_demo_user_id, 'FILE_UPLOADED', '폼 검증 참고 HTML 파일을 업로드했습니다.', TIMESTAMP '2026-06-16 21:20:00'),
+                  (v_team_workspace_id, v_team_mentor_id, 'MILESTONE_CREATED', '대시보드 MVP 시연 마일스톤이 업데이트됐습니다.', TIMESTAMP '2026-06-18 21:40:00'),
+                  (v_team_workspace_id, v_juseung_id, 'MEETING_NOTE_CREATED', '스프린트 QA 회의록을 추가했습니다.', TIMESTAMP '2026-06-18 09:45:00'),
+                  (v_squad_workspace_id, v_demo_user_id, 'DOC_UPDATED', 'GitHub 리뷰 fallback 메모를 업데이트했습니다.', TIMESTAMP '2026-06-18 17:30:00'),
+                  (v_squad_workspace_id, v_taehyung_id, 'TASK_CREATED', '체크아웃 상태 모델 리뷰 작업을 추가했습니다.', TIMESTAMP '2026-06-18 10:30:00'),
+                  (v_squad_workspace_id, v_juseung_id, 'FILE_UPLOADED', '커머스 UI 스크린샷 증빙을 업로드했습니다.', TIMESTAMP '2026-06-19 09:10:00')
+          ) AS seed(workspace_id, actor_id, activity_type, description, created_at)
+         WHERE seed.workspace_id IS NOT NULL
+           AND seed.actor_id IS NOT NULL
+           AND NOT EXISTS (
+               SELECT 1 FROM public.activity_log existing
+                WHERE existing.workspace_id = seed.workspace_id
+                  AND existing.actor_id = seed.actor_id
+                  AND existing.activity_type = seed.activity_type
+                  AND existing.description = seed.description
+           );
+    END IF;
+
+    IF to_regclass('public.voice_channels') IS NOT NULL THEN
+        INSERT INTO public.voice_channels (
+            workspace_id, creator_id, name, description, current_session_started_at,
+            is_deleted, created_at, updated_at
+        )
+        SELECT seed.workspace_id, seed.creator_id, seed.name, seed.description,
+               seed.current_session_started_at, false, seed.created_at, seed.created_at
+          FROM (
+              VALUES
+                  (v_common_workspace_id, v_common_mentor_id, '멘토링 피드백 룸', '주차별 미션 피드백과 짧은 질문을 처리합니다.', NULL::timestamp, TIMESTAMP '2026-06-11 10:00:00'),
+                  (v_team_workspace_id, v_team_mentor_id, '데일리 스크럼 룸', '팀 대시보드 진행 상황과 블로커를 확인합니다.', TIMESTAMP '2026-06-20 09:30:00', TIMESTAMP '2026-06-12 10:00:00'),
+                  (v_squad_workspace_id, v_demo_user_id, '스쿼드 리뷰 룸', 'PR 리뷰와 커머스 UI 작업 계획을 맞춥니다.', NULL::timestamp, TIMESTAMP '2026-06-10 10:00:00')
+          ) AS seed(workspace_id, creator_id, name, description, current_session_started_at, created_at)
+         WHERE seed.workspace_id IS NOT NULL
+           AND seed.creator_id IS NOT NULL
+           AND NOT EXISTS (
+               SELECT 1 FROM public.voice_channels existing
+                WHERE existing.workspace_id = seed.workspace_id
+                  AND existing.name = seed.name
+                  AND COALESCE(existing.is_deleted, false) = false
+           );
+    END IF;
+
+    IF to_regclass('public.workspace_erd_documents') IS NOT NULL THEN
+        INSERT INTO public.workspace_erd_documents (
+            workspace_id, mermaid_code, schema_json, version, updated_by_id, created_at, updated_at
+        )
+        SELECT seed.workspace_id, seed.mermaid_code, seed.schema_json, 2, seed.updated_by_id, now(), now()
+          FROM (
+              VALUES
+                  (v_common_workspace_id, $erd$erDiagram
+  ASSIGNMENT_SUBMISSION ||--o{ SUBMISSION_ATTACHMENT : includes
+  ASSIGNMENT_SUBMISSION ||--o{ ASSIGNMENT_FEEDBACK : receives
+  USERS ||--o{ ASSIGNMENT_SUBMISSION : submits
+$erd$, '{"tables":[{"id":"assignment_submission","name":"assignment_submission"},{"id":"submission_attachment","name":"submission_attachment"},{"id":"assignment_feedback","name":"assignment_feedback"}],"relationships":[{"from":"assignment_submission","to":"submission_attachment"},{"from":"assignment_submission","to":"assignment_feedback"}]}', v_common_mentor_id),
+                  (v_team_workspace_id, $erd$erDiagram
+  PROJECT ||--o{ MILESTONE : has
+  PROJECT ||--o{ ROLE_TASK : assigns
+  PROJECT ||--o{ SCRUM_NOTE : tracks
+  USERS ||--o{ ROLE_TASK : owns
+$erd$, '{"tables":[{"id":"project","name":"project"},{"id":"milestone","name":"milestone"},{"id":"role_task","name":"role_task"},{"id":"scrum_note","name":"scrum_note"}],"relationships":[{"from":"project","to":"milestone"},{"from":"project","to":"role_task"},{"from":"project","to":"scrum_note"}]}', v_team_mentor_id),
+                  (v_squad_workspace_id, $erd$erDiagram
+  PRODUCT ||--o{ CART_ITEM : selected_as
+  CART ||--o{ CART_ITEM : contains
+  PULL_REQUEST ||--o{ REVIEW_COMMENT : receives
+  USERS ||--o{ PULL_REQUEST : opens
+$erd$, '{"tables":[{"id":"product","name":"product"},{"id":"cart","name":"cart"},{"id":"cart_item","name":"cart_item"},{"id":"pull_request","name":"pull_request"},{"id":"review_comment","name":"review_comment"}],"relationships":[{"from":"cart","to":"cart_item"},{"from":"product","to":"cart_item"},{"from":"pull_request","to":"review_comment"}]}', v_demo_user_id)
+          ) AS seed(workspace_id, mermaid_code, schema_json, updated_by_id)
+         WHERE seed.workspace_id IS NOT NULL
+           AND seed.updated_by_id IS NOT NULL
+        ON CONFLICT (workspace_id) DO UPDATE
+              SET mermaid_code = EXCLUDED.mermaid_code,
+                  schema_json = EXCLUDED.schema_json,
+                  version = EXCLUDED.version,
+                  updated_by_id = EXCLUDED.updated_by_id,
+                  updated_at = now();
+    END IF;
+
+    IF to_regclass('public.workspace_erd_versions') IS NOT NULL THEN
+        INSERT INTO public.workspace_erd_versions (
+            workspace_id, version, mermaid_code, schema_json, summary,
+            updated_by_id, discussion_message_id, created_at
+        )
+        SELECT seed.workspace_id, 2, document.mermaid_code, document.schema_json,
+               seed.summary, seed.updated_by_id, NULL, TIMESTAMP '2026-06-18 22:00:00'
+          FROM (
+              VALUES
+                  (v_common_workspace_id, '멘토 피드백 ERD 시드', v_common_mentor_id),
+                  (v_team_workspace_id, '팀 대시보드 ERD 시드', v_team_mentor_id),
+                  (v_squad_workspace_id, '커머스 리뷰 ERD 시드', v_demo_user_id)
+          ) AS seed(workspace_id, summary, updated_by_id)
+          JOIN public.workspace_erd_documents document ON document.workspace_id = seed.workspace_id
+         WHERE seed.workspace_id IS NOT NULL
+           AND seed.updated_by_id IS NOT NULL
+        ON CONFLICT (workspace_id, version) DO UPDATE
+              SET mermaid_code = EXCLUDED.mermaid_code,
+                  schema_json = EXCLUDED.schema_json,
+                  summary = EXCLUDED.summary,
+                  updated_by_id = EXCLUDED.updated_by_id;
+    END IF;
+
+    IF to_regclass('public.workspace_erd_comments') IS NOT NULL THEN
+        INSERT INTO public.workspace_erd_comments (
+            workspace_id, target_type, target_id, target_label, author_id,
+            body, is_deleted, created_at, updated_at
+        )
+        SELECT seed.workspace_id, 'TABLE', seed.target_id, seed.target_label,
+               seed.author_id, seed.body, false, seed.created_at, seed.created_at
+          FROM (
+              VALUES
+                  (v_common_workspace_id, 'assignment_feedback', 'assignment_feedback', v_common_mentor_id, '점수와 코멘트 이력을 분리해야 재제출 과정을 추적하기 쉽습니다.', TIMESTAMP '2026-06-18 22:10:00'),
+                  (v_team_workspace_id, 'role_task', 'role_task', v_team_mentor_id, '대시보드에서는 담당자, 우선순위, 리뷰 상태가 바로 보여야 합니다.', TIMESTAMP '2026-06-18 22:12:00'),
+                  (v_squad_workspace_id, 'review_comment', 'review_comment', v_taehyung_id, '코드 피드백을 설명할 수 있도록 코멘트는 PR 파일 경로와 연결합니다.', TIMESTAMP '2026-06-18 22:14:00')
+          ) AS seed(workspace_id, target_id, target_label, author_id, body, created_at)
+         WHERE seed.workspace_id IS NOT NULL
+           AND seed.author_id IS NOT NULL
+           AND NOT EXISTS (
+               SELECT 1 FROM public.workspace_erd_comments existing
+                WHERE existing.workspace_id = seed.workspace_id
+                  AND existing.target_id = seed.target_id
+                  AND existing.body = seed.body
+                  AND COALESCE(existing.is_deleted, false) = false
+           );
+    END IF;
+
+    IF to_regclass('public.external_integration') IS NOT NULL AND v_squad_workspace_id IS NOT NULL THEN
+        INSERT INTO public.external_integration (
+            workspace_id, provider, is_active, connected_at, repository_url,
+            repository_owner, repository_name, repository_access_token,
+            last_synced_at, last_sync_message, created_at, updated_at
+        )
+        SELECT v_squad_workspace_id, 'GITHUB', true, TIMESTAMP '2026-06-18 15:30:00',
+               'https://github.com/devpath-demo/frontend-commerce', 'devpath-demo',
+               'frontend-commerce', 'demo-token-not-used', TIMESTAMP '2026-06-18 16:20:00',
+               '데모 GitHub 연결은 시드된 pull request 데이터를 사용합니다.', now(), now()
+         WHERE NOT EXISTS (
+               SELECT 1 FROM public.external_integration existing
+                WHERE existing.workspace_id = v_squad_workspace_id
+                  AND existing.provider = 'GITHUB'
+         );
+
+        UPDATE public.external_integration
+           SET is_active = true,
+               connected_at = TIMESTAMP '2026-06-18 15:30:00',
+               repository_url = 'https://github.com/devpath-demo/frontend-commerce',
+               repository_owner = 'devpath-demo',
+               repository_name = 'frontend-commerce',
+               repository_access_token = 'demo-token-not-used',
+               last_synced_at = TIMESTAMP '2026-06-18 16:20:00',
+               last_sync_message = '데모 GitHub 연결은 시드된 pull request 데이터를 사용합니다.',
+               updated_at = now()
+         WHERE workspace_id = v_squad_workspace_id
+           AND provider = 'GITHUB';
+    END IF;
+
+    IF to_regclass('public.workspace_code_reviews') IS NOT NULL
+        AND to_regclass('public.ai_code_reviews') IS NOT NULL
+        AND v_squad_workspace_id IS NOT NULL THEN
+        ALTER TABLE public.workspace_code_reviews ADD COLUMN IF NOT EXISTS ai_code_review_id bigint;
+
+        SELECT id INTO v_review_id
+          FROM public.workspace_code_reviews
+         WHERE workspace_id = v_squad_workspace_id
+           AND external_provider = 'GITHUB'
+           AND external_id = 'devpath/frontend-commerce#17'
+           AND COALESCE(is_deleted, false) = false
+         LIMIT 1;
+
+        IF v_review_id IS NOT NULL THEN
+            SELECT ai_code_review_id INTO v_ai_review_id
+              FROM public.ai_code_reviews
+             WHERE requester_id = v_demo_user_id
+               AND title = 'Fallback AI 리뷰: 장바구니 CTA 흐름'
+               AND COALESCE(is_deleted, false) = false
+             LIMIT 1;
+
+            IF v_ai_review_id IS NULL THEN
+                INSERT INTO public.ai_code_reviews (
+                    requester_id, pull_request_submission_id, title, diff_text, summary,
+                    comment_count, provider_name, is_deleted, created_at, updated_at
+                )
+                VALUES (
+                    v_demo_user_id,
+                    NULL,
+                    'Fallback AI 리뷰: 장바구니 CTA 흐름',
+                    $ai_diff$diff --git a/frontend/src/features/cart/ProductCard.tsx b/frontend/src/features/cart/ProductCard.tsx
+@@
++ onClick={() => onAddToCart(product.id)}
++ disabled={product.inventoryState === 'SOLD_OUT'}
+$ai_diff$,
+                    'PR은 시연 가능한 상태지만 품절 상태 처리, 접근성 라벨, 장바구니 side effect 분리를 더 명확히 해야 합니다.',
+                    3,
+                    'GEMINI_FALLBACK',
+                    false,
+                    TIMESTAMP '2026-06-18 16:25:00',
+                    TIMESTAMP '2026-06-18 16:25:00'
+                )
+                RETURNING ai_code_review_id INTO v_ai_review_id;
+            END IF;
+
+            UPDATE public.workspace_code_reviews
+               SET ai_code_review_id = v_ai_review_id,
+                   updated_at = TIMESTAMP '2026-06-18 16:25:00'
+             WHERE id = v_review_id;
+
+            IF to_regclass('public.ai_review_comments') IS NOT NULL THEN
+                INSERT INTO public.ai_review_comments (
+                    ai_code_review_id, category, line_number, title, message, suggestion,
+                    status, decided_at, is_deleted, created_at, updated_at
+                )
+                SELECT seed.ai_code_review_id, seed.category, seed.line_number, seed.title,
+                       seed.message, seed.suggestion, 'PENDING', NULL, false,
+                       TIMESTAMP '2026-06-18 16:26:00', TIMESTAMP '2026-06-18 16:26:00'
+                  FROM (
+                      VALUES
+                          (v_ai_review_id, '상태 관리', 42, '장바구니 변경은 카드 밖에서 처리', 'ProductCard는 표시용 컴포넌트로 유지해야 상품 목록과 상세 화면에서 재사용하기 좋습니다.', '부모 컨테이너에서 onAddToCart와 disabledReason을 props로 넘겨주세요.'),
+                          (v_ai_review_id, '접근성', 48, '품절 사유를 스크린리더에도 노출', 'disabled 버튼은 키보드 탐색 중에도 품절 이유를 이해할 수 있어야 합니다.', '간단한 재고 상태 메시지에 연결되는 aria-describedby를 추가해 주세요.'),
+                          (v_ai_review_id, '테스트', 55, '상호작용 테스트 1개 추가', '정상 흐름은 데모 데이터로 보이지만 품절 상태는 쉽게 회귀할 수 있습니다.', '품절 버튼 비활성화와 장바구니 추가 callback을 확인하는 컴포넌트 테스트를 추가해 주세요.')
+                  ) AS seed(ai_code_review_id, category, line_number, title, message, suggestion)
+                 WHERE seed.ai_code_review_id IS NOT NULL
+                   AND NOT EXISTS (
+                       SELECT 1 FROM public.ai_review_comments existing
+                        WHERE existing.ai_code_review_id = seed.ai_code_review_id
+                          AND existing.title = seed.title
+                          AND COALESCE(existing.is_deleted, false) = false
+                   );
+            END IF;
+        END IF;
+    END IF;
+
+    IF to_regclass('public.workspace_code_reviews') IS NOT NULL
+        AND to_regclass('public.ai_code_reviews') IS NOT NULL
+        AND v_squad_workspace_id IS NOT NULL THEN
+        SELECT id INTO v_review_id
+          FROM public.workspace_code_reviews
+         WHERE workspace_id = v_squad_workspace_id
+           AND external_provider = 'GITHUB'
+           AND external_id = 'devpath/frontend-commerce#17'
+           AND COALESCE(is_deleted, false) = false
+         LIMIT 1;
+
+        IF v_review_id IS NOT NULL THEN
+            UPDATE public.workspace_code_reviews
+               SET ai_code_review_id = NULL,
+                   status = 'OPEN',
+                   updated_at = TIMESTAMP '2026-06-18 16:20:00'
+             WHERE id = v_review_id;
+
+            IF to_regclass('public.ai_review_comments') IS NOT NULL THEN
+                UPDATE public.ai_review_comments
+                   SET is_deleted = true,
+                       updated_at = now()
+                 WHERE ai_code_review_id IN (
+                       SELECT ai_code_review_id
+                         FROM public.ai_code_reviews
+                        WHERE requester_id = v_demo_user_id
+                          AND provider_name = 'GEMINI_FALLBACK'
+                          AND (title LIKE 'Fallback AI%' OR title LIKE 'AI 시니어 멘토 리뷰%')
+                   );
+            END IF;
+
+            UPDATE public.ai_code_reviews
+               SET is_deleted = true,
+                   updated_at = now()
+             WHERE requester_id = v_demo_user_id
+               AND provider_name = 'GEMINI_FALLBACK'
+               AND (title LIKE 'Fallback AI%' OR title LIKE 'AI 시니어 멘토 리뷰%');
         END IF;
     END IF;
 END $$;
