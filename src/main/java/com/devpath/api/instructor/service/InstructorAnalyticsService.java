@@ -18,9 +18,6 @@ import com.devpath.domain.learning.entity.SubmissionStatus;
 import com.devpath.domain.learning.repository.LessonProgressRepository;
 import com.devpath.domain.learning.repository.QuizAttemptRepository;
 import com.devpath.domain.learning.repository.SubmissionRepository;
-import com.devpath.common.provider.GeminiProvider;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -41,8 +38,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class InstructorAnalyticsService {
 
-  private static final ObjectMapper MAPPER = new ObjectMapper();
-
   private final CourseRepository courseRepository;
   private final CourseEnrollmentRepository courseEnrollmentRepository;
   private final LessonRepository lessonRepository;
@@ -51,7 +46,6 @@ public class InstructorAnalyticsService {
   private final QuizAttemptRepository quizAttemptRepository;
   private final SubmissionRepository submissionRepository;
   private final InstructorCourseQueryService instructorCourseQueryService;
-  private final GeminiProvider geminiProvider;
 
   public InstructorAnalyticsDashboardResponse getDashboard(Long instructorId, Long courseId) {
     List<InstructorCourseListResponse> courseOptions =
@@ -588,14 +582,7 @@ public class InstructorAnalyticsService {
       List<InstructorAnalyticsDashboardResponse.DifficultyItem> difficultyItems,
       List<InstructorAnalyticsDashboardResponse.WeakPointItem> weakPoints,
       List<InstructorAnalyticsDashboardResponse.DropOffItem> dropOffs) {
-    List<InstructorAnalyticsDashboardResponse.AiInsightItem> fallback =
-        buildRuleBasedAiInsights(difficultyItems, weakPoints, dropOffs);
-    String prompt = buildAiInsightPrompt(difficultyItems, weakPoints, dropOffs);
-    String response = geminiProvider.generate(prompt);
-    List<InstructorAnalyticsDashboardResponse.AiInsightItem> generated =
-        parseAiInsightResponse(response);
-
-    return generated.isEmpty() ? fallback : generated;
+    return buildRuleBasedAiInsights(difficultyItems, weakPoints, dropOffs);
   }
 
   private List<InstructorAnalyticsDashboardResponse.AiInsightItem> buildRuleBasedAiInsights(
@@ -637,105 +624,6 @@ public class InstructorAnalyticsService {
                         item.dropOffRate() >= 40.0 ? "HIGH" : item.dropOffRate() >= 20.0 ? "MEDIUM" : "LOW")));
 
     return insights.stream().limit(3).toList();
-  }
-
-  private String buildAiInsightPrompt(
-      List<InstructorAnalyticsDashboardResponse.DifficultyItem> difficultyItems,
-      List<InstructorAnalyticsDashboardResponse.WeakPointItem> weakPoints,
-      List<InstructorAnalyticsDashboardResponse.DropOffItem> dropOffs) {
-    return """
-        You are an instructional analytics assistant for an online course instructor.
-        Use only the provided metrics. Return only a JSON array of 3 items.
-        Each item must have title, body, and level fields.
-        Write title and body in Korean. level must be HIGH, MEDIUM, or LOW.
-        Focus on concrete improvement actions for lecture content, practice, quizzes, or assignments.
-
-        Difficulty metrics:
-        %s
-
-        Wrong answer pattern metrics:
-        %s
-
-        Drop-off metrics:
-        %s
-        """
-        .formatted(
-            difficultyItems.stream()
-                .limit(6)
-                .map(
-                    item ->
-                        "%s difficulty=%.1f quizPass=%.1f assignment=%.1f dropOff=%.1f"
-                            .formatted(
-                                item.nodeTitle(),
-                                item.difficultyScore(),
-                                item.quizPassRate(),
-                                item.assignmentScoreRate(),
-                                item.dropOffRate()))
-                .collect(Collectors.joining("\n")),
-            weakPoints.stream()
-                .map(
-                    item ->
-                        "%s weakness=%.1f summary=%s"
-                            .formatted(item.nodeTitle(), item.weaknessScore(), item.summary()))
-                .collect(Collectors.joining("\n")),
-            dropOffs.stream()
-                .limit(5)
-                .map(
-                    item ->
-                        "%s started=%d completed=%d dropOff=%.1f"
-                            .formatted(
-                                item.lessonTitle(),
-                                item.startedLearnerCount(),
-                                item.completedLearnerCount(),
-                                item.dropOffRate()))
-                .collect(Collectors.joining("\n")));
-  }
-
-  private List<InstructorAnalyticsDashboardResponse.AiInsightItem> parseAiInsightResponse(
-      String response) {
-    if (response == null || response.isBlank()) {
-      return List.of();
-    }
-
-    try {
-      JsonNode root = MAPPER.readTree(extractJsonArray(response));
-
-      if (!root.isArray()) {
-        return List.of();
-      }
-
-      List<InstructorAnalyticsDashboardResponse.AiInsightItem> items = new ArrayList<>();
-
-      for (JsonNode node : root) {
-        String title = normalize(node.path("title").asText());
-        String body = normalize(node.path("body").asText());
-        String level = normalize(node.path("level").asText("MEDIUM")).toUpperCase();
-
-        if (!title.isBlank() && !body.isBlank()) {
-          items.add(
-              new InstructorAnalyticsDashboardResponse.AiInsightItem(
-                  title,
-                  body,
-                  level.equals("HIGH") || level.equals("LOW") ? level : "MEDIUM"));
-        }
-      }
-
-      return items.stream().limit(3).toList();
-    } catch (Exception ignored) {
-      return List.of();
-    }
-  }
-
-  private String extractJsonArray(String value) {
-    String normalized = normalize(value);
-    int start = normalized.indexOf('[');
-    int end = normalized.lastIndexOf(']');
-
-    if (start >= 0 && end > start) {
-      return normalized.substring(start, end + 1);
-    }
-
-    return normalized;
   }
 
   private InstructorAnalyticsDashboardResponse.Funnel buildFunnel(
@@ -813,10 +701,6 @@ public class InstructorAnalyticsService {
 
   private int defaultInt(Integer value) {
     return value == null ? 0 : value;
-  }
-
-  private String normalize(String value) {
-    return value == null ? "" : value.trim();
   }
 
   private double roundToOneDecimal(double value) {
