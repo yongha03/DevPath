@@ -433,6 +433,7 @@ export default function SquadMeetingApp() {
   const [audioOutputs, setAudioOutputs] = useState<AudioDeviceOption[]>(FALLBACK_AUDIO_OUTPUTS)
   const [selectedInputId, setSelectedInputId] = useState(FALLBACK_AUDIO_INPUTS[0].deviceId)
   const [selectedOutputId, setSelectedOutputId] = useState(FALLBACK_AUDIO_OUTPUTS[0].deviceId)
+  const [remoteAudioMuted, setRemoteAudioMuted] = useState(false)
   const [audioDeviceError, setAudioDeviceError] = useState<string | null>(null)
   const [audioProcessingStatus, setAudioProcessingStatus] = useState<AudioProcessingStatus>(INITIAL_AUDIO_PROCESSING_STATUS)
   const [micLevel, setMicLevel] = useState(0)
@@ -467,6 +468,7 @@ export default function SquadMeetingApp() {
   const signalingSocketRef = useRef<WebSocket | null>(null)
   const peerConnectionsRef = useRef<Map<number, RTCPeerConnection>>(new Map())
   const remoteAudioElementsRef = useRef<Map<number, SinkAudioElement>>(new Map())
+  const remoteAudioMutedRef = useRef(false)
   const remoteAudioContainerRef = useRef<HTMLDivElement | null>(null)
   const controlBoxRef = useRef<HTMLDivElement | null>(null)
   const joiningRef = useRef(false)
@@ -1478,18 +1480,38 @@ export default function SquadMeetingApp() {
     const existingAudio = remoteAudioElementsRef.current.get(userId)
 
     if (existingAudio) {
+      existingAudio.muted = remoteAudioMutedRef.current
       return existingAudio
     }
 
     const audio = document.createElement('audio') as SinkAudioElement
 
     audio.autoplay = true
+    audio.muted = remoteAudioMutedRef.current
     audio.dataset.voicePeerId = String(userId)
     remoteAudioElementsRef.current.set(userId, audio)
     remoteAudioContainerRef.current?.appendChild(audio)
     void applySelectedOutputToAudio(audio)
 
     return audio
+  }
+
+  function applyRemoteAudioMuted(muted: boolean) {
+    remoteAudioElementsRef.current.forEach((audio) => {
+      audio.muted = muted
+    })
+  }
+
+  function toggleRemoteAudioMuted() {
+    const nextMuted = !remoteAudioMutedRef.current
+
+    remoteAudioMutedRef.current = nextMuted
+    applyRemoteAudioMuted(nextMuted)
+    setRemoteAudioMuted(nextMuted)
+    showAuthToast({
+      message: nextMuted ? '회의 듣기를 껐습니다.' : '회의 듣기를 켰습니다.',
+      durationMs: 1400,
+    })
   }
 
   async function applySelectedOutputToAudio(
@@ -1643,6 +1665,7 @@ export default function SquadMeetingApp() {
 
     const audio = createRemoteAudioElement(userId)
 
+    audio.muted = remoteAudioMutedRef.current
     audio.srcObject = stream
     void audio.play().catch(() => undefined)
   }
@@ -3950,6 +3973,20 @@ export default function SquadMeetingApp() {
                   title={isMuted ? '마이크 켜기' : '마이크 끄기'}
                 >
                   <i className={`fas ${isMuted ? 'fa-microphone-slash' : 'fa-microphone'} text-xl`}></i>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={toggleRemoteAudioMuted}
+                  aria-pressed={remoteAudioMuted}
+                  className={`squad-meeting-room-control-button w-14 h-14 rounded-full border flex items-center justify-center text-white transition shadow-sm ${
+                    remoteAudioMuted
+                      ? 'bg-amber-600 hover:bg-amber-700 border-amber-500'
+                      : 'bg-gray-700 hover:bg-gray-600 border-gray-600'
+                  }`}
+                  title={remoteAudioMuted ? '듣기 켜기' : '듣기 끄기'}
+                >
+                  <i className={`fas ${remoteAudioMuted ? 'fa-volume-mute' : 'fa-headphones'} text-xl`}></i>
                 </button>
 
                 <button
