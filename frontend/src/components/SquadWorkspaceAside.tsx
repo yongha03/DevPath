@@ -42,6 +42,24 @@ type NavSection = {
   items: NavItem[]
 }
 
+const SIDEBAR_PINNED_STORAGE_KEY = 'sidebarPinned'
+
+function readSidebarPinned() {
+  if (typeof window === 'undefined') {
+    return false
+  }
+
+  return window.localStorage.getItem(SIDEBAR_PINNED_STORAGE_KEY) === 'true'
+}
+
+function storeSidebarPinned(value: boolean) {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  window.localStorage.setItem(SIDEBAR_PINNED_STORAGE_KEY, value ? 'true' : 'false')
+}
+
 function navHref(path: string, workspaceId: number | null) {
   return workspaceId ? `${path}?workspaceId=${workspaceId}` : path
 }
@@ -55,12 +73,14 @@ export default function SquadWorkspaceAside({
   activePage,
   workspaceId,
   projectName,
-  pinned = false,
+  pinned,
   onTogglePinned,
   reviewBadgeCount,
   onNavigate,
 }: SquadWorkspaceAsideProps) {
   const [githubLinked, setGithubLinked] = useState<boolean | null>(null)
+  const [localPinned, setLocalPinned] = useState(readSidebarPinned)
+  const sidebarPinned = pinned ?? localPinned
   const projectLabel = projectName?.trim() || '스쿼드 프로젝트'
   const sections: NavSection[] = [
     {
@@ -78,6 +98,7 @@ export default function SquadWorkspaceAside({
     {
       title: '설계/리뷰',
       items: [
+        { key: 'erd', label: 'ERD 설계', icon: 'fas fa-project-diagram', path: '/squad-erd' },
         {
           key: 'review',
           label: '코드 피드백',
@@ -85,7 +106,6 @@ export default function SquadWorkspaceAside({
           path: '/squad-review',
           badgeCount: reviewBadgeCount,
         },
-        { key: 'erd', label: 'ERD 설계', icon: 'fas fa-project-diagram', path: '/squad-erd' },
       ],
     },
     {
@@ -145,8 +165,24 @@ export default function SquadWorkspaceAside({
     onNavigate?.(event, href)
   }
 
+  function handleTogglePinned(event: MouseEvent<HTMLButtonElement>) {
+    event.preventDefault()
+    event.stopPropagation()
+
+    if (onTogglePinned) {
+      onTogglePinned(event)
+      return
+    }
+
+    setLocalPinned((current) => {
+      const next = !current
+      storeSidebarPinned(next)
+      return next
+    })
+  }
+
   return (
-    <aside className={`${pinned ? 'pinned ' : ''}squad-workspace-aside w-20 hover:w-64 bg-white border-r border-gray-200 flex flex-col shrink-0 z-50 transition-all duration-300 ease-in-out group shadow-[4px_0_24px_rgba(0,0,0,0.02)]`}>
+    <aside className={`${sidebarPinned ? 'pinned ' : ''}squad-workspace-aside w-20 hover:w-64 bg-white border-r border-gray-200 flex flex-col shrink-0 z-50 transition-all duration-300 ease-in-out group shadow-[4px_0_24px_rgba(0,0,0,0.02)]`}>
       <div className="h-20 flex items-center px-5 cursor-pointer hover:bg-gray-50 transition border-b border-gray-100 shrink-0">
         <a
           href="/workspace-hub"
@@ -161,20 +197,14 @@ export default function SquadWorkspaceAside({
             <p className="font-extrabold text-gray-900 truncate w-28 leading-tight">{projectLabel}</p>
           </div>
         </a>
-        {onTogglePinned ? (
-          <button
-            type="button"
-            onClick={(event) => {
-              event.preventDefault()
-              event.stopPropagation()
-              onTogglePinned(event)
-            }}
-            className="sidebar-text squad-dashboard-pin-button w-7 h-7 rounded-md hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-brand transition-colors focus:outline-none ml-2"
-            title={pinned ? '사이드바 고정 해제' : '사이드바 고정'}
-          >
-            <i className="fas fa-thumbtack text-xs"></i>
-          </button>
-        ) : null}
+        <button
+          type="button"
+          onClick={handleTogglePinned}
+          className="sidebar-text squad-dashboard-pin-button w-7 h-7 rounded-md hover:bg-gray-100 flex items-center justify-center text-gray-400 hover:text-brand transition-colors focus:outline-none ml-2"
+          title={sidebarPinned ? '사이드바 고정 해제' : '사이드바 고정'}
+        >
+          <i className={`${sidebarPinned ? 'fas fa-thumbtack' : 'fas fa-thumbtack rotate-45'} text-xs`}></i>
+        </button>
       </div>
 
       <nav className="flex-1 px-3 py-6 overflow-y-auto custom-scrollbar">
