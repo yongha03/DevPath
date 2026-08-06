@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { navigateTo } from '../../lib/spa-navigation'
 import AuthModal, { type AuthView } from '../../components/AuthModal'
 import SiteHeader from '../../components/SiteHeader'
 import UserAvatar from '../../components/UserAvatar'
@@ -36,7 +37,8 @@ import {
   type ReviewFilterKey,
   type ReviewSortKey,
 } from './support'
-import { authApi, instructorSubscriptionApi, publicInstructorApi, userApi } from '../../lib/api'
+import { authApi, userApi } from '../../lib/api/auth'
+import { instructorSubscriptionApi, publicInstructorApi } from '../../lib/api/instructor'
 import { AUTH_SESSION_SYNC_EVENT, clearStoredAuthSession, readStoredAuthSession } from '../../lib/auth-session'
 import { useInternalPageScroll } from '../../lib/useInternalPageScroll'
 import type { InstructorChannel } from '../../types/instructor'
@@ -291,7 +293,7 @@ export default function InstructorChannelApp() {
   }
 
   function handleOpenCourse(courseId: number) {
-    window.location.href = `/course-detail?courseId=${courseId}`
+    navigateTo(`/course-detail?courseId=${courseId}`)
   }
 
   function handleToggleBookmark(courseId: number) {

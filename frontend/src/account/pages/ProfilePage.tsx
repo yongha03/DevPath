@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent, type KeyboardEvent } from 'react'
 import UserAvatar from '../../components/UserAvatar'
 import { updateStoredAuthSession } from '../../lib/auth-session'
-import { userApi } from '../../lib/api'
+import { userApi } from '../../lib/api/auth'
 import { notifyProfileUpdated } from '../../lib/profile-sync'
 import { LearnerContentRow, LearnerPageShell, MyMenuSidebar } from '../template'
 import type { AuthSession } from '../../types/auth'
@@ -194,7 +194,7 @@ export default function ProfilePage({ session }: { session: AuthSession }) {
   return (
     <LearnerPageShell>
       <LearnerContentRow>
-        <MyMenuSidebar currentPageKey="profile" wrapperClassName="w-60 shrink-0 hidden lg:block -ml-0" />
+        <MyMenuSidebar currentPageKey="profile" />
 
         <section className="min-w-0 flex-1">
           <h2 className="mb-6 pt-[5px] text-2xl font-bold leading-none text-gray-900">프로필 관리</h2>

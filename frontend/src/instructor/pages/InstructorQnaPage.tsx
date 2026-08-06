@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { navigateTo } from '../../lib/spa-navigation'
 import MarkdownContent from '../../components/MarkdownContent'
 import UserAvatar from '../../components/UserAvatar'
 import {
@@ -9,7 +10,8 @@ import {
   readInstructorChannelCustomization,
   sanitizeInstructorProfileImageUrl,
 } from '../channel/customization'
-import { instructorCourseApi, instructorQnaApi, userApi } from '../../lib/api'
+import { instructorCourseApi, instructorQnaApi } from '../../lib/api/instructor'
+import { userApi } from '../../lib/api/auth'
 import type { AuthSession } from '../../types/auth'
 import type {
   InstructorCourseListItem,
@@ -478,7 +480,7 @@ export default function InstructorQnaPage({ session }: { session: AuthSession })
     }
 
     if (!opened) {
-      window.location.assign(url.toString())
+      navigateTo(url.toString())
     }
   }
 

@@ -3,6 +3,7 @@ import AuthModal, { type AuthView } from '../../components/AuthModal'
 import SquadWorkspaceAside from '../../components/SquadWorkspaceAside'
 import UserAvatar from '../../components/UserAvatar'
 import { clearStoredAuthSession, getPostLoginRedirect, readStoredAuthSession } from '../../lib/auth-session'
+import { navigateTo } from '../../lib/spa-navigation'
 import { showAuthToast } from '../../lib/auth-toast'
 import { projectApiRequest } from '../project/api'
 import { createSquadNotification, squadActorName } from './notifications'
@@ -119,7 +120,7 @@ function isIntegrationActive(integration?: ExternalIntegration) {
 }
 
 export default function SquadSettingsApp() {
-  const workspaceId = useMemo(getWorkspaceIdFromUrl, [])
+  const workspaceId = useMemo(() => getWorkspaceIdFromUrl(), [])
   const [session, setSession] = useState(() => readStoredAuthSession())
   const [authView, setAuthView] = useState<AuthView | null>(null)
   const [activeTab, setActiveTab] = useState<SettingsTab>('general')
@@ -451,7 +452,7 @@ export default function SquadSettingsApp() {
       )
       showAuthToast('스쿼드가 삭제되었습니다.')
       notifySettingsChange(`스쿼드 "${settings.name}"를 삭제했습니다.`)
-      window.location.replace('/workspace-hub')
+      navigateTo('/workspace-hub', { replace: true })
     } catch (deleteError) {
       const message = deleteError instanceof Error ? deleteError.message : '스쿼드를 삭제하지 못했습니다.'
       showAuthToast({ message, variant: 'error' })

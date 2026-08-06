@@ -2,13 +2,14 @@ import { type CSSProperties, useEffect, useState } from 'react'
 import AccountUserMenu from './components/AccountUserMenu'
 import AuthModal, { type AuthView } from './components/AuthModal'
 import SiteHeader from './components/SiteHeader'
-import { authApi, userApi } from './lib/api'
+import { authApi, userApi } from './lib/api/auth'
 import {
   AUTH_SESSION_SYNC_EVENT,
   clearStoredAuthSession,
   getPostLoginRedirect,
   readStoredAuthSession,
 } from './lib/auth-session'
+import { navigateTo } from './lib/spa-navigation'
 
 const headerLinks = [
   { key: 'roadmap', href: '/roadmap-hub', label: '로드맵' },
@@ -50,7 +51,7 @@ const supportLinks = [
 ]
 
 function go(path: string) {
-  window.location.href = path
+  navigateTo(path)
 }
 
 function readAuthViewFromLocation(): AuthView | null {

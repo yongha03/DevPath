@@ -1,7 +1,8 @@
 import { useEffect,useMemo,useState,type ReactNode } from 'react'
 import { ErrorCard,LoadingCard } from '../../account/ui'
+import { navigateTo } from '../../lib/spa-navigation'
 import { projectApiRequest } from '../../features/project/api'
-import { instructorMentoringApi } from '../../lib/api'
+import { instructorMentoringApi } from '../../lib/api/instructor'
 import type { InstructorMentoringBoard } from '../../types/instructor'
 import { applyApprovedRequest,avatarUrl,buildProjectFromForm,calculateOngoingProgress,createDefaultForm,createSampleForm,getLiveApplicationId,getLivePostId,getPreviewCapacity,INSTRUCTOR_MENTORING_UI_LOCK_CLASSES,modeMeta,projectToForm,shortRoleLabel,toMentoringPostPayload,withPostId,type MentoringMode,type MentoringPostDetail,type MentoringTab,type OngoingProject,type PendingRequest,type ProjectFormState,type ProjectRoleInput,type RecruitingProject,type WorkspaceDashboardSummary,type WorkspaceMilestoneSummary,type WorkspaceSettingsForm,type WorkspaceSettingsSummary,type WorkspaceTaskSummary } from './instructor-mentoring-model'
 
@@ -512,7 +513,7 @@ export default function InstructorMentoringPage() {
       }
       const route = project.mode === 'team' ? teamRoutes[actionLabel] : commonRoutes[actionLabel]
       if (route) {
-        window.location.assign(`${route}?workspaceId=${project.workspaceId}`)
+        navigateTo(`${route}?workspaceId=${project.workspaceId}`)
         return
       }
     }

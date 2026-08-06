@@ -1,4 +1,5 @@
 import { useEffect,useMemo,useState } from 'react'
+import { navigateTo } from '../../lib/spa-navigation'
 import LoginRequiredView from '../../components/LoginRequiredView'
 import TeamWorkspaceHeader from '../../components/TeamWorkspaceHeader'
 import UserAvatar from '../../components/UserAvatar'
@@ -177,7 +178,7 @@ function ErrorState({ message }: { message: string }) {
 }
 
 export default function TeamWorkspaceDashboardApp() {
-  const workspaceId = useMemo(getWorkspaceIdFromUrl, [])
+  const workspaceId = useMemo(() => getWorkspaceIdFromUrl(), [])
   const [session, setSession] = useState(() => readStoredAuthSession())
   const [dashboard, setDashboard] = useState<WorkspaceDashboard | null>(null)
   const [tasks, setTasks] = useState<WorkspaceTask[]>([])
@@ -372,7 +373,7 @@ export default function TeamWorkspaceDashboardApp() {
   const weeklyRate = weeklyMilestoneTotal > 0 ? percent(submittedMilestones, weeklyMilestoneTotal) : 0
 
   function goTo(path: string) {
-    window.location.assign(navHref(path, workspaceId))
+    navigateTo(navHref(path, workspaceId))
   }
 
   if (!session) {

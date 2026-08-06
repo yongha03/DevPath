@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import LoginRequiredView from '../../components/LoginRequiredView'
 import SiteHeader from '../../components/SiteHeader'
-import { authApi, roadmapApi, userApi } from '../../lib/api'
+import { authApi, userApi } from '../../lib/api/auth'
+import { roadmapApi } from '../../lib/api/roadmap'
+import { navigateTo } from '../../lib/spa-navigation'
 import {
   AUTH_SESSION_SYNC_EVENT,
   clearStoredAuthSession,
@@ -274,7 +276,7 @@ function SurveyPage() {
   }
 
   function handleLoginClick() {
-    window.location.href = '/home?auth=login'
+    navigateTo('/home?auth=login')
   }
 
   function getRoadmapId(key: string): number | null {

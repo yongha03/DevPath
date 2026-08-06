@@ -4,7 +4,7 @@ useMemo,
 useState
 } from 'react'
 import AuthModal,{ type AuthView } from '../../components/AuthModal'
-import { userApi } from '../../lib/api'
+import { userApi } from '../../lib/api/auth'
 import {
 getPostLoginRedirect,
 readStoredAuthSession,
@@ -47,7 +47,7 @@ import { WorkspacePage } from './common-workspace/common-workspace-workspace-pag
 
 
 function MentoringCommonWorkspaceApp({ page }: { page: RenderedMentoringCommonPage }) {
-  const workspaceId = useMemo(getWorkspaceIdFromUrl, [])
+  const workspaceId = useMemo(() => getWorkspaceIdFromUrl(), [])
   const [session, setSession] = useState(() => readStoredAuthSession())
   const [authView, setAuthView] = useState<AuthView | null>(null)
   const [data, setData] = useState<MentoringWorkspaceData>(EMPTY_DATA)

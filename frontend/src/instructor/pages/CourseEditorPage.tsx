@@ -1,6 +1,8 @@
 ﻿import { useEffect,useRef,useState } from 'react'
 import { ErrorCard,LoadingCard } from '../../account/ui'
-import { instructorCourseApi,userApi } from '../../lib/api'
+import { navigateTo } from '../../lib/spa-navigation'
+import { instructorCourseApi } from '../../lib/api/instructor'
+import { userApi } from '../../lib/api/auth'
 import type { TechTag } from '../../types/learner'
 import type { LearningCourseDetail } from '../../types/learning'
 import { type EditorInfoSection,type EditorJobCard,type EditorLesson,type EditorSection,type LessonKind,type PersistedCourseStatus,type PreparedSection,type SaveToastState,COURSE_EDITOR_PAGE_UI_LOCK_CLASSES,createCustomInfoSection,createDefaultInfoSections,createEmptyJobCard,createLesson,createSection,EDITOR_ACTION_BUTTONS_STICKY_TOP_PX,EDITOR_SIDE_CARD_STICKY_TOP_PX,formatPriceInput,getAssetLabel,getCourseIdFromUrl,getInfoSectionPlaceholder,getPreparedLessonTitle,getStatusChip,lessonKindMeta,lessonKindToApiType,mapCourseInfoSections,mapSection,normalizeSectionTitle,normalizeTagName,parseBulletItems,parseJobCard,parsePriceInput,prepareSections,SAVE_TOAST_DURATION_MS,serializeJobCard } from '../course-editor/course-editor-model'
@@ -486,7 +488,7 @@ export default function CourseEditorPage() {
     try {
       await persistCourse('IN_REVIEW')
       window.alert('심사 요청이 완료되었습니다.')
-      window.location.href = '/course-management'
+      navigateTo('/course-management')
     } catch (nextError) {
       if (nextError instanceof CourseEditorValidationError) {
         setSaveToast({ message: nextError.message, persistent: false, variant: 'error' })
@@ -545,7 +547,9 @@ export default function CourseEditorPage() {
       return asset.url
     } catch (nextError) {
       setSaveToast(null)
-      throw new Error(nextError instanceof Error ? nextError.message : '파일 업로드에 실패했습니다.')
+      throw new Error(nextError instanceof Error ? nextError.message : '파일 업로드에 실패했습니다.', {
+        cause: nextError,
+      })
     }
   }
 
@@ -582,7 +586,7 @@ export default function CourseEditorPage() {
       })
 
       setSaveToast({ message: '저장되었습니다.', persistent: false })
-      window.location.assign(editorHref)
+      navigateTo(editorHref)
     } catch (nextError) {
       if (nextError instanceof CourseEditorValidationError) {
         setSaveToast({ message: nextError.message, persistent: false, variant: 'error' })
@@ -693,7 +697,7 @@ export default function CourseEditorPage() {
         <div className="flex items-center gap-4">
           <button
             type="button"
-            onClick={() => window.location.assign('/course-management')}
+            onClick={() => navigateTo('/course-management')}
             className="course-editor-back-button text-gray-400 transition hover:text-gray-800"
           >
             <i className="fas fa-arrow-left text-xl" />

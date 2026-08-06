@@ -1,4 +1,5 @@
 import { startTransition, useDeferredValue, useEffect, useRef, useState } from 'react'
+import { navigateTo } from '../../lib/spa-navigation'
 import AuthModal, { type AuthView } from '../../components/AuthModal'
 import SiteHeader from '../../components/SiteHeader'
 import {
@@ -16,7 +17,8 @@ import {
   type LecturePriceFilter,
   type LectureSortKey,
 } from './lecture-list-support'
-import { authApi, courseApi, userApi, wishlistApi } from '../../lib/api'
+import { authApi, userApi } from '../../lib/api/auth'
+import { courseApi, wishlistApi } from '../../lib/api/learner'
 import { AUTH_SESSION_SYNC_EVENT, clearStoredAuthSession, readStoredAuthSession } from '../../lib/auth-session'
 import { useInternalPageScroll } from '../../lib/useInternalPageScroll'
 import type { CourseCatalogMenu } from '../../types/course-catalog'
@@ -346,7 +348,7 @@ export default function LectureListApp() {
       return
     }
 
-    window.location.href = buildCourseDetailHref(courseId)
+    navigateTo(buildCourseDetailHref(courseId))
   }
 
   async function handleToggleBookmark(courseId: number) {
