@@ -84,7 +84,7 @@ BEGIN
       NOW(),
       NOW(),
       NULL,
-      'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1200&q=80',
+      '/images/courses/html-css-js-rendering.webp',
       NULL,
       NULL,
       0
@@ -106,7 +106,7 @@ BEGIN
            status = CASE WHEN status = 'PUBLISHED' THEN 'PUBLISHED' ELSE 'DRAFT' END,
            updated_at = NOW(),
            published_at = CASE WHEN status = 'PUBLISHED' THEN COALESCE(published_at, NOW()) ELSE published_at END,
-           thumbnail_url = 'https://images.unsplash.com/photo-1498050108023-c5249f4df085?auto=format&fit=crop&w=1200&q=80',
+           thumbnail_url = '/images/courses/html-css-js-rendering.webp',
            intro_video_url = NULL,
            video_asset_key = NULL,
            duration_seconds = 0
