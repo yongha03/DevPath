@@ -19487,3 +19487,66 @@ SET
     order_in_lane = spine_order.lane_position
 FROM spine_order
 WHERE crn.custom_node_id = spine_order.custom_node_id;
+
+-- =========================================================
+-- 샘플 강의 썸네일 교체: 외부 스톡 이미지 대신 강의별 전용 이미지(frontend/public/images/courses)
+-- =========================================================
+UPDATE courses c
+SET thumbnail_url = '/images/courses/' || t.slug || '.webp'
+FROM (VALUES
+    ('Docker & Kubernetes 운영 실전', 'docker-kubernetes-ops'),
+    ('실무 Spring Boot 백엔드 입문', 'spring-boot-backend-intro'),
+    ('Flutter로 MVP 앱 출시하기', 'flutter-mvp'),
+    ('Next.js 14 제품 개발 실전', 'nextjs-14'),
+    ('React 19 프론트엔드 실전 가이드', 'react-19'),
+    ('개발자 이력서와 기술 면접 패키지', 'resume-interview'),
+    ('SQL로 끝내는 데이터 분석 기본기', 'sql-data-analysis'),
+    ('ChatGPT API와 RAG 서비스 만들기', 'chatgpt-rag'),
+    ('로드맵 실전: 인터넷 & 웹 기초', 'roadmap-internet-web'),
+    ('로드맵 실전: OS & 터미널', 'roadmap-os-terminal'),
+    ('로드맵 실전: Java 기초', 'roadmap-java'),
+    ('로드맵 실전: Git & 버전 관리', 'roadmap-git'),
+    ('로드맵 실전: RDB & SQL', 'roadmap-rdb-sql'),
+    ('로드맵 실전: REST API 설계', 'roadmap-rest-api'),
+    ('로드맵 실전: Spring Boot & MVC', 'roadmap-spring-boot-mvc'),
+    ('로드맵 실전: Spring Data JPA', 'roadmap-spring-data-jpa'),
+    ('로드맵 실전: Redis 기초', 'roadmap-redis-basic'),
+    ('로드맵 실전: Redis 심화', 'roadmap-redis-advanced'),
+    ('로드맵 실전: JUnit5 & Mockito', 'roadmap-junit-mockito'),
+    ('로드맵 실전: Spring Boot 테스트', 'roadmap-spring-boot-test'),
+    ('로드맵 실전: Spring Security & JWT', 'roadmap-spring-security-jwt'),
+    ('로드맵 실전: Docker & CI/CD', 'roadmap-docker-cicd'),
+    ('로드맵 실전: SOLID & 디자인패턴', 'roadmap-solid-patterns'),
+    ('로드맵 실전: 웹 보안 기초', 'roadmap-web-security'),
+    ('로드맵 실전: 메시지 큐 & MSA', 'roadmap-mq-msa'),
+    ('SOLID 원칙과 디자인 패턴 실전', 'solid-design-patterns'),
+    ('OAuth2와 소셜 로그인 연동', 'oauth2-social-login'),
+    ('Spring Security 필터 체인과 JWT 인증', 'spring-security-filter-jwt'),
+    ('MockMvc와 Spring Boot 통합 테스트', 'mockmvc-integration-test'),
+    ('JUnit5와 Mockito 단위 테스트', 'junit5-mockito-unit-test'),
+    ('FetchType, N+1, QueryDSL 최적화', 'jpa-n-plus-one-querydsl'),
+    ('JPA Entity 매핑과 JPQL 실전', 'jpa-entity-jpql'),
+    ('Spring MVC 요청 처리와 3계층 구조', 'spring-mvc-layered'),
+    ('Spring Boot DI/IoC와 Spring Bean 등록 흐름', 'spring-di-ioc-bean'),
+    ('인터페이스, 제네릭, 컬렉션 실전', 'java-generic-collection'),
+    ('Java OOP와 상속 설계', 'java-oop-inheritance'),
+    ('Linux 메모리 관리와 I/O 관리', 'linux-memory-io'),
+    ('Linux 프로세스와 스레드 관리', 'linux-process-thread'),
+    ('OWASP, XSS, CSRF, SQL Injection, CORS', 'owasp-web-security'),
+    ('Swagger와 REST API 문서화', 'swagger-rest-docs'),
+    ('REST URI 설계와 HTTP 메서드', 'rest-uri-http-method'),
+    ('Pull Request와 코드 리뷰 실무', 'pull-request-code-review'),
+    ('Git 브랜치 전략과 GitFlow', 'git-branch-gitflow'),
+    ('브라우저 요청 흐름과 HTTP 응답 구조', 'browser-http-flow'),
+    ('DNS, 도메인, 웹 호스팅 입문', 'dns-domain-hosting'),
+    ('HTTP 요청/응답, 메서드, 상태코드', 'http-request-response'),
+    ('MSA API Gateway와 서비스 분리 기준', 'msa-api-gateway'),
+    ('Kafka와 Kafka 토픽 흐름', 'kafka-topic-flow'),
+    ('GitHub Actions와 CI/CD 자동화', 'github-actions-cicd'),
+    ('Docker와 docker-compose 실전', 'docker-compose'),
+    ('Redis Session, Pub/Sub, 분산 락', 'redis-session-pubsub-lock'),
+    ('Redis 자료구조, TTL, Spring Cache', 'redis-ttl-spring-cache'),
+    ('인덱스, 트랜잭션, PostgreSQL 성능 기본기', 'postgres-index-transaction'),
+    ('SQL JOIN과 서브쿼리 패턴', 'sql-join-subquery')
+) AS t(title, slug)
+WHERE c.title = t.title;
